@@ -154,13 +154,15 @@ SOLUZIONE:
     2. Esegui: npm run build
     3. Cancella node_modules e reinstalla: rm -rf node_modules && npm install
 
-PROBLEMA: "bcrypt not found or compilation failed"
+PROBLEMA: "Cannot find module './lib/validateAsymmetricKey' (jsonwebtoken)"
 SOLUZIONE:
-  - Il nostro package.json usa bcrypt@^5.1.1 (compatibile)
-  - Se fallisce, prova:
-    npm rebuild bcrypt --build-from-source
-  - O usa versione pre-compilata:
-    npm install bcryptjs@2.4.3
+  - jsonwebtoken@9.0.2 ha un bug con Node 20
+  - Usa jsonwebtoken@8.5.1 (versione stabile)
+  - Già configurato nel package.json
+  - Se il problema persiste:
+    rm -rf node_modules package-lock.json
+    npm install
+    npm run build
 
 PROBLEMA: "Port 5000 already in use"
 SOLUZIONE:
