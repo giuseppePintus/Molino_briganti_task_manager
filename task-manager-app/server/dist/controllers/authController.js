@@ -99,5 +99,49 @@ class AuthController {
             }
         });
     }
+    deleteOperator(req, res) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                if (!req.user || req.user.role !== 'master') {
+                    return res.status(403).json({ message: 'Only master can delete operators' });
+                }
+                const operatorId = parseInt(req.params.id);
+                if (!operatorId) {
+                    return res.status(400).json({ message: 'Operator ID required' });
+                }
+                // Check if operator exists
+                const operator = yield prisma.user.findUnique({
+                    where: { id: operatorId }
+                });
+                if (!operator) {
+                    return res.status(404).json({ message: 'Operator not found' });
+                }
+                if (operator.role !== 'slave') {
+                    return res.status(400).json({ message: 'Only slave users can be deleted' });
+                }
+                // First, unassign any tasks assigned to this operator
+                yield prisma.task.updateMany({
+                    where: { assignedOperatorId: operatorId },
+                    data: { assignedOperatorId: null }
+                });
+                // Delete any notes created by this operator
+                yield prisma.taskNote.deleteMany({
+                    where: { userId: operatorId }
+                });
+                // Delete the operator
+                yield prisma.user.delete({
+                    where: { id: operatorId }
+                });
+                res.json({
+                    message: 'Operator deleted successfully',
+                    username: operator.username
+                });
+            }
+            catch (err) {
+                const errorMsg = err instanceof Error ? err.message : 'Internal server error';
+                res.status(500).json({ message: errorMsg });
+            }
+        });
+    }
 }
 exports.AuthController = AuthController;

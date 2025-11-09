@@ -8,4 +8,5 @@ const authController = new authController_1.AuthController();
 router.post('/login', (req, res) => authController.login(req, res));
 router.get('/operators', auth_1.authMiddleware, auth_1.requireMaster, (req, res) => authController.getOperators(req, res));
 router.post('/create-operator', auth_1.authMiddleware, auth_1.requireMaster, (req, res) => authController.createOperator(req, res));
+router.delete('/operators/:id', auth_1.authMiddleware, auth_1.requireMaster, (req, res) => authController.deleteOperator(req, res));
 exports.default = router;
