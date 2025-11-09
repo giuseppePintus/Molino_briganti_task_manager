@@ -16,16 +16,16 @@ exports.User = void 0;
 exports.hashPassword = hashPassword;
 exports.comparePassword = comparePassword;
 const client_1 = require("@prisma/client");
-const bcrypt_1 = __importDefault(require("bcrypt"));
+const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const prisma = new client_1.PrismaClient();
 exports.User = prisma.user;
 function hashPassword(password) {
     return __awaiter(this, void 0, void 0, function* () {
-        return bcrypt_1.default.hash(password, 10);
+        return bcryptjs_1.default.hash(password, 10);
     });
 }
 function comparePassword(password, hash) {
     return __awaiter(this, void 0, void 0, function* () {
-        return bcrypt_1.default.compare(password, hash);
+        return bcryptjs_1.default.compare(password, hash);
     });
 }
