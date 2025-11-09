@@ -147,8 +147,10 @@ SOLUZIONE:
 
 PROBLEMA: "Could not find a declaration file for module 'dotenv'"
 SOLUZIONE:
-  npm install @types/dotenv@^8.2.0 --save-dev
-  npm run build
+  - dotenv v16.4.5 include i propri type definitions
+  - NON usare @types/dotenv (è deprecato e causa conflitti)
+  - Assicurati che tsconfig.json includa "types": ["node"]
+  - Ricompila: npm run build
 
 PROBLEMA: "bcrypt not found or compilation failed"
 SOLUZIONE:
