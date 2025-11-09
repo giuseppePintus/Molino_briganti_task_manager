@@ -1,0 +1,354 @@
+================================================================================
+GUIDA INSTALLAZIONE TASK MANAGER SU NAS - DOCKER & NODE.JS
+================================================================================
+
+OPZIONE 1: INSTALLAZIONE DIRETTA (Consigliato per NAS con Node.js già installato)
+================================================================================
+
+# Step 1: Clona il repository
+git clone https://github.com/giuseppePintus/Molino_briganti_task_manager.git
+cd Molino_briganti_task_manager/task-manager-app
+
+# Step 2: Verifica versione Node.js (DEVE essere 18+ o 20 LTS)
+node --version
+npm --version
+
+# Step 3: Pulisci cache e install (IMPORTANTE: Non usare Node 25!)
+rm -rf node_modules package-lock.json
+npm cache clean --force
+npm ci --no-audit --no-fund
+
+# Step 4: Genera Prisma Client
+npm run prisma:generate
+
+# Step 5: Compila TypeScript
+npm run build
+
+# Step 6: Avvia il server
+npm start
+
+# Il server sarà disponibile a: http://localhost:5000
+
+
+================================================================================
+OPZIONE 2: DOCKERFILE (Migliore per isolamento e compatibilità)
+================================================================================
+
+# Crea un file "Dockerfile" nella root del progetto con questo contenuto:
+
+--- INIZIO DOCKERFILE ---
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copia package files
+COPY package*.json ./
+
+# Installa dipendenze
+RUN npm ci --no-audit --no-fund
+
+# Copia il codice sorgente
+COPY . .
+
+# Genera Prisma Client
+RUN npm run prisma:generate
+
+# Compila TypeScript
+RUN npm run build
+
+# Espone la porta
+EXPOSE 5000
+
+# Avvia l'applicazione
+CMD ["npm", "start"]
+--- FINE DOCKERFILE ---
+
+# Build dell'immagine Docker:
+docker build -t task-manager-app:latest .
+
+# Esegui il container:
+docker run -d \
+  --name task-manager \
+  -p 5000:5000 \
+  -v $(pwd)/server/prisma/data:/app/server/prisma/data \
+  task-manager-app:latest
+
+# Verifica che il container sia in esecuzione:
+docker ps
+
+# Accedi ai log:
+docker logs -f task-manager
+
+# Ferma il container:
+docker stop task-manager
+
+
+================================================================================
+OPZIONE 3: DOCKER COMPOSE (Più facile e scalabile)
+================================================================================
+
+# Crea un file "docker-compose.yml" nella root del progetto:
+
+--- INIZIO DOCKER-COMPOSE ---
+version: '3.8'
+
+services:
+  task-manager:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: task-manager-app
+    restart: always
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./server/prisma/data:/app/server/prisma/data
+      - ./public:/app/public
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+    networks:
+      - task-network
+
+networks:
+  task-network:
+    driver: bridge
+--- FINE DOCKER-COMPOSE ---
+
+# Avvia con Docker Compose:
+docker-compose up -d
+
+# Visualizza i log:
+docker-compose logs -f
+
+# Ferma i servizi:
+docker-compose down
+
+
+================================================================================
+TROUBLESHOOTING COMUNI
+================================================================================
+
+PROBLEMA: "npm ERR! Node version not supported"
+SOLUZIONE: 
+  - NAS richiede Node 18+ o 20 LTS (non 25!)
+  - Se hai Node 25, aggiorna il file .nvmrc o usa Docker
+  - Docker Compose (Opzione 3) bypassa questo problema
+
+PROBLEMA: "Error: @prisma/client did not initialize yet"
+SOLUZIONE:
+  npm run prisma:generate
+  npm run build
+
+PROBLEMA: "bcrypt not found or compilation failed"
+SOLUZIONE:
+  - Il nostro package.json usa bcrypt@^5.1.1 (compatibile)
+  - Se fallisce, prova:
+    npm rebuild bcrypt --build-from-source
+  - O usa versione pre-compilata:
+    npm install bcryptjs@2.4.3
+
+PROBLEMA: "Port 5000 already in use"
+SOLUZIONE:
+  - Cambia la porta nel file .env:
+    PORT=8000
+  - O arresta il processo:
+    lsof -i :5000
+    kill -9 <PID>
+
+PROBLEMA: "Cannot find module ./server/dist"
+SOLUZIONE:
+  npm run build
+
+PROBLEMA: "Database file not found"
+SOLUZIONE:
+  mkdir -p server/prisma/data
+  npm run prisma:seed (se disponibile)
+
+
+================================================================================
+COMANDO ONE-LINER PER NAS (CONSIGLIATO)
+================================================================================
+
+# Clona, installa e avvia tutto in un comando:
+
+git clone https://github.com/giuseppePintus/Molino_briganti_task_manager.git && \
+cd Molino_briganti_task_manager/task-manager-app && \
+rm -rf node_modules package-lock.json && \
+npm cache clean --force && \
+npm ci --no-audit --no-fund && \
+npm run prisma:generate && \
+npm run build && \
+npm start
+
+# Se usi NVM per Node versioning (consigliato):
+nvm install 20 && \
+nvm use 20 && \
+git clone https://github.com/giuseppePintus/Molino_briganti_task_manager.git && \
+cd Molino_briganti_task_manager/task-manager-app && \
+rm -rf node_modules package-lock.json && \
+npm cache clean --force && \
+npm ci --no-audit --no-fund && \
+npm run prisma:generate && \
+npm run build && \
+npm start
+
+
+================================================================================
+AVVIO IN BACKGROUND CON PM2 (Per NAS)
+================================================================================
+
+# Installa PM2 globalmente:
+npm install -g pm2
+
+# Avvia l'app con PM2:
+cd ~/Molino_briganti_task_manager/task-manager-app
+pm2 start "npm start" --name "task-manager"
+
+# Salva la configurazione di PM2:
+pm2 save
+
+# Avvia PM2 al riavvio del NAS:
+pm2 startup
+
+# Visualizza status:
+pm2 list
+
+# Visualizza log:
+pm2 logs task-manager
+
+# Ferma l'app:
+pm2 stop task-manager
+
+# Riavvia:
+pm2 restart task-manager
+
+
+================================================================================
+CONFIGURAZIONE CONSIGLIATE PER NAS
+================================================================================
+
+1. VERSIONE NODE:
+   - Usa Node.js 20 LTS (stabile, LTS fino a 2026)
+   - Evita Node 25 (troppo nuovo, tipos TypeScript non disponibili)
+   - Se hai Node 22+, downgrade a 20 con nvm
+
+2. MEMORIA:
+   - Per NAS: minimo 1GB RAM disponibile
+   - Processo Node: ~200-300MB
+
+3. STORAGE:
+   - SQLite DB: ~5MB per 1000 task
+   - Applicazione: ~300MB (node_modules)
+   - Totale consigliato: 1GB libero
+
+4. NETWORKING:
+   - Porta 5000 (default)
+   - Aperta su 192.168.x.x:5000
+   - Accesso: http://nas-ip:5000
+
+5. AUTOSTARTUP:
+   - Usa PM2 per auto-restart al riavvio NAS
+   - Oppure cron job: @reboot cd ~/.../ && npm start
+
+6. BACKUP:
+   - Database: server/prisma/data/tasks.db
+   - Backup settimanale consigliato
+   - Sincronizza con cloud storage
+
+
+================================================================================
+TEST RAPIDO DOPO INSTALLAZIONE
+================================================================================
+
+# Verifica server sia in esecuzione:
+curl http://localhost:5000
+
+# Accedi da browser:
+http://localhost:5000
+
+# Test della API (se disponibile):
+curl -X GET http://localhost:5000/api/health
+
+# Controlla le porte in ascolto:
+netstat -tuln | grep 5000
+
+# Verifica processi Node:
+ps aux | grep node
+
+
+================================================================================
+ROLLBACK (Se qualcosa va storto)
+================================================================================
+
+# Ferma il server:
+Ctrl+C (o pm2 stop task-manager)
+
+# Cancella install fallita:
+rm -rf node_modules package-lock.json
+npm cache clean --force
+
+# Torna alla versione stabile:
+git checkout package.json
+
+# Reinstalla:
+npm ci
+
+# Ricompila:
+npm run build
+
+# Riavvia:
+npm start
+
+
+================================================================================
+NOTE IMPORTANTI
+================================================================================
+
+✓ Questo setup usa Node 20 LTS (stabile e supportato fino a 2026)
+✓ Dipendenze aggiornate al 2025 (bcrypt, express, jwt)
+✓ SQLite Database incluso (niente PostgreSQL/MySQL da configurare)
+✓ TypeScript pre-compilato (veloce al startup)
+✓ Docker Compose incluso (facile deploy su NAS)
+✓ PM2 supportato per auto-restart
+
+⚠ Non usare Node 25 - TypeScript types non disponibili
+⚠ Non usare npm install --legacy-peer-deps (non necessario)
+⚠ Non combinare package-lock.json con Dockerfile (usa npm ci)
+
+================================================================================
+DOMANDE FREQUENTI
+================================================================================
+
+D: Quale opzione scegliere?
+R: 
+  - NAS Synology/QNAP: Opzione 3 (Docker Compose) - più isolato
+  - NAS generico con Node: Opzione 1 (Diretta) - più semplice
+  - Dev locale: Opzione 1 (Diretta) - veloci iterazioni
+
+D: Posso usare Node 25?
+R: No. Node 25 è troppo nuovo, @types/node non disponibili su npm.
+   Usa Node 20 LTS che è stabile e supportato.
+
+D: Quanto spazio occorre?
+R: ~1-2GB (300MB app + 200MB node_modules + buffer)
+
+D: Come accedo da remoto?
+R: http://nas-ip:5000 (assicurati che la porta sia aperta)
+
+D: Come faccio il backup?
+R: Copia server/prisma/data/tasks.db ogni settimana
+
+D: Come aggiorno l'app in futuro?
+R: git pull && npm ci && npm run build && npm start
+
+================================================================================
+SUPPORTO E LINK UTILI
+================================================================================
+
+Repository: https://github.com/giuseppePintus/Molino_briganti_task_manager
+Node.js LTS: https://nodejs.org/
+Docker Hub: https://hub.docker.com/
+PM2 Docs: https://pm2.keymetrics.io/
+
+================================================================================
