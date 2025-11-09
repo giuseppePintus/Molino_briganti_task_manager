@@ -1,0 +1,1324 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Manager - Master-Slave</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2563eb;
+            --success: #16a34a;
+            --danger: #dc2626;
+            --warning: #ea580c;
+            --dark: #1f2937;
+            --light: #f3f4f6;
+            --border: #e5e7eb;
+            --priority-low: #10B981;
+            --priority-medium: #FCD34D;
+            --priority-high: #F97316;
+            --priority-urgent: #EF4444;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--light);
+            color: var(--dark);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Login Page */
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, var(--primary) 0%, #1e40af 100%);
+        }
+
+        .login-card {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .login-card h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            color: var(--dark);
+        }
+
+        .login-card .subtitle {
+            text-align: center;
+            color: #6b7280;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            width: 100%;
+        }
+
+        .btn-primary:hover {
+            background: #1d4ed8;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+        }
+
+        .btn-secondary:hover {
+            background: var(--light);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #15803d;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #b91c1c;
+        }
+
+        .btn-small {
+            padding: 8px 12px;
+            font-size: 12px;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .alert-error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .alert-success {
+            background: #dcfce7;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+
+        .priority-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            color: white;
+            margin-left: 8px;
+        }
+
+        .priority-low { background-color: #10B981; }
+        .priority-medium { background-color: #FCD34D; color: var(--dark); }
+        .priority-high { background-color: #F97316; }
+        .priority-urgent { background-color: #EF4444; }
+
+        .priority-select {
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 14px;
+            width: 100%;
+        }
+
+        .operators-panel {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+        }
+
+        .operators-panel h3 {
+            margin-bottom: 15px;
+            color: var(--dark);
+        }
+
+        .operators-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .operator-card {
+            background: #f9fafb;
+            border: 1px solid var(--border);
+            padding: 15px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .operator-info {
+            flex: 1;
+        }
+
+        .operator-username {
+            font-weight: 600;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .operator-role {
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .operator-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        .operator-badge.master {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+
+        .operator-badge.slave {
+            background-color: #dbeafe;
+            color: #0c4a6e;
+        }
+
+        .operator-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .operator-actions button {
+            padding: 6px 12px;
+            font-size: 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .promote-btn {
+            background-color: #fbbf24;
+            color: var(--dark);
+        }
+
+        .promote-btn:hover {
+            background-color: #f59e0b;
+        }
+
+        .demote-btn {
+            background-color: #93c5fd;
+            color: var(--dark);
+        }
+
+        .demote-btn:hover {
+            background-color: #60a5fa;
+        }
+
+        /* Dashboard */
+        .dashboard {
+            display: none;
+        }
+
+        .dashboard.active {
+            display: block;
+        }
+
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            font-size: 24px;
+            color: var(--dark);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .user-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            background: var(--primary);
+            color: white;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .user-badge.master {
+            background: #7c3aed;
+        }
+
+        .user-badge.slave {
+            background: #0891b2;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .card h2 {
+            margin-bottom: 20px;
+            font-size: 18px;
+            color: var(--dark);
+        }
+
+        .task-item {
+            background: var(--light);
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            border-left: 4px solid var(--primary);
+            transition: all 0.3s;
+        }
+
+        .task-item:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .task-item.completed {
+            opacity: 0.6;
+            border-left-color: var(--success);
+        }
+
+        .task-item h3 {
+            margin-bottom: 8px;
+            font-size: 16px;
+            color: var(--dark);
+        }
+
+        .task-item p {
+            font-size: 13px;
+            color: #6b7280;
+            margin-bottom: 8px;
+        }
+
+        .task-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 12px;
+            font-size: 12px;
+        }
+
+        .meta-tag {
+            background: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            color: #6b7280;
+        }
+
+        .task-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .form-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+        }
+
+        .form-section h3 {
+            margin-bottom: 15px;
+            font-size: 16px;
+            color: var(--dark);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .form-row.full {
+            grid-template-columns: 1fr;
+        }
+
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .tasks-list {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #9ca3af;
+        }
+
+        .empty-state svg {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-content h2 {
+            margin-bottom: 20px;
+            color: var(--dark);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .modal-actions button {
+            flex: 1;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid var(--primary);
+            text-align: center;
+        }
+
+        .stat-card .number {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .stat-card .label {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .user-info {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .spinner {
+            border: 3px solid var(--light);
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Page -->
+    <div id="loginPage" class="login-container">
+        <div class="login-card">
+            <h1>📋 Task Manager</h1>
+            <p class="subtitle">Master-Slave Task Management System</p>
+            
+            <div id="loginAlert" class="alert"></div>
+            
+            <form id="loginForm" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" placeholder="Inserisci username" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" placeholder="Inserisci password" required>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">
+                    <span>Accedi</span>
+                </button>
+            </form>
+
+            <div style="text-align: center; margin-top: 20px; font-size: 12px; color: #9ca3af;">
+                <p><strong>Demo Credentials:</strong></p>
+                <p>Master: master / masterpass</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="dashboard" class="dashboard">
+        <div class="container">
+            <!-- Header -->
+            <div class="header">
+                <div>
+                    <h1>📋 Task Manager</h1>
+                </div>
+                <div class="user-info">
+                    <div>
+                        <div style="font-size: 12px; color: #6b7280;">Loggato come</div>
+                        <div style="font-weight: bold;" id="currentUser">-</div>
+                    </div>
+                    <span class="user-badge" id="userRole">-</span>
+                    <button class="btn btn-secondary btn-small" onclick="handleLogout()">Logout</button>
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="stats" id="stats"></div>
+
+            <!-- Operators Panel (Master Only) -->
+            <div id="operatorsPanel" class="operators-panel" style="display: none;">
+                <h3>👥 Gestione Operatori</h3>
+                
+                <!-- Create New Operator Form -->
+                <div style="background: #f0f9ff; padding: 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #bfdbfe;">
+                    <h4 style="margin-bottom: 10px;">➕ Crea Nuovo Operatore</h4>
+                    <form onsubmit="handleCreateOperator(event)" style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 10px; align-items: end;">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label style="font-size: 12px;">Username</label>
+                            <input type="text" id="newOperatorUsername" placeholder="Username" required>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label style="font-size: 12px;">Password</label>
+                            <input type="password" id="newOperatorPassword" placeholder="Password" required>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label style="font-size: 12px;">Conferma Password</label>
+                            <input type="password" id="newOperatorPasswordConfirm" placeholder="Conferma" required>
+                        </div>
+                        <button type="submit" class="btn btn-success btn-small">Crea</button>
+                    </form>
+                </div>
+
+                <!-- Operators List -->
+                <div id="operatorsList" class="operators-list">
+                    <div class="empty-state">
+                        <p>Nessun operatore disponibile</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="main-content">
+                <!-- Tasks Panel -->
+                <div class="card">
+                    <h2>📝 Compiti</h2>
+                    <div id="alert" class="alert"></div>
+                    
+                    <div id="tasksList" class="tasks-list">
+                        <div class="empty-state">
+                            <p>Nessun compito disponibile</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions Panel -->
+                <div class="card">
+                    <h2 id="actionsTitle">🎯 Azioni</h2>
+                    <div id="actionsPanel"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Task Details Modal -->
+    <div id="taskModal" class="modal">
+        <div class="modal-content">
+            <h2 id="modalTitle">Dettagli Compito</h2>
+            <div id="modalBody"></div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal()">Chiudi</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000/api';
+        let token = localStorage.getItem('token');
+        let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+
+        // ==================== LOGIN ====================
+        async function handleLogin(event) {
+            event.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const alert = document.getElementById('loginAlert');
+            
+            try {
+                const response = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) throw new Error(data.message || 'Login fallito');
+
+                token = data.token;
+                currentUser = data.user;
+                
+                localStorage.setItem('token', token);
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                
+                showAlert(alert, 'Login riuscito!', 'success');
+                
+                setTimeout(() => {
+                    document.getElementById('loginPage').style.display = 'none';
+                    document.getElementById('dashboard').classList.add('active');
+                    initDashboard();
+                }, 1000);
+            } catch (error) {
+                showAlert(alert, error.message, 'error');
+            }
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('currentUser');
+            token = null;
+            currentUser = {};
+            
+            document.getElementById('loginPage').style.display = 'flex';
+            document.getElementById('dashboard').classList.remove('active');
+            document.getElementById('loginForm').reset();
+        }
+
+        // ==================== DASHBOARD ====================
+        async function initDashboard() {
+            updateUserInfo();
+            renderActionsPanel();
+            await loadTasks();
+            await updateStats();
+            if (currentUser.role === 'master') {
+                await loadOperators();
+            }
+        }
+
+        function updateUserInfo() {
+            document.getElementById('currentUser').textContent = currentUser.username || '-';
+            const roleBadge = document.getElementById('userRole');
+            roleBadge.textContent = currentUser.role?.toUpperCase() || '-';
+            roleBadge.className = `user-badge ${currentUser.role}`;
+        }
+
+        function renderActionsPanel() {
+            const panel = document.getElementById('actionsPanel');
+            
+            if (currentUser.role === 'master') {
+                panel.innerHTML = `
+                    <div class="form-section">
+                        <h3>➕ Crea Nuovo Compito</h3>
+                        <form onsubmit="handleCreateTask(event)">
+                            <div class="form-group">
+                                <label>Titolo *</label>
+                                <input type="text" id="taskTitle" required placeholder="es. Installazione server">
+                            </div>
+                            <div class="form-group">
+                                <label>Descrizione</label>
+                                <textarea id="taskDescription" placeholder="Descrizione dettagliata..."></textarea>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Data/Ora di Esecuzione</label>
+                                    <input type="datetime-local" id="taskScheduledAt">
+                                </div>
+                                <div class="form-group">
+                                    <label>Tempo Stimato (min)</label>
+                                    <input type="number" id="taskEstimatedMinutes" min="0" placeholder="120">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Assegna a Operatore</label>
+                                <select id="taskAssignedOperator">
+                                    <option value="">-- Nessuno --</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Livello Priorità</label>
+                                <select id="taskPriority" class="priority-select">
+                                    <option value="LOW">🟢 Bassa (Low)</option>
+                                    <option value="MEDIUM" selected>🟡 Media (Medium)</option>
+                                    <option value="HIGH">🟠 Alta (High)</option>
+                                    <option value="URGENT">🔴 Urgente (Urgent)</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-success" style="width: 100%;">Crea Compito</button>
+                        </form>
+                    </div>
+                `;
+                loadOperators();
+            } else {
+                // Per operatore: mostra solo un messaggio semplice
+                panel.innerHTML = `
+                    <div class="form-section">
+                        <h3>📌 I Tuoi Compiti</h3>
+                        <p style="color: #6b7280; font-size: 13px;">Seleziona un compito dalla lista per accettarlo, metterlo in pausa o completarlo.</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function loadOperators() {
+            try {
+                const response = await fetch(`${API_URL}/auth/operators`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) throw new Error('Errore caricamento operatori');
+                
+                const operators = await response.json();
+                const panel = document.getElementById('operatorsPanel');
+                const list = document.getElementById('operatorsList');
+
+                panel.style.display = 'block';
+
+                if (operators.length === 0) {
+                    list.innerHTML = '<div class="empty-state"><p>Nessun operatore creato. Creane uno dal modulo sopra.</p></div>';
+                    return;
+                }
+
+                // Popola anche la select dei compiti
+                const operatorSelect = document.getElementById('taskAssignedOperator');
+                if (operatorSelect) {
+                    const currentValue = operatorSelect.value;
+                    operatorSelect.innerHTML = '<option value="">-- Nessuno --</option>' +
+                        operators.map(u => 
+                            `<option value="${u.id}">${u.username}</option>`
+                        ).join('');
+                    operatorSelect.value = currentValue;
+                }
+
+                list.innerHTML = operators.map(operator => `
+                    <div class="operator-card">
+                        <div class="operator-info">
+                            <div class="operator-username">${operator.username}</div>
+                            <div class="operator-role">
+                                OPERATORE
+                                <span class="operator-badge slave"> SLAVE</span>
+                            </div>
+                            <div style="font-size: 11px; color: #9ca3af; margin-top: 4px;">
+                                Creato: ${new Date(operator.createdAt).toLocaleString('it-IT')}
+                            </div>
+                        </div>
+                        <div class="operator-actions">
+                            <button class="btn btn-danger btn-small" onclick="handleDeleteOperator(${operator.id}, '${operator.username}')">Rimuovi</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Errore caricamento operatori:', error);
+                document.getElementById('operatorsList').innerHTML = 
+                    `<div class="alert alert-error" style="display: block;">Errore: ${error.message}</div>`;
+            }
+        }
+
+        async function loadTasks() {
+            const tasksList = document.getElementById('tasksList');
+            
+            try {
+                const response = await fetch(`${API_URL}/tasks`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                const tasks = await response.json();
+
+                if (tasks.length === 0) {
+                    tasksList.innerHTML = '<div class="empty-state"><p>Nessun compito disponibile</p></div>';
+                    return;
+                }
+
+                tasksList.innerHTML = tasks.map(task => `
+                    <div class="task-item ${task.completed ? 'completed' : ''}">
+                        <h3>
+                            ${task.title}${task.completed ? ' ✓' : ''}
+                            <span class="priority-badge priority-${task.priority?.toLowerCase() || 'medium'}">
+                                ${task.priority || 'MEDIUM'}
+                            </span>
+                        </h3>
+                        <p>${task.description || 'Nessuna descrizione'}</p>
+                        <div class="task-meta">
+                            ${task.scheduledAt ? `<span class="meta-tag">📅 ${new Date(task.scheduledAt).toLocaleString('it-IT')}</span>` : ''}
+                            ${task.estimatedMinutes ? `<span class="meta-tag">⏱️ ${task.estimatedMinutes} min</span>` : ''}
+                            ${task.acceptedAt ? `<span class="meta-tag">✋ Accettato: ${new Date(task.acceptedAt).toLocaleString('it-IT')}</span>` : ''}
+                            ${task.actualMinutes ? `<span class="meta-tag">✓ ${task.actualMinutes} min effettivi</span>` : ''}
+                            ${task.completedAt ? `<span class="meta-tag">🏁 Completato: ${new Date(task.completedAt).toLocaleString('it-IT')}</span>` : ''}
+                            ${task.paused ? `<span class="meta-tag" style="background: #fed7aa; color: #92400e;">⏸️ In Pausa</span>` : ''}
+                        </div>
+                        <div class="task-actions">
+                            <button class="btn btn-secondary btn-small" onclick="openTaskModal(${task.id})">Dettagli</button>
+                            ${currentUser.role === 'master' ? `
+                                <button class="btn btn-secondary btn-small" onclick="handleEditTask(${task.id})">Modifica</button>
+                                <button class="btn btn-danger btn-small" onclick="handleDeleteTask(${task.id})">Cancella</button>
+                            ` : `
+                                ${!task.completed && !task.acceptedAt ? `<button class="btn btn-success btn-small" onclick="handleAcceptTask(${task.id})">Accetta</button>` : ''}
+                                ${!task.completed && task.acceptedAt && !task.paused ? `<button class="btn btn-warning btn-small" onclick="handlePauseTask(${task.id})">Pausa</button>` : ''}
+                                ${!task.completed && task.acceptedAt && task.paused ? `<button class="btn btn-success btn-small" onclick="handleResumeTask(${task.id})">Riprendi</button>` : ''}
+                                ${!task.completed && task.acceptedAt ? `<button class="btn btn-success btn-small" onclick="openCompleteModal(${task.id})">Completa</button>` : ''}
+                            `}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                tasksList.innerHTML = `<div class="alert alert-error" style="display: block;">Errore: ${error.message}</div>`;
+            }
+        }
+
+        async function updateStats() {
+            try {
+                const response = await fetch(`${API_URL}/tasks`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                const tasks = await response.json();
+                const completed = tasks.filter(t => t.completed).length;
+                const pending = tasks.filter(t => !t.completed).length;
+
+                const statsHtml = `
+                    <div class="stat-card">
+                        <div class="number">${tasks.length}</div>
+                        <div class="label">Totale Compiti</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="number">${pending}</div>
+                        <div class="label">In Sospeso</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="number">${completed}</div>
+                        <div class="label">Completati</div>
+                    </div>
+                `;
+                
+                document.getElementById('stats').innerHTML = statsHtml;
+            } catch (error) {
+                console.error('Errore caricamento statistiche:', error);
+            }
+        }
+
+        // ==================== TASK OPERATIONS ====================
+        async function handleCreateTask(event) {
+            event.preventDefault();
+
+            const task = {
+                title: document.getElementById('taskTitle').value,
+                description: document.getElementById('taskDescription').value,
+                scheduledAt: document.getElementById('taskScheduledAt').value,
+                estimatedMinutes: parseInt(document.getElementById('taskEstimatedMinutes').value) || null,
+                assignedOperatorId: parseInt(document.getElementById('taskAssignedOperator').value) || null,
+                priority: document.getElementById('taskPriority').value || 'MEDIUM'
+            };
+
+            try {
+                const response = await fetch(`${API_URL}/tasks`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(task)
+                });
+
+                if (!response.ok) throw new Error('Errore nella creazione');
+
+                showAlert(document.getElementById('alert'), 'Compito creato con successo!', 'success');
+                event.target.reset();
+                await loadTasks();
+                await updateStats();
+            } catch (error) {
+                showAlert(document.getElementById('alert'), error.message, 'error');
+            }
+        }
+
+        async function handleDeleteTask(taskId) {
+            if (!confirm('Sei sicuro di voler eliminare questo compito?')) return;
+
+            try {
+                const response = await fetch(`${API_URL}/tasks/${taskId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) throw new Error('Errore nell\'eliminazione');
+
+                showAlert(document.getElementById('alert'), 'Compito eliminato!', 'success');
+                await loadTasks();
+                await updateStats();
+            } catch (error) {
+                showAlert(document.getElementById('alert'), error.message, 'error');
+            }
+        }
+
+        // ==================== MODALS ====================
+        async function openTaskModal(taskId) {
+            try {
+                const response = await fetch(`${API_URL}/tasks`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const tasks = await response.json();
+                const task = tasks.find(t => t.id === taskId);
+
+                if (!task) throw new Error('Compito non trovato');
+
+                const notesResponse = await fetch(`${API_URL}/tasks/${taskId}/notes`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const notes = await notesResponse.json();
+
+                let html = `
+                    <div style="margin-bottom: 20px;">
+                        <h3>${task.title}</h3>
+                        <p style="color: #6b7280;">${task.description || 'Nessuna descrizione'}</p>
+                        ${task.scheduledAt ? `<p><strong>Data:</strong> ${new Date(task.scheduledAt).toLocaleString('it-IT')}</p>` : ''}
+                        ${task.estimatedMinutes ? `<p><strong>Tempo Stimato:</strong> ${task.estimatedMinutes} minuti</p>` : ''}
+                        ${task.actualMinutes ? `<p><strong>Tempo Effettivo:</strong> ${task.actualMinutes} minuti</p>` : ''}
+                        <p><strong>Stato:</strong> ${task.completed ? '✓ Completato' : 'In corso'}</p>
+                    </div>
+
+                    <h4 style="margin-top: 20px; margin-bottom: 10px;">📝 Note (${notes.length})</h4>
+                    <div style="background: var(--light); padding: 10px; border-radius: 6px; max-height: 200px; overflow-y: auto;">
+                `;
+
+                if (notes.length === 0) {
+                    html += '<p style="color: #9ca3af; font-size: 13px;">Nessuna nota</p>';
+                } else {
+                    html += notes.map(note => `
+                        <div style="background: white; padding: 10px; margin-bottom: 8px; border-radius: 4px; border-left: 3px solid var(--primary);">
+                            <strong>${note.user.username}</strong> <em style="color: #9ca3af; font-size: 12px;">${new Date(note.createdAt).toLocaleString('it-IT')}</em>
+                            <p style="margin-top: 5px; font-size: 13px;">${note.note}</p>
+                        </div>
+                    `).join('');
+                }
+
+                html += '</div>';
+
+                if (currentUser.role === 'slave' && !task.completed) {
+                    html += `
+                        <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">
+                            <h4>➕ Aggiungi Nota</h4>
+                            <form onsubmit="handleAddNote(event, ${taskId})">
+                                <div class="form-group" style="margin-bottom: 10px;">
+                                    <textarea id="noteContent" placeholder="Aggiungi una nota..." style="min-height: 60px;"></textarea>
+                                </div>
+                                <div class="form-group" style="margin-bottom: 10px;">
+                                    <label>Tempo Effettivo (minuti)</label>
+                                    <input type="number" id="actualMinutes" min="0" placeholder="es. 120">
+                                </div>
+                                <button type="submit" class="btn btn-success" style="width: 100%;">Aggiungi Nota</button>
+                            </form>
+                        </div>
+                    `;
+                }
+
+                document.getElementById('modalBody').innerHTML = html;
+                document.getElementById('taskModal').classList.add('active');
+            } catch (error) {
+                alert('Errore: ' + error.message);
+            }
+        }
+
+        async function handleAddNote(event, taskId) {
+            event.preventDefault();
+
+            const note = document.getElementById('noteContent').value;
+            const actualMinutes = parseInt(document.getElementById('actualMinutes').value) || null;
+
+            try {
+                const response = await fetch(`${API_URL}/tasks/${taskId}/notes`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ note, actualMinutes, markCompleted: false })
+                });
+
+                if (!response.ok) throw new Error('Errore nell\'aggiunta della nota');
+
+                showAlert(document.getElementById('alert'), 'Nota aggiunta!', 'success');
+                closeModal();
+                await loadTasks();
+                await updateStats();
+            } catch (error) {
+                alert('Errore: ' + error.message);
+            }
+        }
+
+        async function openCompleteModal(taskId) {
+            document.getElementById('modalTitle').textContent = 'Completa Compito';
+            document.getElementById('modalBody').innerHTML = `
+                <div class="form-group">
+                    <label>Nota Finale</label>
+                    <textarea id="completionNote" placeholder="Aggiungi una nota finale..." style="min-height: 100px;"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Tempo Effettivo (minuti) *</label>
+                    <input type="number" id="completionTime" min="0" required placeholder="es. 120">
+                </div>
+            `;
+
+            document.querySelector('.modal-actions').innerHTML = `
+                <button class="btn btn-secondary" onclick="closeModal()">Annulla</button>
+                <button class="btn btn-success" onclick="handleCompleteTask(${taskId})">Completa</button>
+            `;
+
+            document.getElementById('taskModal').classList.add('active');
+        }
+
+        async function handleCompleteTask(taskId) {
+            const note = document.getElementById('completionNote').value;
+            const actualMinutes = parseInt(document.getElementById('completionTime').value);
+
+            if (!actualMinutes) {
+                alert('Inserisci il tempo effettivo');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/tasks/${taskId}/notes`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ note, actualMinutes, markCompleted: true })
+                });
+
+                if (!response.ok) throw new Error('Errore nel completamento');
+
+                showAlert(document.getElementById('alert'), 'Compito completato!', 'success');
+                closeModal();
+                await loadTasks();
+                await updateStats();
+            } catch (error) {
+                alert('Errore: ' + error.message);
+            }
+        }
+
+        // ==================== TASK ACCEPTANCE WORKFLOW ====================
+        async function handleAcceptTask(taskId) {
+            try {
+                const response = await fetch(`${API_URL}/tasks/${taskId}/accept`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || 'Errore nell\'accettazione');
+                }
+
+                showAlert(document.getElementById('alert'), 'Compito accettato!', 'success');
+                await loadTasks();
+            } catch (error) {
+                showAlert(document.getElementById('alert'), error.message, 'error');
+            }
+        }
+
+        async function handlePauseTask(taskId) {
+            try {
+                const response = await fetch(`${API_URL}/tasks/${taskId}/pause`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) throw new Error('Errore nella pausa');
+
+                showAlert(document.getElementById('alert'), 'Compito messo in pausa!', 'success');
+                await loadTasks();
+            } catch (error) {
+                showAlert(document.getElementById('alert'), error.message, 'error');
+            }
+        }
+
+        async function handleResumeTask(taskId) {
+            try {
+                const response = await fetch(`${API_URL}/tasks/${taskId}/resume`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) throw new Error('Errore nella ripresa');
+
+                showAlert(document.getElementById('alert'), 'Compito ripreso!', 'success');
+                await loadTasks();
+            } catch (error) {
+                showAlert(document.getElementById('alert'), error.message, 'error');
+            }
+        }
+
+        // ==================== OPERATOR MANAGEMENT ====================
+        async function handleCreateOperator(event) {
+            event.preventDefault();
+
+            const username = document.getElementById('newOperatorUsername').value;
+            const password = document.getElementById('newOperatorPassword').value;
+            const passwordConfirm = document.getElementById('newOperatorPasswordConfirm').value;
+
+            if (password !== passwordConfirm) {
+                alert('Le password non corrispondono');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/auth/create-operator`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || 'Errore nella creazione');
+                }
+
+                const data = await response.json();
+                showAlert(document.getElementById('alert'), 
+                    `Operatore "${data.user.username}" creato con successo!`, 'success');
+                
+                // Reset form
+                event.target.reset();
+                
+                // Reload operators list
+                await loadOperators();
+            } catch (error) {
+                alert('Errore: ' + error.message);
+            }
+        }
+
+        async function handleDeleteOperator(operatorId, operatorName) {
+            if (!confirm(`Sei sicuro di voler eliminare l'operatore "${operatorName}"?`)) return;
+
+            try {
+                const response = await fetch(`${API_URL}/auth/operators/${operatorId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || 'Errore nell\'eliminazione');
+                }
+
+                showAlert(document.getElementById('alert'), 
+                    `Operatore "${operatorName}" rimosso con successo!`, 'success');
+                
+                await loadOperators();
+            } catch (error) {
+                showAlert(document.getElementById('alert'), error.message, 'error');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('taskModal').classList.remove('active');
+            document.querySelector('.modal-actions').innerHTML = `
+                <button class="btn btn-secondary" onclick="closeModal()">Chiudi</button>
+            `;
+        }
+
+        // ==================== UTILITIES ====================
+        function showAlert(element, message, type) {
+            element.textContent = message;
+            element.className = `alert alert-${type} show`;
+            
+            setTimeout(() => {
+                element.classList.remove('show');
+            }, 5000);
+        }
+
+        function handleEditTask(taskId) {
+            alert('Funzionalità di modifica in sviluppo');
+        }
+
+        // ==================== INIT ====================
+        window.addEventListener('load', () => {
+            if (token && currentUser.id) {
+                document.getElementById('loginPage').style.display = 'none';
+                document.getElementById('dashboard').classList.add('active');
+                initDashboard();
+            }
+        });
+    </script>
+</body>
+</html>

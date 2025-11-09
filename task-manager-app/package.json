@@ -1,0 +1,45 @@
+{
+  "name": "task-manager-app",
+  "version": "1.0.0",
+  "description": "A task management web application with user authentication and role-based access.",
+  "main": "server/src/index.ts",
+  "scripts": {
+    "start": "node server/dist/index.js",
+    "dev": "ts-node server/src/index.ts",
+    "client": "npm start --prefix client",
+    "server": "nodemon --exec ts-node server/src/index.ts",
+    "build": "tsc --project tsconfig.json",
+    "test": "echo \"No tests specified\" && exit 0",
+    "prisma:seed": "ts-node server/prisma/seed.ts",
+    "prisma:generate": "prisma generate --schema=server/prisma/schema.prisma"
+  },
+  "dependencies": {
+    "bcrypt": "^5.0.1",
+    "cors": "^2.8.5",
+    "dotenv": "^10.0.0",
+    "express": "^4.17.1",
+    "jsonwebtoken": "^8.5.1"
+  },
+  "devDependencies": {
+    "@prisma/client": "^6.19.0",
+    "@types/bcrypt": "^6.0.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.5",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^24.10.0",
+    "nodemon": "^2.0.12",
+    "prisma": "^6.19.0",
+    "ts-node": "^10.4.0",
+    "typescript": "^5.9.3"
+  },
+  "keywords": [
+    "task",
+    "management",
+    "web",
+    "application",
+    "authentication"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}

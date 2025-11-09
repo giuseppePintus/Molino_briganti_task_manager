@@ -1,0 +1,60 @@
+"use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const dotenv_1 = __importDefault(require("dotenv"));
+const path_1 = __importDefault(require("path"));
+// Load environment variables from server/.env
+dotenv_1.default.config({ path: path_1.default.join(__dirname, '../.env') });
+const express_1 = __importDefault(require("express"));
+const cors_1 = __importDefault(require("cors"));
+const client_1 = require("@prisma/client");
+const tasks_1 = __importDefault(require("./routes/tasks"));
+const auth_1 = __importDefault(require("./routes/auth"));
+const app = (0, express_1.default)();
+const prisma = new client_1.PrismaClient();
+const PORT = process.env.PORT || 5000;
+// Middleware
+app.use((0, cors_1.default)());
+app.use(express_1.default.json());
+// Serve static files
+app.use(express_1.default.static(path_1.default.join(__dirname, '../../public')));
+// Routes
+app.use('/api/auth', auth_1.default);
+app.use('/api/tasks', tasks_1.default);
+// Health check
+app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok' });
+});
+// Serve index.html for all other routes (SPA)
+app.get('*', (req, res) => {
+    res.sendFile(path_1.default.join(__dirname, '../../public/index.html'));
+});
+// Start server
+app.listen(PORT, () => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        yield prisma.$connect();
+        console.log('Database connected successfully');
+        console.log(`Server is running on port ${PORT}`);
+        console.log(`Web UI: http://localhost:${PORT}`);
+    }
+    catch (err) {
+        console.error('Database connection error:', err);
+        process.exit(1);
+    }
+}));
+// Graceful shutdown
+process.on('SIGINT', () => __awaiter(void 0, void 0, void 0, function* () {
+    yield prisma.$disconnect();
+    process.exit(0);
+}));
