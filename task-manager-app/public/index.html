@@ -702,7 +702,8 @@
     </div>
 
     <script>
-        const API_URL = 'http://localhost:5000/api';
+        // Configura API_URL dinamicamente basato su host e port attuali
+        const API_URL = `http://${window.location.hostname}:${window.location.port || 5000}/api`;
         let token = localStorage.getItem('token');
         let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
 
