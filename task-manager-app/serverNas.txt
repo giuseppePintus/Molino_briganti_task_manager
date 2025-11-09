@@ -16,7 +16,7 @@ npm --version
 # Step 3: Pulisci cache e install (IMPORTANTE: Non usare Node 25!)
 rm -rf node_modules package-lock.json
 npm cache clean --force
-npm ci --no-audit --no-fund
+npm install --no-audit --no-fund
 
 # Step 4: Genera Prisma Client
 npm run prisma:generate
@@ -45,7 +45,12 @@ WORKDIR /app
 COPY package*.json ./
 
 # Installa dipendenze
-RUN npm ci --no-audit --no-fund
+# Se package-lock.json esiste, usa npm ci; altrimenti npm install
+RUN if [ -f package-lock.json ]; then \
+      npm ci --no-audit --no-fund; \
+    else \
+      npm install --no-audit --no-fund; \
+    fi
 
 # Copia il codice sorgente
 COPY . .
@@ -140,6 +145,11 @@ SOLUZIONE:
   npm run prisma:generate
   npm run build
 
+PROBLEMA: "Could not find a declaration file for module 'dotenv'"
+SOLUZIONE:
+  npm install @types/dotenv@^8.2.0 --save-dev
+  npm run build
+
 PROBLEMA: "bcrypt not found or compilation failed"
 SOLUZIONE:
   - Il nostro package.json usa bcrypt@^5.1.1 (compatibile)
@@ -176,7 +186,7 @@ git clone https://github.com/giuseppePintus/Molino_briganti_task_manager.git && 
 cd Molino_briganti_task_manager/task-manager-app && \
 rm -rf node_modules package-lock.json && \
 npm cache clean --force && \
-npm ci --no-audit --no-fund && \
+npm install --no-audit --no-fund && \
 npm run prisma:generate && \
 npm run build && \
 npm start
@@ -188,7 +198,7 @@ git clone https://github.com/giuseppePintus/Molino_briganti_task_manager.git && 
 cd Molino_briganti_task_manager/task-manager-app && \
 rm -rf node_modules package-lock.json && \
 npm cache clean --force && \
-npm ci --no-audit --no-fund && \
+npm install --no-audit --no-fund && \
 npm run prisma:generate && \
 npm run build && \
 npm start
@@ -340,7 +350,43 @@ D: Come faccio il backup?
 R: Copia server/prisma/data/tasks.db ogni settimana
 
 D: Come aggiorno l'app in futuro?
-R: git pull && npm ci && npm run build && npm start
+R: git pull && npm install && npm run build && npm start
+
+================================================================================
+ERRORE: "npm ci can only install with existing package-lock.json"
+================================================================================
+
+CAUSE:
+  1. Il repository non ha package-lock.json pushato (.gitignore l'esclude)
+  2. Docker prova a usare npm ci senza il lock file
+
+SOLUZIONE 1 - Usa npm install (CONSIGLIATO):
+  Nel Dockerfile:
+    RUN if [ -f package-lock.json ]; then \
+          npm ci --no-audit --no-fund; \
+        else \
+          npm install --no-audit --no-fund; \
+        fi
+
+SOLUZIONE 2 - Genera il lock file localmente:
+  1. Nel tuo PC:
+     npm install
+     git add package-lock.json
+     git commit -m "Add package-lock.json"
+     git push
+  
+  2. Poi riprova su NAS:
+     docker build -t task-manager-app:latest .
+
+SOLUZIONE 3 - Comando diretto sul NAS (Senza Docker):
+  git clone https://github.com/giuseppePintus/Molino_briganti_task_manager.git
+  cd Molino_briganti_task_manager/task-manager-app
+  npm install
+  npm run prisma:generate
+  npm run build
+  npm start
+
+NOTA: Il file serverNas.txt è già aggiornato con npm install.
 
 ================================================================================
 SUPPORTO E LINK UTILI
@@ -352,3 +398,4 @@ Docker Hub: https://hub.docker.com/
 PM2 Docs: https://pm2.keymetrics.io/
 
 ================================================================================
+
