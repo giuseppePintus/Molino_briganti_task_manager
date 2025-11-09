@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcrypt';
+import bcryptjs from 'bcryptjs';
 import dotenv from 'dotenv';
 
 dotenv.config({ path: '../.env' });
@@ -15,7 +15,7 @@ async function main() {
     if (!masterUser) {
         // Create default master user
         const defaultPassword = process.env.DEFAULT_MASTER_PASS || 'masterpass';
-        const passwordHash = await bcrypt.hash(defaultPassword, 10);
+        const passwordHash = await bcryptjs.hash(defaultPassword, 10);
 
         const user = await prisma.user.create({
             data: {
@@ -39,7 +39,7 @@ async function main() {
         });
 
         if (!existing) {
-            const passwordHash = await bcrypt.hash('operatorpass', 10);
+            const passwordHash = await bcryptjs.hash('operatorpass', 10);
             const op = await prisma.user.create({
                 data: {
                     username: opName,
