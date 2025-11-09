@@ -154,13 +154,13 @@ SOLUZIONE:
     2. Esegui: npm run build
     3. Cancella node_modules e reinstalla: rm -rf node_modules && npm install
 
-PROBLEMA: "Cannot find module './lib/validateAsymmetricKey' (jsonwebtoken)"
+PROBLEMA: "Error: bcrypt_lib.node cannot open shared object file"
 SOLUZIONE:
-  - jsonwebtoken@9.0.2 ha un bug con Node 20
-  - Usa jsonwebtoken@8.5.1 (versione stabile)
-  - Già configurato nel package.json
+  - bcrypt è un modulo nativo che richiede compilatore C++ su NAS
+  - Questo progetto usa bcryptjs (puro JavaScript, no compilazione)
+  - bcryptjs@2.4.3 è pre-compilato e funziona su qualsiasi sistema
   - Se il problema persiste:
-    rm -rf node_modules package-lock.json
+    rm -rf node_modules
     npm install
     npm run build
 
