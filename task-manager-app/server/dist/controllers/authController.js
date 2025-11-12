@@ -143,5 +143,79 @@ class AuthController {
             }
         });
     }
+    getPublicOperators(req, res) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const operators = yield prisma.user.findMany({
+                    where: { role: 'slave' },
+                    select: {
+                        id: true,
+                        username: true,
+                        image: true
+                    },
+                    orderBy: { username: 'asc' },
+                });
+                res.json(operators);
+            }
+            catch (err) {
+                const errorMsg = err instanceof Error ? err.message : 'Internal server error';
+                res.status(500).json({ message: errorMsg });
+            }
+        });
+    }
+    quickLogin(req, res) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const { operatorId } = req.body;
+                if (!operatorId) {
+                    return res.status(400).json({ message: 'Operator ID required' });
+                }
+                const operator = yield prisma.user.findUnique({
+                    where: { id: parseInt(operatorId) }
+                });
+                if (!operator) {
+                    return res.status(404).json({ message: 'Operator not found' });
+                }
+                if (operator.role !== 'slave') {
+                    return res.status(403).json({ message: 'Invalid operator' });
+                }
+                const token = jsonwebtoken_1.default.sign({ id: operator.id, username: operator.username, role: operator.role }, process.env.JWT_SECRET, { expiresIn: '8h' });
+                res.json({
+                    message: 'Login successful',
+                    token,
+                    user: { id: operator.id, username: operator.username, role: operator.role },
+                });
+            }
+            catch (err) {
+                const errorMsg = err instanceof Error ? err.message : 'Internal server error';
+                res.status(500).json({ message: errorMsg });
+            }
+        });
+    }
+    updateOperatorImage(req, res) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                if (!req.user || req.user.role !== 'master') {
+                    return res.status(403).json({ message: 'Only master can update operator images' });
+                }
+                const { operatorId, image } = req.body;
+                if (!operatorId || !image) {
+                    return res.status(400).json({ message: 'Operator ID and image required' });
+                }
+                const operator = yield prisma.user.update({
+                    where: { id: parseInt(operatorId) },
+                    data: { image }
+                });
+                res.json({
+                    message: 'Operator image updated successfully',
+                    operator: { id: operator.id, username: operator.username, image: operator.image }
+                });
+            }
+            catch (err) {
+                const errorMsg = err instanceof Error ? err.message : 'Internal server error';
+                res.status(500).json({ message: errorMsg });
+            }
+        });
+    }
 }
 exports.AuthController = AuthController;
