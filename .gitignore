@@ -71,3 +71,55 @@ prisma/migrations/
 .cache/
 .next/
 out/
+
+# Shell scripts (test scripts, setup scripts)
+*.sh
+!start.sh
+!QUICK_START_PRIORITY.sh
+!QUICK_TEST.sh
+!QUICKREF.sh
+!TEST_*.sh
+
+# Compiled output
+out/
+dist/
+
+# System files
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+ehthumbs.db
+
+# IDE lock files
+.vscode/settings.json
+.vscode/launch.json
+.vscode/extensions.json
+.idea/**/*.iml
+
+# Backup and temp files
+*.orig
+*.backup
+.swp
+.swo
+
+# Node-related
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# TypeScript
+*.tsbuildinfo
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Task manager app specific
+task-manager-app/.env.local
+task-manager-app/server/.env
+
+# Prisma
+prisma/migrations/
+.prisma/

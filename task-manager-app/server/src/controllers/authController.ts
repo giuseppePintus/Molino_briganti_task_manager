@@ -147,4 +147,87 @@ export class AuthController {
             res.status(500).json({ message: errorMsg });
         }
     }
+
+    async getPublicOperators(req: Request, res: Response) {
+        try {
+            const operators = await prisma.user.findMany({
+                where: { role: 'slave' },
+                select: { 
+                    id: true, 
+                    username: true,
+                    image: true
+                },
+                orderBy: { username: 'asc' },
+            });
+
+            res.json(operators);
+        } catch (err: unknown) {
+            const errorMsg = err instanceof Error ? err.message : 'Internal server error';
+            res.status(500).json({ message: errorMsg });
+        }
+    }
+
+    async quickLogin(req: Request, res: Response) {
+        try {
+            const { operatorId } = req.body;
+
+            if (!operatorId) {
+                return res.status(400).json({ message: 'Operator ID required' });
+            }
+
+            const operator = await prisma.user.findUnique({
+                where: { id: parseInt(operatorId) }
+            });
+
+            if (!operator) {
+                return res.status(404).json({ message: 'Operator not found' });
+            }
+
+            if (operator.role !== 'slave') {
+                return res.status(403).json({ message: 'Invalid operator' });
+            }
+
+            const token = jwt.sign(
+                { id: operator.id, username: operator.username, role: operator.role },
+                process.env.JWT_SECRET as string,
+                { expiresIn: '8h' }
+            );
+
+            res.json({
+                message: 'Login successful',
+                token,
+                user: { id: operator.id, username: operator.username, role: operator.role },
+            });
+        } catch (err: unknown) {
+            const errorMsg = err instanceof Error ? err.message : 'Internal server error';
+            res.status(500).json({ message: errorMsg });
+        }
+    }
+
+    async updateOperatorImage(req: Request, res: Response) {
+        try {
+            if (!req.user || req.user.role !== 'master') {
+                return res.status(403).json({ message: 'Only master can update operator images' });
+            }
+
+            const { operatorId, image } = req.body;
+
+            if (!operatorId || !image) {
+                return res.status(400).json({ message: 'Operator ID and image required' });
+            }
+
+            const operator = await prisma.user.update({
+                where: { id: parseInt(operatorId) },
+                data: { image }
+            });
+
+            res.json({
+                message: 'Operator image updated successfully',
+                operator: { id: operator.id, username: operator.username, image: operator.image }
+            });
+        } catch (err: unknown) {
+            const errorMsg = err instanceof Error ? err.message : 'Internal server error';
+            res.status(500).json({ message: errorMsg });
+        }
+    }
 }

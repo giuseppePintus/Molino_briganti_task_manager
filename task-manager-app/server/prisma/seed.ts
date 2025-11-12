@@ -30,24 +30,34 @@ async function main() {
         console.log('✅ Master user already exists:', masterUser.username);
     }
 
-    // Create sample operators if they don't exist
-    const operators = ['operatore1', 'operatore2', 'operatore3'];
+    // Create sample operators with images if they don't exist
+    const operators = [
+        { name: 'mario_rossi', emoji: '👨‍🔧' },
+        { name: 'giovanni_bianchi', emoji: '👨‍💼' },
+        { name: 'franco_neri', emoji: '👷' },
+        { name: 'andrea_verdi', emoji: '🧑‍🏭' },
+        { name: 'marco_giallo', emoji: '👨‍🌾' },
+        { name: 'luca_azzurri', emoji: '🧑‍🔬' },
+        { name: 'paolo_viola', emoji: '👨‍⚕️' },
+        { name: 'antonio_rosa', emoji: '🧑‍💻' },
+    ];
     
-    for (const opName of operators) {
+    for (const opData of operators) {
         const existing = await prisma.user.findUnique({
-            where: { username: opName },
+            where: { username: opData.name },
         });
 
         if (!existing) {
             const passwordHash = await bcryptjs.hash('operatorpass', 10);
             const op = await prisma.user.create({
                 data: {
-                    username: opName,
+                    username: opData.name,
                     passwordHash,
                     role: 'slave',
+                    image: opData.emoji, // Store emoji as image
                 },
             });
-            console.log('✅ Created operator:', op.username);
+            console.log('✅ Created operator:', op.username, opData.emoji);
         }
     }
 }
