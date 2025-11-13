@@ -104,7 +104,14 @@ export class TasksController {
             
             if (title !== undefined) updateData.title = title;
             if (description !== undefined) updateData.description = description;
-            if (scheduledAt !== undefined) updateData.scheduledAt = scheduledAt ? new Date(scheduledAt) : null;
+            if (scheduledAt !== undefined) {
+                updateData.scheduledAt = scheduledAt ? new Date(scheduledAt) : null;
+                // Se scheduledAt viene impostato e originalScheduledAt non esiste, lo impostiamo
+                const task = await prisma.task.findUnique({ where: { id: parseInt(id) } });
+                if (task && !task.originalScheduledAt && scheduledAt) {
+                    updateData.originalScheduledAt = new Date(scheduledAt);
+                }
+            }
             if (assignedOperatorId !== undefined) updateData.assignedOperatorId = assignedOperatorId;
             if (estimatedMinutes !== undefined) updateData.estimatedMinutes = estimatedMinutes;
             
@@ -441,6 +448,47 @@ export class TasksController {
             });
 
             res.json(postponedTask);
+        } catch (err: unknown) {
+            const errorMsg = err instanceof Error ? err.message : 'Internal server error';
+            res.status(500).json({ message: errorMsg });
+        }
+    }
+
+    async resetTaskToSuspended(req: Request, res: Response) {
+        try {
+            if (!req.user || req.user.role !== 'master') {
+                return res.status(403).json({ message: 'Only master can reset tasks' });
+            }
+
+            const { id } = req.params;
+
+            // Verify task exists
+            const task = await prisma.task.findUnique({ where: { id: parseInt(id) } });
+            if (!task) {
+                return res.status(404).json({ message: 'Task not found' });
+            }
+
+            // Reset task to suspended state (only remove acceptance and completion)
+            const resetTask = await prisma.task.update({
+                where: { id: parseInt(id) },
+                data: {
+                    acceptedAt: null,
+                    acceptedById: null,
+                    completed: false,
+                    completedAt: null,
+                    completedById: null,
+                    actualMinutes: null,
+                    paused: false,
+                    pausedAt: null,
+                },
+                include: {
+                    assignedOperator: { select: { id: true, username: true } },
+                    createdBy: { select: { id: true, username: true } },
+                    completedBy: { select: { id: true, username: true } },
+                },
+            });
+
+            res.json(resetTask);
         } catch (err: unknown) {
             const errorMsg = err instanceof Error ? err.message : 'Internal server error';
             res.status(500).json({ message: errorMsg });
