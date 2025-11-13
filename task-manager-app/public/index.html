@@ -735,8 +735,8 @@
         /* Calendar and Master Dashboard Styles */
         .calendar-day {
             border: 1px solid #e0e0e0;
-            padding: 10px;
-            min-height: 80px;
+            padding: 6px;
+            min-height: 50px;
             border-radius: 4px;
             background: #fafafa;
             cursor: pointer;
@@ -756,20 +756,20 @@
         .calendar-day-header {
             font-weight: bold;
             color: #666;
-            margin-bottom: 5px;
-            font-size: 14px;
+            margin-bottom: 3px;
+            font-size: 11px;
         }
 
         .calendar-day-tasks {
             display: flex;
             flex-direction: column;
-            gap: 3px;
+            gap: 2px;
         }
 
         .calendar-task-item {
-            font-size: 11px;
-            padding: 2px 4px;
-            border-radius: 3px;
+            font-size: 9px;
+            padding: 1px 3px;
+            border-radius: 2px;
             background: #e3f2fd;
             border-left: 2px solid #2196f3;
             overflow: hidden;
@@ -921,89 +921,61 @@
             <!-- Stats -->
             <div class="stats" id="stats"></div>
 
-            <!-- Operators Panel (Master Only) -->
-            <div id="operatorsPanel" class="operators-panel" style="display: none;">
-                <h3>👥 Gestione Operatori</h3>
-                
-                <!-- Create New Operator Form -->
-                <div style="background: #f0f9ff; padding: 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #bfdbfe;">
-                    <h4 style="margin-bottom: 10px;">➕ Crea Nuovo Operatore</h4>
-                    <form onsubmit="handleCreateOperator(event)" style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 10px; align-items: end;">
-                        <div class="form-group" style="margin-bottom: 0;">
-                            <label style="font-size: 12px;">Username</label>
-                            <input type="text" id="newOperatorUsername" placeholder="Username" required>
-                        </div>
-                        <div class="form-group" style="margin-bottom: 0;">
-                            <label style="font-size: 12px;">Password</label>
-                            <input type="password" id="newOperatorPassword" placeholder="Password" required>
-                        </div>
-                        <div class="form-group" style="margin-bottom: 0;">
-                            <label style="font-size: 12px;">Conferma Password</label>
-                            <input type="password" id="newOperatorPasswordConfirm" placeholder="Conferma" required>
-                        </div>
-                        <button type="submit" class="btn btn-success btn-small">Crea</button>
-                    </form>
-                </div>
+            <!-- Quick Actions (Master Only) -->
+            <div id="quickActionsBar" style="display: none; gap: 10px; margin-bottom: 15px;">
+                <button class="btn btn-success" style="flex: 1; padding: 14px;" onclick="openCreateTaskModal()">
+                    📝 Nuovo Task
+                </button>
+                <button class="btn btn-primary" style="flex: 1; padding: 14px;" onclick="window.location.href='operators.html'">
+                    👥 Gestione Operatori
+                </button>
+            </div>
 
-                <!-- Operators List -->
-                <div id="operatorsList" class="operators-list">
-                    <div class="empty-state">
-                        <p>Nessun operatore disponibile</p>
+            <!-- Filters Bar (Master Only) -->
+            <div id="filtersBar" style="display: none; gap: 15px; margin-bottom: 20px; align-items: center;">
+                <div style="flex: 0 0 auto;">
+                    <label style="font-size: 12px; font-weight: 600;">🔍 Filtri:</label>
+                </div>
+                <div style="flex: 1; display: flex; gap: 10px; align-items: center;">
+                    <div style="flex: 1; min-width: 150px;">
+                        <select id="operatorFilter" onchange="applyFilters()" class="priority-select">
+                            <option value="">Tutti gli Operatori</option>
+                        </select>
+                    </div>
+                    <div style="flex: 1; min-width: 150px;">
+                        <select id="statusFilter" onchange="applyFilters()" class="priority-select">
+                            <option value="">Tutti gli Stati</option>
+                            <option value="pending">In Sospeso</option>
+                            <option value="accepted">Accettato</option>
+                            <option value="completed">Completato</option>
+                        </select>
                     </div>
                 </div>
             </div>
 
+            <!-- Alert (Master Dashboard) -->
+            <div id="masterAlert" class="alert" style="display: none; margin-bottom: 20px;"></div>
+
             <!-- Master Dashboard (New Layout) -->
             <div id="masterDashboard" style="display: none;">
-                <div style="display: grid; grid-template-columns: 250px 1fr; gap: 20px;">
-                    <!-- Sidebar Menu -->
+                <div style="display: grid; grid-template-columns: 320px 1fr; gap: 20px;">
+                    <!-- Left Sidebar: Calendar -->
                     <div style="display: flex; flex-direction: column; gap: 15px;">
-                        <!-- Create Task Card -->
-                        <div class="card" style="padding: 15px;">
-                            <h3 style="margin-bottom: 15px; font-size: 16px;">➕ Azioni</h3>
-                            <button class="btn btn-success" style="width: 100%; margin-bottom: 10px;" onclick="openCreateTaskModal()">
-                                📝 Nuovo Task
-                            </button>
-                            <button class="btn btn-primary" style="width: 100%;" onclick="openCreateOperatorModal()">
-                                👤 Nuovo Operatore
-                            </button>
-                        </div>
-
-                        <!-- Filters Card -->
-                        <div class="card" style="padding: 15px;">
-                            <h3 style="margin-bottom: 15px; font-size: 16px;">🔍 Filtri</h3>
-                            <div class="form-group">
-                                <label style="font-size: 12px;">Operatore</label>
-                                <select id="operatorFilter" onchange="applyFilters()" class="priority-select">
-                                    <option value="">Tutti</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label style="font-size: 12px;">Stato</label>
-                                <select id="statusFilter" onchange="applyFilters()" class="priority-select">
-                                    <option value="">Tutti</option>
-                                    <option value="pending">In Sospeso</option>
-                                    <option value="accepted">Accettato</option>
-                                    <option value="completed">Completato</option>
-                                </select>
+                        <!-- Compact Calendar Card -->
+                        <div class="card" style="padding: 12px;">
+                            <h3 style="margin-bottom: 10px; font-size: 14px; text-align: center;">📅 Calendario</h3>
+                            <div id="calendarContainer" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; padding: 10px 0;">
+                                <!-- Calendar will be generated here -->
                             </div>
                         </div>
                     </div>
 
-                    <!-- Main Content: Calendar and Tasks -->
+                    <!-- Main Content: Tasks List -->
                     <div style="display: flex; flex-direction: column; gap: 20px;">
-                        <!-- Calendar View -->
-                        <div class="card">
-                            <h2>📅 Calendario Task</h2>
-                            <div id="calendarContainer" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; padding: 20px 0;">
-                                <!-- Calendar will be generated here -->
-                            </div>
-                        </div>
-
                         <!-- Tasks List -->
                         <div class="card">
                             <h2>📋 Dettaglio Task</h2>
-                            <div id="masterTasksList" style="display: grid; gap: 15px; max-height: 600px; overflow-y: auto;">
+                            <div id="masterTasksList" style="display: grid; gap: 15px; max-height: 800px; overflow-y: auto;">
                                 <div class="empty-state">
                                     <p>Nessun compito disponibile</p>
                                 </div>
@@ -1084,6 +1056,7 @@
         let startScrollLeft = 0;
         let isInfinite = false;
         let dragDistance = 0;  // Track pixel distance for drag detection
+        let editingTaskId = null;  // Track if we're editing a task
 
         // ==================== CAROUSEL MANAGEMENT ====================
         async function loadOperatorsCarousel() {
@@ -1325,11 +1298,15 @@
             
             // Show appropriate dashboard based on role
             if (currentUser.role === 'master') {
+                document.getElementById('quickActionsBar').style.display = 'flex';
+                document.getElementById('filtersBar').style.display = 'flex';
                 document.getElementById('masterDashboard').style.display = 'block';
                 document.getElementById('mainContent').style.display = 'none';
                 document.getElementById('operatorView').style.display = 'none';
                 await loadMasterDashboard();
             } else {
+                document.getElementById('quickActionsBar').style.display = 'none';
+                document.getElementById('filtersBar').style.display = 'none';
                 document.getElementById('masterDashboard').style.display = 'none';
                 document.getElementById('mainContent').style.display = 'none';
                 document.getElementById('operatorView').style.display = 'block';
@@ -1375,48 +1352,31 @@
                 if (!response.ok) throw new Error('Errore caricamento operatori');
                 
                 const operators = await response.json();
-                const panel = document.getElementById('operatorsPanel');
-                const list = document.getElementById('operatorsList');
-
-                panel.style.display = 'block';
-
-                if (operators.length === 0) {
-                    list.innerHTML = '<div class="empty-state"><p>Nessun operatore creato. Creane uno dal modulo sopra.</p></div>';
-                    return;
-                }
-
-                // Popola anche la select dei compiti
-                const operatorSelect = document.getElementById('taskAssignedOperator');
-                if (operatorSelect) {
-                    const currentValue = operatorSelect.value;
-                    operatorSelect.innerHTML = '<option value="">-- Nessuno --</option>' +
+                allOperators = operators; // Store globally
+                
+                // Popola il filtro della sidebar
+                const operatorFilter = document.getElementById('operatorFilter');
+                if (operatorFilter) {
+                    const currentValue = operatorFilter.value;
+                    operatorFilter.innerHTML = '<option value="">Tutti</option>' +
                         operators.map(u => 
                             `<option value="${u.id}">${u.username}</option>`
                         ).join('');
-                    operatorSelect.value = currentValue;
+                    operatorFilter.value = currentValue;
                 }
 
-                list.innerHTML = operators.map(operator => `
-                    <div class="operator-card">
-                        <div class="operator-info">
-                            <div class="operator-username">${operator.username}</div>
-                            <div class="operator-role">
-                                OPERATORE
-                                <span class="operator-badge slave"> SLAVE</span>
-                            </div>
-                            <div style="font-size: 11px; color: #9ca3af; margin-top: 4px;">
-                                Creato: ${new Date(operator.createdAt).toLocaleString('it-IT')}
-                            </div>
-                        </div>
-                        <div class="operator-actions">
-                            <button class="btn btn-danger btn-small" onclick="handleDeleteOperator(${operator.id}, '${operator.username}')">Rimuovi</button>
-                        </div>
-                    </div>
-                `).join('');
+                // Popola la select nei modali (se esistono)
+                const operatorSelects = document.querySelectorAll('[id$="Operator"]');
+                operatorSelects.forEach(select => {
+                    const currentValue = select.value;
+                    select.innerHTML = '<option value="">-- Nessuno --</option>' +
+                        operators.map(u => 
+                            `<option value="${u.id}">${u.username}</option>`
+                        ).join('');
+                    select.value = currentValue;
+                });
             } catch (error) {
                 console.error('Errore caricamento operatori:', error);
-                document.getElementById('operatorsList').innerHTML = 
-                    `<div class="alert alert-error" style="display: block;">Errore: ${error.message}</div>`;
             }
         }
 
@@ -1444,17 +1404,37 @@
                             'completed': 'Completato',
                             'pending': 'In Sospeso'
                         };
+                        const status = task.completed ? 'completed' : (task.acceptedAt ? 'accepted' : 'pending');
                         return `
-                        <div class="task-card-master ${task.status || 'pending'}">
+                        <div class="task-card-master ${status}">
                             <div class="task-header-master">
                                 <div class="task-title-master">${task.title}</div>
-                                <span class="task-status-badge ${task.status || 'pending'}">${statusMap[task.status] || 'In Sospeso'}</span>
+                                <span class="task-status-badge ${status}">${statusMap[status] || 'In Sospeso'}</span>
                             </div>
                             <p style="color: #666; margin: 10px 0; font-size: 14px;">${task.description || 'Nessuna descrizione'}</p>
                             <div class="task-meta-master">
-                                ${task.scheduled_at ? `<span>📅 ${new Date(task.scheduled_at).toLocaleString('it-IT')}</span>` : ''}
-                                ${task.estimated_minutes ? `<span>⏱️ ${task.estimated_minutes} min</span>` : ''}
-                                ${task.assigned_to ? `<span>👤 Assegnato</span>` : '<span>👤 Non assegnato</span>'}
+                                ${task.scheduledAt ? `<span>📅 ${new Date(task.scheduledAt).toLocaleString('it-IT')}</span>` : ''}
+                                ${task.estimatedMinutes ? `<span>⏱️ ${task.estimatedMinutes} min</span>` : ''}
+                                ${task.assignedOperator ? `<span>👤 ${task.assignedOperator.username}</span>` : '<span>👤 Non assegnato</span>'}
+                                ${task.actualMinutes ? `<span>✓ ${task.actualMinutes} min effettivi</span>` : ''}
+                            </div>
+                            ${task.notes && task.notes.length > 0 ? `
+                                <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb;">
+                                    <strong style="font-size: 12px; color: #6b7280;">📝 Note (${task.notes.length}):</strong>
+                                    <div style="margin-top: 8px; font-size: 13px; color: #555;">
+                                        ${task.notes.map(note => `
+                                            <div style="background: #f3f4f6; padding: 8px; margin: 4px 0; border-radius: 4px;">
+                                                <div style="font-weight: 600; color: #374151; font-size: 12px;">${note.user.username}</div>
+                                                <div style="margin-top: 4px;">${note.note}</div>
+                                                <div style="font-size: 11px; color: #9ca3af; margin-top: 4px;">${new Date(note.createdAt).toLocaleString('it-IT')}</div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            ` : ''}
+                            <div style="display: flex; gap: 8px; margin-top: 12px;">
+                                <button class="btn btn-primary btn-small" style="flex: 1; padding: 8px; font-size: 12px;" onclick="openEditTaskModal(${task.id})">✏️ Modifica</button>
+                                <button class="btn btn-danger btn-small" style="flex: 1; padding: 8px; font-size: 12px;" onclick="handleDeleteTask(${task.id})">🗑️ Rimuovi</button>
                             </div>
                         </div>
                     `}).join('');
@@ -1830,6 +1810,30 @@
             }
         }
 
+        async function handleDeleteTask(taskId) {
+            if (!confirm('Sei sicuro di voler eliminare questo compito?')) return;
+
+            try {
+                const response = await fetch(`${API_URL}/tasks/${taskId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || 'Errore nell\'eliminazione');
+                }
+
+                showAlert(document.getElementById('masterAlert'), 'Compito eliminato con successo!', 'success');
+                await loadTasks();
+                await updateStats();
+            } catch (error) {
+                showAlert(document.getElementById('masterAlert'), error.message, 'error');
+            }
+        }
+
         // ==================== OPERATOR MANAGEMENT ====================
         async function handleCreateOperator(event) {
             event.preventDefault();
@@ -1932,7 +1936,7 @@
             const container = document.getElementById('calendarContainer');
             
             if (!allTasks || allTasks.length === 0) {
-                container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 30px; color: #999;">Nessun task disponibile</div>';
+                container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 15px; color: #999; font-size: 12px;">Nessun task</div>';
                 return;
             }
 
@@ -1947,9 +1951,9 @@
             const daysInMonth = lastDay.getDate();
             const startingDayOfWeek = firstDay.getDay(); // 0 = Sunday
             
-            // Create day headers (Mon-Sun)
-            const dayNames = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
-            const dayHeadersHTML = dayNames.map(day => `<div style="font-weight: bold; text-align: center; padding: 10px; background: #f0f0f0; border-radius: 4px;">${day}</div>`).join('');
+            // Create day headers (Mon-Sun) - compact
+            const dayNames = ['Do', 'Lu', 'Ma', 'Me', 'Gi', 'Ve', 'Sa'];
+            const dayHeadersHTML = dayNames.map(day => `<div style="font-weight: bold; text-align: center; padding: 4px; background: #f0f0f0; border-radius: 3px; font-size: 10px;">${day}</div>`).join('');
             
             let html = dayHeadersHTML;
             
@@ -1965,8 +1969,8 @@
                 
                 // Get tasks for this day
                 const dayTasks = allTasks.filter(task => {
-                    if (!task.scheduled_at) return false;
-                    return task.scheduled_at.split('T')[0] === dateStr;
+                    if (!task.scheduledAt) return false;
+                    return task.scheduledAt.split('T')[0] === dateStr;
                 });
                 
                 const hasTasksClass = dayTasks.length > 0 ? 'has-tasks' : '';
@@ -1979,18 +1983,102 @@
                 html += `<div class="calendar-day ${hasTasksClass}">
                     <div class="calendar-day-header">${day}</div>
                     <div class="calendar-day-tasks">
-                        ${dayTasks.slice(0, 3).map(task => `
+                        ${dayTasks.slice(0, 2).map(task => `
                             <div class="calendar-task-item" title="${task.title}">
-                                <span style="display: inline-block; width: 4px; height: 4px; background: ${statusColors[task.status] || '#999'}; border-radius: 50%; margin-right: 3px;"></span>
-                                ${task.title.substring(0, 15)}
+                                <span style="display: inline-block; width: 3px; height: 3px; background: ${statusColors[task.status] || '#999'}; border-radius: 50%; margin-right: 2px;"></span>
+                                ${task.title.substring(0, 12)}
                             </div>
                         `).join('')}
-                        ${dayTasks.length > 3 ? `<div style="font-size: 11px; color: #999;">+${dayTasks.length - 3}</div>` : ''}
+                        ${dayTasks.length > 2 ? `<div style="font-size: 9px; color: #999;">+${dayTasks.length - 2}</div>` : ''}
                     </div>
                 </div>`;
             }
             
             container.innerHTML = html;
+        }
+
+        async function openEditTaskModal(taskId) {
+            try {
+                // Find the task in allTasks
+                const task = allTasks.find(t => t.id === taskId);
+                if (!task) throw new Error('Compito non trovato');
+
+                editingTaskId = taskId;
+                const modal = document.getElementById('taskModal');
+                if (!modal) {
+                    console.error('Modal taskModal not found');
+                    return;
+                }
+
+                modal.classList.add('active');
+                const content = modal.querySelector('.modal-content');
+
+                // Convert scheduledAt to datetime-local format
+                let scheduledAtValue = '';
+                if (task.scheduledAt) {
+                    const date = new Date(task.scheduledAt);
+                    scheduledAtValue = date.toISOString().slice(0, 16);
+                }
+
+                content.innerHTML = `
+                    <h2>✏️ Modifica Task</h2>
+                    <form onsubmit="handleCreateTaskFromModal(event)">
+                        <div class="form-group">
+                            <label>Titolo *</label>
+                            <input type="text" id="modalTaskTitle" required placeholder="es. Installazione server" value="${task.title.replace(/"/g, '&quot;')}">
+                        </div>
+                        <div class="form-group">
+                            <label>Descrizione</label>
+                            <textarea id="modalTaskDescription" placeholder="Descrizione dettagliata..." style="width: 100%; height: 80px; padding: 10px; border: 1px solid #e0e0e0; border-radius: 4px;">${task.description ? task.description.replace(/</g, '&lt;').replace(/>/g, '&gt;') : ''}</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Data/Ora Esecuzione</label>
+                            <input type="datetime-local" id="modalTaskScheduledAt" value="${scheduledAtValue}">
+                        </div>
+                        <div class="form-group">
+                            <label>Operatore</label>
+                            <select id="modalTaskOperator">
+                                <option value="">-- Nessuno --</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Priorità</label>
+                            <select id="modalTaskPriority" class="priority-select">
+                                <option value="LOW">🟢 Bassa</option>
+                                <option value="MEDIUM" selected>🟡 Media</option>
+                                <option value="HIGH">🟠 Alta</option>
+                                <option value="URGENT">🔴 Urgente</option>
+                            </select>
+                        </div>
+                        <div class="modal-actions">
+                            <button type="submit" class="btn btn-success">Salva Modifiche</button>
+                            <button type="button" class="btn btn-secondary" onclick="closeCreateTaskModal()">Annulla</button>
+                        </div>
+                    </form>
+                `;
+
+                // Load operators for select
+                const operatorSelect = document.getElementById('modalTaskOperator');
+                if (allOperators && allOperators.length > 0) {
+                    allOperators.forEach(op => {
+                        const option = document.createElement('option');
+                        option.value = op.id;
+                        option.textContent = op.username;
+                        if (task.assignedOperator && task.assignedOperator.id === op.id) {
+                            option.selected = true;
+                        }
+                        operatorSelect.appendChild(option);
+                    });
+                }
+
+                // Set priority
+                const prioritySelect = document.getElementById('modalTaskPriority');
+                prioritySelect.value = task.priority || 'MEDIUM';
+
+            } catch (error) {
+                console.error('Errore apertura modifica task:', error);
+                showAlert(document.getElementById('masterAlert'), 'Errore: ' + error.message, 'error');
+            }
         }
 
         function openCreateTaskModal() {
@@ -2057,39 +2145,73 @@
             
             const title = document.getElementById('modalTaskTitle').value;
             const description = document.getElementById('modalTaskDescription').value;
-            const scheduled_at = document.getElementById('modalTaskScheduledAt').value;
-            const assigned_to = document.getElementById('modalTaskOperator').value;
+            const scheduledAt = document.getElementById('modalTaskScheduledAt').value;
+            const assignedOperatorId = document.getElementById('modalTaskOperator').value;
             const priority = document.getElementById('modalTaskPriority').value;
             
             try {
-                const response = await fetch(`${API_URL}/tasks`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({
-                        title,
-                        description,
-                        scheduled_at: scheduled_at || null,
-                        assigned_to: assigned_to || null,
-                        priority
-                    })
-                });
-                
-                if (!response.ok) throw new Error('Errore nella creazione del task');
-                
-                closeCreateTaskModal();
-                await loadMasterDashboard();
-                showAlert(document.getElementById('alert'), 'Task creato con successo!', 'success');
+                if (editingTaskId) {
+                    // Modifica task esistente
+                    const response = await fetch(`${API_URL}/tasks/${editingTaskId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            title,
+                            description: description || null,
+                            scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+                            assignedOperatorId: assignedOperatorId ? parseInt(assignedOperatorId) : null,
+                            priority
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (!response.ok) throw new Error(data.message || `HTTP ${response.status}: Errore nella modifica del task`);
+                    
+                    closeCreateTaskModal();
+                    editingTaskId = null;
+                    await loadMasterDashboard();
+                    showAlert(document.getElementById('masterAlert'), 'Task modificato con successo!', 'success');
+                } else {
+                    // Creazione nuovo task
+                    const response = await fetch(`${API_URL}/tasks`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            title,
+                            description: description || null,
+                            scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+                            assignedOperatorId: assignedOperatorId ? parseInt(assignedOperatorId) : null,
+                            priority
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (!response.ok) throw new Error(data.message || `HTTP ${response.status}: Errore nella creazione del task`);
+                    
+                    closeCreateTaskModal();
+                    await loadMasterDashboard();
+                    showAlert(document.getElementById('masterAlert'), 'Task creato con successo!', 'success');
+                }
             } catch (error) {
-                alert('Errore: ' + error.message);
+                console.error('Errore operazione task:', error);
+                showAlert(document.getElementById('masterAlert'), 'Errore: ' + error.message, 'error');
             }
         }
 
         function closeCreateTaskModal() {
             const modal = document.getElementById('taskModal');
-            if (modal) modal.classList.remove('active');
+            if (modal) {
+                modal.classList.remove('active');
+                editingTaskId = null;
+            }
         }
 
         function openCreateOperatorModal() {
@@ -2133,7 +2255,7 @@
             const image = document.getElementById('modalOperatorImage').value;
             
             try {
-                const response = await fetch(`${API_URL}/auth/operators`, {
+                const response = await fetch(`${API_URL}/auth/create-operator`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -2146,13 +2268,16 @@
                     })
                 });
                 
-                if (!response.ok) throw new Error('Errore nella creazione dell\'operatore');
+                const data = await response.json();
+                
+                if (!response.ok) throw new Error(data.message || `HTTP ${response.status}: Errore nella creazione dell'operatore`);
                 
                 closeCreateOperatorModal();
-                await loadOperators();
-                showAlert(document.getElementById('alert'), 'Operatore creato con successo!', 'success');
+                await loadMasterDashboard();
+                showAlert(document.getElementById('masterAlert'), 'Operatore creato con successo!', 'success');
             } catch (error) {
-                alert('Errore: ' + error.message);
+                console.error('Errore creazione operatore:', error);
+                showAlert(document.getElementById('masterAlert'), 'Errore: ' + error.message, 'error');
             }
         }
 

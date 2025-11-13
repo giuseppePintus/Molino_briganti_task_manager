@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestione Operatori - Molino Briganti</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2563eb;
+            --success: #16a34a;
+            --danger: #dc2626;
+            --warning: #ea580c;
+            --dark: #1f2937;
+            --light: #f3f4f6;
+            --border: #e5e7eb;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--light);
+            color: var(--dark);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            color: var(--dark);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1d4ed8;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--light);
+            color: var(--dark);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: white;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+            padding: 8px 16px;
+            font-size: 12px;
+        }
+
+        .btn-danger:hover {
+            background: #b91c1c;
+        }
+
+        .btn-warning {
+            background: var(--warning);
+            color: white;
+            padding: 8px 16px;
+            font-size: 12px;
+        }
+
+        .btn-warning:hover {
+            background: #d97706;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .card h2 {
+            font-size: 20px;
+            margin-bottom: 20px;
+            color: var(--dark);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--dark);
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 15px;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+            border-left: 4px solid #10b981;
+        }
+
+        .alert-error {
+            background: #fee2e2;
+            color: #991b1b;
+            border-left: 4px solid #dc2626;
+        }
+
+        .operators-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .operator-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .operator-card h3 {
+            font-size: 18px;
+            color: var(--dark);
+        }
+
+        .operator-info {
+            font-size: 14px;
+            color: #6b7280;
+        }
+
+        .operator-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: auto;
+        }
+
+        .operator-actions button {
+            flex: 1;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #9ca3af;
+        }
+
+        .spinner {
+            display: inline-block;
+            border: 3px solid var(--light);
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>👥 Gestione Operatori</h1>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-secondary" onclick="window.location.href='index.html'">⬅️ Task Manager</button>
+                <button class="btn btn-primary" onclick="handleLogout()">🚪 Logout</button>
+            </div>
+        </div>
+
+        <!-- Alert -->
+        <div id="alert" class="alert"></div>
+
+        <!-- Create Operator Section -->
+        <div class="card">
+            <h2>➕ Crea Nuovo Operatore</h2>
+            <form id="createOperatorForm" onsubmit="handleCreateOperator(event)">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="operatorUsername">Username *</label>
+                        <input type="text" id="operatorUsername" placeholder="es. mario_rossi" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="operatorPassword">Password *</label>
+                        <input type="password" id="operatorPassword" placeholder="Password sicura" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="operatorImage">Immagine (Emoji o URL)</label>
+                        <input type="text" id="operatorImage" placeholder="es. 👨‍🔧 oppure https://...">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-success">Crea Operatore</button>
+            </form>
+        </div>
+
+        <!-- Operators List -->
+        <div class="card">
+            <h2>📋 Elenco Operatori</h2>
+            <div id="operatorsContainer" class="operators-grid">
+                <div class="empty-state">
+                    <div class="spinner"></div>
+                    <p style="margin-top: 15px;">Caricamento operatori...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Operator Modal -->
+    <div id="editModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+        <div style="background: white; padding: 30px; border-radius: 10px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto;">
+            <h2>✏️ Modifica Operatore</h2>
+            <form id="editOperatorForm" onsubmit="handleEditOperator(event)" style="margin-top: 20px;">
+                <div class="form-group">
+                    <label for="editOperatorUsername">Username</label>
+                    <input type="text" id="editOperatorUsername" disabled style="background: #f3f4f6;">
+                </div>
+                <div class="form-group">
+                    <label for="editOperatorPassword">Nuova Password (lascia vuoto per mantenere l'attuale)</label>
+                    <input type="password" id="editOperatorPassword" placeholder="Lascia vuoto per non modificare">
+                </div>
+                <div class="form-group">
+                    <label for="editOperatorImage">Immagine (Emoji o URL)</label>
+                    <input type="text" id="editOperatorImage" placeholder="es. 👨‍🔧 oppure https://...">
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Salva Modifiche</button>
+                    <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="closeEditModal()">Annulla</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = `http://${window.location.hostname}:${window.location.port || 5000}/api`;
+        let token = localStorage.getItem('token');
+        let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        let operatorsList = [];
+        let editingOperatorId = null;
+
+        // Check authorization
+        window.addEventListener('load', () => {
+            if (!token || currentUser.role !== 'master') {
+                window.location.href = '/index.html';
+                return;
+            }
+            loadOperators();
+        });
+
+        async function loadOperators() {
+            try {
+                const response = await fetch(`${API_URL}/auth/operators`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) throw new Error('Errore nel caricamento degli operatori');
+                
+                operatorsList = await response.json();
+                renderOperators();
+            } catch (error) {
+                showAlert('Errore: ' + error.message, 'error');
+            }
+        }
+
+        function renderOperators() {
+            const container = document.getElementById('operatorsContainer');
+            
+            if (operatorsList.length === 0) {
+                container.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><p>Nessun operatore creato</p></div>';
+                return;
+            }
+
+            container.innerHTML = operatorsList.map(op => `
+                <div class="operator-card">
+                    <h3>${op.username}</h3>
+                    <div class="operator-info">
+                        <div>📅 Creato: ${new Date(op.createdAt).toLocaleString('it-IT')}</div>
+                    </div>
+                    <div class="operator-actions">
+                        <button class="btn btn-warning btn-small" onclick="openEditModal(${op.id}, '${op.username}', '${op.image || ''}')">✏️ Modifica</button>
+                        <button class="btn btn-danger btn-small" onclick="handleDeleteOperator(${op.id}, '${op.username}')">🗑️ Cancella</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function handleCreateOperator(event) {
+            event.preventDefault();
+            
+            const username = document.getElementById('operatorUsername').value;
+            const password = document.getElementById('operatorPassword').value;
+            const image = document.getElementById('operatorImage').value;
+
+            try {
+                const response = await fetch(`${API_URL}/auth/create-operator`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ username, password, image: image || null })
+                });
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message || 'Errore nella creazione');
+
+                showAlert('Operatore creato con successo!', 'success');
+                document.getElementById('createOperatorForm').reset();
+                await loadOperators();
+            } catch (error) {
+                showAlert('Errore: ' + error.message, 'error');
+            }
+        }
+
+        function openEditModal(operatorId, username, image) {
+            editingOperatorId = operatorId;
+            document.getElementById('editOperatorUsername').value = username;
+            document.getElementById('editOperatorImage').value = image || '';
+            document.getElementById('editModal').style.display = 'flex';
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+            editingOperatorId = null;
+        }
+
+        async function handleEditOperator(event) {
+            event.preventDefault();
+            
+            const password = document.getElementById('editOperatorPassword').value;
+            const image = document.getElementById('editOperatorImage').value;
+
+            try {
+                const response = await fetch(`${API_URL}/auth/operators/${editingOperatorId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ 
+                        password: password || undefined,
+                        image: image || null 
+                    })
+                });
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message || 'Errore nella modifica');
+
+                showAlert('Operatore modificato con successo!', 'success');
+                closeEditModal();
+                await loadOperators();
+            } catch (error) {
+                showAlert('Errore: ' + error.message, 'error');
+            }
+        }
+
+        async function handleDeleteOperator(operatorId, operatorName) {
+            if (!confirm(`Sei sicuro di voler eliminare l'operatore "${operatorName}"?`)) return;
+
+            try {
+                const response = await fetch(`${API_URL}/auth/operators/${operatorId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message || 'Errore nell\'eliminazione');
+
+                showAlert(`Operatore "${operatorName}" eliminato con successo!`, 'success');
+                await loadOperators();
+            } catch (error) {
+                showAlert('Errore: ' + error.message, 'error');
+            }
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('currentUser');
+            window.location.href = '/index.html';
+        }
+
+        function showAlert(message, type) {
+            const alert = document.getElementById('alert');
+            alert.textContent = message;
+            alert.className = `alert show alert-${type}`;
+            
+            setTimeout(() => {
+                alert.classList.remove('show');
+            }, 5000);
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('editModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('editModal')) {
+                closeEditModal();
+            }
+        });
+    </script>
+</body>
+</html>

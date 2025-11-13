@@ -66,7 +66,7 @@ export class AuthController {
                 return res.status(403).json({ message: 'Only master can create operators' });
             }
 
-            const { username, password } = req.body;
+            const { username, password, image } = req.body;
 
             if (!username || !password) {
                 return res.status(400).json({ message: 'Username and password required' });
@@ -84,12 +84,13 @@ export class AuthController {
                     username,
                     passwordHash,
                     role: 'slave',
+                    image: image || null,
                 },
             });
 
             res.status(201).json({ 
                 message: 'Operator created successfully', 
-                user: { id: user.id, username: user.username, role: user.role }
+                user: { id: user.id, username: user.username, role: user.role, image: user.image }
             });
         } catch (err: unknown) {
             const errorMsg = err instanceof Error ? err.message : 'Internal server error';
@@ -210,19 +211,84 @@ export class AuthController {
                 return res.status(403).json({ message: 'Only master can update operator images' });
             }
 
-            const { operatorId, image } = req.body;
+            const operatorId = parseInt(req.params.id);
+            const { image } = req.body;
 
-            if (!operatorId || !image) {
-                return res.status(400).json({ message: 'Operator ID and image required' });
+            if (!operatorId) {
+                return res.status(400).json({ message: 'Operator ID required' });
+            }
+
+            // Check if operator exists
+            const existingOperator = await prisma.user.findUnique({ 
+                where: { id: operatorId }
+            });
+
+            if (!existingOperator) {
+                return res.status(404).json({ message: 'Operator not found' });
+            }
+
+            if (existingOperator.role !== 'slave') {
+                return res.status(400).json({ message: 'Only slave users can be updated' });
             }
 
             const operator = await prisma.user.update({
-                where: { id: parseInt(operatorId) },
-                data: { image }
+                where: { id: operatorId },
+                data: { image: image || null }
             });
 
             res.json({
                 message: 'Operator image updated successfully',
+                operator: { id: operator.id, username: operator.username, image: operator.image }
+            });
+        } catch (err: unknown) {
+            const errorMsg = err instanceof Error ? err.message : 'Internal server error';
+            res.status(500).json({ message: errorMsg });
+        }
+    }
+
+    async updateOperator(req: Request, res: Response) {
+        try {
+            if (!req.user || req.user.role !== 'master') {
+                return res.status(403).json({ message: 'Only master can update operators' });
+            }
+
+            const operatorId = parseInt(req.params.id);
+            const { password, image } = req.body;
+
+            if (!operatorId) {
+                return res.status(400).json({ message: 'Operator ID required' });
+            }
+
+            // Check if operator exists
+            const existingOperator = await prisma.user.findUnique({ 
+                where: { id: operatorId }
+            });
+
+            if (!existingOperator) {
+                return res.status(404).json({ message: 'Operator not found' });
+            }
+
+            if (existingOperator.role !== 'slave') {
+                return res.status(400).json({ message: 'Only slave users can be updated' });
+            }
+
+            const updateData: any = {};
+            
+            if (password) {
+                updateData.passwordHash = await hashPassword(password);
+            }
+            
+            if (image !== undefined) {
+                updateData.image = image || null;
+            }
+
+            const operator = await prisma.user.update({
+                where: { id: operatorId },
+                data: updateData
+            });
+
+            res.json({
+                message: 'Operator updated successfully',
                 operator: { id: operator.id, username: operator.username, image: operator.image }
             });
         } catch (err: unknown) {
