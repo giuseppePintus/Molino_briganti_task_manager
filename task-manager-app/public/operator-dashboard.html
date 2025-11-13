@@ -366,7 +366,7 @@
 
         <!-- Available and Completed Tasks -->
         <div class="card">
-            <h2>📋 Compiti Disponibili & Completati</h2>
+            <h2>📋 Compiti Disponibili</h2>
             <div id="tasksList" class="task-list">
                 <div class="empty-state">
                     <p>Nessun compito disponibile</p>
@@ -407,6 +407,16 @@
             updateStats();
         }
 
+        function formatPriority(priority) {
+            const priorityMap = {
+                'LOW': '🟢 Bassa',
+                'MEDIUM': '🟡 Media',
+                'HIGH': '🟠 Alta',
+                'URGENT': '🔴 Urgente'
+            };
+            return priorityMap[priority] || priority;
+        }
+
         async function loadTasks() {
             try {
                 const response = await fetch(`${API_URL}/tasks`, {
@@ -427,33 +437,24 @@
             const currentTaskContent = document.getElementById('currentTaskContent');
             const tasksList = document.getElementById('tasksList');
 
-            // Find current task
-            const currentTask = allTasks.find(t => t.acceptedAt && !t.completed);
+            // Find current task (accepted but NOT paused and NOT completed)
+            const currentTask = allTasks.find(t => t.acceptedAt && !t.paused && !t.completed);
             
             if (currentTask) {
                 currentTaskSection.style.display = 'block';
-                
-                // Cambia il titolo in base allo stato di pausa
-                if (currentTask.paused) {
-                    currentTaskTitle.textContent = '⏸️ Compito in Pausa';
-                } else {
-                    currentTaskTitle.textContent = '⚡ Attuale Compito in Esecuzione';
-                }
+                currentTaskTitle.textContent = '⚡ Attuale Compito in Esecuzione';
                 
                 currentTaskContent.innerHTML = `
                     <div style="background: white; padding: 15px; border-radius: 4px;">
                         <h3 style="font-size: 18px; margin-bottom: 10px;">${currentTask.title}</h3>
                         <p style="color: #666; margin-bottom: 10px;">${currentTask.description || 'Nessuna descrizione'}</p>
                         <div class="task-meta" style="margin-bottom: 15px;">
-                            ${currentTask.scheduledAt ? `<span class="meta-tag">📅 ${new Date(currentTask.scheduledAt).toLocaleString('it-IT')}</span>` : ''}
+                            ${currentTask.scheduledAt ? `<span class="meta-tag">📅 ${new Date(currentTask.scheduledAt).toLocaleString('it-IT', { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>` : ''}
                             ${currentTask.estimatedMinutes ? `<span class="meta-tag">⏱️ ${currentTask.estimatedMinutes} min stimati</span>` : ''}
-                            ${currentTask.priority ? `<span class="meta-tag">🎯 ${currentTask.priority}</span>` : ''}
+                            ${currentTask.priority ? `<span class="meta-tag">${formatPriority(currentTask.priority)}</span>` : ''}
                         </div>
                         <div class="task-actions">
-                            ${currentTask.paused ? 
-                                `<button class="btn btn-info btn-small" onclick="handleResumeTask(${currentTask.id})">▶️ Riprendi</button>` :
-                                `<button class="btn btn-warning btn-small" onclick="handlePauseTask(${currentTask.id})">⏸️ Metti in Pausa</button>`
-                            }
+                            <button class="btn btn-warning btn-small" onclick="handlePauseTask(${currentTask.id})">⏸️ Metti in Pausa</button>
                             <button class="btn btn-success btn-small" onclick="openCompleteModal(${currentTask.id})">✅ Completa</button>
                             <button class="btn btn-secondary btn-small" onclick="openTaskModal(${currentTask.id})">📋 Dettagli</button>
                         </div>
@@ -466,6 +467,22 @@
             // Show other tasks (exclude current task and completed tasks)
             const otherTasks = allTasks.filter(t => (!currentTask || t.id !== currentTask.id) && !t.completed);
             
+            // Ordina i task: quelli senza data all'inizio, poi per data/ora
+            otherTasks.sort((a, b) => {
+                const aHasDate = a.scheduledAt ? true : false;
+                const bHasDate = b.scheduledAt ? true : false;
+                
+                // Se uno non ha data e l'altro sì, quello senza data viene prima
+                if (!aHasDate && bHasDate) return -1;
+                if (aHasDate && !bHasDate) return 1;
+                
+                // Se entrambi non hanno data, mantieni ordine originale
+                if (!aHasDate && !bHasDate) return 0;
+                
+                // Se entrambi hanno data, ordina per data crescente
+                return new Date(a.scheduledAt) - new Date(b.scheduledAt);
+            });
+            
             if (otherTasks.length === 0) {
                 tasksList.innerHTML = '<div class="empty-state"><p>Nessun altro compito disponibile</p></div>';
                 return;
@@ -473,20 +490,23 @@
 
             tasksList.innerHTML = otherTasks.map(task => {
                 const statusClass = task.completed ? 'completed' : '';
-                const statusText = task.completed ? '✓ Completato' : (task.acceptedAt ? 'In corso' : 'Disponibile');
+                const statusText = task.completed ? '✓ Completato' : (task.paused ? '⏸️ In Pausa' : (task.acceptedAt ? 'In corso' : 'Disponibile'));
+                const statusBgColor = task.paused ? '#fecaca' : '#e0e7ff';
+                const statusColor = task.paused ? '#dc2626' : 'var(--primary)';
                 return `
                     <div class="task-card ${statusClass}">
                         <div class="task-header">
                             <div class="task-title">${task.title}</div>
-                            <span style="font-size: 12px; background: #e0e7ff; color: var(--primary); padding: 4px 8px; border-radius: 4px;">${statusText}</span>
+                            <span style="font-size: 12px; background: ${statusBgColor}; color: ${statusColor}; padding: 4px 8px; border-radius: 4px;">${statusText}</span>
                         </div>
                         <p class="task-description">${task.description || 'Nessuna descrizione'}</p>
                         <div class="task-meta">
-                            ${task.scheduledAt ? `<span class="meta-tag">📅 ${new Date(task.scheduledAt).toLocaleString('it-IT')}</span>` : ''}
+                            ${task.scheduledAt ? `<span class="meta-tag">📅 ${new Date(task.scheduledAt).toLocaleString('it-IT', { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>` : ''}
                             ${task.estimatedMinutes ? `<span class="meta-tag">⏱️ ${task.estimatedMinutes} min</span>` : ''}
-                            ${task.priority ? `<span class="meta-tag">🎯 ${task.priority}</span>` : ''}
+                            ${task.priority ? `<span class="meta-tag">${formatPriority(task.priority)}</span>` : ''}
                         </div>
                         <div class="task-actions">
+                            ${task.paused ? `<button class="btn btn-info btn-small" onclick="handleResumeTask(${task.id})">▶️ Riprendi</button>` : ''}
                             ${!task.completed && !task.acceptedAt ? `<button class="btn btn-success btn-small" onclick="handleAcceptTask(${task.id})">👍 Accetta</button>` : ''}
                             ${!task.completed && !task.acceptedAt && task.scheduledAt ? `<button class="btn btn-secondary btn-small" onclick="handlePostponeTask(${task.id})">📅 Posticipa</button>` : ''}
                             ${!task.completed ? `<button class="btn btn-secondary btn-small" onclick="openTaskModal(${task.id})">📋 Dettagli</button>` : ''}
@@ -535,8 +555,8 @@
                     <div style="margin-bottom: 20px;">
                         <h3>${task.title}</h3>
                         <p style="color: #666; margin: 10px 0;">${task.description || 'Nessuna descrizione'}</p>
-                        ${task.scheduledAt ? `<p><strong>📅 Data:</strong> ${new Date(task.scheduledAt).toLocaleString('it-IT')}</p>` : ''}
-                        ${task.originalScheduledAt && task.originalScheduledAt !== task.scheduledAt ? `<p><strong>📋 Data Originale:</strong> ${new Date(task.originalScheduledAt).toLocaleString('it-IT')}</p>` : ''}
+                        ${task.scheduledAt ? `<p><strong>📅 Data:</strong> ${new Date(task.scheduledAt).toLocaleString('it-IT', { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</p>` : ''}
+                        ${task.originalScheduledAt && task.originalScheduledAt !== task.scheduledAt ? `<p><strong>📋 Data Originale:</strong> ${new Date(task.originalScheduledAt).toLocaleString('it-IT', { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</p>` : ''}
                         ${task.estimatedMinutes ? `<p><strong>⏱️ Tempo Stimato:</strong> ${task.estimatedMinutes} minuti</p>` : ''}
                         ${task.actualMinutes ? `<p><strong>✓ Tempo Effettivo:</strong> ${task.actualMinutes} minuti</p>` : ''}
                         <p><strong>Stato:</strong> ${task.completed ? '✓ Completato' : (task.acceptedAt ? 'In corso' : 'Disponibile')}</p>

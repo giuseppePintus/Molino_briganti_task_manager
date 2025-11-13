@@ -460,6 +460,16 @@
             initDashboard();
         });
 
+        function formatPriority(priority) {
+            switch(priority) {
+                case 'LOW': return '🟢 Bassa';
+                case 'MEDIUM': return '🟡 Media';
+                case 'HIGH': return '🟠 Alta';
+                case 'URGENT': return '🔴 Urgente';
+                default: return priority;
+            }
+        }
+
         async function initDashboard() {
             document.getElementById('userInfo').textContent = `👤 ${currentUser.username}`;
             await loadOperators();
@@ -545,19 +555,20 @@
             }
 
             container.innerHTML = filtered.map(task => {
-                const status = task.completed ? 'Completato' : (task.acceptedAt ? 'Accettato' : 'In Sospeso');
+                const status = task.completed ? 'Completato' : (task.paused ? 'In Pausa' : (task.acceptedAt ? 'Accettato' : 'In Sospeso'));
+                const statusIcon = task.completed ? '✅' : (task.paused ? '⏸️' : (task.acceptedAt ? '👍' : '📋'));
                 return `
                     <div class="task-card">
                         <div class="task-header">
                             <div class="task-title">${task.title}</div>
-                            <span class="task-status">${status}</span>
+                            <span class="task-status">${statusIcon} ${status}</span>
                         </div>
                         <p class="task-description">${task.description || 'Nessuna descrizione'}</p>
                         <div class="task-meta">
                             ${task.scheduledAt ? `<span class="meta-tag">📅 ${new Date(task.scheduledAt).toLocaleString('it-IT')}</span>` : ''}
                             ${task.estimatedMinutes ? `<span class="meta-tag">⏱️ ${task.estimatedMinutes} min</span>` : ''}
                             ${task.assignedOperator ? `<span class="meta-tag">👤 ${task.assignedOperator.username}</span>` : ''}
-                            ${task.priority ? `<span class="meta-tag">🎯 ${task.priority}</span>` : ''}
+                            ${task.priority ? `<span class="meta-tag">${formatPriority(task.priority)}</span>` : ''}
                         </div>
                         ${task.notes && task.notes.length > 0 ? `
                             <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #e0e0e0; font-size: 12px;">
@@ -725,6 +736,12 @@
                         <input type="text" id="modalTaskTitle" required placeholder="es. Installazione server" value="${task.title.replace(/"/g, '&quot;')}">
                     </div>
                     <div class="form-group">
+                        <label>Stato Attuale</label>
+                        <div style="padding: 10px; background: #f0f0f0; border-radius: 6px; border: 1px solid #e0e0e0; color: #666;">
+                            ${task.completed ? '✅ Completato' : (task.paused ? '⏸️ In Pausa' : (task.acceptedAt ? '👍 Accettato' : '📋 In Sospeso'))}
+                        </div>
+                    </div>
+                    <div class="form-group">
                         <label>Descrizione</label>
                         <textarea id="modalTaskDescription" placeholder="Descrizione dettagliata..." style="height: 80px;">${task.description ? task.description.replace(/</g, '&lt;').replace(/>/g, '&gt;') : ''}</textarea>
                     </div>
@@ -824,26 +841,15 @@
         }
 
         async function handleResetTask(taskId) {
-            if (!confirm('Sei sicuro di voler ripristinare questo task? Verranno rimossi accettazione, completamento, pausa e tutte le note.')) return;
+            if (!confirm('Sei sicuro di voler ripristinare questo task da completato a in sospeso?')) return;
 
             try {
-                const response = await fetch(`${API_URL}/tasks/${taskId}`, {
-                    method: 'PUT',
+                const response = await fetch(`${API_URL}/tasks/${taskId}/reset-suspended`, {
+                    method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({
-                        acceptedAt: null,
-                        acceptedBy: null,
-                        completed: false,
-                        completedAt: null,
-                        completedBy: null,
-                        paused: false,
-                        pausedAt: null,
-                        actualMinutes: null,
-                        notes: []
-                    })
+                    }
                 });
 
                 if (!response.ok) {
@@ -855,6 +861,7 @@
                 closeModal();
                 await loadTasks();
                 await updateStats();
+                setTimeout(() => location.reload(), 1000);
             } catch (error) {
                 showAlert('Errore: ' + error.message, 'error');
             }
