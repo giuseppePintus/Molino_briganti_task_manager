@@ -30,6 +30,7 @@ model Task {
   title             String
   description       String?
   scheduledAt       DateTime?
+  originalScheduledAt DateTime?  // Data originale del task (mantiene la data iniziale anche se spostata)
   assignedOperator  User?   @relation("AssignedTo", fields: [assignedOperatorId], references: [id])
   assignedOperatorId Int?
   estimatedMinutes  Int?
