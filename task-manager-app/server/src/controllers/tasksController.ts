@@ -57,7 +57,7 @@ export class TasksController {
                 return res.status(403).json({ message: 'Only master can create tasks' });
             }
 
-            const { title, description, scheduledAt, assignedOperatorId, estimatedMinutes, priority } = req.body;
+            const { title, description, scheduledAt, assignedOperatorId, estimatedMinutes, priority, recurrenceType, recurrenceEnd } = req.body;
 
             if (!title) {
                 return res.status(400).json({ message: 'Title is required' });
@@ -66,25 +66,100 @@ export class TasksController {
             const taskPriority = priority && ['LOW', 'MEDIUM', 'HIGH', 'URGENT'].includes(priority) ? priority : 'MEDIUM';
             const taskColor = priorityColors[taskPriority];
 
-            const newTask = await prisma.task.create({
-                data: {
-                    title,
-                    description: description || null,
-                    scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
-                    originalScheduledAt: scheduledAt ? new Date(scheduledAt) : null,
-                    assignedOperatorId: assignedOperatorId || null,
-                    estimatedMinutes: estimatedMinutes || null,
-                    priority: taskPriority,
-                    color: taskColor,
-                    createdById: req.user.id,
-                },
-                include: {
-                    assignedOperator: { select: { id: true, username: true } },
-                    createdBy: { select: { id: true, username: true } },
-                },
-            });
+            // Se non c'è ricorrenza, crea un task singolo
+            if (!recurrenceType) {
+                const newTask = await prisma.task.create({
+                    data: {
+                        title,
+                        description: description || null,
+                        scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+                        originalScheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+                        assignedOperatorId: assignedOperatorId || null,
+                        estimatedMinutes: estimatedMinutes || null,
+                        priority: taskPriority,
+                        color: taskColor,
+                        recurring: false,
+                        recurrenceType: null,
+                        recurrenceEnd: null,
+                        createdById: req.user.id,
+                    },
+                    include: {
+                        assignedOperator: { select: { id: true, username: true } },
+                        createdBy: { select: { id: true, username: true } },
+                    },
+                });
 
-            res.status(201).json(newTask);
+                res.status(201).json(newTask);
+                return;
+            }
+
+            // Se c'è ricorrenza, crea il task parent e le istanze ricorrenti
+            if (!scheduledAt) {
+                return res.status(400).json({ message: 'Data/ora richiesta per task ricorrenti' });
+            }
+
+            const startDate = new Date(scheduledAt);
+            const endDate = recurrenceEnd ? new Date(recurrenceEnd) : new Date(startDate.getTime() + 12 * 30 * 24 * 60 * 60 * 1000); // 12 mesi di default
+
+            // Genera le date per le istanze ricorrenti
+            const instanceDates: Date[] = [];
+            let currentDate = new Date(startDate);
+
+            while (currentDate <= endDate) {
+                instanceDates.push(new Date(currentDate));
+                
+                switch (recurrenceType) {
+                    case 'DAILY':
+                        currentDate.setDate(currentDate.getDate() + 1);
+                        break;
+                    case 'WEEKLY':
+                        currentDate.setDate(currentDate.getDate() + 7);
+                        break;
+                    case 'BIWEEKLY':
+                        currentDate.setDate(currentDate.getDate() + 14);
+                        break;
+                    case 'MONTHLY':
+                        currentDate.setMonth(currentDate.getMonth() + 1);
+                        break;
+                    case 'QUARTERLY':
+                        currentDate.setMonth(currentDate.getMonth() + 3);
+                        break;
+                    case 'YEARLY':
+                        currentDate.setFullYear(currentDate.getFullYear() + 1);
+                        break;
+                }
+            }
+
+            // Crea le istanze ricorrenti
+            const createdTasks = [];
+            for (const instanceDate of instanceDates) {
+                const task = await prisma.task.create({
+                    data: {
+                        title,
+                        description: description || null,
+                        scheduledAt: new Date(instanceDate),
+                        originalScheduledAt: new Date(instanceDate),
+                        assignedOperatorId: assignedOperatorId || null,
+                        estimatedMinutes: estimatedMinutes || null,
+                        priority: taskPriority,
+                        color: taskColor,
+                        recurring: true,
+                        recurrenceType,
+                        recurrenceEnd: endDate,
+                        createdById: req.user.id,
+                    },
+                    include: {
+                        assignedOperator: { select: { id: true, username: true } },
+                        createdBy: { select: { id: true, username: true } },
+                    },
+                });
+                createdTasks.push(task);
+            }
+
+            res.status(201).json({ 
+                message: `Creati ${createdTasks.length} task ricorrenti`, 
+                tasks: createdTasks 
+            });
         } catch (err: unknown) {
             const errorMsg = err instanceof Error ? err.message : 'Internal server error';
             res.status(500).json({ message: errorMsg });
@@ -98,7 +173,7 @@ export class TasksController {
             }
 
             const { id } = req.params;
-            const { title, description, scheduledAt, assignedOperatorId, estimatedMinutes, priority } = req.body;
+            const { title, description, scheduledAt, assignedOperatorId, estimatedMinutes, priority, recurrenceEnd } = req.body;
 
             const updateData: any = {};
             
@@ -114,6 +189,7 @@ export class TasksController {
             }
             if (assignedOperatorId !== undefined) updateData.assignedOperatorId = assignedOperatorId;
             if (estimatedMinutes !== undefined) updateData.estimatedMinutes = estimatedMinutes;
+            if (recurrenceEnd !== undefined) updateData.recurrenceEnd = recurrenceEnd ? new Date(recurrenceEnd) : null;
             
             if (priority !== undefined && ['LOW', 'MEDIUM', 'HIGH', 'URGENT'].includes(priority)) {
                 updateData.priority = priority;

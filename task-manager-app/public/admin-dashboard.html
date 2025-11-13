@@ -27,8 +27,26 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: var(--light);
-            color: var(--dark);
+            background: #1a1a1a;
+            color: #e0e0e0;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #5d5d5d;
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #7d7d7d;
         }
 
         .container {
@@ -38,10 +56,10 @@
         }
 
         .header {
-            background: white;
+            background: #2d2d2d;
             padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
             margin-bottom: 20px;
             display: flex;
             justify-content: space-between;
@@ -50,7 +68,7 @@
 
         .header h1 {
             font-size: 28px;
-            color: var(--dark);
+            color: #e0e0e0;
         }
 
         .header-actions {
@@ -60,8 +78,10 @@
         }
 
         .user-info {
-            font-size: 14px;
-            color: #666;
+            font-size: 18px;
+            font-weight: 600;
+            color: #b0b0b0;
+            letter-spacing: 0.3px;
         }
 
         .btn {
@@ -103,13 +123,13 @@
         }
 
         .btn-secondary {
-            background: var(--light);
-            color: var(--dark);
-            border: 1px solid var(--border);
+            background: #3d3d3d;
+            color: #e0e0e0;
+            border: 1px solid #4d4d4d;
         }
 
         .btn-secondary:hover {
-            background: white;
+            background: #4d4d4d;
         }
 
         .stats {
@@ -120,23 +140,23 @@
         }
 
         .stat-card {
-            background: white;
+            background: #2d2d2d;
             padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
             border-left: 4px solid var(--primary);
         }
 
         .stat-card .number {
             font-size: 32px;
             font-weight: bold;
-            color: var(--dark);
+            color: #e0e0e0;
             margin-bottom: 5px;
         }
 
         .stat-card .label {
             font-size: 14px;
-            color: #999;
+            color: #a0a0a0;
         }
 
         .quick-actions {
@@ -146,17 +166,17 @@
         }
 
         .card {
-            background: white;
+            background: #2d2d2d;
             padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
             margin-bottom: 20px;
         }
 
         .card h2 {
             font-size: 20px;
             margin-bottom: 15px;
-            color: var(--dark);
+            color: #e0e0e0;
         }
 
         .alert {
@@ -171,14 +191,14 @@
         }
 
         .alert-success {
-            background: #d1fae5;
-            color: #065f46;
+            background: #1e3a2a;
+            color: #86efac;
             border-left: 4px solid #10b981;
         }
 
         .alert-error {
-            background: #fee2e2;
-            color: #991b1b;
+            background: #3a1e1e;
+            color: #fca5a5;
             border-left: 4px solid #dc2626;
         }
 
@@ -196,23 +216,25 @@
         }
 
         .calendar-day {
-            border: 1px solid #e0e0e0;
+            border: 1px solid #4d4d4d;
             padding: 6px;
             min-height: 50px;
             border-radius: 4px;
-            background: #fafafa;
+            background: #3d3d3d;
             cursor: pointer;
             transition: all 0.2s;
             font-size: 11px;
+            color: #b0b0b0;
         }
 
         .calendar-day:hover {
-            background: #f0f0f0;
+            background: #4d4d4d;
+        }
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
 
         .calendar-day.has-tasks {
-            background: #e8f5e9;
+            background: #1e3a2a;
             border-color: #4caf50;
         }
 
@@ -224,11 +246,11 @@
         }
 
         .task-card {
-            background: white;
+            background: #3d3d3d;
             border-left: 4px solid var(--primary);
             padding: 15px;
             border-radius: 4px;
-            border: 1px solid #e0e0e0;
+            border: 1px solid #4d4d4d;
         }
 
         .task-header {
@@ -240,20 +262,21 @@
 
         .task-title {
             font-weight: 600;
-            color: var(--dark);
+            color: #e0e0e0;
             font-size: 15px;
+            text-transform: uppercase;
         }
 
         .task-status {
             font-size: 12px;
             padding: 4px 8px;
             border-radius: 4px;
-            background: #e3f2fd;
-            color: #1976d2;
+            background: #1e3a4d;
+            color: #7dd3fc;
         }
 
         .task-description {
-            color: #666;
+            color: #a0a0a0;
             font-size: 14px;
             margin-bottom: 10px;
         }
@@ -263,14 +286,16 @@
             gap: 10px;
             flex-wrap: wrap;
             font-size: 12px;
-            color: #999;
+            color: #808080;
             margin-bottom: 10px;
         }
 
         .meta-tag {
-            background: #f0f0f0;
+            background: #3d3d3d;
+            color: #a0a0a0;
             padding: 2px 6px;
             border-radius: 3px;
+            border: 1px solid #4d4d4d;
         }
 
         .task-actions {
@@ -287,7 +312,7 @@
         .empty-state {
             text-align: center;
             padding: 40px 20px;
-            color: #999;
+            color: #808080;
         }
 
         .modal {
@@ -308,14 +333,14 @@
         }
 
         .modal-content {
-            background: white;
+            background: #2d2d2d;
             padding: 30px;
             border-radius: 10px;
             max-width: 600px;
             width: 90%;
             max-height: 80vh;
             overflow-y: auto;
-            box-shadow: 0 5px 50px rgba(0,0,0,0.3);
+            box-shadow: 0 5px 50px rgba(0,0,0,0.5);
         }
 
         .form-group {
@@ -327,6 +352,7 @@
             margin-bottom: 5px;
             font-weight: 600;
             font-size: 14px;
+            color: #e0e0e0;
         }
 
         .form-group input,
@@ -334,10 +360,12 @@
         .form-group select {
             width: 100%;
             padding: 10px;
-            border: 1px solid var(--border);
+            border: 1px solid #4d4d4d;
             border-radius: 6px;
             font-size: 14px;
             font-family: inherit;
+            background: #3d3d3d;
+            color: #e0e0e0;
         }
 
         .form-group input:focus,
@@ -364,9 +392,16 @@
 
         .filter-bar select {
             padding: 8px 12px;
-            border: 1px solid var(--border);
+            border: 1px solid #4d4d4d;
             border-radius: 6px;
             font-size: 14px;
+            background: #3d3d3d;
+            color: #e0e0e0;
+        }
+        
+        .filter-bar select option {
+            background: #3d3d3d;
+            color: #e0e0e0;
         }
     </style>
 </head>
@@ -390,6 +425,7 @@
         <!-- Quick Actions -->
         <div class="quick-actions">
             <button class="btn btn-success" onclick="openCreateTaskModal()">📝 Nuovo Task</button>
+            <button class="btn btn-info" onclick="openCreateRecurrenceModal()" style="background: #3b82f6;">🔄 Nuova Ricorrenza</button>
             <button class="btn btn-primary" onclick="window.location.href='operators.html'">👥 Gestione Operatori</button>
         </div>
 
@@ -397,7 +433,11 @@
         <div class="main-content">
             <!-- Calendar -->
             <div class="card" style="padding: 12px;">
-                <h3 style="font-size: 14px; text-align: center; margin-bottom: 10px;">📅 Calendario</h3>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <button class="btn btn-primary" onclick="previousMonth()" style="padding: 8px 12px; font-size: 16px; min-width: auto; width: 40px;">◀</button>
+                    <h4 id="calendarMonthYear" style="margin: 0; color: #e0e0e0; font-size: 16px;"></h4>
+                    <button class="btn btn-primary" onclick="nextMonth()" style="padding: 8px 12px; font-size: 16px; min-width: auto; width: 40px;">▶</button>
+                </div>
                 <div id="calendarContainer" class="calendar-container">
                     <!-- Calendar will be generated here -->
                 </div>
@@ -408,8 +448,8 @@
                 <h2>📋 Task - Dettagli</h2>
                 
                 <!-- Filters Inside Card -->
-                <div class="filter-bar" style="margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 15px;">
-                    <label style="font-weight: 600; display: block; margin-bottom: 10px;">🔍 Filtri:</label>
+                <div class="filter-bar" style="margin-bottom: 20px; border-bottom: 1px solid #4d4d4d; padding-bottom: 15px;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 10px; color: #e0e0e0;">🔍 Filtri:</label>
                     <div style="display: flex; gap: 10px;">
                         <select id="operatorFilter" onchange="applyFilters()" style="flex: 1;">
                             <option value="">Tutti gli Operatori</option>
@@ -449,6 +489,10 @@
         let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
         let allOperators = [];
         let allTasks = [];
+        
+        // Variabili per il calendario
+        let calendarDisplayMonth = new Date().getMonth();
+        let calendarDisplayYear = new Date().getFullYear();
         let editingTaskId = null;
 
         // Check authorization
@@ -468,6 +512,18 @@
                 case 'URGENT': return '🔴 Urgente';
                 default: return priority;
             }
+        }
+
+        function getRecurrenceLabel(recurrenceType) {
+            const labels = {
+                'DAILY': 'Giornaliero',
+                'WEEKLY': 'Settimanale',
+                'BIWEEKLY': 'Bisettimanale',
+                'MONTHLY': 'Mensile',
+                'QUARTERLY': 'Trimestrale',
+                'YEARLY': 'Annuale'
+            };
+            return labels[recurrenceType] || recurrenceType;
         }
 
         async function initDashboard() {
@@ -569,17 +625,18 @@
                             ${task.estimatedMinutes ? `<span class="meta-tag">⏱️ ${task.estimatedMinutes} min</span>` : ''}
                             ${task.assignedOperator ? `<span class="meta-tag">👤 ${task.assignedOperator.username}</span>` : ''}
                             ${task.priority ? `<span class="meta-tag">${formatPriority(task.priority)}</span>` : ''}
+                            ${task.recurring && task.recurrenceType ? `<span class="meta-tag" style="background: #1e3a4d; color: #7dd3fc;">🔄 ${getRecurrenceLabel(task.recurrenceType)}</span>` : ''}
                         </div>
                         ${task.notes && task.notes.length > 0 ? `
-                            <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #e0e0e0; font-size: 12px;">
-                                <strong>📝 Note (${task.notes.length}):</strong>
+                            <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #4d4d4d; font-size: 12px;">
+                                <strong style="color: #e0e0e0;">📝 Note (${task.notes.length}):</strong>
                                 <div style="margin-top: 5px; max-height: 100px; overflow-y: auto;">
                                     ${task.notes.slice(0, 3).map(note => `
-                                        <div style="background: #f9fafb; padding: 5px; margin: 3px 0; border-radius: 3px;">
-                                            <strong style="color: #374151;">${note.user.username}</strong>: ${note.note.substring(0, 60)}...
+                                        <div style="background: #3d3d3d; padding: 5px; margin: 3px 0; border-radius: 3px; border: 1px solid #4d4d4d;">
+                                            <strong style="color: #a0a0a0;">${note.user.username}</strong>: <span style="color: #808080;">${note.note.substring(0, 60)}...</span>
                                         </div>
                                     `).join('')}
-                                    ${task.notes.length > 3 ? `<div style="color: #9ca3af; margin-top: 5px;">+${task.notes.length - 3} altre note</div>` : ''}
+                                    ${task.notes.length > 3 ? `<div style="color: #808080; margin-top: 5px;">+${task.notes.length - 3} altre note</div>` : ''}
                                 </div>
                             </div>
                         ` : ''}
@@ -632,13 +689,31 @@
         async function renderCalendar() {
             const container = document.getElementById('calendarContainer');
             if (!allTasks || allTasks.length === 0) {
-                container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 15px; color: #999; font-size: 12px;">Nessun task</div>';
+                container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 15px; color: #808080; font-size: 12px;">Nessun task</div>';
                 return;
             }
 
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = now.getMonth();
+            // Festivi italiani fissi
+            const italianHolidays = [
+                '01-01', // Capodanno
+                '01-06', // Epifania
+                '04-25', // Festa della Liberazione
+                '05-01', // Festa del Lavoro
+                '06-02', // Festa della Repubblica
+                '08-15', // Ferragosto
+                '11-01', // Ognissanti
+                '12-08', // Immacolata Concezione
+                '12-25', // Natale
+                '12-26'  // Santo Stefano
+            ];
+
+            const year = calendarDisplayYear;
+            const month = calendarDisplayMonth;
+            
+            // Aggiorna il titolo del mese
+            const monthNames = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 
+                               'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
+            document.getElementById('calendarMonthYear').textContent = `${monthNames[month]} ${year}`;
             
             const firstDay = new Date(year, month, 1);
             const lastDay = new Date(year, month + 1, 0);
@@ -646,7 +721,7 @@
             const startingDayOfWeek = firstDay.getDay();
             
             const dayNames = ['Do', 'Lu', 'Ma', 'Me', 'Gi', 'Ve', 'Sa'];
-            let html = dayNames.map(day => `<div style="font-weight: bold; text-align: center; padding: 4px; background: #f0f0f0; border-radius: 3px; font-size: 10px;">${day}</div>`).join('');
+            let html = dayNames.map(day => `<div style="font-weight: bold; text-align: center; padding: 6px; background: #3d3d3d; border: 1px solid #4d4d4d; border-radius: 4px; font-size: 11px; color: #b0b0b0;">${day}</div>`).join('');
             
             for (let i = 0; i < startingDayOfWeek; i++) {
                 html += '<div></div>';
@@ -655,6 +730,11 @@
             for (let day = 1; day <= daysInMonth; day++) {
                 const date = new Date(year, month, day);
                 const dateStr = date.toISOString().split('T')[0];
+                const dayOfWeek = date.getDay(); // 0 = Domenica
+                
+                // Controlla se è domenica (0) o festivo
+                const monthDay = String(month + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+                const isHoliday = dayOfWeek === 0 || italianHolidays.includes(monthDay);
                 
                 const dayTasks = allTasks.filter(task => {
                     if (!task.scheduledAt) return false;
@@ -662,10 +742,323 @@
                 });
                 
                 const hasTasksClass = dayTasks.length > 0 ? 'has-tasks' : '';
-                html += `<div class="calendar-day ${hasTasksClass}"><strong>${day}</strong><div style="font-size: 9px; margin-top: 2px;">${dayTasks.length} task</div></div>`;
+                const dayColor = isHoliday ? 'color: #ef4444;' : '';
+                html += `<div class="calendar-day ${hasTasksClass}" style="${dayColor}"><strong>${day}</strong><div style="font-size: 9px; margin-top: 2px;">${dayTasks.length} task</div></div>`;
             }
             
             container.innerHTML = html;
+        }
+        
+        function previousMonth() {
+            calendarDisplayMonth--;
+            if (calendarDisplayMonth < 0) {
+                calendarDisplayMonth = 11;
+                calendarDisplayYear--;
+            }
+            renderCalendar();
+        }
+        
+        function nextMonth() {
+            calendarDisplayMonth++;
+            if (calendarDisplayMonth > 11) {
+                calendarDisplayMonth = 0;
+                calendarDisplayYear++;
+            }
+            renderCalendar();
+        }
+
+        function openCreateRecurrenceModal() {
+            const modal = document.getElementById('taskModal');
+            const content = modal.querySelector('.modal-content');
+
+            // Raggruppa i task ricorrenti per tipo
+            const recurrenceGroups = {};
+            allTasks.filter(t => t.recurring && t.recurrenceType).forEach(task => {
+                const key = `${task.title}|${task.recurrenceType}`;
+                if (!recurrenceGroups[key]) {
+                    recurrenceGroups[key] = [];
+                }
+                recurrenceGroups[key].push(task);
+            });
+
+            let recurrenceListHtml = '';
+            if (Object.keys(recurrenceGroups).length === 0) {
+                recurrenceListHtml = '<p style="color: #808080; text-align: center; padding: 20px;">Nessuna ricorrenza attiva</p>';
+            } else {
+                recurrenceListHtml = Object.entries(recurrenceGroups).map(([key, tasks]) => {
+                    const [title, recurrenceType] = key.split('|');
+                    const firstTask = tasks[0];
+                    return `
+                        <div style="background: #3d3d3d; padding: 15px; margin-bottom: 10px; border-radius: 6px; border-left: 4px solid #3b82f6; border: 1px solid #4d4d4d;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <strong style="color: #e0e0e0;">${title}</strong><br>
+                                    <small style="color: #a0a0a0;">🔄 ${getRecurrenceLabel(recurrenceType)} • ${tasks.length} istanze</small><br>
+                                    ${firstTask.recurrenceEnd ? `<small style="color: #808080;">Fine: ${new Date(firstTask.recurrenceEnd).toLocaleDateString('it-IT')}</small>` : ''}
+                                </div>
+                                <button type="button" class="btn btn-info btn-small" onclick="openEditRecurrenceModal('${key}')" style="background: #3b82f6;">✏️ Modifica</button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            content.innerHTML = `
+                <h2>🔄 Gestione Ricorrenze</h2>
+                
+                <h3 style="margin-top: 20px; margin-bottom: 10px;">Ricorrenze Attive</h3>
+                <div id="recurrenceList">
+                    ${recurrenceListHtml}
+                </div>
+
+                <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+                    <h3 style="margin-bottom: 10px;">Crea Nuova Ricorrenza</h3>
+                    <form onsubmit="handleCreateNewRecurrence(event)">
+                        <div class="form-group">
+                            <label>Titolo Task *</label>
+                            <input type="text" id="recTitolo" required placeholder="es. Manutenzione server">
+                        </div>
+                        <div class="form-group">
+                            <label>Descrizione</label>
+                            <textarea id="recDescrizione" placeholder="Descrizione..." style="height: 60px;"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Data/Ora Inizio *</label>
+                            <input type="datetime-local" id="recStart" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Tipo di Ricorrenza *</label>
+                            <select id="recType" required>
+                                <option value="">-- Seleziona --</option>
+                                <option value="DAILY">📅 Ogni Giorno</option>
+                                <option value="WEEKLY">📅 Ogni Settimana</option>
+                                <option value="BIWEEKLY">📅 Ogni 2 Settimane</option>
+                                <option value="MONTHLY">📅 Ogni Mese</option>
+                                <option value="QUARTERLY">📅 Ogni 3 Mesi</option>
+                                <option value="YEARLY">📅 Ogni Anno</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Data Fine Ricorrenza</label>
+                            <input type="date" id="recEnd" placeholder="Lascia vuoto per senza fine">
+                        </div>
+                        <div class="form-group">
+                            <label>Operatore</label>
+                            <select id="recOperator">
+                                <option value="">-- Nessuno --</option>
+                                ${allOperators.map(op => `<option value="${op.id}">${op.username}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Priorità</label>
+                            <select id="recPriority">
+                                <option value="LOW">🟢 Bassa</option>
+                                <option value="MEDIUM" selected>🟡 Media</option>
+                                <option value="HIGH">🟠 Alta</option>
+                                <option value="URGENT">🔴 Urgente</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Tempo Stimato (minuti)</label>
+                            <input type="number" id="recMinutes" placeholder="es. 30">
+                        </div>
+                        <div class="modal-actions">
+                            <button type="submit" class="btn btn-success">Crea Ricorrenza</button>
+                            <button type="button" class="btn btn-secondary" onclick="closeModal()">Chiudi</button>
+                        </div>
+                    </form>
+                </div>
+            `;
+            
+            modal.classList.add('active');
+        }
+
+        async function openEditRecurrenceModal(key) {
+            const [title, recurrenceType] = key.split('|');
+            const tasks = allTasks.filter(t => t.title === title && t.recurring && t.recurrenceType === recurrenceType);
+            
+            if (tasks.length === 0) return;
+
+            const firstTask = tasks[0];
+            const modal = document.getElementById('taskModal');
+            const content = modal.querySelector('.modal-content');
+
+            let recEndValue = '';
+            if (firstTask.recurrenceEnd) {
+                const date = new Date(firstTask.recurrenceEnd);
+                recEndValue = date.toISOString().slice(0, 10);
+            }
+
+            content.innerHTML = `
+                <h2>✏️ Modifica Ricorrenza</h2>
+                <form onsubmit="handleUpdateGlobalRecurrence(event, '${key}')">
+                    <div class="form-group">
+                        <label>Titolo</label>
+                        <div style="padding: 10px; background: #3d3d3d; border-radius: 6px; color: #e0e0e0; border: 1px solid #4d4d4d;">
+                            ${title}
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Istanze Attive</label>
+                        <div style="padding: 10px; background: #3d3d3d; border-radius: 6px; color: #e0e0e0; border: 1px solid #4d4d4d;">
+                            ${tasks.length} task
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Tipo di Ricorrenza Attuale</label>
+                        <div style="padding: 10px; background: #1e3a4d; border-radius: 6px; color: #7dd3fc; font-weight: bold; border: 1px solid #2a4a5d;">
+                            🔄 ${getRecurrenceLabel(recurrenceType)}
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Nuovo Tipo di Ricorrenza</label>
+                        <select id="newRecType" required>
+                            <option value="DAILY" ${recurrenceType === 'DAILY' ? 'selected' : ''}>📅 Ogni Giorno</option>
+                            <option value="WEEKLY" ${recurrenceType === 'WEEKLY' ? 'selected' : ''}>📅 Ogni Settimana</option>
+                            <option value="BIWEEKLY" ${recurrenceType === 'BIWEEKLY' ? 'selected' : ''}>📅 Ogni 2 Settimane</option>
+                            <option value="MONTHLY" ${recurrenceType === 'MONTHLY' ? 'selected' : ''}>📅 Ogni Mese</option>
+                            <option value="QUARTERLY" ${recurrenceType === 'QUARTERLY' ? 'selected' : ''}>📅 Ogni 3 Mesi</option>
+                            <option value="YEARLY" ${recurrenceType === 'YEARLY' ? 'selected' : ''}>📅 Ogni Anno</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Data Fine Ricorrenza</label>
+                        <input type="date" id="newRecEnd" value="${recEndValue}">
+                    </div>
+                    <div style="background: #3a2a1e; padding: 10px; border-radius: 6px; margin-bottom: 15px; border-left: 4px solid #f59e0b;">
+                        <p style="font-size: 13px; color: #fcd34d;"><strong>⚠️ Attenzione:</strong> Questo aggiornerà TUTTI i ${tasks.length} task di questa ricorrenza eliminando quelli vecchi e generandone di nuovi secondo il nuovo tipo.</p>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="submit" class="btn btn-warning" style="background: #f59e0b;">🔄 Aggiorna Ricorrenza</button>
+                        <button type="button" class="btn btn-danger" onclick="handleDeleteGlobalRecurrence('${key}')">🗑️ Elimina Tutta la Ricorrenza</button>
+                        <button type="button" class="btn btn-secondary" onclick="openCreateRecurrenceModal()">Indietro</button>
+                    </div>
+                </form>
+            `;
+        }
+
+        async function handleCreateNewRecurrence(event) {
+            event.preventDefault();
+
+            const title = document.getElementById('recTitolo').value;
+            const description = document.getElementById('recDescrizione').value;
+            const scheduledAt = document.getElementById('recStart').value;
+            const recurrenceType = document.getElementById('recType').value;
+            const recurrenceEnd = document.getElementById('recEnd').value;
+            const assignedOperatorId = document.getElementById('recOperator').value;
+            const priority = document.getElementById('recPriority').value;
+            const estimatedMinutes = document.getElementById('recMinutes').value;
+
+            try {
+                const response = await fetch(`${API_URL}/tasks`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        title,
+                        description: description || null,
+                        scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+                        recurrenceType,
+                        recurrenceEnd: recurrenceEnd ? new Date(recurrenceEnd) : null,
+                        assignedOperatorId: assignedOperatorId ? parseInt(assignedOperatorId) : null,
+                        priority,
+                        estimatedMinutes: estimatedMinutes ? parseInt(estimatedMinutes) : null
+                    })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || 'Errore creazione');
+                }
+
+                showAlert('Ricorrenza creata!', 'success');
+                closeModal();
+                await loadTasks();
+                await updateStats();
+            } catch (error) {
+                showAlert('Errore: ' + error.message, 'error');
+            }
+        }
+
+        async function handleUpdateGlobalRecurrence(event, key) {
+            event.preventDefault();
+
+            const [title, oldRecurrenceType] = key.split('|');
+            const newRecurrenceType = document.getElementById('newRecType').value;
+            const newRecurrenceEnd = document.getElementById('newRecEnd').value;
+
+            // Ottieni tutte le istanze attuali
+            const tasksToDelete = allTasks.filter(t => t.title === title && t.recurring && t.recurrenceType === oldRecurrenceType);
+
+            if (!confirm(`Questo aggiornerà ${tasksToDelete.length} task. I task vecchi verranno eliminati e rigenerati. Continua?`)) {
+                return;
+            }
+
+            try {
+                // Elimina tutti i vecchi task
+                for (const task of tasksToDelete) {
+                    await fetch(`${API_URL}/tasks/${task.id}`, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                }
+
+                // Crea i nuovi task con la nuova ricorrenza
+                const firstTask = tasksToDelete[0];
+                const response = await fetch(`${API_URL}/tasks`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        title: firstTask.title,
+                        description: firstTask.description,
+                        scheduledAt: firstTask.originalScheduledAt,
+                        recurrenceType: newRecurrenceType,
+                        recurrenceEnd: newRecurrenceEnd ? new Date(newRecurrenceEnd) : firstTask.recurrenceEnd,
+                        assignedOperatorId: firstTask.assignedOperatorId,
+                        priority: firstTask.priority,
+                        estimatedMinutes: firstTask.estimatedMinutes
+                    })
+                });
+
+                if (!response.ok) throw new Error('Errore aggiornamento');
+
+                showAlert(`Ricorrenza aggiornata! ${tasksToDelete.length} task eliminati e rigenerati.`, 'success');
+                closeModal();
+                await loadTasks();
+                await updateStats();
+            } catch (error) {
+                showAlert('Errore: ' + error.message, 'error');
+            }
+        }
+
+        async function handleDeleteGlobalRecurrence(key) {
+            const [title, recurrenceType] = key.split('|');
+            const tasksToDelete = allTasks.filter(t => t.title === title && t.recurring && t.recurrenceType === recurrenceType);
+
+            if (!confirm(`Sei sicuro di voler eliminare TUTTI i ${tasksToDelete.length} task di questa ricorrenza? Questa azione non può essere annullata.`)) {
+                return;
+            }
+
+            try {
+                for (const task of tasksToDelete) {
+                    await fetch(`${API_URL}/tasks/${task.id}`, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                }
+
+                showAlert(`Eliminati ${tasksToDelete.length} task ricorrenti!`, 'success');
+                openCreateRecurrenceModal();
+                await loadTasks();
+                await updateStats();
+            } catch (error) {
+                showAlert('Errore: ' + error.message, 'error');
+            }
         }
 
         function openCreateTaskModal() {
@@ -689,6 +1082,22 @@
                         <input type="datetime-local" id="modalTaskScheduledAt">
                     </div>
                     <div class="form-group">
+                        <label>Ricorrenza</label>
+                        <select id="modalTaskRecurrence" onchange="updateRecurrenceFields()">
+                            <option value="">-- Nessuna (Una sola volta) --</option>
+                            <option value="DAILY">📅 Ogni Giorno</option>
+                            <option value="WEEKLY">📅 Ogni Settimana</option>
+                            <option value="BIWEEKLY">📅 Ogni 2 Settimane</option>
+                            <option value="MONTHLY">📅 Ogni Mese</option>
+                            <option value="QUARTERLY">📅 Ogni 3 Mesi</option>
+                            <option value="YEARLY">📅 Ogni Anno</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="recurrenceEndGroup" style="display: none;">
+                        <label>Data Fine Ricorrenza</label>
+                        <input type="date" id="modalTaskRecurrenceEnd" placeholder="Lascia vuoto per senza fine">
+                    </div>
+                    <div class="form-group">
                         <label>Operatore</label>
                         <select id="modalTaskOperator">
                             <option value="">-- Nessuno --</option>
@@ -704,6 +1113,10 @@
                             <option value="URGENT">🔴 Urgente</option>
                         </select>
                     </div>
+                    <div class="form-group">
+                        <label>Tempo Stimato (minuti)</label>
+                        <input type="number" id="modalTaskEstimatedMinutes" placeholder="es. 30">
+                    </div>
                     <div class="modal-actions">
                         <button type="submit" class="btn btn-success">Crea Task</button>
                         <button type="button" class="btn btn-secondary" onclick="closeModal()">Annulla</button>
@@ -712,6 +1125,12 @@
             `;
             
             modal.classList.add('active');
+        }
+
+        function updateRecurrenceFields() {
+            const recurrenceSelect = document.getElementById('modalTaskRecurrence');
+            const endGroup = document.getElementById('recurrenceEndGroup');
+            endGroup.style.display = recurrenceSelect.value ? 'block' : 'none';
         }
 
         async function openEditTaskModal(taskId) {
@@ -728,6 +1147,12 @@
                 scheduledAtValue = date.toISOString().slice(0, 16);
             }
 
+            let recurrenceEndValue = '';
+            if (task.recurrenceEnd) {
+                const date = new Date(task.recurrenceEnd);
+                recurrenceEndValue = date.toISOString().slice(0, 10);
+            }
+
             content.innerHTML = `
                 <h2>✏️ Modifica Task</h2>
                 <form onsubmit="handleCreateTaskFromModal(event)">
@@ -737,7 +1162,7 @@
                     </div>
                     <div class="form-group">
                         <label>Stato Attuale</label>
-                        <div style="padding: 10px; background: #f0f0f0; border-radius: 6px; border: 1px solid #e0e0e0; color: #666;">
+                        <div style="padding: 10px; background: #3d3d3d; border-radius: 6px; border: 1px solid #4d4d4d; color: #e0e0e0;">
                             ${task.completed ? '✅ Completato' : (task.paused ? '⏸️ In Pausa' : (task.acceptedAt ? '👍 Accettato' : '📋 In Sospeso'))}
                         </div>
                     </div>
@@ -749,6 +1174,13 @@
                         <label>Data/Ora Esecuzione</label>
                         <input type="datetime-local" id="modalTaskScheduledAt" value="${scheduledAtValue}">
                     </div>
+                    ${task.recurring && task.recurrenceType ? `
+                    <div class="form-group" style="background: #1e3a4d; padding: 10px; border-radius: 6px; border: 1px solid #2a4a5d;">
+                        <label style="color: #7dd3fc; font-weight: bold;">🔄 Ricorrenza</label>
+                        <p style="color: #7dd3fc; margin: 5px 0;">Tipo: <strong>${getRecurrenceLabel(task.recurrenceType)}</strong></p>
+                        ${task.recurrenceEnd ? `<p style="color: #0c4a6e; margin: 5px 0;">Fine: <strong>${new Date(task.recurrenceEnd).toLocaleDateString('it-IT')}</strong></p>` : ''}
+                    </div>
+                    ` : ''}
                     <div class="form-group">
                         <label>Operatore</label>
                         <select id="modalTaskOperator">
@@ -765,6 +1197,10 @@
                             <option value="URGENT" ${task.priority === 'URGENT' ? 'selected' : ''}>🔴 Urgente</option>
                         </select>
                     </div>
+                    <div class="form-group">
+                        <label>Tempo Stimato (minuti)</label>
+                        <input type="number" id="modalTaskEstimatedMinutes" placeholder="es. 30" value="${task.estimatedMinutes || ''}">
+                    </div>
                     <div class="modal-actions">
                         <button type="submit" class="btn btn-success">Salva Modifiche</button>
                         <button type="button" class="btn btn-danger" onclick="handleResetTask(${taskId})">🔄 Ripristina Task</button>
@@ -779,11 +1215,14 @@
         async function handleCreateTaskFromModal(event) {
             event.preventDefault();
             
-            const title = document.getElementById('modalTaskTitle').value;
+            const title = document.getElementById('modalTaskTitle').value.toUpperCase();
             const description = document.getElementById('modalTaskDescription').value;
             const scheduledAt = document.getElementById('modalTaskScheduledAt').value;
             const assignedOperatorId = document.getElementById('modalTaskOperator').value;
             const priority = document.getElementById('modalTaskPriority').value;
+            const recurrenceType = document.getElementById('modalTaskRecurrence')?.value || '';
+            const recurrenceEnd = document.getElementById('modalTaskRecurrenceEnd')?.value || '';
+            const estimatedMinutes = document.getElementById('modalTaskEstimatedMinutes')?.value || '';
             
             try {
                 if (editingTaskId) {
@@ -798,7 +1237,8 @@
                             description: description || null,
                             scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
                             assignedOperatorId: assignedOperatorId ? parseInt(assignedOperatorId) : null,
-                            priority
+                            priority,
+                            estimatedMinutes: estimatedMinutes ? parseInt(estimatedMinutes) : null
                         })
                     });
                     
@@ -820,7 +1260,10 @@
                             description: description || null,
                             scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
                             assignedOperatorId: assignedOperatorId ? parseInt(assignedOperatorId) : null,
-                            priority
+                            priority,
+                            recurrenceType: recurrenceType || null,
+                            recurrenceEnd: recurrenceEnd ? new Date(recurrenceEnd) : null,
+                            estimatedMinutes: estimatedMinutes ? parseInt(estimatedMinutes) : null
                         })
                     });
                     
@@ -888,6 +1331,7 @@
                 showAlert('Errore: ' + error.message, 'error');
             }
         }
+
 
         function closeModal() {
             const modal = document.getElementById('taskModal');

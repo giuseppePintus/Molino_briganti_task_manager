@@ -23,8 +23,26 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: var(--light);
-            color: var(--dark);
+            background: #1a1a1a;
+            color: #e0e0e0;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #5d5d5d;
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #7d7d7d;
         }
 
         .container {
@@ -34,10 +52,10 @@
         }
 
         .header {
-            background: white;
+            background: #2d2d2d;
             padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
             margin-bottom: 20px;
             display: flex;
             justify-content: space-between;
@@ -45,8 +63,10 @@
         }
 
         .header h1 {
-            font-size: 28px;
-            color: var(--dark);
+            font-size: 32px;
+            color: #e0e0e0;
+            font-weight: 700;
+            letter-spacing: 0.5px;
         }
 
         .header-actions {
@@ -56,8 +76,10 @@
         }
 
         .user-info {
-            font-size: 14px;
-            color: #666;
+            font-size: 18px;
+            font-weight: 600;
+            color: #b0b0b0;
+            letter-spacing: 0.3px;
         }
 
         .btn {
@@ -99,13 +121,13 @@
         }
 
         .btn-secondary {
-            background: var(--light);
-            color: var(--dark);
-            border: 1px solid var(--border);
+            background: #3d3d3d;
+            color: #e0e0e0;
+            border: 1px solid #4d4d4d;
         }
 
         .btn-secondary:hover {
-            background: white;
+            background: #4d4d4d;
         }
 
         .btn-small {
@@ -114,17 +136,19 @@
         }
 
         .card {
-            background: white;
+            background: #2d2d2d;
             padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
             margin-bottom: 20px;
         }
 
         .card h2 {
-            font-size: 20px;
-            margin-bottom: 15px;
-            color: var(--dark);
+            font-size: 22px;
+            margin-bottom: 18px;
+            color: #e0e0e0;
+            font-weight: 700;
+            letter-spacing: 0.3px;
         }
 
         .alert {
@@ -139,14 +163,14 @@
         }
 
         .alert-success {
-            background: #d1fae5;
-            color: #065f46;
+            background: #1e3a2a;
+            color: #86efac;
             border-left: 4px solid #10b981;
         }
 
         .alert-error {
-            background: #fee2e2;
-            color: #991b1b;
+            background: #3a1e1e;
+            color: #fca5a5;
             border-left: 4px solid #dc2626;
         }
 
@@ -156,11 +180,18 @@
         }
 
         .task-card {
-            background: #f9fafb;
+            background: #3d3d3d;
             border-left: 4px solid var(--primary);
-            padding: 15px;
-            border-radius: 4px;
-            border: 1px solid #e0e0e0;
+            padding: 18px;
+            border-radius: 6px;
+            border: 1px solid #4d4d4d;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+            transition: all 0.2s ease;
+        }
+        
+        .task-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            border-color: #5d5d5d;
         }
 
         .task-card.completed {
@@ -181,14 +212,20 @@
         }
 
         .task-title {
-            font-weight: 600;
-            color: var(--dark);
-            font-size: 16px;
+            font-weight: 700;
+            color: #e0e0e0;
+            font-size: 19px;
+            line-height: 1.4;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid rgba(59, 130, 246, 0.2);
+            text-transform: uppercase;
         }
 
         .task-description {
-            color: #666;
-            font-size: 14px;
+            color: #a0a0a0;
+            font-size: 15px;
+            line-height: 1.5;
             margin-bottom: 10px;
         }
 
@@ -196,15 +233,17 @@
             display: flex;
             gap: 10px;
             flex-wrap: wrap;
-            font-size: 12px;
-            color: #999;
+            font-size: 13px;
+            color: #808080;
             margin-bottom: 10px;
         }
 
         .meta-tag {
-            background: #e0e7ff;
+            background: #3d3d3d;
             padding: 3px 8px;
             border-radius: 3px;
+            border: 1px solid #4d4d4d;
+            color: #a0a0a0;
         }
 
         .task-actions {
@@ -216,7 +255,7 @@
         .empty-state {
             text-align: center;
             padding: 40px 20px;
-            color: #999;
+            color: #808080;
         }
 
         .modal {
@@ -237,14 +276,14 @@
         }
 
         .modal-content {
-            background: white;
+            background: #2d2d2d;
             padding: 30px;
             border-radius: 10px;
             max-width: 600px;
             width: 90%;
             max-height: 80vh;
             overflow-y: auto;
-            box-shadow: 0 5px 50px rgba(0,0,0,0.3);
+            box-shadow: 0 5px 50px rgba(0,0,0,0.5);
         }
 
         .form-group {
@@ -256,25 +295,30 @@
             margin-bottom: 5px;
             font-weight: 600;
             font-size: 14px;
+            color: #e0e0e0;
         }
 
         .form-group textarea {
             width: 100%;
             padding: 10px;
-            border: 1px solid var(--border);
+            border: 1px solid #4d4d4d;
             border-radius: 6px;
             font-size: 14px;
             font-family: inherit;
             min-height: 100px;
+            background: #3d3d3d;
+            color: #e0e0e0;
         }
 
         .form-group input {
             width: 100%;
             padding: 10px;
-            border: 1px solid var(--border);
+            border: 1px solid #4d4d4d;
             border-radius: 6px;
             font-size: 14px;
             font-family: inherit;
+            background: #3d3d3d;
+            color: #e0e0e0;
         }
 
         .form-group textarea:focus,
@@ -292,22 +336,24 @@
         }
 
         .note {
-            background: white;
+            background: #3d3d3d;
             padding: 12px;
             margin-bottom: 8px;
             border-radius: 4px;
             border-left: 3px solid var(--primary);
             font-size: 13px;
+            border: 1px solid #4d4d4d;
+            color: #e0e0e0;
         }
 
         .note-author {
             font-weight: 600;
-            color: var(--primary);
+            color: #7dd3fc;
             margin-bottom: 3px;
         }
 
         .note-time {
-            color: #999;
+            color: #808080;
             font-size: 12px;
             margin-top: 3px;
         }
@@ -320,10 +366,10 @@
         }
 
         .stat-card {
-            background: white;
+            background: #2d2d2d;
             padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
             border-left: 4px solid var(--primary);
             text-align: center;
         }
@@ -331,13 +377,14 @@
         .stat-number {
             font-size: 28px;
             font-weight: bold;
-            color: var(--dark);
+            color: #e0e0e0;
         }
 
         .stat-label {
-            font-size: 12px;
-            color: #999;
+            font-size: 13px;
+            color: #a0a0a0;
             margin-top: 5px;
+            font-weight: 500;
         }
     </style>
 </head>
@@ -359,8 +406,8 @@
         <div class="stats" id="stats"></div>
 
         <!-- Current Task -->
-        <div id="currentTaskSection" class="card" style="display: none; background: #fef3c7; border-left: 4px solid var(--warning);">
-            <h2 id="currentTaskTitle">⚡ Attuale Compito in Esecuzione</h2>
+        <div id="currentTaskSection" class="card" style="display: none; background: #3d3d3d; border-left: 4px solid #ea580c;">
+            <h2 id="currentTaskTitle" style="color: #e0e0e0;">⚡ Attuale Compito in Esecuzione</h2>
             <div id="currentTaskContent"></div>
         </div>
 
@@ -437,17 +484,35 @@
             const currentTaskContent = document.getElementById('currentTaskContent');
             const tasksList = document.getElementById('tasksList');
 
+            // Calcola la data limite (oggi + 5 giorni)
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const fiveDaysLater = new Date(today);
+            fiveDaysLater.setDate(fiveDaysLater.getDate() + 5);
+
+            // Filtra i task dei prossimi 5 giorni
+            const tasksIn5Days = allTasks.filter(t => {
+                if (!t.scheduledAt) return false; // Esclude task senza data
+                const taskDate = new Date(t.scheduledAt);
+                taskDate.setHours(0, 0, 0, 0);
+                return taskDate >= today && taskDate <= fiveDaysLater;
+            });
+
+            // Includi anche task senza data
+            const tasksWithoutDate = allTasks.filter(t => !t.scheduledAt);
+            const filteredAllTasks = [...tasksWithoutDate, ...tasksIn5Days];
+
             // Find current task (accepted but NOT paused and NOT completed)
-            const currentTask = allTasks.find(t => t.acceptedAt && !t.paused && !t.completed);
+            const currentTask = filteredAllTasks.find(t => t.acceptedAt && !t.paused && !t.completed);
             
             if (currentTask) {
                 currentTaskSection.style.display = 'block';
                 currentTaskTitle.textContent = '⚡ Attuale Compito in Esecuzione';
                 
                 currentTaskContent.innerHTML = `
-                    <div style="background: white; padding: 15px; border-radius: 4px;">
-                        <h3 style="font-size: 18px; margin-bottom: 10px;">${currentTask.title}</h3>
-                        <p style="color: #666; margin-bottom: 10px;">${currentTask.description || 'Nessuna descrizione'}</p>
+                    <div style="background: #3d3d3d; padding: 15px; border-radius: 4px; border: 1px solid #4d4d4d;">
+                        <h3 style="font-size: 18px; margin-bottom: 10px; color: #e0e0e0;">${currentTask.title}</h3>
+                        <p style="color: #a0a0a0; margin-bottom: 10px;">${currentTask.description || 'Nessuna descrizione'}</p>
                         <div class="task-meta" style="margin-bottom: 15px;">
                             ${currentTask.scheduledAt ? `<span class="meta-tag">📅 ${new Date(currentTask.scheduledAt).toLocaleString('it-IT', { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>` : ''}
                             ${currentTask.estimatedMinutes ? `<span class="meta-tag">⏱️ ${currentTask.estimatedMinutes} min stimati</span>` : ''}
@@ -464,8 +529,8 @@
                 currentTaskSection.style.display = 'none';
             }
 
-            // Show other tasks (exclude current task and completed tasks)
-            const otherTasks = allTasks.filter(t => (!currentTask || t.id !== currentTask.id) && !t.completed);
+            // Show other tasks (exclude current task and completed tasks, filtered to next 5 days)
+            const otherTasks = filteredAllTasks.filter(t => (!currentTask || t.id !== currentTask.id) && !t.completed);
             
             // Ordina i task: quelli senza data all'inizio, poi per data/ora
             otherTasks.sort((a, b) => {
@@ -484,15 +549,15 @@
             });
             
             if (otherTasks.length === 0) {
-                tasksList.innerHTML = '<div class="empty-state"><p>Nessun altro compito disponibile</p></div>';
+                tasksList.innerHTML = '<div class="empty-state"><p>Nessun compito disponibile nei prossimi 5 giorni</p></div>';
                 return;
             }
 
             tasksList.innerHTML = otherTasks.map(task => {
                 const statusClass = task.completed ? 'completed' : '';
                 const statusText = task.completed ? '✓ Completato' : (task.paused ? '⏸️ In Pausa' : (task.acceptedAt ? 'In corso' : 'Disponibile'));
-                const statusBgColor = task.paused ? '#fecaca' : '#e0e7ff';
-                const statusColor = task.paused ? '#dc2626' : 'var(--primary)';
+                const statusBgColor = task.paused ? '#3a1e1e' : '#1e3a4d';
+                const statusColor = task.paused ? '#fca5a5' : '#7dd3fc';
                 return `
                     <div class="task-card ${statusClass}">
                         <div class="task-header">
@@ -517,15 +582,29 @@
         }
 
         function updateStats() {
-            const notAccepted = allTasks.filter(t => !t.acceptedAt && !t.completed).length;
-            const paused = allTasks.filter(t => t.paused && !t.completed).length;
-            const inProgress = allTasks.filter(t => t.acceptedAt && !t.completed && !t.paused).length;
+            // Calcola la data limite (oggi + 5 giorni)
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const fiveDaysLater = new Date(today);
+            fiveDaysLater.setDate(fiveDaysLater.getDate() + 5);
+
+            // Filtra i task dei prossimi 5 giorni o senza data
+            const tasksIn5Days = allTasks.filter(t => {
+                if (!t.scheduledAt) return true; // Includi task senza data
+                const taskDate = new Date(t.scheduledAt);
+                taskDate.setHours(0, 0, 0, 0);
+                return taskDate >= today && taskDate <= fiveDaysLater;
+            });
+
+            const notAccepted = tasksIn5Days.filter(t => !t.acceptedAt && !t.completed).length;
+            const paused = tasksIn5Days.filter(t => t.paused && !t.completed).length;
+            const inProgress = tasksIn5Days.filter(t => t.acceptedAt && !t.completed && !t.paused).length;
             const total = notAccepted + paused + inProgress; // Total non accettati + in pausa + in esecuzione
 
             document.getElementById('stats').innerHTML = `
                 <div class="stat-card" style="border-left-color: #2563eb;">
                     <div class="stat-number">${total}</div>
-                    <div class="stat-label">Totale Compiti</div>
+                    <div class="stat-label">Totale Compiti (prossimi 5gg)</div>
                 </div>
                 <div class="stat-card" style="border-left-color: #fbbf24;">
                     <div class="stat-number">${paused}</div>
@@ -553,21 +632,21 @@
 
                 let html = `
                     <div style="margin-bottom: 20px;">
-                        <h3>${task.title}</h3>
-                        <p style="color: #666; margin: 10px 0;">${task.description || 'Nessuna descrizione'}</p>
-                        ${task.scheduledAt ? `<p><strong>📅 Data:</strong> ${new Date(task.scheduledAt).toLocaleString('it-IT', { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</p>` : ''}
-                        ${task.originalScheduledAt && task.originalScheduledAt !== task.scheduledAt ? `<p><strong>📋 Data Originale:</strong> ${new Date(task.originalScheduledAt).toLocaleString('it-IT', { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</p>` : ''}
-                        ${task.estimatedMinutes ? `<p><strong>⏱️ Tempo Stimato:</strong> ${task.estimatedMinutes} minuti</p>` : ''}
-                        ${task.actualMinutes ? `<p><strong>✓ Tempo Effettivo:</strong> ${task.actualMinutes} minuti</p>` : ''}
-                        <p><strong>Stato:</strong> ${task.completed ? '✓ Completato' : (task.acceptedAt ? 'In corso' : 'Disponibile')}</p>
+                        <h3 style="color: #e0e0e0;">${task.title}</h3>
+                        <p style="color: #a0a0a0; margin: 10px 0;">${task.description || 'Nessuna descrizione'}</p>
+                        ${task.scheduledAt ? `<p style="color: #e0e0e0;"><strong>📅 Data:</strong> ${new Date(task.scheduledAt).toLocaleString('it-IT', { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</p>` : ''}
+                        ${task.originalScheduledAt && task.originalScheduledAt !== task.scheduledAt ? `<p style="color: #e0e0e0;"><strong>📋 Data Originale:</strong> ${new Date(task.originalScheduledAt).toLocaleString('it-IT', { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</p>` : ''}
+                        ${task.estimatedMinutes ? `<p style="color: #e0e0e0;"><strong>⏱️ Tempo Stimato:</strong> ${task.estimatedMinutes} minuti</p>` : ''}
+                        ${task.actualMinutes ? `<p style="color: #e0e0e0;"><strong>✓ Tempo Effettivo:</strong> ${task.actualMinutes} minuti</p>` : ''}
+                        <p style="color: #e0e0e0;"><strong>Stato:</strong> ${task.completed ? '✓ Completato' : (task.acceptedAt ? 'In corso' : 'Disponibile')}</p>
                     </div>
 
-                    <h4 style="margin: 20px 0 10px;">📝 Note (${notes.length})</h4>
-                    <div style="background: var(--light); padding: 10px; border-radius: 6px; max-height: 200px; overflow-y: auto;">
+                    <h4 style="margin: 20px 0 10px; color: #e0e0e0;">📝 Note (${notes.length})</h4>
+                    <div style="background: #3d3d3d; padding: 10px; border-radius: 6px; max-height: 200px; overflow-y: auto; border: 1px solid #4d4d4d;">
                 `;
 
                 if (notes.length === 0) {
-                    html += '<p style="color: #999; font-size: 13px;">Nessuna nota</p>';
+                    html += '<p style="color: #808080; font-size: 13px;">Nessuna nota</p>';
                 } else {
                     html += notes.map(note => `
                         <div class="note">
@@ -584,8 +663,8 @@
                     if (isCompleting) {
                         // Modalità completamento: mostra form per completare il task
                         html += `
-                            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">
-                                <h4>✅ Completa Compito</h4>
+                            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #4d4d4d;">
+                                <h4 style="color: #e0e0e0;">✅ Completa Compito</h4>
                                 <form onsubmit="handleCompleteTask(event, ${taskId})">
                                     <div class="form-group">
                                         <label>Nota Finale</label>
@@ -602,8 +681,8 @@
                     } else {
                         // Modalità normale: mostra form per aggiungere nota
                         html += `
-                            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">
-                                <h4>➕ Aggiungi Nota</h4>
+                            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #4d4d4d;">
+                                <h4 style="color: #e0e0e0;">➕ Aggiungi Nota</h4>
                                 <form onsubmit="handleAddNote(event, ${taskId})">
                                     <div class="form-group">
                                         <textarea id="noteContent" placeholder="Aggiungi una nota..." required></textarea>
