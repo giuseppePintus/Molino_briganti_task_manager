@@ -18,6 +18,7 @@ router.delete('/:id', (req, res) => tasksController.deleteTask(req, res));
 router.post('/:id/accept', (req, res) => tasksController.acceptTask(req, res));
 router.post('/:id/pause', (req, res) => tasksController.pauseTask(req, res));
 router.post('/:id/resume', (req, res) => tasksController.resumeTask(req, res));
+router.post('/:id/postpone', (req, res) => tasksController.postponeTask(req, res));
 
 // Task notes routes
 router.post('/:id/notes', (req, res) => tasksController.addNote(req, res));

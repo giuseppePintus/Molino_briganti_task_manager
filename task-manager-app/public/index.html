@@ -901,135 +901,6 @@
     </div>
 
     <!-- Dashboard -->
-    <div id="dashboard" class="dashboard">
-        <div class="container">
-            <!-- Header -->
-            <div class="header">
-                <div>
-                    <h1>📋 Task Manager</h1>
-                </div>
-                <div class="user-info">
-                    <div>
-                        <div style="font-size: 12px; color: #6b7280;">Loggato come</div>
-                        <div style="font-weight: bold;" id="currentUser">-</div>
-                    </div>
-                    <span class="user-badge" id="userRole">-</span>
-                    <button class="btn btn-secondary btn-small" onclick="handleLogout()">Logout</button>
-                </div>
-            </div>
-
-            <!-- Stats -->
-            <div class="stats" id="stats"></div>
-
-            <!-- Quick Actions (Master Only) -->
-            <div id="quickActionsBar" style="display: none; gap: 10px; margin-bottom: 15px;">
-                <button class="btn btn-success" style="flex: 1; padding: 14px;" onclick="openCreateTaskModal()">
-                    📝 Nuovo Task
-                </button>
-                <button class="btn btn-primary" style="flex: 1; padding: 14px;" onclick="window.location.href='operators.html'">
-                    👥 Gestione Operatori
-                </button>
-            </div>
-
-            <!-- Filters Bar (Master Only) -->
-            <div id="filtersBar" style="display: none; gap: 15px; margin-bottom: 20px; align-items: center;">
-                <div style="flex: 0 0 auto;">
-                    <label style="font-size: 12px; font-weight: 600;">🔍 Filtri:</label>
-                </div>
-                <div style="flex: 1; display: flex; gap: 10px; align-items: center;">
-                    <div style="flex: 1; min-width: 150px;">
-                        <select id="operatorFilter" onchange="applyFilters()" class="priority-select">
-                            <option value="">Tutti gli Operatori</option>
-                        </select>
-                    </div>
-                    <div style="flex: 1; min-width: 150px;">
-                        <select id="statusFilter" onchange="applyFilters()" class="priority-select">
-                            <option value="">Tutti gli Stati</option>
-                            <option value="pending">In Sospeso</option>
-                            <option value="accepted">Accettato</option>
-                            <option value="completed">Completato</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Alert (Master Dashboard) -->
-            <div id="masterAlert" class="alert" style="display: none; margin-bottom: 20px;"></div>
-
-            <!-- Master Dashboard (New Layout) -->
-            <div id="masterDashboard" style="display: none;">
-                <div style="display: grid; grid-template-columns: 320px 1fr; gap: 20px;">
-                    <!-- Left Sidebar: Calendar -->
-                    <div style="display: flex; flex-direction: column; gap: 15px;">
-                        <!-- Compact Calendar Card -->
-                        <div class="card" style="padding: 12px;">
-                            <h3 style="margin-bottom: 10px; font-size: 14px; text-align: center;">📅 Calendario</h3>
-                            <div id="calendarContainer" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; padding: 10px 0;">
-                                <!-- Calendar will be generated here -->
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Main Content: Tasks List -->
-                    <div style="display: flex; flex-direction: column; gap: 20px;">
-                        <!-- Tasks List -->
-                        <div class="card">
-                            <h2>📋 Dettaglio Task</h2>
-                            <div id="masterTasksList" style="display: grid; gap: 15px; max-height: 800px; overflow-y: auto;">
-                                <div class="empty-state">
-                                    <p>Nessun compito disponibile</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Main Content -->
-            <div id="mainContent" class="main-content" style="display: none;">
-                <!-- Master View: Two column layout -->
-                <!-- Tasks Panel -->
-                <div class="card">
-                    <h2>📝 Compiti</h2>
-                    <div id="alert" class="alert"></div>
-                    
-                    <div id="tasksList" class="tasks-list">
-                        <div class="empty-state">
-                            <p>Nessun compito disponibile</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Actions Panel -->
-                <div class="card">
-                    <h2 id="actionsTitle">🎯 Azioni</h2>
-                    <div id="actionsPanel"></div>
-                </div>
-            </div>
-
-            <!-- Operator View: Single column layout -->
-            <div id="operatorView" style="display: none;">
-                <!-- Current Task in Execution -->
-                <div id="currentTaskSection" class="card" style="display: none;">
-                    <h2>⚡ Compito in Esecuzione</h2>
-                    <div id="currentTaskContent"></div>
-                </div>
-
-                <!-- Available and Completed Tasks -->
-                <div class="card">
-                    <h2>📋 Compiti Disponibili & Completati</h2>
-                    <div id="alert" class="alert"></div>
-                    
-                    <div id="operatorTasksList" class="tasks-list">
-                        <div class="empty-state">
-                            <p>Nessun compito disponibile</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Task Details Modal -->
     <div id="taskModal" class="modal">
         <div class="modal-content">
@@ -1234,9 +1105,7 @@
                 showAlert(alert, `Benvenuto Master!`, 'success');
                 
                 setTimeout(() => {
-                    document.getElementById('loginPage').style.display = 'none';
-                    document.getElementById('dashboard').classList.add('active');
-                    initDashboard();
+                    window.location.href = 'admin-dashboard.html';
                 }, 1000);
             } catch (error) {
                 showAlert(alert, error.message, 'error');
@@ -1272,9 +1141,7 @@
                 showAlert(alert, `Benvenuto ${currentUser.username}!`, 'success');
                 
                 setTimeout(() => {
-                    document.getElementById('loginPage').style.display = 'none';
-                    document.getElementById('dashboard').classList.add('active');
-                    initDashboard();
+                    window.location.href = 'operator-dashboard.html';
                 }, 1000);
             } catch (error) {
                 showAlert(alert, error.message, 'error');
@@ -1290,57 +1157,6 @@
             document.getElementById('loginPage').style.display = 'flex';
             document.getElementById('dashboard').classList.remove('active');
             loadOperatorsCarousel();
-        }
-
-        // ==================== DASHBOARD ====================
-        async function initDashboard() {
-            updateUserInfo();
-            
-            // Show appropriate dashboard based on role
-            if (currentUser.role === 'master') {
-                document.getElementById('quickActionsBar').style.display = 'flex';
-                document.getElementById('filtersBar').style.display = 'flex';
-                document.getElementById('masterDashboard').style.display = 'block';
-                document.getElementById('mainContent').style.display = 'none';
-                document.getElementById('operatorView').style.display = 'none';
-                await loadMasterDashboard();
-            } else {
-                document.getElementById('quickActionsBar').style.display = 'none';
-                document.getElementById('filtersBar').style.display = 'none';
-                document.getElementById('masterDashboard').style.display = 'none';
-                document.getElementById('mainContent').style.display = 'none';
-                document.getElementById('operatorView').style.display = 'block';
-                renderActionsPanel();
-                await loadTasks();
-                await updateStats();
-            }
-        }
-
-        function updateUserInfo() {
-            document.getElementById('currentUser').textContent = currentUser.username || '-';
-            const roleBadge = document.getElementById('userRole');
-            if (currentUser.role === 'slave') {
-                // Hide badge for operators
-                roleBadge.style.display = 'none';
-            } else {
-                roleBadge.textContent = currentUser.role?.toUpperCase() || '-';
-                roleBadge.className = `user-badge ${currentUser.role}`;
-                roleBadge.style.display = 'inline-block';
-            }
-        }
-
-        function renderActionsPanel() {
-            const panel = document.getElementById('actionsPanel');
-            
-            if (currentUser.role !== 'master') {
-                // Per operatore: mostra solo un messaggio semplice
-                panel.innerHTML = `
-                    <div class="form-section">
-                        <h3>📌 I Tuoi Compiti</h3>
-                        <p style="color: #6b7280; font-size: 13px;">Seleziona un compito dalla lista per accettarlo, metterlo in pausa o completarlo.</p>
-                    </div>
-                `;
-            }
         }
 
         async function loadOperators() {
@@ -2294,11 +2110,18 @@
         // ==================== INIT ====================
         window.addEventListener('load', () => {
             if (token && currentUser.id) {
-                document.getElementById('loginPage').style.display = 'none';
-                document.getElementById('dashboard').classList.add('active');
-                initDashboard();
+                // User already logged in - redirect to appropriate dashboard
+                if (currentUser.role === 'master') {
+                    window.location.href = 'admin-dashboard.html';
+                } else {
+                    window.location.href = 'operator-dashboard.html';
+                }
             } else {
-                loadOperatorsCarousel();
+                // Show login page with operator carousel
+                // Small delay to ensure DOM is ready
+                setTimeout(() => {
+                    loadOperatorsCarousel();
+                }, 100);
             }
         });
     </script>

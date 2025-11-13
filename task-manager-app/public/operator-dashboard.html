@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Operator Dashboard - Molino Briganti</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2563eb;
+            --success: #16a34a;
+            --danger: #dc2626;
+            --warning: #ea580c;
+            --dark: #1f2937;
+            --light: #f3f4f6;
+            --border: #e5e7eb;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--light);
+            color: var(--dark);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            color: var(--dark);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .user-info {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1d4ed8;
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #15803d;
+        }
+
+        .btn-warning {
+            background: var(--warning);
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: #d97706;
+        }
+
+        .btn-secondary {
+            background: var(--light);
+            color: var(--dark);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: white;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .card h2 {
+            font-size: 20px;
+            margin-bottom: 15px;
+            color: var(--dark);
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+            border-left: 4px solid #10b981;
+        }
+
+        .alert-error {
+            background: #fee2e2;
+            color: #991b1b;
+            border-left: 4px solid #dc2626;
+        }
+
+        .task-list {
+            display: grid;
+            gap: 15px;
+        }
+
+        .task-card {
+            background: #f9fafb;
+            border-left: 4px solid var(--primary);
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .task-card.completed {
+            opacity: 0.7;
+            border-left-color: #4caf50;
+        }
+
+        .task-card.current {
+            background: #fef3c7;
+            border-left-color: var(--warning);
+        }
+
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 10px;
+        }
+
+        .task-title {
+            font-weight: 600;
+            color: var(--dark);
+            font-size: 16px;
+        }
+
+        .task-description {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .task-meta {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 10px;
+        }
+
+        .meta-tag {
+            background: #e0e7ff;
+            padding: 3px 8px;
+            border-radius: 3px;
+        }
+
+        .task-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 5px 50px rgba(0,0,0,0.3);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            min-height: 100px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .form-group textarea:focus,
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: flex-end;
+        }
+
+        .note {
+            background: white;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            border-left: 3px solid var(--primary);
+            font-size: 13px;
+        }
+
+        .note-author {
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 3px;
+        }
+
+        .note-time {
+            color: #999;
+            font-size: 12px;
+            margin-top: 3px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-left: 4px solid var(--primary);
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 28px;
+            font-weight: bold;
+            color: var(--dark);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>⚡ Operator Dashboard</h1>
+            <div class="header-actions">
+                <div class="user-info" id="userInfo"></div>
+                <button class="btn btn-secondary" onclick="handleLogout()">🚪 Logout</button>
+            </div>
+        </div>
+
+        <!-- Alert -->
+        <div id="alert" class="alert"></div>
+
+        <!-- Stats -->
+        <div class="stats" id="stats"></div>
+
+        <!-- Current Task -->
+        <div id="currentTaskSection" class="card" style="display: none; background: #fef3c7; border-left: 4px solid var(--warning);">
+            <h2 id="currentTaskTitle">⚡ Attuale Compito in Esecuzione</h2>
+            <div id="currentTaskContent"></div>
+        </div>
+
+        <!-- Available and Completed Tasks -->
+        <div class="card">
+            <h2>📋 Compiti Disponibili & Completati</h2>
+            <div id="tasksList" class="task-list">
+                <div class="empty-state">
+                    <p>Nessun compito disponibile</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Task Details Modal -->
+    <div id="taskModal" class="modal">
+        <div class="modal-content">
+            <h2 id="modalTitle">Dettagli Compito</h2>
+            <div id="modalBody"></div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal()">Chiudi</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = `http://${window.location.hostname}:${window.location.port || 5000}/api`;
+        let token = localStorage.getItem('token');
+        let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        let allTasks = [];
+
+        // Check authorization
+        window.addEventListener('load', () => {
+            if (!token || currentUser.role !== 'slave') {
+                window.location.href = '/index.html';
+                return;
+            }
+            initDashboard();
+        });
+
+        async function initDashboard() {
+            document.getElementById('userInfo').textContent = `👤 ${currentUser.username}`;
+            await loadTasks();
+            updateStats();
+        }
+
+        async function loadTasks() {
+            try {
+                const response = await fetch(`${API_URL}/tasks`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) throw new Error('Errore caricamento task');
+                
+                allTasks = await response.json();
+                renderTasks();
+            } catch (error) {
+                showAlert('Errore: ' + error.message, 'error');
+            }
+        }
+
+        function renderTasks() {
+            const currentTaskSection = document.getElementById('currentTaskSection');
+            const currentTaskTitle = document.getElementById('currentTaskTitle');
+            const currentTaskContent = document.getElementById('currentTaskContent');
+            const tasksList = document.getElementById('tasksList');
+
+            // Find current task
+            const currentTask = allTasks.find(t => t.acceptedAt && !t.completed);
+            
+            if (currentTask) {
+                currentTaskSection.style.display = 'block';
+                
+                // Cambia il titolo in base allo stato di pausa
+                if (currentTask.paused) {
+                    currentTaskTitle.textContent = '⏸️ Compito in Pausa';
+                } else {
+                    currentTaskTitle.textContent = '⚡ Attuale Compito in Esecuzione';
+                }
+                
+                currentTaskContent.innerHTML = `
+                    <div style="background: white; padding: 15px; border-radius: 4px;">
+                        <h3 style="font-size: 18px; margin-bottom: 10px;">${currentTask.title}</h3>
+                        <p style="color: #666; margin-bottom: 10px;">${currentTask.description || 'Nessuna descrizione'}</p>
+                        <div class="task-meta" style="margin-bottom: 15px;">
+                            ${currentTask.scheduledAt ? `<span class="meta-tag">📅 ${new Date(currentTask.scheduledAt).toLocaleString('it-IT')}</span>` : ''}
+                            ${currentTask.estimatedMinutes ? `<span class="meta-tag">⏱️ ${currentTask.estimatedMinutes} min stimati</span>` : ''}
+                            ${currentTask.priority ? `<span class="meta-tag">🎯 ${currentTask.priority}</span>` : ''}
+                        </div>
+                        <div class="task-actions">
+                            ${currentTask.paused ? 
+                                `<button class="btn btn-info btn-small" onclick="handleResumeTask(${currentTask.id})">▶️ Riprendi</button>` :
+                                `<button class="btn btn-warning btn-small" onclick="handlePauseTask(${currentTask.id})">⏸️ Metti in Pausa</button>`
+                            }
+                            <button class="btn btn-success btn-small" onclick="openCompleteModal(${currentTask.id})">✅ Completa</button>
+                            <button class="btn btn-secondary btn-small" onclick="openTaskModal(${currentTask.id})">📋 Dettagli</button>
+                        </div>
+                    </div>
+                `;
+            } else {
+                currentTaskSection.style.display = 'none';
+            }
+
+            // Show other tasks (exclude current task and completed tasks)
+            const otherTasks = allTasks.filter(t => (!currentTask || t.id !== currentTask.id) && !t.completed);
+            
+            if (otherTasks.length === 0) {
+                tasksList.innerHTML = '<div class="empty-state"><p>Nessun altro compito disponibile</p></div>';
+                return;
+            }
+
+            tasksList.innerHTML = otherTasks.map(task => {
+                const statusClass = task.completed ? 'completed' : '';
+                const statusText = task.completed ? '✓ Completato' : (task.acceptedAt ? 'In corso' : 'Disponibile');
+                return `
+                    <div class="task-card ${statusClass}">
+                        <div class="task-header">
+                            <div class="task-title">${task.title}</div>
+                            <span style="font-size: 12px; background: #e0e7ff; color: var(--primary); padding: 4px 8px; border-radius: 4px;">${statusText}</span>
+                        </div>
+                        <p class="task-description">${task.description || 'Nessuna descrizione'}</p>
+                        <div class="task-meta">
+                            ${task.scheduledAt ? `<span class="meta-tag">📅 ${new Date(task.scheduledAt).toLocaleString('it-IT')}</span>` : ''}
+                            ${task.estimatedMinutes ? `<span class="meta-tag">⏱️ ${task.estimatedMinutes} min</span>` : ''}
+                            ${task.priority ? `<span class="meta-tag">🎯 ${task.priority}</span>` : ''}
+                        </div>
+                        <div class="task-actions">
+                            ${!task.completed && !task.acceptedAt ? `<button class="btn btn-success btn-small" onclick="handleAcceptTask(${task.id})">👍 Accetta</button>` : ''}
+                            ${!task.completed && !task.acceptedAt && task.scheduledAt ? `<button class="btn btn-secondary btn-small" onclick="handlePostponeTask(${task.id})">📅 Posticipa</button>` : ''}
+                            ${!task.completed ? `<button class="btn btn-secondary btn-small" onclick="openTaskModal(${task.id})">📋 Dettagli</button>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateStats() {
+            const notAccepted = allTasks.filter(t => !t.acceptedAt && !t.completed).length;
+            const paused = allTasks.filter(t => t.paused && !t.completed).length;
+            const inProgress = allTasks.filter(t => t.acceptedAt && !t.completed && !t.paused).length;
+            const total = notAccepted + paused + inProgress; // Total non accettati + in pausa + in esecuzione
+
+            document.getElementById('stats').innerHTML = `
+                <div class="stat-card" style="border-left-color: #2563eb;">
+                    <div class="stat-number">${total}</div>
+                    <div class="stat-label">Totale Compiti</div>
+                </div>
+                <div class="stat-card" style="border-left-color: #fbbf24;">
+                    <div class="stat-number">${paused}</div>
+                    <div class="stat-label">In Pausa</div>
+                </div>
+                <div class="stat-card" style="border-left-color: #2196f3;">
+                    <div class="stat-number">${inProgress}</div>
+                    <div class="stat-label">In Esecuzione</div>
+                </div>
+            `;
+        }
+
+        async function openTaskModal(taskId, isCompleting = false) {
+            try {
+                const task = allTasks.find(t => t.id === taskId);
+                if (!task) throw new Error('Compito non trovato');
+
+                const response = await fetch(`${API_URL}/tasks/${taskId}/notes`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const notes = await response.json();
+
+                const modal = document.getElementById('taskModal');
+                const body = document.getElementById('modalBody');
+
+                let html = `
+                    <div style="margin-bottom: 20px;">
+                        <h3>${task.title}</h3>
+                        <p style="color: #666; margin: 10px 0;">${task.description || 'Nessuna descrizione'}</p>
+                        ${task.scheduledAt ? `<p><strong>📅 Data:</strong> ${new Date(task.scheduledAt).toLocaleString('it-IT')}</p>` : ''}
+                        ${task.originalScheduledAt && task.originalScheduledAt !== task.scheduledAt ? `<p><strong>📋 Data Originale:</strong> ${new Date(task.originalScheduledAt).toLocaleString('it-IT')}</p>` : ''}
+                        ${task.estimatedMinutes ? `<p><strong>⏱️ Tempo Stimato:</strong> ${task.estimatedMinutes} minuti</p>` : ''}
+                        ${task.actualMinutes ? `<p><strong>✓ Tempo Effettivo:</strong> ${task.actualMinutes} minuti</p>` : ''}
+                        <p><strong>Stato:</strong> ${task.completed ? '✓ Completato' : (task.acceptedAt ? 'In corso' : 'Disponibile')}</p>
+                    </div>
+
+                    <h4 style="margin: 20px 0 10px;">📝 Note (${notes.length})</h4>
+                    <div style="background: var(--light); padding: 10px; border-radius: 6px; max-height: 200px; overflow-y: auto;">
+                `;
+
+                if (notes.length === 0) {
+                    html += '<p style="color: #999; font-size: 13px;">Nessuna nota</p>';
+                } else {
+                    html += notes.map(note => `
+                        <div class="note">
+                            <div class="note-author">${note.user.username}</div>
+                            <div>${note.note}</div>
+                            <div class="note-time">${new Date(note.createdAt).toLocaleString('it-IT')}</div>
+                        </div>
+                    `).join('');
+                }
+
+                html += '</div>';
+
+                if (!task.completed) {
+                    if (isCompleting) {
+                        // Modalità completamento: mostra form per completare il task
+                        html += `
+                            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">
+                                <h4>✅ Completa Compito</h4>
+                                <form onsubmit="handleCompleteTask(event, ${taskId})">
+                                    <div class="form-group">
+                                        <label>Nota Finale</label>
+                                        <textarea id="completionNote" placeholder="Aggiungi una nota finale..." style="min-height: 80px;"></textarea>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Tempo Effettivo (minuti) *</label>
+                                        <input type="number" id="completionTime" min="1" required placeholder="es. 120">
+                                    </div>
+                                    <button type="submit" class="btn btn-success" style="width: 100%;">✅ Completa Compito</button>
+                                </form>
+                            </div>
+                        `;
+                    } else {
+                        // Modalità normale: mostra form per aggiungere nota
+                        html += `
+                            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">
+                                <h4>➕ Aggiungi Nota</h4>
+                                <form onsubmit="handleAddNote(event, ${taskId})">
+                                    <div class="form-group">
+                                        <textarea id="noteContent" placeholder="Aggiungi una nota..." required></textarea>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Tempo Effettivo (minuti)</label>
+                                        <input type="number" id="actualMinutes" min="0" placeholder="es. 120">
+                                    </div>
+                                    <button type="submit" class="btn btn-success" style="width: 100%;">Aggiungi Nota</button>
+                                </form>
+                            </div>
+                        `;
+                    }
+                }
+
+                body.innerHTML = html;
+                modal.classList.add('active');
+            } catch (error) {
+                showAlert('Errore: ' + error.message, 'error');
+            }
+        }
+
+        async function handleAddNote(event, taskId) {
+            event.preventDefault();
+
+            const note = document.getElementById('noteContent').value;
+            const actualMinutes = parseInt(document.getElementById('actualMinutes').value) || null;
+
+            try {
+                const response = await fetch(`${API_URL}/tasks/${taskId}/notes`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ note, actualMinutes, markCompleted: false })
+                });
+
+                if (!response.ok) throw new Error('Errore nell\'aggiunta della nota');
+
+                showAlert('Nota aggiunta!', 'success');
+                closeModal();
+                await loadTasks();
+                setTimeout(() => location.reload(), 1000);
+            } catch (error) {
+                showAlert('Errore: ' + error.message, 'error');
+            }
+        }
+
+        async function handleAcceptTask(taskId) {
+            try {
+                const response = await fetch(`${API_URL}/tasks/${taskId}/accept`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || 'Errore nell\'accettazione');
+                }
+
+                showAlert('Compito accettato!', 'success');
+                await loadTasks();
+                setTimeout(() => location.reload(), 1000);
+            } catch (error) {
+                showAlert('Errore: ' + error.message, 'error');
+            }
+        }
+
+        async function handlePauseTask(taskId) {
+            try {
+                const response = await fetch(`${API_URL}/tasks/${taskId}/pause`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) throw new Error('Errore nella pausa');
+
+                showAlert('Compito messo in pausa!', 'success');
+                await loadTasks();
+                setTimeout(() => location.reload(), 1000);
+            } catch (error) {
+                showAlert('Errore: ' + error.message, 'error');
+            }
+        }
+
+        async function handleResumeTask(taskId) {
+            try {
+                const response = await fetch(`${API_URL}/tasks/${taskId}/resume`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) throw new Error('Errore nella ripresa');
+
+                showAlert('Compito ripreso!', 'success');
+                await loadTasks();
+                setTimeout(() => location.reload(), 1000);
+            } catch (error) {
+                showAlert('Errore: ' + error.message, 'error');
+            }
+        }
+
+        function openCompleteModal(taskId) {
+            // Apri il modal dei dettagli in modalità "completamento"
+            openTaskModal(taskId, true);
+        }
+
+        async function handlePostponeTask(taskId) {
+            try {
+                const response = await fetch(`${API_URL}/tasks/${taskId}/postpone`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || 'Errore nel posticipo');
+                }
+
+                const updatedTask = await response.json();
+                showAlert(`Compito posticipato a ${new Date(updatedTask.scheduledAt).toLocaleDateString('it-IT')}!`, 'success');
+                await loadTasks();
+                setTimeout(() => location.reload(), 1000);
+            } catch (error) {
+                showAlert('Errore: ' + error.message, 'error');
+            }
+        }
+
+        async function handleCompleteTask(event, taskId) {
+            event.preventDefault();
+
+            const note = document.getElementById('completionNote').value;
+            const actualMinutes = parseInt(document.getElementById('completionTime').value);
+
+            if (!actualMinutes) {
+                showAlert('Tempo effettivo è obbligatorio', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/tasks/${taskId}/notes`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ note: note || '', actualMinutes, markCompleted: true })
+                });
+
+                if (!response.ok) throw new Error('Errore nel completamento');
+
+                showAlert('Compito completato!', 'success');
+                closeModal();
+                await loadTasks();
+                setTimeout(() => location.reload(), 1000);
+            } catch (error) {
+                showAlert('Errore: ' + error.message, 'error');
+            }
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('taskModal');
+            if (modal) modal.classList.remove('active');
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('currentUser');
+            setTimeout(() => window.location.href = '/index.html', 1000);
+        }
+
+        function showAlert(message, type) {
+            const alert = document.getElementById('alert');
+            alert.textContent = message;
+            alert.className = `alert show alert-${type}`;
+            
+            setTimeout(() => {
+                alert.classList.remove('show');
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

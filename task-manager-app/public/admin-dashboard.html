@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Molino Briganti</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2563eb;
+            --success: #16a34a;
+            --danger: #dc2626;
+            --warning: #ea580c;
+            --dark: #1f2937;
+            --light: #f3f4f6;
+            --border: #e5e7eb;
+            --priority-low: #10B981;
+            --priority-medium: #FCD34D;
+            --priority-high: #F97316;
+            --priority-urgent: #EF4444;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--light);
+            color: var(--dark);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            color: var(--dark);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .user-info {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1d4ed8;
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #15803d;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #b91c1c;
+        }
+
+        .btn-secondary {
+            background: var(--light);
+            color: var(--dark);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: white;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-left: 4px solid var(--primary);
+        }
+
+        .stat-card .number {
+            font-size: 32px;
+            font-weight: bold;
+            color: var(--dark);
+            margin-bottom: 5px;
+        }
+
+        .stat-card .label {
+            font-size: 14px;
+            color: #999;
+        }
+
+        .quick-actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .card h2 {
+            font-size: 20px;
+            margin-bottom: 15px;
+            color: var(--dark);
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+            border-left: 4px solid #10b981;
+        }
+
+        .alert-error {
+            background: #fee2e2;
+            color: #991b1b;
+            border-left: 4px solid #dc2626;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 20px;
+        }
+
+        .calendar-container {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+            padding: 10px 0;
+        }
+
+        .calendar-day {
+            border: 1px solid #e0e0e0;
+            padding: 6px;
+            min-height: 50px;
+            border-radius: 4px;
+            background: #fafafa;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 11px;
+        }
+
+        .calendar-day:hover {
+            background: #f0f0f0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .calendar-day.has-tasks {
+            background: #e8f5e9;
+            border-color: #4caf50;
+        }
+
+        .task-list {
+            max-height: 800px;
+            overflow-y: auto;
+            display: grid;
+            gap: 15px;
+        }
+
+        .task-card {
+            background: white;
+            border-left: 4px solid var(--primary);
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 10px;
+        }
+
+        .task-title {
+            font-weight: 600;
+            color: var(--dark);
+            font-size: 15px;
+        }
+
+        .task-status {
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .task-description {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .task-meta {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 10px;
+        }
+
+        .meta-tag {
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        .task-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 5px 50px rgba(0,0,0,0.3);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: flex-end;
+        }
+
+        .filter-bar {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .filter-bar select {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>📊 Admin Dashboard</h1>
+            <div class="header-actions">
+                <div class="user-info" id="userInfo"></div>
+                <button class="btn btn-danger" onclick="handleLogout()">🚪 Logout</button>
+            </div>
+        </div>
+
+        <!-- Alert -->
+        <div id="alert" class="alert"></div>
+
+        <!-- Stats -->
+        <div class="stats" id="stats"></div>
+
+        <!-- Quick Actions -->
+        <div class="quick-actions">
+            <button class="btn btn-success" onclick="openCreateTaskModal()">📝 Nuovo Task</button>
+            <button class="btn btn-primary" onclick="window.location.href='operators.html'">👥 Gestione Operatori</button>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Calendar -->
+            <div class="card" style="padding: 12px;">
+                <h3 style="font-size: 14px; text-align: center; margin-bottom: 10px;">📅 Calendario</h3>
+                <div id="calendarContainer" class="calendar-container">
+                    <!-- Calendar will be generated here -->
+                </div>
+            </div>
+
+            <!-- Task List with Filters -->
+            <div class="card">
+                <h2>📋 Task - Dettagli</h2>
+                
+                <!-- Filters Inside Card -->
+                <div class="filter-bar" style="margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 15px;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 10px;">🔍 Filtri:</label>
+                    <div style="display: flex; gap: 10px;">
+                        <select id="operatorFilter" onchange="applyFilters()" style="flex: 1;">
+                            <option value="">Tutti gli Operatori</option>
+                        </select>
+                        <select id="statusFilter" onchange="applyFilters()" style="flex: 1;">
+                            <option value="">Tutti gli Stati</option>
+                            <option value="pending">In Sospeso</option>
+                            <option value="accepted">Accettato</option>
+                            <option value="completed">Completato</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div id="tasksList" class="task-list">
+                    <div class="empty-state">
+                        <p>Nessun task disponibile</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Task Modal -->
+    <div id="taskModal" class="modal">
+        <div class="modal-content">
+            <h2 id="modalTitle">Nuovo Task</h2>
+            <div id="modalBody"></div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal()">Chiudi</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = `http://${window.location.hostname}:${window.location.port || 5000}/api`;
+        let token = localStorage.getItem('token');
+        let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        let allOperators = [];
+        let allTasks = [];
+        let editingTaskId = null;
+
+        // Check authorization
+        window.addEventListener('load', () => {
+            if (!token || currentUser.role !== 'master') {
+                window.location.href = '/index.html';
+                return;
+            }
+            initDashboard();
+        });
+
+        async function initDashboard() {
+            document.getElementById('userInfo').textContent = `👤 ${currentUser.username}`;
+            await loadOperators();
+            await loadTasks();
+            await updateStats();
+            await renderCalendar();
+        }
+
+        async function loadOperators() {
+            try {
+                const response = await fetch(`${API_URL}/auth/operators`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) throw new Error('Errore caricamento operatori');
+                
+                allOperators = await response.json();
+                
+                // Populate filter select
+                const select = document.getElementById('operatorFilter');
+                select.innerHTML = '<option value="">Tutti gli Operatori</option>';
+                allOperators.forEach(op => {
+                    const option = document.createElement('option');
+                    option.value = op.id;
+                    option.textContent = op.username;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Errore:', error);
+            }
+        }
+
+        async function loadTasks() {
+            try {
+                const response = await fetch(`${API_URL}/tasks`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) throw new Error('Errore caricamento task');
+                
+                allTasks = await response.json();
+                renderTasks();
+                await renderCalendar();
+            } catch (error) {
+                showAlert('Errore: ' + error.message, 'error');
+            }
+        }
+
+        function renderTasks() {
+            const container = document.getElementById('tasksList');
+            const operatorFilter = document.getElementById('operatorFilter').value;
+            const statusFilter = document.getElementById('statusFilter').value;
+
+            let filtered = allTasks;
+            
+            if (operatorFilter) {
+                filtered = filtered.filter(t => t.assignedOperator?.id == operatorFilter);
+            }
+            
+            if (statusFilter) {
+                if (statusFilter === 'pending') filtered = filtered.filter(t => !t.completed && !t.acceptedAt);
+                if (statusFilter === 'accepted') filtered = filtered.filter(t => t.acceptedAt && !t.completed);
+                if (statusFilter === 'completed') filtered = filtered.filter(t => t.completed);
+            }
+
+            // Ordina i task: quelli senza data all'inizio, poi per data/ora
+            filtered.sort((a, b) => {
+                const aHasDate = a.scheduledAt ? true : false;
+                const bHasDate = b.scheduledAt ? true : false;
+                
+                // Se uno non ha data e l'altro sì, quello senza data viene prima
+                if (!aHasDate && bHasDate) return -1;
+                if (aHasDate && !bHasDate) return 1;
+                
+                // Se entrambi non hanno data, mantieni ordine originale
+                if (!aHasDate && !bHasDate) return 0;
+                
+                // Se entrambi hanno data, ordina per data crescente
+                return new Date(a.scheduledAt) - new Date(b.scheduledAt);
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = '<div class="empty-state"><p>Nessun task disponibile</p></div>';
+                return;
+            }
+
+            container.innerHTML = filtered.map(task => {
+                const status = task.completed ? 'Completato' : (task.acceptedAt ? 'Accettato' : 'In Sospeso');
+                return `
+                    <div class="task-card">
+                        <div class="task-header">
+                            <div class="task-title">${task.title}</div>
+                            <span class="task-status">${status}</span>
+                        </div>
+                        <p class="task-description">${task.description || 'Nessuna descrizione'}</p>
+                        <div class="task-meta">
+                            ${task.scheduledAt ? `<span class="meta-tag">📅 ${new Date(task.scheduledAt).toLocaleString('it-IT')}</span>` : ''}
+                            ${task.estimatedMinutes ? `<span class="meta-tag">⏱️ ${task.estimatedMinutes} min</span>` : ''}
+                            ${task.assignedOperator ? `<span class="meta-tag">👤 ${task.assignedOperator.username}</span>` : ''}
+                            ${task.priority ? `<span class="meta-tag">🎯 ${task.priority}</span>` : ''}
+                        </div>
+                        ${task.notes && task.notes.length > 0 ? `
+                            <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #e0e0e0; font-size: 12px;">
+                                <strong>📝 Note (${task.notes.length}):</strong>
+                                <div style="margin-top: 5px; max-height: 100px; overflow-y: auto;">
+                                    ${task.notes.slice(0, 3).map(note => `
+                                        <div style="background: #f9fafb; padding: 5px; margin: 3px 0; border-radius: 3px;">
+                                            <strong style="color: #374151;">${note.user.username}</strong>: ${note.note.substring(0, 60)}...
+                                        </div>
+                                    `).join('')}
+                                    ${task.notes.length > 3 ? `<div style="color: #9ca3af; margin-top: 5px;">+${task.notes.length - 3} altre note</div>` : ''}
+                                </div>
+                            </div>
+                        ` : ''}
+                        <div class="task-actions">
+                            <button class="btn btn-primary btn-small" onclick="openEditTaskModal(${task.id})">✏️ Modifica</button>
+                            <button class="btn btn-danger btn-small" onclick="handleDeleteTask(${task.id})">🗑️ Rimuovi</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function applyFilters() {
+            renderTasks();
+        }
+
+        async function updateStats() {
+            try {
+                const response = await fetch(`${API_URL}/tasks`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const tasks = await response.json();
+                const completed = tasks.filter(t => t.completed).length;
+                const pending = tasks.filter(t => !t.completed).length;
+                const accepted = tasks.filter(t => t.acceptedAt && !t.completed).length;
+
+                document.getElementById('stats').innerHTML = `
+                    <div class="stat-card">
+                        <div class="number">${tasks.length}</div>
+                        <div class="label">Totale Task</div>
+                    </div>
+                    <div class="stat-card" style="border-left-color: #2196f3;">
+                        <div class="number">${pending}</div>
+                        <div class="label">In Sospeso</div>
+                    </div>
+                    <div class="stat-card" style="border-left-color: #ff9800;">
+                        <div class="number">${accepted}</div>
+                        <div class="label">Accettati</div>
+                    </div>
+                    <div class="stat-card" style="border-left-color: #4caf50;">
+                        <div class="number">${completed}</div>
+                        <div class="label">Completati</div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Errore caricamento statistiche:', error);
+            }
+        }
+
+        async function renderCalendar() {
+            const container = document.getElementById('calendarContainer');
+            if (!allTasks || allTasks.length === 0) {
+                container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 15px; color: #999; font-size: 12px;">Nessun task</div>';
+                return;
+            }
+
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth();
+            
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const daysInMonth = lastDay.getDate();
+            const startingDayOfWeek = firstDay.getDay();
+            
+            const dayNames = ['Do', 'Lu', 'Ma', 'Me', 'Gi', 'Ve', 'Sa'];
+            let html = dayNames.map(day => `<div style="font-weight: bold; text-align: center; padding: 4px; background: #f0f0f0; border-radius: 3px; font-size: 10px;">${day}</div>`).join('');
+            
+            for (let i = 0; i < startingDayOfWeek; i++) {
+                html += '<div></div>';
+            }
+            
+            for (let day = 1; day <= daysInMonth; day++) {
+                const date = new Date(year, month, day);
+                const dateStr = date.toISOString().split('T')[0];
+                
+                const dayTasks = allTasks.filter(task => {
+                    if (!task.scheduledAt) return false;
+                    return task.scheduledAt.split('T')[0] === dateStr;
+                });
+                
+                const hasTasksClass = dayTasks.length > 0 ? 'has-tasks' : '';
+                html += `<div class="calendar-day ${hasTasksClass}"><strong>${day}</strong><div style="font-size: 9px; margin-top: 2px;">${dayTasks.length} task</div></div>`;
+            }
+            
+            container.innerHTML = html;
+        }
+
+        function openCreateTaskModal() {
+            editingTaskId = null;
+            const modal = document.getElementById('taskModal');
+            const content = modal.querySelector('.modal-content');
+            
+            content.innerHTML = `
+                <h2>📝 Crea Nuovo Task</h2>
+                <form onsubmit="handleCreateTaskFromModal(event)">
+                    <div class="form-group">
+                        <label>Titolo *</label>
+                        <input type="text" id="modalTaskTitle" required placeholder="es. Installazione server">
+                    </div>
+                    <div class="form-group">
+                        <label>Descrizione</label>
+                        <textarea id="modalTaskDescription" placeholder="Descrizione dettagliata..." style="height: 80px;"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Data/Ora Esecuzione</label>
+                        <input type="datetime-local" id="modalTaskScheduledAt">
+                    </div>
+                    <div class="form-group">
+                        <label>Operatore</label>
+                        <select id="modalTaskOperator">
+                            <option value="">-- Nessuno --</option>
+                            ${allOperators.map(op => `<option value="${op.id}">${op.username}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Priorità</label>
+                        <select id="modalTaskPriority">
+                            <option value="LOW">🟢 Bassa</option>
+                            <option value="MEDIUM" selected>🟡 Media</option>
+                            <option value="HIGH">🟠 Alta</option>
+                            <option value="URGENT">🔴 Urgente</option>
+                        </select>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="submit" class="btn btn-success">Crea Task</button>
+                        <button type="button" class="btn btn-secondary" onclick="closeModal()">Annulla</button>
+                    </div>
+                </form>
+            `;
+            
+            modal.classList.add('active');
+        }
+
+        async function openEditTaskModal(taskId) {
+            const task = allTasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            editingTaskId = taskId;
+            const modal = document.getElementById('taskModal');
+            const content = modal.querySelector('.modal-content');
+            
+            let scheduledAtValue = '';
+            if (task.scheduledAt) {
+                const date = new Date(task.scheduledAt);
+                scheduledAtValue = date.toISOString().slice(0, 16);
+            }
+
+            content.innerHTML = `
+                <h2>✏️ Modifica Task</h2>
+                <form onsubmit="handleCreateTaskFromModal(event)">
+                    <div class="form-group">
+                        <label>Titolo *</label>
+                        <input type="text" id="modalTaskTitle" required placeholder="es. Installazione server" value="${task.title.replace(/"/g, '&quot;')}">
+                    </div>
+                    <div class="form-group">
+                        <label>Descrizione</label>
+                        <textarea id="modalTaskDescription" placeholder="Descrizione dettagliata..." style="height: 80px;">${task.description ? task.description.replace(/</g, '&lt;').replace(/>/g, '&gt;') : ''}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Data/Ora Esecuzione</label>
+                        <input type="datetime-local" id="modalTaskScheduledAt" value="${scheduledAtValue}">
+                    </div>
+                    <div class="form-group">
+                        <label>Operatore</label>
+                        <select id="modalTaskOperator">
+                            <option value="">-- Nessuno --</option>
+                            ${allOperators.map(op => `<option value="${op.id}" ${task.assignedOperator?.id === op.id ? 'selected' : ''}>${op.username}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Priorità</label>
+                        <select id="modalTaskPriority">
+                            <option value="LOW" ${task.priority === 'LOW' ? 'selected' : ''}>🟢 Bassa</option>
+                            <option value="MEDIUM" ${task.priority === 'MEDIUM' ? 'selected' : ''}>🟡 Media</option>
+                            <option value="HIGH" ${task.priority === 'HIGH' ? 'selected' : ''}>🟠 Alta</option>
+                            <option value="URGENT" ${task.priority === 'URGENT' ? 'selected' : ''}>🔴 Urgente</option>
+                        </select>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="submit" class="btn btn-success">Salva Modifiche</button>
+                        <button type="button" class="btn btn-danger" onclick="handleResetTask(${taskId})">🔄 Ripristina Task</button>
+                        <button type="button" class="btn btn-secondary" onclick="closeModal()">Annulla</button>
+                    </div>
+                </form>
+            `;
+            
+            modal.classList.add('active');
+        }
+
+        async function handleCreateTaskFromModal(event) {
+            event.preventDefault();
+            
+            const title = document.getElementById('modalTaskTitle').value;
+            const description = document.getElementById('modalTaskDescription').value;
+            const scheduledAt = document.getElementById('modalTaskScheduledAt').value;
+            const assignedOperatorId = document.getElementById('modalTaskOperator').value;
+            const priority = document.getElementById('modalTaskPriority').value;
+            
+            try {
+                if (editingTaskId) {
+                    const response = await fetch(`${API_URL}/tasks/${editingTaskId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            title,
+                            description: description || null,
+                            scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+                            assignedOperatorId: assignedOperatorId ? parseInt(assignedOperatorId) : null,
+                            priority
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        const error = await response.json();
+                        throw new Error(error.message || 'Errore modifica');
+                    }
+                    
+                    showAlert('Task modificato!', 'success');
+                } else {
+                    const response = await fetch(`${API_URL}/tasks`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            title,
+                            description: description || null,
+                            scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+                            assignedOperatorId: assignedOperatorId ? parseInt(assignedOperatorId) : null,
+                            priority
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        const error = await response.json();
+                        throw new Error(error.message || 'Errore creazione');
+                    }
+                    
+                    showAlert('Task creato!', 'success');
+                }
+                
+                closeModal();
+                await loadTasks();
+                await updateStats();
+            } catch (error) {
+                showAlert('Errore: ' + error.message, 'error');
+            }
+        }
+
+        async function handleResetTask(taskId) {
+            if (!confirm('Sei sicuro di voler ripristinare questo task? Verranno rimossi accettazione, completamento, pausa e tutte le note.')) return;
+
+            try {
+                const response = await fetch(`${API_URL}/tasks/${taskId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        acceptedAt: null,
+                        acceptedBy: null,
+                        completed: false,
+                        completedAt: null,
+                        completedBy: null,
+                        paused: false,
+                        pausedAt: null,
+                        actualMinutes: null,
+                        notes: []
+                    })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || 'Errore ripristino');
+                }
+
+                showAlert('Task ripristinato!', 'success');
+                closeModal();
+                await loadTasks();
+                await updateStats();
+            } catch (error) {
+                showAlert('Errore: ' + error.message, 'error');
+            }
+        }
+
+        async function handleDeleteTask(taskId) {
+            if (!confirm('Sei sicuro di voler eliminare questo task?')) return;
+
+            try {
+                const response = await fetch(`${API_URL}/tasks/${taskId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || 'Errore eliminazione');
+                }
+
+                showAlert('Task eliminato!', 'success');
+                await loadTasks();
+                await updateStats();
+            } catch (error) {
+                showAlert('Errore: ' + error.message, 'error');
+            }
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('taskModal');
+            if (modal) modal.classList.remove('active');
+            editingTaskId = null;
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('currentUser');
+            window.location.href = '/index.html';
+        }
+
+        function showAlert(message, type) {
+            const alert = document.getElementById('alert');
+            alert.textContent = message;
+            alert.className = `alert show alert-${type}`;
+            
+            setTimeout(() => {
+                alert.classList.remove('show');
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

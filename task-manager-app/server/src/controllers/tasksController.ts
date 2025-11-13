@@ -71,6 +71,7 @@ export class TasksController {
                     title,
                     description: description || null,
                     scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+                    originalScheduledAt: scheduledAt ? new Date(scheduledAt) : null,
                     assignedOperatorId: assignedOperatorId || null,
                     estimatedMinutes: estimatedMinutes || null,
                     priority: taskPriority,
@@ -342,6 +343,104 @@ export class TasksController {
             });
 
             res.json(resumedTask);
+        } catch (err: unknown) {
+            const errorMsg = err instanceof Error ? err.message : 'Internal server error';
+            res.status(500).json({ message: errorMsg });
+        }
+    }
+
+    async postponeTask(req: Request, res: Response) {
+        try {
+            if (!req.user || req.user.role !== 'slave') {
+                return res.status(403).json({ message: 'Only operators can postpone tasks' });
+            }
+
+            const { id } = req.params;
+
+            // Verify task exists and is assigned to this operator
+            const task = await prisma.task.findUnique({ where: { id: parseInt(id) } });
+            if (!task) {
+                return res.status(404).json({ message: 'Task not found' });
+            }
+
+            if (task.assignedOperatorId !== req.user.id) {
+                return res.status(403).json({ message: 'Task not assigned to you' });
+            }
+
+            // Only postpone if task has a scheduled date
+            if (!task.scheduledAt) {
+                return res.status(400).json({ message: 'Task has no scheduled date' });
+            }
+
+            // Function to check if date is a weekend (only Sunday)
+            const isWeekend = (date: Date): boolean => {
+                const day = date.getDay();
+                return day === 0; // 0 = Sunday only
+            };
+
+            // Italian holidays 2024-2025 (Add more years as needed)
+            const italianHolidays: string[] = [
+                '2024-01-01', // Capodanno
+                '2024-01-06', // Epifania
+                '2024-04-25', // Festa della Liberazione
+                '2024-05-01', // Festa del Lavoro
+                '2024-06-02', // Festa della Repubblica
+                '2024-08-15', // Ferragosto
+                '2024-11-01', // Ognissanti
+                '2024-12-08', // Immacolata Concezione
+                '2024-12-25', // Natale
+                '2024-12-26', // Santo Stefano
+                '2025-01-01', // Capodanno
+                '2025-01-06', // Epifania
+                '2025-04-25', // Festa della Liberazione
+                '2025-05-01', // Festa del Lavoro
+                '2025-06-02', // Festa della Repubblica
+                '2025-08-15', // Ferragosto
+                '2025-11-01', // Ognissanti
+                '2025-12-08', // Immacolata Concezione
+                '2025-12-25', // Natale
+                '2025-12-26', // Santo Stefano
+                '2026-01-01', // Capodanno
+                '2026-01-06', // Epifania
+                '2026-04-25', // Festa della Liberazione
+                '2026-05-01', // Festa del Lavoro
+                '2026-06-02', // Festa della Repubblica
+                '2026-08-15', // Ferragosto
+                '2026-11-01', // Ognissanti
+                '2026-12-08', // Immacolata Concezione
+                '2026-12-25', // Natale
+                '2026-12-26', // Santo Stefano
+            ];
+
+            const isHoliday = (date: Date): boolean => {
+                const dateStr = date.toISOString().split('T')[0];
+                return italianHolidays.includes(dateStr);
+            };
+
+            // Calculate next working day (skip weekends and holidays)
+            let newDate = new Date(task.scheduledAt);
+            newDate.setDate(newDate.getDate() + 1);
+
+            while (isWeekend(newDate) || isHoliday(newDate)) {
+                newDate.setDate(newDate.getDate() + 1);
+            }
+
+            // Postpone task
+            const postponedTask = await prisma.task.update({
+                where: { id: parseInt(id) },
+                data: {
+                    scheduledAt: newDate,
+                    // Keep originalScheduledAt unchanged
+                },
+                include: {
+                    assignedOperator: { select: { id: true, username: true } },
+                    acceptedBy: { select: { id: true, username: true } },
+                    createdBy: { select: { id: true, username: true } },
+                    completedBy: { select: { id: true, username: true } },
+                },
+            });
+
+            res.json(postponedTask);
         } catch (err: unknown) {
             const errorMsg = err instanceof Error ? err.message : 'Internal server error';
             res.status(500).json({ message: errorMsg });
