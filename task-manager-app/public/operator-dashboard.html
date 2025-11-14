@@ -734,6 +734,25 @@
 
         async function handleAcceptTask(taskId) {
             try {
+                // Cerca se c'è un task attivo (acceptedAt ma non paused e non completed)
+                const activeTask = allTasks.find(t => t.acceptedAt && !t.paused && !t.completed);
+                
+                // Se c'è un task attivo, mettilo in pausa prima di accettare il nuovo
+                if (activeTask && activeTask.id !== taskId) {
+                    const pauseResponse = await fetch(`${API_URL}/tasks/${activeTask.id}/pause`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+
+                    if (!pauseResponse.ok) {
+                        throw new Error('Errore nel mettere in pausa il task precedente');
+                    }
+                }
+
+                // Adesso accetta il nuovo task
                 const response = await fetch(`${API_URL}/tasks/${taskId}/accept`, {
                     method: 'POST',
                     headers: {
@@ -747,7 +766,7 @@
                     throw new Error(error.message || 'Errore nell\'accettazione');
                 }
 
-                showAlert('Compito accettato!', 'success');
+                showAlert('Compito accettato! Il compito precedente è stato messo in pausa.', 'success');
                 await loadTasks();
                 setTimeout(() => location.reload(), 1000);
             } catch (error) {
