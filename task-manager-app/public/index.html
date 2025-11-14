@@ -27,8 +27,26 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: var(--light);
-            color: var(--dark);
+            background: #1a1a1a;
+            color: #e0e0e0;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #5d5d5d;
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #7d7d7d;
         }
 
         .container {
@@ -43,29 +61,31 @@
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            background: linear-gradient(135deg, var(--primary) 0%, #1e40af 100%);
+            background: #1a1a1a;
         }
 
         .login-card {
-            background: white;
-            padding: 40px;
-            border-radius: 10px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            background: #2d2d2d;
+            padding: 50px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
             width: 100%;
-            max-width: 400px;
+            max-width: 550px;
+            border: 1px solid #3d3d3d;
         }
 
         .login-card h1 {
             text-align: center;
-            margin-bottom: 10px;
-            color: var(--dark);
+            margin-bottom: 15px;
+            color: #e0e0e0;
+            font-size: 28px;
         }
 
         .login-card .subtitle {
             text-align: center;
-            color: #6b7280;
-            margin-bottom: 30px;
-            font-size: 14px;
+            color: #a0a0a0;
+            margin-bottom: 35px;
+            font-size: 16px;
         }
 
         .login-tab-btn {
@@ -90,22 +110,24 @@
             display: block;
             margin-bottom: 8px;
             font-weight: 600;
-            color: var(--dark);
+            color: #e0e0e0;
         }
 
         .form-group input {
             width: 100%;
             padding: 12px;
-            border: 1px solid var(--border);
+            border: 1px solid #4d4d4d;
             border-radius: 6px;
             font-size: 14px;
             transition: border-color 0.3s;
+            background: #3d3d3d;
+            color: #e0e0e0;
         }
 
         .form-group input:focus {
             outline: none;
             border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
         }
 
         .btn {
@@ -134,13 +156,13 @@
         }
 
         .btn-secondary {
-            background: white;
-            color: var(--primary);
-            border: 2px solid var(--primary);
+            background: #3d3d3d;
+            color: #e0e0e0;
+            border: 1px solid #4d4d4d;
         }
 
         .btn-secondary:hover {
-            background: var(--light);
+            background: #4d4d4d;
         }
 
         .btn-success {
@@ -178,15 +200,15 @@
         }
 
         .alert-error {
-            background: #fee2e2;
-            color: #991b1b;
-            border: 1px solid #fecaca;
+            background: #3a1e1e;
+            color: #fca5a5;
+            border: 1px solid #5c2e2e;
         }
 
         .alert-success {
-            background: #dcfce7;
-            color: #166534;
-            border: 1px solid #bbf7d0;
+            background: #1e3a2a;
+            color: #86efac;
+            border: 1px solid #2e5c3e;
         }
 
         .priority-badge {
@@ -213,16 +235,16 @@
         }
 
         .operators-panel {
-            background: white;
+            background: #2d2d2d;
             padding: 20px;
             border-radius: 8px;
             margin-bottom: 20px;
-            border: 1px solid var(--border);
+            border: 1px solid #3d3d3d;
         }
 
         .operators-panel h3 {
             margin-bottom: 15px;
-            color: var(--dark);
+            color: #e0e0e0;
         }
 
         .operators-list {
@@ -233,8 +255,8 @@
         }
 
         .operator-card {
-            background: #f9fafb;
-            border: 1px solid var(--border);
+            background: #3d3d3d;
+            border: 1px solid #4d4d4d;
             padding: 15px;
             border-radius: 8px;
             display: flex;
@@ -250,11 +272,12 @@
             font-weight: 600;
             margin-bottom: 5px;
             font-size: 14px;
+            color: #e0e0e0;
         }
 
         .operator-role {
             font-size: 12px;
-            color: #6b7280;
+            color: #a0a0a0;
         }
 
         .operator-badge {
@@ -318,25 +341,27 @@
         }
 
         .header {
-            background: white;
+            background: #2d2d2d;
             padding: 20px;
-            border-radius: 10px;
+            border-radius: 8px;
             margin-bottom: 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            border: 1px solid #3d3d3d;
         }
 
         .header h1 {
             font-size: 24px;
-            color: var(--dark);
+            color: #e0e0e0;
         }
 
         .user-info {
             display: flex;
             align-items: center;
             gap: 20px;
+            color: #a0a0a0;
         }
 
         .user-badge {
@@ -400,20 +425,21 @@
         }
 
         .card {
-            background: white;
-            border-radius: 10px;
+            background: #2d2d2d;
+            border-radius: 8px;
             padding: 20px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            border: 1px solid #3d3d3d;
         }
 
         .card h2 {
             margin-bottom: 20px;
             font-size: 18px;
-            color: var(--dark);
+            color: #e0e0e0;
         }
 
         .task-item {
-            background: var(--light);
+            background: #3d3d3d;
             padding: 15px;
             border-radius: 6px;
             margin-bottom: 15px;
@@ -422,7 +448,7 @@
         }
 
         .task-item:hover {
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
         }
 
         .task-item.completed {
@@ -433,12 +459,12 @@
         .task-item h3 {
             margin-bottom: 8px;
             font-size: 16px;
-            color: var(--dark);
+            color: #e0e0e0;
         }
 
         .task-item p {
             font-size: 13px;
-            color: #6b7280;
+            color: #a0a0a0;
             margin-bottom: 8px;
         }
 
@@ -451,11 +477,11 @@
         }
 
         .meta-tag {
-            background: white;
+            background: #2d2d2d;
             padding: 4px 8px;
             border-radius: 4px;
-            border: 1px solid var(--border);
-            color: #6b7280;
+            border: 1px solid #4d4d4d;
+            color: #a0a0a0;
         }
 
         .task-actions {
@@ -490,20 +516,24 @@
         .form-group textarea {
             width: 100%;
             padding: 12px;
-            border: 1px solid var(--border);
+            border: 1px solid #4d4d4d;
             border-radius: 6px;
             font-family: inherit;
             font-size: 14px;
             resize: vertical;
             min-height: 80px;
+            background: #3d3d3d;
+            color: #e0e0e0;
         }
 
         .form-group select {
             width: 100%;
             padding: 12px;
-            border: 1px solid var(--border);
+            border: 1px solid #4d4d4d;
             border-radius: 6px;
             font-size: 14px;
+            background: #3d3d3d;
+            color: #e0e0e0;
         }
 
         .tasks-list {
@@ -514,7 +544,7 @@
         .empty-state {
             text-align: center;
             padding: 40px 20px;
-            color: #9ca3af;
+            color: #808080;
         }
 
         .empty-state svg {
@@ -542,17 +572,18 @@
         }
 
         .modal-content {
-            background: white;
-            border-radius: 10px;
+            background: #2d2d2d;
+            border-radius: 8px;
             padding: 30px;
             max-width: 500px;
             width: 90%;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            border: 1px solid #3d3d3d;
         }
 
         .modal-content h2 {
             margin-bottom: 20px;
-            color: var(--dark);
+            color: #e0e0e0;
         }
 
         .modal-actions {
@@ -573,22 +604,23 @@
         }
 
         .stat-card {
-            background: white;
+            background: #2d2d2d;
             padding: 15px;
             border-radius: 6px;
             border-left: 4px solid var(--primary);
             text-align: center;
+            border: 1px solid #3d3d3d;
         }
 
         .stat-card .number {
             font-size: 24px;
             font-weight: bold;
-            color: var(--primary);
+            color: #e0e0e0;
         }
 
         .stat-card .label {
             font-size: 12px;
-            color: #6b7280;
+            color: #a0a0a0;
             margin-top: 5px;
         }
 
@@ -635,32 +667,34 @@
         #carouselWrapper {
             position: relative;
             overflow: hidden;
-            border-radius: 12px;
-            background: linear-gradient(90deg, rgba(37, 99, 235, 0.05) 0%, transparent 10%, transparent 90%, rgba(37, 99, 235, 0.05) 100%);
+            border-radius: 8px;
+            background: #2d2d2d;
+            border: 1px solid #3d3d3d;
         }
 
         #operatorCarousel {
             display: flex;
             gap: 20px;
-            padding: 20px;
-            min-height: 280px;
+            padding: 30px;
+            min-height: 380px;
             user-select: none;
+            -webkit-user-select: none;
             overflow: hidden;
             scroll-behavior: smooth;
         }
 
         .operator-carousel-item {
-            flex: 0 0 calc(20% - 16px);
-            min-width: 160px;
+            flex: 0 0 calc(33.333% - 14px);
+            min-width: 180px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 15px;
+            gap: 12px;
             text-align: center;
-            padding: 20px;
-            background: white;
-            border-radius: 12px;
-            border: 2px solid var(--border);
+            padding: 18px;
+            background: #3d3d3d;
+            border-radius: 8px;
+            border: 2px solid #4d4d4d;
             transition: all 0.3s ease;
             cursor: pointer;
         }
@@ -669,25 +703,26 @@
             border-color: var(--primary);
             box-shadow: 0 8px 24px rgba(37, 99, 235, 0.3);
             transform: translateY(-8px);
-            background: linear-gradient(135deg, #f0f9ff 0%, white 100%);
+            background: #4d4d4d;
         }
 
         .operator-image {
-            width: 120px;
-            height: 120px;
+            width: 150px;
+            height: 150px;
             border-radius: 50%;
             background: linear-gradient(135deg, var(--primary) 0%, #1e40af 100%);
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
-            font-size: 60px;
+            font-size: 80px;
             border: 4px solid white;
             box-shadow: 0 4px 16px rgba(37, 99, 235, 0.3);
             flex-shrink: 0;
             transition: transform 0.3s ease;
             pointer-events: none;
             user-select: none;
+            -webkit-user-select: none;
         }
 
         .operator-carousel-item:hover .operator-image {
@@ -701,20 +736,22 @@
             object-fit: cover;
             pointer-events: none;
             user-select: none;
+            -webkit-user-select: none;
         }
 
         .operator-name {
-            font-size: 14px;
+            font-size: 36px;
             font-weight: 600;
-            color: var(--dark);
+            color: #e0e0e0;
             word-break: break-word;
             line-height: 1.4;
             flex-grow: 1;
             display: flex;
             align-items: center;
-            min-height: 40px;
+            min-height: 50px;
             pointer-events: none;
             user-select: none;
+            -webkit-user-select: none;
         }
 
         .login-spinner {
@@ -848,6 +885,76 @@
             border-radius: 4px;
             font-size: 13px;
         }
+
+        /* Tab Navigation Classes */
+        .tab-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .tab-button {
+            flex: 1;
+            border-bottom: 3px solid transparent;
+            border-radius: 0;
+            padding: 10px;
+            font-weight: 600;
+        }
+
+        .tab-button.active {
+            border-bottom: 3px solid var(--primary);
+        }
+
+        .tab-button.inactive {
+            color: #9ca3af;
+        }
+
+        /* Carousel Wrapper */
+        .carousel-wrapper {
+            position: relative;
+            overflow: hidden;
+            cursor: grab;
+            border-radius: 12px;
+            background: linear-gradient(90deg, rgba(37, 99, 235, 0.05) 0%, transparent 10%, transparent 90%, rgba(37, 99, 235, 0.05) 100%);
+        }
+
+        .carousel-loading {
+            text-align: center;
+            color: #9ca3af;
+            width: 100%;
+        }
+
+        /* Master Tab Content */
+        .master-tab-content {
+            display: none;
+        }
+
+        .master-tab-content.active {
+            display: block;
+        }
+
+        #operatorsTabContent {
+            display: block;
+        }
+
+        /* Carousel Empty/Error Messages */
+        .carousel-message {
+            text-align: center;
+            color: #9ca3af;
+            width: 100%;
+        }
+
+        .carousel-error {
+            text-align: center;
+            color: #dc2626;
+            width: 100%;
+        }
+
+        /* Full Width Submit Button */
+        .submit-button-full {
+            width: 100%;
+        }
     </style>
 </head>
 <body>
@@ -855,9 +962,9 @@
     <div id="loginPage" class="login-container">
         <div class="login-card">
             <!-- Tab Navigation -->
-            <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid var(--border);">
-                <button onclick="switchLoginTab('operators')" id="operatorsTab" class="btn btn-secondary" style="flex: 1; border-bottom: 3px solid var(--primary); border-radius: 0; padding: 10px; font-weight: 600;">👥 Operatori</button>
-                <button onclick="switchLoginTab('master')" id="masterTab" class="btn btn-secondary" style="flex: 1; border-bottom: 3px solid transparent; border-radius: 0; padding: 10px; font-weight: 600; color: #9ca3af;">🔐 Master</button>
+            <div class="tab-buttons">
+                <button onclick="switchLoginTab('operators')" id="operatorsTab" class="btn btn-secondary tab-button active">👥 Operatori</button>
+                <button onclick="switchLoginTab('master')" id="masterTab" class="btn btn-secondary tab-button inactive">🔐 Master</button>
             </div>
 
             <!-- Alert shown in both tabs -->
@@ -865,19 +972,19 @@
 
             <!-- Operators Tab -->
             <div id="operatorsTabContent">
-                <h1>👥 Operatori</h1>
-                <p class="subtitle">Seleziona un operatore per accedere</p>
+                <h1 id="operatorsTitle">👥 Operatori</h1>
+                <p class="subtitle" id="operatorsSubtitle">Seleziona un operatore per accedere</p>
                 
                 <!-- Carousel Container -->
-                <div id="carouselWrapper" style="position: relative; overflow: hidden; cursor: grab; border-radius: 12px; background: linear-gradient(90deg, rgba(37, 99, 235, 0.05) 0%, transparent 10%, transparent 90%, rgba(37, 99, 235, 0.05) 100%);">
-                    <div id="operatorCarousel" style="display: flex; gap: 20px; padding: 20px; min-height: 280px; user-select: none; overflow: hidden; scroll-behavior: smooth;">
-                        <div style="text-align: center; color: #9ca3af; width: 100%;">Caricamento operatori...</div>
+                <div id="carouselWrapper" class="carousel-wrapper">
+                    <div id="operatorCarousel">
+                        <div class="carousel-loading">Caricamento operatori...</div>
                     </div>
                 </div>
             </div>
 
             <!-- Master Tab -->
-            <div id="masterTabContent" style="display: none;">
+            <div id="masterTabContent" class="master-tab-content">
                 <h1>🔐 Master Login</h1>
                 <p class="subtitle">Accedi come amministratore</p>
                 
@@ -892,7 +999,7 @@
                         <input type="password" id="masterPassword" placeholder="Inserisci password" required>
                     </div>
                     
-                    <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    <button type="submit" class="btn btn-primary submit-button-full">
                         <span>Accedi</span>
                     </button>
                 </form>
@@ -940,7 +1047,7 @@
                 
                 if (operators.length === 0) {
                     document.getElementById('operatorCarousel').innerHTML = 
-                        '<div style="text-align: center; color: #9ca3af; width: 100%;">Nessun operatore disponibile</div>';
+                        '<div class="carousel-message">Nessun operatore disponibile</div>';
                     return;
                 }
                 
@@ -948,7 +1055,7 @@
                 setupDragAndDrop();
             } catch (error) {
                 document.getElementById('operatorCarousel').innerHTML = 
-                    `<div style="text-align: center; color: #dc2626; width: 100%;">Errore: ${error.message}</div>`;
+                    `<div class="carousel-error">Errore: ${error.message}</div>`;
             }
         }
 
@@ -1058,18 +1165,36 @@
         // ==================== LOGIN ====================
         function switchLoginTab(tabName) {
             // Hide all content divs
-            document.getElementById('operatorsTabContent').style.display = 'none';
-            document.getElementById('masterTabContent').style.display = 'none';
+            document.getElementById('operatorsTabContent').classList.remove('active');
+            document.getElementById('masterTabContent').classList.remove('active');
             
             // Show selected tab content
             if (tabName === 'operators') {
-                document.getElementById('operatorsTabContent').style.display = 'block';
+                document.getElementById('operatorsTabContent').classList.add('active');
                 document.getElementById('operatorsTab').classList.add('active');
+                document.getElementById('operatorsTab').classList.remove('inactive');
                 document.getElementById('masterTab').classList.remove('active');
+                document.getElementById('masterTab').classList.add('inactive');
+                // Show carousel and titles
+                const carousel = document.getElementById('carouselWrapper');
+                if (carousel) carousel.style.display = 'block';
+                const title = document.getElementById('operatorsTitle');
+                if (title) title.style.display = 'block';
+                const subtitle = document.getElementById('operatorsSubtitle');
+                if (subtitle) subtitle.style.display = 'block';
             } else if (tabName === 'master') {
-                document.getElementById('masterTabContent').style.display = 'block';
+                document.getElementById('masterTabContent').classList.add('active');
                 document.getElementById('masterTab').classList.add('active');
+                document.getElementById('masterTab').classList.remove('inactive');
                 document.getElementById('operatorsTab').classList.remove('active');
+                document.getElementById('operatorsTab').classList.add('inactive');
+                // Hide carousel and titles
+                const carousel = document.getElementById('carouselWrapper');
+                if (carousel) carousel.style.display = 'none';
+                const title = document.getElementById('operatorsTitle');
+                if (title) title.style.display = 'none';
+                const subtitle = document.getElementById('operatorsSubtitle');
+                if (subtitle) subtitle.style.display = 'none';
             }
         }
 

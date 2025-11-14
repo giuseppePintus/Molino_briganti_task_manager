@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestione Operatori - Molino Briganti</title>
+    <title>Gestione Admin / Operatori - Molino Briganti</title>
     <style>
         * {
             margin: 0;
@@ -16,47 +16,108 @@
             --success: #16a34a;
             --danger: #dc2626;
             --warning: #ea580c;
-            --dark: #1f2937;
-            --light: #f3f4f6;
-            --border: #e5e7eb;
+            --dark: #1a1a1a;
+            --light: #2d2d2d;
+            --border: #4d4d4d;
+            --text-light: #e0e0e0;
+            --text-gray: #a0a0a0;
         }
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: var(--light);
-            color: var(--dark);
+            background: #1a1a1a;
+            color: #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
         }
 
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 20px;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            width: 100%;
         }
 
         .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: white;
+            background: #2d2d2d;
             padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin-bottom: 30px;
+            border-radius: 0 0 8px 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            border: 1px solid #4d4d4d;
+            border-top: none;
+            flex-shrink: 0;
+            z-index: 100;
         }
 
         .header h1 {
             font-size: 28px;
-            color: var(--dark);
+            color: #e0e0e0;
+        }
+
+        .header .btn {
+            padding: 10px 16px;
+            min-height: auto;
+            font-size: 16px;
+        }
+
+        .header .btn span {
+            font-size: 14px;
+        }
+
+        .header .btn::before {
+            font-size: 28px;
+        }
+
+        .main-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            max-width: 1200px;
+            width: 100%;
+            margin: 0 auto;
         }
 
         .btn {
             padding: 12px 24px;
             border: none;
             border-radius: 6px;
-            font-size: 14px;
+            font-size: 18px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
+            letter-spacing: 0.5px;
+            position: relative;
+            overflow: visible;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 12px;
+            min-height: 60px;
+        }
+
+        .btn::before {
+            content: attr(data-icon);
+            font-size: 36px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn span {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            line-height: 1.2;
+            font-size: 18px;
         }
 
         .btn-primary {
@@ -71,20 +132,19 @@
         }
 
         .btn-secondary {
-            background: var(--light);
-            color: var(--dark);
-            border: 1px solid var(--border);
+            background: #3d3d3d;
+            color: #e0e0e0;
+            border: 1px solid #4d4d4d;
         }
 
         .btn-secondary:hover {
-            background: white;
+            background: #4d4d4d;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
         }
 
         .btn-danger {
             background: var(--danger);
             color: white;
-            padding: 8px 16px;
-            font-size: 12px;
         }
 
         .btn-danger:hover {
@@ -94,8 +154,6 @@
         .btn-warning {
             background: var(--warning);
             color: white;
-            padding: 8px 16px;
-            font-size: 12px;
         }
 
         .btn-warning:hover {
@@ -103,22 +161,32 @@
         }
 
         .btn-small {
-            padding: 6px 12px;
-            font-size: 12px;
+            padding: 12px 24px;
+            font-size: 14px;
+            min-height: 50px;
+        }
+
+        .btn-small::before {
+            font-size: 28px;
+        }
+
+        .btn-small span {
+            font-size: 14px;
         }
 
         .card {
-            background: white;
+            background: #2d2d2d;
             padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
             margin-bottom: 20px;
+            border: 1px solid #4d4d4d;
         }
 
         .card h2 {
             font-size: 20px;
             margin-bottom: 20px;
-            color: var(--dark);
+            color: #e0e0e0;
         }
 
         .form-group {
@@ -129,24 +197,28 @@
             display: block;
             margin-bottom: 8px;
             font-weight: 600;
-            color: var(--dark);
+            color: #e0e0e0;
             font-size: 14px;
         }
 
         .form-group input,
-        .form-group textarea {
+        .form-group textarea,
+        .form-group select {
             width: 100%;
             padding: 10px;
-            border: 1px solid var(--border);
+            border: 1px solid #4d4d4d;
             border-radius: 6px;
             font-size: 14px;
             font-family: inherit;
+            background: #3d3d3d;
+            color: #e0e0e0;
         }
 
         .form-group input:focus,
-        .form-group textarea:focus {
+        .form-group textarea:focus,
+        .form-group select:focus {
             outline: none;
-            border-color: var(--primary);
+            border-color: #2563eb;
             box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
 
@@ -168,15 +240,15 @@
         }
 
         .alert-success {
-            background: #d1fae5;
-            color: #065f46;
-            border-left: 4px solid #10b981;
+            background: #1e4620;
+            color: #86efac;
+            border-left: 4px solid #22c55e;
         }
 
         .alert-error {
-            background: #fee2e2;
-            color: #991b1b;
-            border-left: 4px solid #dc2626;
+            background: #3f1715;
+            color: #fca5a5;
+            border-left: 4px solid #ef4444;
         }
 
         .operators-grid {
@@ -186,23 +258,24 @@
         }
 
         .operator-card {
-            background: white;
-            border: 1px solid var(--border);
+            background: #2d2d2d;
+            border: 1px solid #4d4d4d;
             border-radius: 8px;
             padding: 20px;
             display: flex;
             flex-direction: column;
             gap: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
         }
 
         .operator-card h3 {
-            font-size: 18px;
-            color: var(--dark);
+            font-size: 20px;
+            color: #e0e0e0;
         }
 
         .operator-info {
-            font-size: 14px;
-            color: #6b7280;
+            font-size: 16px;
+            color: #a0a0a0;
         }
 
         .operator-actions {
@@ -218,7 +291,7 @@
         .empty-state {
             text-align: center;
             padding: 40px 20px;
-            color: #9ca3af;
+            color: #a0a0a0;
         }
 
         .spinner {
@@ -240,27 +313,170 @@
             resize: vertical;
             min-height: 80px;
         }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .form-row {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .operators-grid {
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            }
+
+            .container {
+                padding: 15px;
+            }
+
+            .card {
+                padding: 15px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .header > div {
+                width: 100%;
+                justify-content: flex-start;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .operators-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .btn {
+                padding: 10px 12px;
+                min-height: 50px;
+                font-size: 16px;
+            }
+
+            .btn span {
+                font-size: 14px;
+            }
+
+            .card {
+                padding: 12px;
+            }
+
+            .card h2 {
+                font-size: 18px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 20px;
+            }
+
+            .header > div {
+                gap: 8px;
+            }
+
+            .btn {
+                padding: 8px 10px;
+                min-height: 45px;
+                font-size: 14px;
+                gap: 6px;
+            }
+
+            .btn::before {
+                font-size: 28px;
+            }
+
+            .btn span {
+                font-size: 12px;
+            }
+
+            .btn-small {
+                padding: 6px 8px;
+                min-height: 40px;
+                font-size: 12px;
+            }
+
+            .btn-small::before {
+                font-size: 20px;
+            }
+
+            .btn-small span {
+                font-size: 11px;
+            }
+
+            .card {
+                padding: 10px;
+                margin-bottom: 15px;
+            }
+
+            .card h2 {
+                font-size: 16px;
+                margin-bottom: 10px;
+            }
+
+            .form-group label {
+                font-size: 13px;
+            }
+
+            .form-group input,
+            .form-group textarea,
+            .form-group select {
+                padding: 8px;
+                font-size: 13px;
+            }
+
+            .operator-card {
+                padding: 10px;
+            }
+
+            .operator-card h3 {
+                font-size: 14px;
+            }
+
+            .operator-info div {
+                font-size: 12px;
+            }
+
+            .operator-actions {
+                gap: 8px;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <h1>👥 Gestione Operatori</h1>
-            <div style="display: flex; gap: 10px;">
-                <button class="btn btn-secondary" onclick="window.location.href='admin-dashboard.html'">⬅️ Task Manager</button>
-                <button class="btn btn-primary" onclick="handleLogout()">🚪 Logout</button>
-            </div>
+            <h1>👥 Gestione Admin<br>/ Operatori</h1>
+            <button class="btn btn-secondary" data-icon="⬅️" onclick="window.location.href='admin-dashboard.html'"><span>Task Manager</span></button>
         </div>
 
+        <!-- Main Content -->
+        <div class="main-content">
         <!-- Alert -->
         <div id="alert" class="alert"></div>
 
-        <!-- Create Operator Section -->
+        <!-- Create Operator/Admin Section -->
         <div class="card">
-            <h2>➕ Crea Nuovo Operatore</h2>
+            <h2>➕ Crea Nuovo Operatore / Admin</h2>
             <form id="createOperatorForm" onsubmit="handleCreateOperator(event)">
                 <div class="form-row">
+                    <div class="form-group">
+                        <label for="userType">Tipo *</label>
+                        <select id="userType" required>
+                            <option value="operator">👥 Operatore</option>
+                            <option value="admin">👨‍💼 Admin</option>
+                        </select>
+                    </div>
                     <div class="form-group">
                         <label for="operatorUsername">Username *</label>
                         <input type="text" id="operatorUsername" placeholder="es. mario_rossi" required>
@@ -274,30 +490,36 @@
                         <input type="text" id="operatorImage" placeholder="es. 👨‍🔧 oppure https://...">
                     </div>
                 </div>
-                <button type="submit" class="btn btn-success">Crea Operatore</button>
+                <button type="submit" class="btn btn-success" data-icon="➕"><span>Crea<br>Utente</span></button>
             </form>
         </div>
 
-        <!-- Operators List -->
+        <!-- Operators/Admins List -->
         <div class="card">
-            <h2>📋 Elenco Operatori</h2>
+            <h2>📋 Elenco Operatori e Admin</h2>
             <div id="operatorsContainer" class="operators-grid">
                 <div class="empty-state">
                     <div class="spinner"></div>
-                    <p style="margin-top: 15px;">Caricamento operatori...</p>
+                    <p style="margin-top: 15px;">Caricamento utenti...</p>
                 </div>
             </div>
         </div>
-    </div>
+        </div>
 
-    <!-- Edit Operator Modal -->
-    <div id="editModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
-        <div style="background: white; padding: 30px; border-radius: 10px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto;">
-            <h2>✏️ Modifica Operatore</h2>
+        <!-- Edit Operator Modal -->
+    <div id="editModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; padding: 20px;">
+        <div style="background: #2d2d2d; border: 1px solid #4d4d4d; padding: 30px; border-radius: 10px; max-width: 500px; width: 100%; max-height: 80vh; overflow-y: auto; color: #e0e0e0;">
+            <h2>✏️ Modifica Utente</h2>
             <form id="editOperatorForm" onsubmit="handleEditOperator(event)" style="margin-top: 20px;">
                 <div class="form-group">
                     <label for="editOperatorUsername">Username</label>
-                    <input type="text" id="editOperatorUsername" disabled style="background: #f3f4f6;">
+                    <input type="text" id="editOperatorUsername" disabled style="background: #3d3d3d; color: #a0a0a0; cursor: not-allowed;">
+                </div>
+                <div class="form-group">
+                    <label>Tipo</label>
+                    <div style="padding: 10px; background: #3d3d3d; border-radius: 6px; border: 1px solid #4d4d4d;">
+                        <span id="editOperatorRole" style="color: #e0e0e0; font-weight: 600;"></span>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="editOperatorPassword">Nuova Password (lascia vuoto per mantenere l'attuale)</label>
@@ -307,9 +529,9 @@
                     <label for="editOperatorImage">Immagine (Emoji o URL)</label>
                     <input type="text" id="editOperatorImage" placeholder="es. 👨‍🔧 oppure https://...">
                 </div>
-                <div style="display: flex; gap: 10px; margin-top: 20px;">
-                    <button type="submit" class="btn btn-primary" style="flex: 1;">Salva Modifiche</button>
-                    <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="closeEditModal()">Annulla</button>
+                <div style="display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1; min-width: 150px;" data-icon="💾"><span>Salva<br>Modifiche</span></button>
+                    <button type="button" class="btn btn-secondary" style="flex: 1; min-width: 150px;" data-icon="❌" onclick="closeEditModal()"><span>Annulla</span></button>
                 </div>
             </form>
         </div>
@@ -333,13 +555,24 @@
 
         async function loadOperators() {
             try {
-                const response = await fetch(`${API_URL}/auth/operators`, {
+                // Carica operatori e admin separatamente
+                const operatorsResponse = await fetch(`${API_URL}/auth/operators`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const adminsResponse = await fetch(`${API_URL}/auth/admins`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
 
-                if (!response.ok) throw new Error('Errore nel caricamento degli operatori');
+                if (!operatorsResponse.ok || !adminsResponse.ok) {
+                    throw new Error('Errore nel caricamento degli utenti');
+                }
                 
-                operatorsList = await response.json();
+                const operators = await operatorsResponse.json();
+                const admins = await adminsResponse.json();
+                
+                // Combina e ordina
+                operatorsList = [...admins, ...operators].sort((a, b) => a.username.localeCompare(b.username));
                 renderOperators();
             } catch (error) {
                 showAlert('Errore: ' + error.message, 'error');
@@ -350,19 +583,20 @@
             const container = document.getElementById('operatorsContainer');
             
             if (operatorsList.length === 0) {
-                container.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><p>Nessun operatore creato</p></div>';
+                container.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><p>Nessun utente creato</p></div>';
                 return;
             }
 
             container.innerHTML = operatorsList.map(op => `
                 <div class="operator-card">
-                    <h3>${op.username}</h3>
+                    <h3>${op.role === 'master' ? '👨‍💼' : '👥'} ${op.username}</h3>
                     <div class="operator-info">
+                        <div>📋 Tipo: ${op.role === 'master' ? 'Admin' : 'Operatore'}</div>
                         <div>📅 Creato: ${new Date(op.createdAt).toLocaleString('it-IT')}</div>
                     </div>
                     <div class="operator-actions">
-                        <button class="btn btn-warning btn-small" onclick="openEditModal(${op.id}, '${op.username}', '${op.image || ''}')">✏️ Modifica</button>
-                        <button class="btn btn-danger btn-small" onclick="handleDeleteOperator(${op.id}, '${op.username}')">🗑️ Cancella</button>
+                        <button class="btn btn-warning btn-small" data-icon="✏️" onclick="openEditModal(${op.id}, '${op.username}', '${op.image || ''}', '${op.role}')"><span>Modifica</span></button>
+                        <button class="btn btn-danger btn-small" data-icon="🗑️" onclick="handleDeleteOperator(${op.id}, '${op.username}')"><span>Cancella</span></button>
                     </div>
                 </div>
             `).join('');
@@ -371,12 +605,14 @@
         async function handleCreateOperator(event) {
             event.preventDefault();
             
+            const userType = document.getElementById('userType').value;
             const username = document.getElementById('operatorUsername').value;
             const password = document.getElementById('operatorPassword').value;
             const image = document.getElementById('operatorImage').value;
 
             try {
-                const response = await fetch(`${API_URL}/auth/create-operator`, {
+                const endpoint = userType === 'admin' ? '/auth/create-admin' : '/auth/create-operator';
+                const response = await fetch(`${API_URL}${endpoint}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -388,7 +624,7 @@
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.message || 'Errore nella creazione');
 
-                showAlert('Operatore creato con successo!', 'success');
+                showAlert(`${userType === 'admin' ? 'Admin' : 'Operatore'} creato con successo!`, 'success');
                 document.getElementById('createOperatorForm').reset();
                 await loadOperators();
             } catch (error) {
@@ -396,10 +632,11 @@
             }
         }
 
-        function openEditModal(operatorId, username, image) {
+        function openEditModal(operatorId, username, image, role) {
             editingOperatorId = operatorId;
             document.getElementById('editOperatorUsername').value = username;
             document.getElementById('editOperatorImage').value = image || '';
+            document.getElementById('editOperatorRole').textContent = role === 'master' ? 'Admin' : 'Operatore';
             document.getElementById('editModal').style.display = 'flex';
         }
 

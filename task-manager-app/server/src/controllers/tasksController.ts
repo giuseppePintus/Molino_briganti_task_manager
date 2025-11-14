@@ -173,7 +173,9 @@ export class TasksController {
             }
 
             const { id } = req.params;
-            const { title, description, scheduledAt, assignedOperatorId, estimatedMinutes, priority, recurrenceEnd } = req.body;
+            const { title, description, scheduledAt, assignedOperatorId, estimatedMinutes, priority, recurrenceType, recurrenceEnd } = req.body;
+
+            console.log(`DEBUG updateTask: Updating task ${id} with data:`, { title, description, scheduledAt, assignedOperatorId, estimatedMinutes, priority, recurrenceType, recurrenceEnd });
 
             const updateData: any = {};
             
@@ -189,12 +191,18 @@ export class TasksController {
             }
             if (assignedOperatorId !== undefined) updateData.assignedOperatorId = assignedOperatorId;
             if (estimatedMinutes !== undefined) updateData.estimatedMinutes = estimatedMinutes;
+            if (recurrenceType !== undefined) {
+                console.log(`DEBUG: Setting recurrenceType to "${recurrenceType}"`);
+                updateData.recurrenceType = recurrenceType;
+            }
             if (recurrenceEnd !== undefined) updateData.recurrenceEnd = recurrenceEnd ? new Date(recurrenceEnd) : null;
             
             if (priority !== undefined && ['LOW', 'MEDIUM', 'HIGH', 'URGENT'].includes(priority)) {
                 updateData.priority = priority;
                 updateData.color = priorityColors[priority];
             }
+
+            console.log(`DEBUG: updateData to be saved:`, updateData);
 
             const updatedTask = await prisma.task.update({
                 where: { id: parseInt(id) },
@@ -205,9 +213,12 @@ export class TasksController {
                 },
             });
 
+            console.log(`DEBUG: Task updated successfully. New recurrenceType:`, updatedTask.recurrenceType);
+
             res.json(updatedTask);
         } catch (err: unknown) {
             const errorMsg = err instanceof Error ? err.message : 'Internal server error';
+            console.error(`DEBUG: Error updating task:`, errorMsg);
             res.status(500).json({ message: errorMsg });
         }
     }

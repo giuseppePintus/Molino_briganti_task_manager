@@ -66,29 +66,98 @@ class TasksController {
                 if (!req.user || req.user.role !== 'master') {
                     return res.status(403).json({ message: 'Only master can create tasks' });
                 }
-                const { title, description, scheduledAt, assignedOperatorId, estimatedMinutes, priority } = req.body;
+                const { title, description, scheduledAt, assignedOperatorId, estimatedMinutes, priority, recurrenceType, recurrenceEnd } = req.body;
                 if (!title) {
                     return res.status(400).json({ message: 'Title is required' });
                 }
                 const taskPriority = priority && ['LOW', 'MEDIUM', 'HIGH', 'URGENT'].includes(priority) ? priority : 'MEDIUM';
                 const taskColor = priorityColors[taskPriority];
-                const newTask = yield prisma.task.create({
-                    data: {
-                        title,
-                        description: description || null,
-                        scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
-                        assignedOperatorId: assignedOperatorId || null,
-                        estimatedMinutes: estimatedMinutes || null,
-                        priority: taskPriority,
-                        color: taskColor,
-                        createdById: req.user.id,
-                    },
-                    include: {
-                        assignedOperator: { select: { id: true, username: true } },
-                        createdBy: { select: { id: true, username: true } },
-                    },
+                // Se non c'è ricorrenza, crea un task singolo
+                if (!recurrenceType) {
+                    const newTask = yield prisma.task.create({
+                        data: {
+                            title,
+                            description: description || null,
+                            scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+                            originalScheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+                            assignedOperatorId: assignedOperatorId || null,
+                            estimatedMinutes: estimatedMinutes || null,
+                            priority: taskPriority,
+                            color: taskColor,
+                            recurring: false,
+                            recurrenceType: null,
+                            recurrenceEnd: null,
+                            createdById: req.user.id,
+                        },
+                        include: {
+                            assignedOperator: { select: { id: true, username: true } },
+                            createdBy: { select: { id: true, username: true } },
+                        },
+                    });
+                    res.status(201).json(newTask);
+                    return;
+                }
+                // Se c'è ricorrenza, crea il task parent e le istanze ricorrenti
+                if (!scheduledAt) {
+                    return res.status(400).json({ message: 'Data/ora richiesta per task ricorrenti' });
+                }
+                const startDate = new Date(scheduledAt);
+                const endDate = recurrenceEnd ? new Date(recurrenceEnd) : new Date(startDate.getTime() + 12 * 30 * 24 * 60 * 60 * 1000); // 12 mesi di default
+                // Genera le date per le istanze ricorrenti
+                const instanceDates = [];
+                let currentDate = new Date(startDate);
+                while (currentDate <= endDate) {
+                    instanceDates.push(new Date(currentDate));
+                    switch (recurrenceType) {
+                        case 'DAILY':
+                            currentDate.setDate(currentDate.getDate() + 1);
+                            break;
+                        case 'WEEKLY':
+                            currentDate.setDate(currentDate.getDate() + 7);
+                            break;
+                        case 'BIWEEKLY':
+                            currentDate.setDate(currentDate.getDate() + 14);
+                            break;
+                        case 'MONTHLY':
+                            currentDate.setMonth(currentDate.getMonth() + 1);
+                            break;
+                        case 'QUARTERLY':
+                            currentDate.setMonth(currentDate.getMonth() + 3);
+                            break;
+                        case 'YEARLY':
+                            currentDate.setFullYear(currentDate.getFullYear() + 1);
+                            break;
+                    }
+                }
+                // Crea le istanze ricorrenti
+                const createdTasks = [];
+                for (const instanceDate of instanceDates) {
+                    const task = yield prisma.task.create({
+                        data: {
+                            title,
+                            description: description || null,
+                            scheduledAt: new Date(instanceDate),
+                            originalScheduledAt: new Date(instanceDate),
+                            assignedOperatorId: assignedOperatorId || null,
+                            estimatedMinutes: estimatedMinutes || null,
+                            priority: taskPriority,
+                            color: taskColor,
+                            recurring: true,
+                            recurrenceType,
+                            recurrenceEnd: endDate,
+                            createdById: req.user.id,
+                        },
+                        include: {
+                            assignedOperator: { select: { id: true, username: true } },
+                            createdBy: { select: { id: true, username: true } },
+                        },
+                    });
+                    createdTasks.push(task);
+                }
+                res.status(201).json({
+                    message: `Creati ${createdTasks.length} task ricorrenti`,
+                    tasks: createdTasks
                 });
-                res.status(201).json(newTask);
             }
             catch (err) {
                 const errorMsg = err instanceof Error ? err.message : 'Internal server error';
@@ -103,22 +172,36 @@ class TasksController {
                     return res.status(403).json({ message: 'Only master can update tasks' });
                 }
                 const { id } = req.params;
-                const { title, description, scheduledAt, assignedOperatorId, estimatedMinutes, priority } = req.body;
+                const { title, description, scheduledAt, assignedOperatorId, estimatedMinutes, priority, recurrenceType, recurrenceEnd } = req.body;
+                console.log(`DEBUG updateTask: Updating task ${id} with data:`, { title, description, scheduledAt, assignedOperatorId, estimatedMinutes, priority, recurrenceType, recurrenceEnd });
                 const updateData = {};
                 if (title !== undefined)
                     updateData.title = title;
                 if (description !== undefined)
                     updateData.description = description;
-                if (scheduledAt !== undefined)
+                if (scheduledAt !== undefined) {
                     updateData.scheduledAt = scheduledAt ? new Date(scheduledAt) : null;
+                    // Se scheduledAt viene impostato e originalScheduledAt non esiste, lo impostiamo
+                    const task = yield prisma.task.findUnique({ where: { id: parseInt(id) } });
+                    if (task && !task.originalScheduledAt && scheduledAt) {
+                        updateData.originalScheduledAt = new Date(scheduledAt);
+                    }
+                }
                 if (assignedOperatorId !== undefined)
                     updateData.assignedOperatorId = assignedOperatorId;
                 if (estimatedMinutes !== undefined)
                     updateData.estimatedMinutes = estimatedMinutes;
+                if (recurrenceType !== undefined) {
+                    console.log(`DEBUG: Setting recurrenceType to "${recurrenceType}"`);
+                    updateData.recurrenceType = recurrenceType;
+                }
+                if (recurrenceEnd !== undefined)
+                    updateData.recurrenceEnd = recurrenceEnd ? new Date(recurrenceEnd) : null;
                 if (priority !== undefined && ['LOW', 'MEDIUM', 'HIGH', 'URGENT'].includes(priority)) {
                     updateData.priority = priority;
                     updateData.color = priorityColors[priority];
                 }
+                console.log(`DEBUG: updateData to be saved:`, updateData);
                 const updatedTask = yield prisma.task.update({
                     where: { id: parseInt(id) },
                     data: updateData,
@@ -127,10 +210,12 @@ class TasksController {
                         createdBy: { select: { id: true, username: true } },
                     },
                 });
+                console.log(`DEBUG: Task updated successfully. New recurrenceType:`, updatedTask.recurrenceType);
                 res.json(updatedTask);
             }
             catch (err) {
                 const errorMsg = err instanceof Error ? err.message : 'Internal server error';
+                console.error(`DEBUG: Error updating task:`, errorMsg);
                 res.status(500).json({ message: errorMsg });
             }
         });
@@ -334,6 +419,134 @@ class TasksController {
                     },
                 });
                 res.json(resumedTask);
+            }
+            catch (err) {
+                const errorMsg = err instanceof Error ? err.message : 'Internal server error';
+                res.status(500).json({ message: errorMsg });
+            }
+        });
+    }
+    postponeTask(req, res) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                if (!req.user || req.user.role !== 'slave') {
+                    return res.status(403).json({ message: 'Only operators can postpone tasks' });
+                }
+                const { id } = req.params;
+                // Verify task exists and is assigned to this operator
+                const task = yield prisma.task.findUnique({ where: { id: parseInt(id) } });
+                if (!task) {
+                    return res.status(404).json({ message: 'Task not found' });
+                }
+                if (task.assignedOperatorId !== req.user.id) {
+                    return res.status(403).json({ message: 'Task not assigned to you' });
+                }
+                // Only postpone if task has a scheduled date
+                if (!task.scheduledAt) {
+                    return res.status(400).json({ message: 'Task has no scheduled date' });
+                }
+                // Function to check if date is a weekend (only Sunday)
+                const isWeekend = (date) => {
+                    const day = date.getDay();
+                    return day === 0; // 0 = Sunday only
+                };
+                // Italian holidays 2024-2025 (Add more years as needed)
+                const italianHolidays = [
+                    '2024-01-01', // Capodanno
+                    '2024-01-06', // Epifania
+                    '2024-04-25', // Festa della Liberazione
+                    '2024-05-01', // Festa del Lavoro
+                    '2024-06-02', // Festa della Repubblica
+                    '2024-08-15', // Ferragosto
+                    '2024-11-01', // Ognissanti
+                    '2024-12-08', // Immacolata Concezione
+                    '2024-12-25', // Natale
+                    '2024-12-26', // Santo Stefano
+                    '2025-01-01', // Capodanno
+                    '2025-01-06', // Epifania
+                    '2025-04-25', // Festa della Liberazione
+                    '2025-05-01', // Festa del Lavoro
+                    '2025-06-02', // Festa della Repubblica
+                    '2025-08-15', // Ferragosto
+                    '2025-11-01', // Ognissanti
+                    '2025-12-08', // Immacolata Concezione
+                    '2025-12-25', // Natale
+                    '2025-12-26', // Santo Stefano
+                    '2026-01-01', // Capodanno
+                    '2026-01-06', // Epifania
+                    '2026-04-25', // Festa della Liberazione
+                    '2026-05-01', // Festa del Lavoro
+                    '2026-06-02', // Festa della Repubblica
+                    '2026-08-15', // Ferragosto
+                    '2026-11-01', // Ognissanti
+                    '2026-12-08', // Immacolata Concezione
+                    '2026-12-25', // Natale
+                    '2026-12-26', // Santo Stefano
+                ];
+                const isHoliday = (date) => {
+                    const dateStr = date.toISOString().split('T')[0];
+                    return italianHolidays.includes(dateStr);
+                };
+                // Calculate next working day (skip weekends and holidays)
+                let newDate = new Date(task.scheduledAt);
+                newDate.setDate(newDate.getDate() + 1);
+                while (isWeekend(newDate) || isHoliday(newDate)) {
+                    newDate.setDate(newDate.getDate() + 1);
+                }
+                // Postpone task
+                const postponedTask = yield prisma.task.update({
+                    where: { id: parseInt(id) },
+                    data: {
+                        scheduledAt: newDate,
+                        // Keep originalScheduledAt unchanged
+                    },
+                    include: {
+                        assignedOperator: { select: { id: true, username: true } },
+                        acceptedBy: { select: { id: true, username: true } },
+                        createdBy: { select: { id: true, username: true } },
+                        completedBy: { select: { id: true, username: true } },
+                    },
+                });
+                res.json(postponedTask);
+            }
+            catch (err) {
+                const errorMsg = err instanceof Error ? err.message : 'Internal server error';
+                res.status(500).json({ message: errorMsg });
+            }
+        });
+    }
+    resetTaskToSuspended(req, res) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                if (!req.user || req.user.role !== 'master') {
+                    return res.status(403).json({ message: 'Only master can reset tasks' });
+                }
+                const { id } = req.params;
+                // Verify task exists
+                const task = yield prisma.task.findUnique({ where: { id: parseInt(id) } });
+                if (!task) {
+                    return res.status(404).json({ message: 'Task not found' });
+                }
+                // Reset task to suspended state (only remove acceptance and completion)
+                const resetTask = yield prisma.task.update({
+                    where: { id: parseInt(id) },
+                    data: {
+                        acceptedAt: null,
+                        acceptedById: null,
+                        completed: false,
+                        completedAt: null,
+                        completedById: null,
+                        actualMinutes: null,
+                        paused: false,
+                        pausedAt: null,
+                    },
+                    include: {
+                        assignedOperator: { select: { id: true, username: true } },
+                        createdBy: { select: { id: true, username: true } },
+                        completedBy: { select: { id: true, username: true } },
+                    },
+                });
+                res.json(resetTask);
             }
             catch (err) {
                 const errorMsg = err instanceof Error ? err.message : 'Internal server error';
