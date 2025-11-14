@@ -85,13 +85,38 @@
         }
 
         .btn {
-            padding: 10px 20px;
+            padding: 12px 24px;
             border: none;
             border-radius: 6px;
-            font-size: 14px;
+            font-size: 18px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
+            letter-spacing: 0.5px;
+            position: relative;
+            overflow: visible;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 12px;
+            min-height: 60px;
+        }
+
+        .btn::before {
+            content: attr(data-icon);
+            font-size: 36px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn span {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            line-height: 1.2;
+            font-size: 18px;
         }
 
         .btn-primary {
@@ -134,28 +159,28 @@
 
         .stats {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 30px;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
         }
 
         .stat-card {
             background: #2d2d2d;
-            padding: 20px;
+            padding: 15px;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.3);
             border-left: 4px solid var(--primary);
         }
 
         .stat-card .number {
-            font-size: 32px;
+            font-size: 28px;
             font-weight: bold;
             color: #e0e0e0;
-            margin-bottom: 5px;
+            margin-bottom: 3px;
         }
 
         .stat-card .label {
-            font-size: 14px;
+            font-size: 12px;
             color: #a0a0a0;
         }
 
@@ -163,6 +188,33 @@
             display: flex;
             gap: 10px;
             margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .quick-actions .btn {
+            flex: 1;
+            min-width: 150px;
+            padding: 12px 16px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            gap: 15px;
+        }
+
+        .card-header h2 {
+            margin: 0;
+            flex: 1;
+        }
+
+        .card-header .btn {
+            flex-shrink: 0;
+            min-width: auto;
+            padding: 8px 12px;
+            margin: 0;
         }
 
         .card {
@@ -230,8 +282,6 @@
         .calendar-day:hover {
             background: #4d4d4d;
         }
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
 
         .calendar-day.has-tasks {
             background: #1e3a2a;
@@ -263,12 +313,12 @@
         .task-title {
             font-weight: 600;
             color: #e0e0e0;
-            font-size: 15px;
+            font-size: 18px;
             text-transform: uppercase;
         }
 
         .task-status {
-            font-size: 12px;
+            font-size: 13px;
             padding: 4px 8px;
             border-radius: 4px;
             background: #1e3a4d;
@@ -277,7 +327,7 @@
 
         .task-description {
             color: #a0a0a0;
-            font-size: 14px;
+            font-size: 16px;
             margin-bottom: 10px;
         }
 
@@ -285,7 +335,7 @@
             display: flex;
             gap: 10px;
             flex-wrap: wrap;
-            font-size: 12px;
+            font-size: 14px;
             color: #808080;
             margin-bottom: 10px;
         }
@@ -306,7 +356,7 @@
 
         .btn-small {
             padding: 6px 12px;
-            font-size: 12px;
+            font-size: 14px;
         }
 
         .empty-state {
@@ -403,6 +453,160 @@
             background: #3d3d3d;
             color: #e0e0e0;
         }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .quick-actions .btn {
+                min-width: 120px;
+                padding: 12px 16px;
+                font-size: 20px;
+            }
+
+            .btn::before {
+                font-size: 32px;
+            }
+
+            .btn span {
+                font-size: 18px;
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .quick-actions {
+                flex-wrap: wrap;
+            }
+
+            .quick-actions .btn {
+                flex: 0 1 calc(50% - 5px);
+                min-width: auto;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .quick-actions {
+                gap: 8px;
+                flex-direction: row;
+                flex-wrap: wrap;
+            }
+
+            .quick-actions .btn {
+                flex: 0 1 calc(50% - 4px);
+                min-width: auto;
+                padding: 10px 12px;
+                gap: 8px;
+            }
+
+            .btn::before {
+                font-size: 28px;
+            }
+
+            .btn span {
+                font-size: 16px;
+                line-height: 1.1;
+            }
+
+            .main-content {
+                grid-template-columns: 1fr;
+                display: flex;
+                flex-direction: column;
+            }
+
+            .main-content > .card:first-child {
+                order: 2;
+            }
+
+            .main-content > div:not(.card) {
+                order: 1;
+            }
+
+            .card {
+                padding: 18px;
+            }
+
+            .card-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .task-item {
+                padding: 14px;
+            }
+
+            .task-item .task-actions {
+                flex-wrap: wrap;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .quick-actions {
+                flex-direction: column;
+                gap: 6px;
+            }
+
+            .quick-actions .btn {
+                min-width: auto;
+                width: 100%;
+                padding: 10px 14px;
+                gap: 10px;
+                font-size: 18px;
+                min-height: 55px;
+            }
+
+            .btn::before {
+                font-size: 28px;
+            }
+
+            .btn span {
+                font-size: 16px;
+                line-height: 1.1;
+            }
+
+            .card {
+                padding: 15px;
+                margin-bottom: 15px;
+            }
+
+            .card h2 {
+                font-size: 18px;
+                margin-bottom: 12px;
+            }
+
+            .card-header {
+                flex-direction: column;
+                align-items: flex-start;
+                margin-bottom: 12px;
+            }
+
+            .card-header h2 {
+                margin-bottom: 10px;
+            }
+
+            .task-list {
+                gap: 10px;
+            }
+
+            .task-item {
+                padding: 12px;
+                font-size: 13px;
+            }
+
+            .task-item .task-info {
+                flex-direction: column;
+                gap: 5px;
+            }
+
+            .task-item .task-actions {
+                flex-direction: column;
+                gap: 5px;
+                width: 100%;
+            }
+
+            .task-item .task-actions .btn {
+                width: 100%;
+                padding: 6px 8px;
+                font-size: 12px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -412,7 +616,7 @@
             <h1>📊 Admin Dashboard</h1>
             <div class="header-actions">
                 <div class="user-info" id="userInfo"></div>
-                <button class="btn btn-danger" onclick="handleLogout()">🚪 Logout</button>
+                <button class="btn btn-danger" data-icon="🚪" onclick="handleLogout()"><span>Logout</span></button>
             </div>
         </div>
 
@@ -424,9 +628,8 @@
 
         <!-- Quick Actions -->
         <div class="quick-actions">
-            <button class="btn btn-success" onclick="openCreateTaskModal()">📝 Nuovo Task</button>
-            <button class="btn btn-info" onclick="openCreateRecurrenceModal()" style="background: #3b82f6;">🔄 Nuova Ricorrenza</button>
-            <button class="btn btn-primary" onclick="window.location.href='operators.html'">👥 Gestione Operatori</button>
+            <button class="btn btn-success" data-icon="📝🔄" onclick="openCreateTaskOrRecurrenceModal()"><span>Gestione Task /<br>Ricorrenze</span></button>
+            <button class="btn btn-primary" data-icon="👥" onclick="window.location.href='operators.html'"><span>Gestione<br>Operatori</span></button>
         </div>
 
         <!-- Main Content -->
@@ -434,9 +637,9 @@
             <!-- Calendar -->
             <div class="card" style="padding: 12px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <button class="btn btn-primary" onclick="previousMonth()" style="padding: 8px 12px; font-size: 16px; min-width: auto; width: 40px;">◀</button>
+                    <button class="btn btn-primary" onclick="previousMonth()" style="padding: 8px 12px; font-size: 16px; min-width: auto; width: 40px; display: flex; align-items: center; justify-content: center;">◀</button>
                     <h4 id="calendarMonthYear" style="margin: 0; color: #e0e0e0; font-size: 16px;"></h4>
-                    <button class="btn btn-primary" onclick="nextMonth()" style="padding: 8px 12px; font-size: 16px; min-width: auto; width: 40px;">▶</button>
+                    <button class="btn btn-primary" onclick="nextMonth()" style="padding: 8px 12px; font-size: 16px; min-width: auto; width: 40px; display: flex; align-items: center; justify-content: center;">▶</button>
                 </div>
                 <div id="calendarContainer" class="calendar-container">
                     <!-- Calendar will be generated here -->
@@ -444,17 +647,22 @@
             </div>
 
             <!-- Task List with Filters -->
-            <div class="card">
-                <h2>📋 Task - Dettagli</h2>
+            <div class="card" id="operatorTasksCard" style="display: none;">
+                <div style="text-align: center; margin-bottom: 15px;">
+                    <button class="btn btn-secondary" data-icon="⬅️" onclick="toggleOperatorTasks()" id="backToMyTasksBtn" style="display: inline-flex; margin: 0 auto;"><span>Torna ai<br>Miei Task</span></button>
+                </div>
+                <div class="card-header">
+                    <h2>📋 Task Operatori</h2>
+                </div>
                 
                 <!-- Filters Inside Card -->
                 <div class="filter-bar" style="margin-bottom: 20px; border-bottom: 1px solid #4d4d4d; padding-bottom: 15px;">
                     <label style="font-weight: 600; display: block; margin-bottom: 10px; color: #e0e0e0;">🔍 Filtri:</label>
                     <div style="display: flex; gap: 10px;">
-                        <select id="operatorFilter" onchange="applyFilters()" style="flex: 1;">
+                        <select id="operatorFilter" aria-label="Filtra per operatore" onchange="applyFilters()" style="flex: 1;">
                             <option value="">Tutti gli Operatori</option>
                         </select>
-                        <select id="statusFilter" onchange="applyFilters()" style="flex: 1;">
+                        <select id="statusFilter" aria-label="Filtra per stato" onchange="applyFilters()" style="flex: 1;">
                             <option value="">Tutti gli Stati</option>
                             <option value="pending">In Sospeso</option>
                             <option value="accepted">Accettato</option>
@@ -466,6 +674,21 @@
                 <div id="tasksList" class="task-list">
                     <div class="empty-state">
                         <p>Nessun task disponibile</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- My Tasks (Admin Personal Tasks) -->
+            <div class="card" id="myTasksCard">
+                <div style="text-align: center; margin-bottom: 15px;">
+                    <button class="btn btn-secondary" data-icon="👁️" onclick="toggleOperatorTasks()" id="toggleTasksBtn" style="display: inline-flex; margin: 0 auto;"><span>Visualizza<br>Task Operatori</span></button>
+                </div>
+                <div class="card-header">
+                    <h2>📋 I Miei Task</h2>
+                </div>
+                <div id="adminTasksList" class="task-list">
+                    <div class="empty-state">
+                        <p>Nessun task personale</p>
                     </div>
                 </div>
             </div>
@@ -488,7 +711,9 @@
         let token = localStorage.getItem('token');
         let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
         let allOperators = [];
+        let allAssignees = []; // Operatori + Admin
         let allTasks = [];
+        let currentViewMode = 'myTasks'; // 'myTasks' o 'operatorTasks'
         
         // Variabili per il calendario
         let calendarDisplayMonth = new Date().getMonth();
@@ -529,9 +754,30 @@
         async function initDashboard() {
             document.getElementById('userInfo').textContent = `👤 ${currentUser.username}`;
             await loadOperators();
+            await loadAssignees();
             await loadTasks();
             await updateStats();
             await renderCalendar();
+        }
+
+        async function loadAssignees() {
+            try {
+                // Carica tutti gli admin e operatori per l'assegnamento task
+                const response = await fetch(`${API_URL}/auth/users-for-assignment`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (response.ok) {
+                    allAssignees = await response.json();
+                } else {
+                    console.error('Errore caricamento assignees');
+                    allAssignees = allOperators;
+                }
+            } catch (error) {
+                console.error('Errore caricamento assignees:', error);
+                // Se fallisce, usa solo gli operatori
+                allAssignees = allOperators;
+            }
         }
 
         async function loadOperators() {
@@ -566,6 +812,7 @@
                 
                 allTasks = await response.json();
                 renderTasks();
+                renderAdminTasks();
                 await renderCalendar();
             } catch (error) {
                 showAlert('Errore: ' + error.message, 'error');
@@ -589,28 +836,41 @@
                 if (statusFilter === 'completed') filtered = filtered.filter(t => t.completed);
             }
 
-            // Ordina i task: quelli senza data all'inizio, poi per data/ora
-            filtered.sort((a, b) => {
-                const aHasDate = a.scheduledAt ? true : false;
-                const bHasDate = b.scheduledAt ? true : false;
-                
-                // Se uno non ha data e l'altro sì, quello senza data viene prima
-                if (!aHasDate && bHasDate) return -1;
-                if (aHasDate && !bHasDate) return 1;
-                
-                // Se entrambi non hanno data, mantieni ordine originale
-                if (!aHasDate && !bHasDate) return 0;
-                
-                // Se entrambi hanno data, ordina per data crescente
-                return new Date(a.scheduledAt) - new Date(b.scheduledAt);
-            });
-
             if (filtered.length === 0) {
                 container.innerHTML = '<div class="empty-state"><p>Nessun task disponibile</p></div>';
                 return;
             }
 
-            container.innerHTML = filtered.map(task => {
+            // Separa task ricorrenti da non ricorrenti
+            const nonRecurring = filtered.filter(t => !t.recurring || !t.recurrenceType);
+            const recurring = filtered.filter(t => t.recurring && t.recurrenceType);
+
+            // Ordina i task non ricorrenti: quelli senza data all'inizio, poi per data/ora
+            nonRecurring.sort((a, b) => {
+                const aHasDate = a.scheduledAt ? true : false;
+                const bHasDate = b.scheduledAt ? true : false;
+                
+                if (!aHasDate && bHasDate) return -1;
+                if (aHasDate && !bHasDate) return 1;
+                if (!aHasDate && !bHasDate) return 0;
+                
+                return new Date(a.scheduledAt) - new Date(b.scheduledAt);
+            });
+
+            // Raggruppa i task ricorrenti per (title + recurrenceType)
+            const recurrenceGroups = {};
+            recurring.forEach(task => {
+                const key = `${task.title}|${task.recurrenceType}`;
+                if (!recurrenceGroups[key]) {
+                    recurrenceGroups[key] = [];
+                }
+                recurrenceGroups[key].push(task);
+            });
+
+            let html = '';
+
+            // Renderizza task non ricorrenti
+            html += nonRecurring.map(task => {
                 const status = task.completed ? 'Completato' : (task.paused ? 'In Pausa' : (task.acceptedAt ? 'Accettato' : 'In Sospeso'));
                 const statusIcon = task.completed ? '✅' : (task.paused ? '⏸️' : (task.acceptedAt ? '👍' : '📋'));
                 return `
@@ -625,7 +885,6 @@
                             ${task.estimatedMinutes ? `<span class="meta-tag">⏱️ ${task.estimatedMinutes} min</span>` : ''}
                             ${task.assignedOperator ? `<span class="meta-tag">👤 ${task.assignedOperator.username}</span>` : ''}
                             ${task.priority ? `<span class="meta-tag">${formatPriority(task.priority)}</span>` : ''}
-                            ${task.recurring && task.recurrenceType ? `<span class="meta-tag" style="background: #1e3a4d; color: #7dd3fc;">🔄 ${getRecurrenceLabel(task.recurrenceType)}</span>` : ''}
                         </div>
                         ${task.notes && task.notes.length > 0 ? `
                             <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #4d4d4d; font-size: 12px;">
@@ -647,10 +906,110 @@
                     </div>
                 `;
             }).join('');
+
+            // Renderizza gruppi di ricorrenze
+            if (Object.keys(recurrenceGroups).length > 0) {
+                html += '<div style="margin-top: 20px; padding: 15px; background: #2d2d2d; border: 1px solid #4d4d4d; border-radius: 8px;">';
+                html += '<h3 style="margin-top: 0; color: #e0e0e0; font-size: 16px;">🔄 Ricorrenze</h3>';
+                
+                Object.entries(recurrenceGroups).forEach(([key, tasks]) => {
+                    const [title, recurrenceType] = key.split('|');
+                    const firstTask = tasks[0];
+                    const recurrenceLabel = getRecurrenceLabel(recurrenceType);
+                    
+                    html += `
+                        <div style="margin: 10px 0; padding: 10px; background: #3d3d3d; border-radius: 6px; border-left: 3px solid #7dd3fc;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <div>
+                                    <strong style="color: #e0e0e0; font-size: 14px;">🔄 ${title}</strong>
+                                    <div style="font-size: 12px; color: #a0a0a0; margin-top: 2px;">${recurrenceLabel}${firstTask.recurrenceEnd ? ` • Fine: ${new Date(firstTask.recurrenceEnd).toLocaleDateString('it-IT')}` : ''}</div>
+                                </div>
+                                <span style="background: #1e3a4d; color: #7dd3fc; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">${tasks.length} istanze</span>
+                            </div>
+                            ${firstTask.description ? `<p style="margin: 5px 0; font-size: 12px; color: #a0a0a0;">${firstTask.description}</p>` : ''}
+                            <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
+                                ${firstTask.estimatedMinutes ? `<span style="background: #2d2d2d; padding: 3px 8px; border-radius: 3px; font-size: 11px; color: #b0b0b0;">⏱️ ${firstTask.estimatedMinutes} min</span>` : ''}
+                                ${firstTask.priority ? `<span style="background: #2d2d2d; padding: 3px 8px; border-radius: 3px; font-size: 11px; color: #b0b0b0;">${formatPriority(firstTask.priority)}</span>` : ''}
+                                <button class="btn btn-primary" data-icon="✏️" onclick="openEditTaskModal(${firstTask.id})" style="padding: 4px 8px; font-size: 12px; min-height: auto; gap: 4px;"><span style="font-size: 12px;">Modifica</span></button>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+            }
+
+            container.innerHTML = html;
         }
 
         function applyFilters() {
             renderTasks();
+            renderCalendar();
+        }
+
+        function renderAdminTasks() {
+            const container = document.getElementById('adminTasksList');
+            
+            // Filter tasks assigned to the current admin user
+            const adminTasks = allTasks.filter(t => t.assignedOperator?.id === currentUser.id);
+
+            if (adminTasks.length === 0) {
+                container.innerHTML = '<div class="empty-state"><p>Nessun task personale</p></div>';
+                return;
+            }
+
+            // Sort tasks: pending without date first, then by date
+            adminTasks.sort((a, b) => {
+                const aHasDate = a.scheduledAt ? true : false;
+                const bHasDate = b.scheduledAt ? true : false;
+                
+                if (!aHasDate && bHasDate) return -1;
+                if (aHasDate && !bHasDate) return 1;
+                if (!aHasDate && !bHasDate) return 0;
+                
+                return new Date(a.scheduledAt) - new Date(b.scheduledAt);
+            });
+
+            container.innerHTML = adminTasks.map(task => {
+                const status = task.completed ? 'Completato' : (task.paused ? 'In Pausa' : (task.acceptedAt ? 'Accettato' : 'In Sospeso'));
+                const statusIcon = task.completed ? '✅' : (task.paused ? '⏸️' : (task.acceptedAt ? '👍' : '📋'));
+                return `
+                    <div class="task-card">
+                        <div class="task-header">
+                            <div class="task-title">${task.title}</div>
+                            <span class="task-status">${statusIcon} ${status}</span>
+                        </div>
+                        <p class="task-description">${task.description || 'Nessuna descrizione'}</p>
+                        <div class="task-meta">
+                            ${task.scheduledAt ? `<span class="meta-tag">📅 ${new Date(task.scheduledAt).toLocaleString('it-IT')}</span>` : ''}
+                            ${task.estimatedMinutes ? `<span class="meta-tag">⏱️ ${task.estimatedMinutes} min</span>` : ''}
+                            ${task.priority ? `<span class="meta-tag">${formatPriority(task.priority)}</span>` : ''}
+                            ${task.recurring && task.recurrenceType ? `<span class="meta-tag" style="background: #1e3a4d; color: #7dd3fc;">🔄 ${getRecurrenceLabel(task.recurrenceType)}</span>` : ''}
+                        </div>
+                        ${task.notes && task.notes.length > 0 ? `
+                            <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #4d4d4d; font-size: 12px;">
+                                <strong style="color: #e0e0e0;">📝 Note (${task.notes.length}):</strong>
+                                <div style="margin-top: 5px; max-height: 100px; overflow-y: auto;">
+                                    ${task.notes.slice(0, 3).map(note => `
+                                        <div style="background: #3d3d3d; padding: 5px; margin: 3px 0; border-radius: 3px; border: 1px solid #4d4d4d;">
+                                            <strong style="color: #a0a0a0;">${note.user.username}</strong>: <span style="color: #808080;">${note.note.substring(0, 60)}...</span>
+                                        </div>
+                                    `).join('')}
+                                    ${task.notes.length > 3 ? `<div style="color: #808080; margin-top: 5px;">+${task.notes.length - 3} altre note</div>` : ''}
+                                </div>
+                            </div>
+                        ` : ''}
+                        <div class="task-actions" style="flex-wrap: wrap;">
+                            ${!task.acceptedAt && !task.completed ? `<button class="btn btn-success btn-small" onclick="handleTaskStatusChange(${task.id}, 'accept')" style="flex: 1; min-width: 100px; background: #22c55e;">👍 Accetta</button>` : ''}
+                            ${task.acceptedAt && !task.completed && !task.paused ? `<button class="btn btn-warning btn-small" onclick="handleTaskStatusChange(${task.id}, 'pause')" style="flex: 1; min-width: 100px; background: #ea580c;">⏸️ Pausa</button>` : ''}
+                            ${task.paused ? `<button class="btn btn-info btn-small" onclick="handleTaskStatusChange(${task.id}, 'resume')" style="flex: 1; min-width: 100px; background: #3b82f6;">▶️ Riprendi</button>` : ''}
+                            ${!task.completed ? `<button class="btn btn-success btn-small" onclick="handleTaskStatusChange(${task.id}, 'complete')" style="flex: 1; min-width: 100px; background: #22c55e;">✅ Completa</button>` : ''}
+                            <button class="btn btn-primary btn-small" onclick="openEditTaskModal(${task.id})" style="flex: 1; min-width: 100px;">✏️ Modifica</button>
+                            <button class="btn btn-danger btn-small" onclick="handleDeleteTask(${task.id})" style="flex: 1; min-width: 100px;">🗑️ Rimuovi</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
         }
 
         async function updateStats() {
@@ -688,7 +1047,31 @@
 
         async function renderCalendar() {
             const container = document.getElementById('calendarContainer');
-            if (!allTasks || allTasks.length === 0) {
+            
+            // Filtra i task in base al view mode attivo
+            let tasksToDisplay = allTasks;
+            
+            if (currentViewMode === 'myTasks') {
+                // Mostra solo i task dell'admin attuale
+                tasksToDisplay = allTasks.filter(t => t.assignedOperator?.id === currentUser.id);
+            } else if (currentViewMode === 'operatorTasks') {
+                // Mostra solo i task degli operatori (non assegnati all'admin)
+                tasksToDisplay = allTasks.filter(t => t.assignedOperator?.id !== currentUser.id && t.assignedOperator?.id);
+                
+                // Applica i filtri se presenti
+                const selectedOperator = document.getElementById('operatorFilter')?.value;
+                const selectedStatus = document.getElementById('statusFilter')?.value;
+                
+                if (selectedOperator) {
+                    tasksToDisplay = tasksToDisplay.filter(t => String(t.assignedOperator?.id) === String(selectedOperator));
+                }
+                
+                if (selectedStatus) {
+                    tasksToDisplay = tasksToDisplay.filter(t => t.status === selectedStatus);
+                }
+            }
+            
+            if (!tasksToDisplay || tasksToDisplay.length === 0) {
                 container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 15px; color: #808080; font-size: 12px;">Nessun task</div>';
                 return;
             }
@@ -736,14 +1119,54 @@
                 const monthDay = String(month + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
                 const isHoliday = dayOfWeek === 0 || italianHolidays.includes(monthDay);
                 
-                const dayTasks = allTasks.filter(task => {
+                // Conta task con data schedulata
+                const dayTasks = tasksToDisplay.filter(task => {
                     if (!task.scheduledAt) return false;
                     return task.scheduledAt.split('T')[0] === dateStr;
                 });
                 
-                const hasTasksClass = dayTasks.length > 0 ? 'has-tasks' : '';
+                // Conta ricorrenze che cadono in questo giorno
+                const dayRecurrences = tasksToDisplay.filter(task => {
+                    if (!task.recurring || !task.recurrenceType || !task.scheduledAt) return false;
+                    
+                    const taskDate = new Date(task.scheduledAt);
+                    const recurrenceEnd = task.recurrenceEnd ? new Date(task.recurrenceEnd) : null;
+                    
+                    // Verifica se il task è terminato
+                    if (recurrenceEnd && date > recurrenceEnd) return false;
+                    
+                    // Verifica se il task è iniziato
+                    if (date < taskDate) return false;
+                    
+                    // Calcola il giorno della settimana e del mese originale
+                    const originalDayOfWeek = taskDate.getDay();
+                    const originalDayOfMonth = taskDate.getDate();
+                    const originalMonth = taskDate.getMonth();
+                    
+                    // Verifica ricorrenza
+                    if (task.recurrenceType === 'DAILY') {
+                        return true;
+                    } else if (task.recurrenceType === 'WEEKLY') {
+                        return dayOfWeek === originalDayOfWeek;
+                    } else if (task.recurrenceType === 'BIWEEKLY') {
+                        const daysDiff = Math.floor((date - taskDate) / (1000 * 60 * 60 * 24));
+                        return daysDiff % 14 === 0;
+                    } else if (task.recurrenceType === 'MONTHLY') {
+                        return day === originalDayOfMonth;
+                    } else if (task.recurrenceType === 'QUARTERLY') {
+                        const monthsDiff = (date.getFullYear() - taskDate.getFullYear()) * 12 + (date.getMonth() - originalMonth);
+                        return day === originalDayOfMonth && monthsDiff % 3 === 0;
+                    } else if (task.recurrenceType === 'YEARLY') {
+                        return date.getMonth() === originalMonth && day === originalDayOfMonth;
+                    }
+                    
+                    return false;
+                });
+                
+                const totalTasks = dayTasks.length + dayRecurrences.length;
+                const hasTasksClass = totalTasks > 0 ? 'has-tasks' : '';
                 const dayColor = isHoliday ? 'color: #ef4444;' : '';
-                html += `<div class="calendar-day ${hasTasksClass}" style="${dayColor}"><strong>${day}</strong><div style="font-size: 9px; margin-top: 2px;">${dayTasks.length} task</div></div>`;
+                html += `<div class="calendar-day ${hasTasksClass}" style="${dayColor}"><strong>${day}</strong><div style="font-size: 9px; margin-top: 2px;">${totalTasks} task</div></div>`;
             }
             
             container.innerHTML = html;
@@ -767,7 +1190,7 @@
             renderCalendar();
         }
 
-        function openCreateRecurrenceModal() {
+        function openCreateTaskOrRecurrenceModal() {
             const modal = document.getElementById('taskModal');
             const content = modal.querySelector('.modal-content');
 
@@ -804,73 +1227,230 @@
             }
 
             content.innerHTML = `
-                <h2>🔄 Gestione Ricorrenze</h2>
+                <h2>📝 Gestione Task / Ricorrenze</h2>
                 
-                <h3 style="margin-top: 20px; margin-bottom: 10px;">Ricorrenze Attive</h3>
-                <div id="recurrenceList">
-                    ${recurrenceListHtml}
-                </div>
+                <div style="margin-bottom: 20px;">
+                    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                        <button type="button" class="btn btn-success" onclick="showTaskForm()" id="btnTaskForm" style="flex: 1;">📝 Task</button>
+                        <button type="button" class="btn btn-info" onclick="showRecurrenceForm()" id="btnRecurrenceForm" style="flex: 1; background: #3b82f6;">🔄 Ricorrenze</button>
+                    </div>
 
-                <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-                    <h3 style="margin-bottom: 10px;">Crea Nuova Ricorrenza</h3>
-                    <form onsubmit="handleCreateNewRecurrence(event)">
-                        <div class="form-group">
-                            <label>Titolo Task *</label>
-                            <input type="text" id="recTitolo" required placeholder="es. Manutenzione server">
+                    <!-- FORM TASK SINGOLO -->
+                    <div id="taskFormSection" style="display: block;">
+                        <form onsubmit="handleCreateTaskFromModal(event)">
+                            <div class="form-group">
+                                <label>Titolo *</label>
+                                <input type="text" id="modalTaskTitle" required placeholder="es. Installazione server">
+                            </div>
+                            <div class="form-group">
+                                <label>Descrizione</label>
+                                <textarea id="modalTaskDescription" placeholder="Descrizione dettagliata..." style="height: 80px;"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>Data/Ora Esecuzione</label>
+                                <input type="datetime-local" id="modalTaskScheduledAt">
+                            </div>
+                            <div class="form-group">
+                                <label>Ricorrenza</label>
+                                <select id="modalTaskRecurrence" onchange="updateRecurrenceFields()">
+                                    <option value="">-- Nessuna (Una sola volta) --</option>
+                                    <option value="DAILY">📅 Ogni Giorno</option>
+                                    <option value="WEEKLY">📅 Ogni Settimana</option>
+                                    <option value="BIWEEKLY">📅 Ogni 2 Settimane</option>
+                                    <option value="MONTHLY">📅 Ogni Mese</option>
+                                    <option value="QUARTERLY">📅 Ogni 3 Mesi</option>
+                                    <option value="YEARLY">📅 Ogni Anno</option>
+                                </select>
+                            </div>
+                            <div class="form-group" id="recurrenceEndGroup" style="display: none;">
+                                <label>Data Fine Ricorrenza</label>
+                                <input type="date" id="modalTaskRecurrenceEnd" placeholder="Lascia vuoto per senza fine">
+                            </div>
+                            <div class="form-group">
+                                <label>Operatore/Admin</label>
+                                <select id="modalTaskOperator">
+                                    <option value="">-- Nessuno --</option>
+                                    <option value="me">👤 Per Me (Admin)</option>
+                                    ${allAssignees.map(a => `<option value="${a.id}">${a.type === 'admin' ? '👨‍💼' : '👥'} ${a.username}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Priorità</label>
+                                <select id="modalTaskPriority">
+                                    <option value="LOW">🟢 Bassa</option>
+                                    <option value="MEDIUM" selected>🟡 Media</option>
+                                    <option value="HIGH">🟠 Alta</option>
+                                    <option value="URGENT">🔴 Urgente</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Tempo Stimato (minuti)</label>
+                                <input type="number" id="modalTaskEstimatedMinutes" placeholder="es. 30">
+                            </div>
+                            <div class="modal-actions">
+                                <button type="submit" class="btn btn-success">Crea Task</button>
+                                <button type="button" class="btn btn-secondary" onclick="closeModal()">Annulla</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- FORM RICORRENZA -->
+                    <div id="recurrenceFormSection" style="display: none;">
+                        <div style="background: #2d2d2d; padding: 15px; border-radius: 6px; border-left: 3px solid #3b82f6; margin-bottom: 15px;">
+                            <h3 style="margin-top: 0; color: #e0e0e0; font-size: 15px;">➕ Crea Nuova Ricorrenza</h3>
+                            <form onsubmit="handleCreateNewRecurrence(event)">
+                                <div class="form-group">
+                                    <label>Titolo Task *</label>
+                                    <input type="text" id="recTitolo" required placeholder="es. Manutenzione server">
+                                </div>
+                                <div class="form-group">
+                                    <label>Descrizione</label>
+                                    <textarea id="recDescrizione" placeholder="Descrizione..." style="height: 60px;"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label>Data/Ora Inizio *</label>
+                                    <input type="datetime-local" id="recStart" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Tipo di Ricorrenza *</label>
+                                    <select id="recType" required>
+                                        <option value="">-- Seleziona --</option>
+                                        <option value="DAILY">📅 Ogni Giorno</option>
+                                        <option value="WEEKLY">📅 Ogni Settimana</option>
+                                        <option value="BIWEEKLY">📅 Ogni 2 Settimane</option>
+                                        <option value="MONTHLY">📅 Ogni Mese</option>
+                                        <option value="QUARTERLY">📅 Ogni 3 Mesi</option>
+                                        <option value="YEARLY">📅 Ogni Anno</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Data Fine Ricorrenza</label>
+                                    <input type="date" id="recEnd" placeholder="Lascia vuoto per senza fine">
+                                </div>
+                                <div class="form-group">
+                                    <label>Operatore/Admin</label>
+                                    <select id="recOperator">
+                                        <option value="">-- Nessuno --</option>
+                                        <option value="me">👤 Per Me (Admin)</option>
+                                        ${allAssignees.map(a => `<option value="${a.id}">${a.role === 'master' ? '👨‍💼' : '👥'} ${a.username}</option>`).join('')}
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Priorità</label>
+                                    <select id="recPriority">
+                                        <option value="LOW">🟢 Bassa</option>
+                                        <option value="MEDIUM" selected>🟡 Media</option>
+                                        <option value="HIGH">🟠 Alta</option>
+                                        <option value="URGENT">🔴 Urgente</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Tempo Stimato (minuti)</label>
+                                    <input type="number" id="recMinutes" placeholder="es. 30">
+                                </div>
+                                <div class="modal-actions">
+                                    <button type="submit" class="btn btn-success">Crea Ricorrenza</button>
+                                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Chiudi</button>
+                                </div>
+                            </form>
                         </div>
-                        <div class="form-group">
-                            <label>Descrizione</label>
-                            <textarea id="recDescrizione" placeholder="Descrizione..." style="height: 60px;"></textarea>
+
+                        <div style="background: #1e3a4d; padding: 15px; border-radius: 6px; border: 1px solid #2a4a5d;">
+                            <h3 style="margin-top: 0; color: #7dd3fc; font-size: 15px;">📋 Ricorrenze Esistenti</h3>
+                            <div id="manageRecurrencesContent" style="max-height: 400px; overflow-y: auto;">
+                                ${recurrenceListHtml}
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label>Data/Ora Inizio *</label>
-                            <input type="datetime-local" id="recStart" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Tipo di Ricorrenza *</label>
-                            <select id="recType" required>
-                                <option value="">-- Seleziona --</option>
-                                <option value="DAILY">📅 Ogni Giorno</option>
-                                <option value="WEEKLY">📅 Ogni Settimana</option>
-                                <option value="BIWEEKLY">📅 Ogni 2 Settimane</option>
-                                <option value="MONTHLY">📅 Ogni Mese</option>
-                                <option value="QUARTERLY">📅 Ogni 3 Mesi</option>
-                                <option value="YEARLY">📅 Ogni Anno</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Data Fine Ricorrenza</label>
-                            <input type="date" id="recEnd" placeholder="Lascia vuoto per senza fine">
-                        </div>
-                        <div class="form-group">
-                            <label>Operatore</label>
-                            <select id="recOperator">
-                                <option value="">-- Nessuno --</option>
-                                ${allOperators.map(op => `<option value="${op.id}">${op.username}</option>`).join('')}
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Priorità</label>
-                            <select id="recPriority">
-                                <option value="LOW">🟢 Bassa</option>
-                                <option value="MEDIUM" selected>🟡 Media</option>
-                                <option value="HIGH">🟠 Alta</option>
-                                <option value="URGENT">🔴 Urgente</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Tempo Stimato (minuti)</label>
-                            <input type="number" id="recMinutes" placeholder="es. 30">
-                        </div>
-                        <div class="modal-actions">
-                            <button type="submit" class="btn btn-success">Crea Ricorrenza</button>
-                            <button type="button" class="btn btn-secondary" onclick="closeModal()">Chiudi</button>
-                        </div>
-                    </form>
+                    </div>
                 </div>
             `;
             
             modal.classList.add('active');
+        }
+
+        function showTaskForm() {
+            document.getElementById('taskFormSection').style.display = 'block';
+            document.getElementById('recurrenceFormSection').style.display = 'none';
+            document.getElementById('btnTaskForm').style.opacity = '1';
+            document.getElementById('btnRecurrenceForm').style.opacity = '0.6';
+        }
+
+        function showRecurrenceForm() {
+            document.getElementById('taskFormSection').style.display = 'none';
+            document.getElementById('recurrenceFormSection').style.display = 'block';
+            document.getElementById('btnTaskForm').style.opacity = '0.6';
+            document.getElementById('btnRecurrenceForm').style.opacity = '1';
+            
+            // Carica le ricorrenze gestite quando si accede al tab
+            loadManagedRecurrencesInline();
+        }
+
+        async function loadManagedRecurrencesInline() {
+            try {
+                const response = await fetch(`${API_URL}/tasks?includeRecurrences=true`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (!response.ok) throw new Error('Errore caricamento ricorrenze');
+                
+                const tasks = await response.json();
+                
+                // Filter tasks with recurrence and group by title and recurrenceType
+                const recurringTasks = tasks.filter(t => t.recurrenceType);
+                
+                // Group by title and recurrenceType
+                const groupedRecurrences = {};
+                recurringTasks.forEach(task => {
+                    const key = `${task.title}|${task.recurrenceType}`;
+                    if (!groupedRecurrences[key]) {
+                        groupedRecurrences[key] = {
+                            title: task.title,
+                            recurrenceType: task.recurrenceType,
+                            recurrenceEnd: task.recurrenceEnd,
+                            count: 0,
+                            sampleTask: task
+                        };
+                    }
+                    groupedRecurrences[key].count++;
+                });
+                
+                const content = document.getElementById('manageRecurrencesContent');
+                let html = '';
+                
+                if (Object.keys(groupedRecurrences).length === 0) {
+                    html = '<p style="color: #a0a0a0; text-align: center; padding: 20px;">Nessuna ricorrenza impostata</p>';
+                } else {
+                    html = Object.entries(groupedRecurrences).map(([key, group]) => `
+                        <div style="background: #3d3d3d; padding: 15px; margin-bottom: 12px; border-radius: 6px; border: 1px solid #4d4d4d;">
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+                                <div>
+                                    <h4 style="color: #e0e0e0; margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">${group.title}</h4>
+                                    <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                                        <span style="background: #1e3a4d; color: #7dd3fc; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">🔄 ${group.recurrenceType}</span>
+                                        <span style="background: #2d3d3d; color: #b0b0b0; padding: 4px 8px; border-radius: 4px; font-size: 12px;">📊 ${group.count} istanze</span>
+                                    </div>
+                                    <p style="color: #a0a0a0; margin: 0; font-size: 13px;">
+                                        <strong>Fino a:</strong> ${group.recurrenceEnd ? new Date(group.recurrenceEnd).toLocaleDateString('it-IT') : 'Indefinita'}
+                                    </p>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 8px; margin-top: 10px;">
+                                <button class="btn btn-primary" onclick="openEditRecurrenceModal('${key}')" style="flex: 1; padding: 8px; font-size: 12px;">✏️ Modifica</button>
+                                <button class="btn btn-danger" onclick="handleDeleteGlobalRecurrence('${key}')" style="flex: 1; padding: 8px; font-size: 12px;">🗑️ Cancella</button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+                
+                content.innerHTML = html;
+            } catch (error) {
+                document.getElementById('manageRecurrencesContent').innerHTML = '<p style="color: #ff6b6b; text-align: center; padding: 20px;">Errore: ' + error.message + '</p>';
+            }
+        }
+
+        function openCreateRecurrenceModal() {
+            openCreateTaskOrRecurrenceModal();
+            showRecurrenceForm();
         }
 
         async function openEditRecurrenceModal(key) {
@@ -889,6 +1469,14 @@
                 recEndValue = date.toISOString().slice(0, 10);
             }
 
+            let recStartValue = '';
+            if (firstTask.scheduledAt) {
+                const date = new Date(firstTask.scheduledAt);
+                recStartValue = date.toISOString().slice(0, 16);
+            }
+
+            const assignedOperatorValue = firstTask.assignedOperator ? firstTask.assignedOperator.id : '';
+
             content.innerHTML = `
                 <h2>✏️ Modifica Ricorrenza</h2>
                 <form onsubmit="handleUpdateGlobalRecurrence(event, '${key}')">
@@ -897,6 +1485,14 @@
                         <div style="padding: 10px; background: #3d3d3d; border-radius: 6px; color: #e0e0e0; border: 1px solid #4d4d4d;">
                             ${title}
                         </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Descrizione</label>
+                        <textarea id="editRecDescrizione" placeholder="Descrizione..." style="height: 60px;">${firstTask.description || ''}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Data/Ora Inizio *</label>
+                        <input type="datetime-local" id="editRecStart" value="${recStartValue}" required>
                     </div>
                     <div class="form-group">
                         <label>Istanze Attive</label>
@@ -924,6 +1520,27 @@
                     <div class="form-group">
                         <label>Data Fine Ricorrenza</label>
                         <input type="date" id="newRecEnd" value="${recEndValue}">
+                    </div>
+                    <div class="form-group">
+                        <label>Operatore/Admin</label>
+                        <select id="editRecOperator">
+                            <option value="">-- Nessuno --</option>
+                            <option value="me" ${!firstTask.assignedOperator ? 'selected' : ''}>👤 Per Me (Admin)</option>
+                            ${allAssignees.map(a => `<option value="${a.id}" ${assignedOperatorValue === a.id ? 'selected' : ''}>${a.role === 'master' ? '👨‍💼' : '👥'} ${a.username}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Priorità</label>
+                        <select id="editRecPriority">
+                            <option value="LOW" ${firstTask.priority === 'LOW' ? 'selected' : ''}>🟢 Bassa</option>
+                            <option value="MEDIUM" ${firstTask.priority === 'MEDIUM' ? 'selected' : ''}>🟡 Media</option>
+                            <option value="HIGH" ${firstTask.priority === 'HIGH' ? 'selected' : ''}>🟠 Alta</option>
+                            <option value="URGENT" ${firstTask.priority === 'URGENT' ? 'selected' : ''}>🔴 Urgente</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Tempo Stimato (minuti)</label>
+                        <input type="number" id="editRecMinutes" placeholder="es. 30" value="${firstTask.estimatedMinutes || ''}">
                     </div>
                     <div style="background: #3a2a1e; padding: 10px; border-radius: 6px; margin-bottom: 15px; border-left: 4px solid #f59e0b;">
                         <p style="font-size: 13px; color: #fcd34d;"><strong>⚠️ Attenzione:</strong> Questo aggiornerà TUTTI i ${tasks.length} task di questa ricorrenza eliminando quelli vecchi e generandone di nuovi secondo il nuovo tipo.</p>
@@ -988,6 +1605,11 @@
             const [title, oldRecurrenceType] = key.split('|');
             const newRecurrenceType = document.getElementById('newRecType').value;
             const newRecurrenceEnd = document.getElementById('newRecEnd').value;
+            const newDescription = document.getElementById('editRecDescrizione').value;
+            const newScheduledAt = document.getElementById('editRecStart').value;
+            const newAssignedOperatorId = document.getElementById('editRecOperator').value;
+            const newPriority = document.getElementById('editRecPriority').value;
+            const newEstimatedMinutes = document.getElementById('editRecMinutes').value;
 
             // Ottieni tutte le istanze attuali
             const tasksToDelete = allTasks.filter(t => t.title === title && t.recurring && t.recurrenceType === oldRecurrenceType);
@@ -1007,6 +1629,8 @@
 
                 // Crea i nuovi task con la nuova ricorrenza
                 const firstTask = tasksToDelete[0];
+                const assignId = newAssignedOperatorId === 'me' ? null : newAssignedOperatorId;
+                
                 const response = await fetch(`${API_URL}/tasks`, {
                     method: 'POST',
                     headers: {
@@ -1014,14 +1638,14 @@
                         'Authorization': `Bearer ${token}`
                     },
                     body: JSON.stringify({
-                        title: firstTask.title,
-                        description: firstTask.description,
-                        scheduledAt: firstTask.originalScheduledAt,
+                        title: title,
+                        description: newDescription,
+                        scheduledAt: newScheduledAt,
                         recurrenceType: newRecurrenceType,
-                        recurrenceEnd: newRecurrenceEnd ? new Date(newRecurrenceEnd) : firstTask.recurrenceEnd,
-                        assignedOperatorId: firstTask.assignedOperatorId,
-                        priority: firstTask.priority,
-                        estimatedMinutes: firstTask.estimatedMinutes
+                        recurrenceEnd: newRecurrenceEnd ? new Date(newRecurrenceEnd) : null,
+                        assignedOperatorId: assignId,
+                        priority: newPriority,
+                        estimatedMinutes: newEstimatedMinutes ? parseInt(newEstimatedMinutes) : null
                     })
                 });
 
@@ -1098,10 +1722,11 @@
                         <input type="date" id="modalTaskRecurrenceEnd" placeholder="Lascia vuoto per senza fine">
                     </div>
                     <div class="form-group">
-                        <label>Operatore</label>
+                        <label>Operatore/Admin</label>
                         <select id="modalTaskOperator">
                             <option value="">-- Nessuno --</option>
-                            ${allOperators.map(op => `<option value="${op.id}">${op.username}</option>`).join('')}
+                            <option value="me">👤 Per Me (Admin)</option>
+                            ${allAssignees.map(a => `<option value="${a.id}">${a.type === 'admin' ? '👨‍💼' : '👥'} ${a.username}</option>`).join('')}
                         </select>
                     </div>
                     <div class="form-group">
@@ -1182,10 +1807,11 @@
                     </div>
                     ` : ''}
                     <div class="form-group">
-                        <label>Operatore</label>
+                        <label>Operatore/Admin</label>
                         <select id="modalTaskOperator">
                             <option value="">-- Nessuno --</option>
-                            ${allOperators.map(op => `<option value="${op.id}" ${task.assignedOperator?.id === op.id ? 'selected' : ''}>${op.username}</option>`).join('')}
+                            <option value="me" ${task.assignedOperator?.id === currentUser?.id ? 'selected' : ''}>👤 Per Me (Admin)</option>
+                            ${allAssignees.map(a => `<option value="${a.id}" ${task.assignedOperator?.id === a.id ? 'selected' : ''}>${a.type === 'admin' ? '👨‍💼' : '👥'} ${a.username}</option>`).join('')}
                         </select>
                     </div>
                     <div class="form-group">
@@ -1218,7 +1844,13 @@
             const title = document.getElementById('modalTaskTitle').value.toUpperCase();
             const description = document.getElementById('modalTaskDescription').value;
             const scheduledAt = document.getElementById('modalTaskScheduledAt').value;
-            const assignedOperatorId = document.getElementById('modalTaskOperator').value;
+            let assignedOperatorId = document.getElementById('modalTaskOperator').value;
+            
+            // Se selezionato "Per Me", usa l'ID dell'admin corrente
+            if (assignedOperatorId === 'me') {
+                assignedOperatorId = currentUser.id;
+            }
+            
             const priority = document.getElementById('modalTaskPriority').value;
             const recurrenceType = document.getElementById('modalTaskRecurrence')?.value || '';
             const recurrenceEnd = document.getElementById('modalTaskRecurrenceEnd')?.value || '';
@@ -1332,6 +1964,59 @@
             }
         }
 
+        async function handleTaskStatusChange(taskId, action) {
+            try {
+                // Validazione: non permettere di completare se non accettato
+                if (action === 'complete') {
+                    const task = allTasks.find(t => t.id === taskId);
+                    if (!task?.acceptedAt) {
+                        showAlert('❌ Devi prima accettare il task prima di completarlo!', 'error');
+                        return;
+                    }
+                }
+                
+                const updateData = {};
+                
+                if (action === 'accept') {
+                    updateData.acceptedAt = new Date().toISOString();
+                    updateData.paused = false;
+                } else if (action === 'pause') {
+                    updateData.paused = true;
+                } else if (action === 'resume') {
+                    updateData.paused = false;
+                } else if (action === 'complete') {
+                    updateData.completed = true;
+                    updateData.paused = false;
+                }
+                
+                const response = await fetch(`${API_URL}/tasks/${taskId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updateData)
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || 'Errore aggiornamento');
+                }
+
+                const actionMessages = {
+                    'accept': 'Task accettato!',
+                    'pause': 'Task messo in pausa!',
+                    'resume': 'Task ripreso!',
+                    'complete': 'Task completato!'
+                };
+
+                showAlert(actionMessages[action] || 'Task aggiornato!', 'success');
+                await loadTasks();
+                await updateStats();
+            } catch (error) {
+                showAlert('Errore: ' + error.message, 'error');
+            }
+        }
 
         function closeModal() {
             const modal = document.getElementById('taskModal');
@@ -1345,6 +2030,30 @@
             window.location.href = '/index.html';
         }
 
+        function toggleOperatorTasks() {
+            const operatorCard = document.getElementById('operatorTasksCard');
+            const myTasksCard = document.getElementById('myTasksCard');
+            const btn = document.getElementById('toggleTasksBtn');
+            const span = btn.querySelector('span');
+            
+            if (operatorCard.style.display === 'none') {
+                // Mostra Task Operatori, nascondi I Miei Task
+                operatorCard.style.display = 'block';
+                myTasksCard.style.display = 'none';
+                span.innerHTML = 'Torna ai<br>Miei Task';
+                currentViewMode = 'operatorTasks';
+            } else {
+                // Nascondi Task Operatori, mostra I Miei Task
+                operatorCard.style.display = 'none';
+                myTasksCard.style.display = 'block';
+                span.innerHTML = 'Visualizza<br>Task Operatori';
+                currentViewMode = 'myTasks';
+            }
+            
+            // Aggiorna il calendario
+            renderCalendar();
+        }
+
         function showAlert(message, type) {
             const alert = document.getElementById('alert');
             alert.textContent = message;
@@ -1353,6 +2062,249 @@
             setTimeout(() => {
                 alert.classList.remove('show');
             }, 5000);
+        }
+
+        // ==================== MANAGE RECURRENCES ====================
+        async function openManageRecurrencesModal() {
+            try {
+                const response = await fetch(`${API_URL}/tasks?includeRecurrences=true`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (!response.ok) throw new Error('Errore caricamento ricorrenze');
+                
+                const tasks = await response.json();
+                console.log('DEBUG openManageRecurrencesModal: Total tasks fetched =', tasks.length);
+                
+                // Filter tasks with recurrence and group by title and recurrenceType
+                const recurringTasks = tasks.filter(t => t.recurrenceType);
+                console.log('DEBUG: Recurring tasks =', recurringTasks.length);
+                console.log('DEBUG: Task details:', tasks.map(t => `ID:${t.id} Title:${t.title} Type:${t.recurrenceType}`).join(' | '));
+                
+                // Group by title and recurrenceType
+                const groupedRecurrences = {};
+                recurringTasks.forEach(task => {
+                    const key = `${task.title}|${task.recurrenceType}`;
+                    if (!groupedRecurrences[key]) {
+                        groupedRecurrences[key] = {
+                            title: task.title,
+                            recurrenceType: task.recurrenceType,
+                            recurrenceEnd: task.recurrenceEnd,
+                            count: 0,
+                            sampleTask: task
+                        };
+                    }
+                    groupedRecurrences[key].count++;
+                });
+                
+                console.log('DEBUG: Grouped recurrences =', groupedRecurrences);
+                
+                const modal = document.getElementById('taskModal');
+                const content = modal.querySelector('.modal-content');
+                
+                let html = `
+                    <h2>⚙️ Gestisci Ricorrenze</h2>
+                    <div style="max-height: 500px; overflow-y: auto;">
+                `;
+                
+                if (Object.keys(groupedRecurrences).length === 0) {
+                    html += '<p style="color: #a0a0a0; text-align: center; padding: 20px;">Nessuna ricorrenza impostata</p>';
+                } else {
+                    html += Object.entries(groupedRecurrences).map(([key, group]) => `
+                        <div style="background: #3d3d3d; padding: 15px; margin-bottom: 12px; border-radius: 6px; border: 1px solid #4d4d4d;">
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+                                <div>
+                                    <h4 style="color: #e0e0e0; margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">${group.title}</h4>
+                                    <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                                        <span style="background: #1e3a4d; color: #7dd3fc; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">🔄 ${group.recurrenceType}</span>
+                                        <span style="background: #2d3d3d; color: #b0b0b0; padding: 4px 8px; border-radius: 4px; font-size: 12px;">📊 ${group.count} istanze</span>
+                                    </div>
+                                    <p style="color: #a0a0a0; margin: 0; font-size: 13px;">
+                                        <strong>Fino a:</strong> ${group.recurrenceEnd ? new Date(group.recurrenceEnd).toLocaleDateString('it-IT') : 'Indefinita'}
+                                    </p>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 8px; margin-top: 10px;">
+                                <button class="btn btn-primary" onclick="openEditRecurrenceGroupModal('${key}')" style="flex: 1; padding: 8px; font-size: 12px;">✏️ Modifica</button>
+                                <button class="btn btn-danger" onclick="handleDeleteRecurrenceGroup('${key}')" style="flex: 1; padding: 8px; font-size: 12px;">🗑️ Cancella</button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+                
+                html += '</div>';
+                html += `
+                    <div class="modal-actions" style="margin-top: 15px;">
+                        <button type="button" class="btn btn-secondary" onclick="closeModal()" style="width: 100%;">Chiudi</button>
+                    </div>
+                `;
+                
+                content.innerHTML = html;
+                modal.classList.add('active');
+            } catch (error) {
+                showAlert('Errore: ' + error.message, 'error');
+            }
+        }
+
+        async function openEditRecurrenceGroupModal(key) {
+            try {
+                const response = await fetch(`${API_URL}/tasks?includeRecurrences=true`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const tasks = await response.json();
+                const [title, recurrenceType] = key.split('|');
+                const groupTasks = tasks.filter(t => t.title === title && t.recurrenceType === recurrenceType);
+                
+                if (groupTasks.length === 0) throw new Error('Ricorrenza non trovata');
+                
+                const sampleTask = groupTasks[0];
+                const taskIds = groupTasks.map(t => t.id).join(',');
+                const modal = document.getElementById('taskModal');
+                const content = modal.querySelector('.modal-content');
+                
+                let recurrenceEndValue = '';
+                if (sampleTask.recurrenceEnd) {
+                    const date = new Date(sampleTask.recurrenceEnd);
+                    recurrenceEndValue = date.toISOString().slice(0, 10);
+                }
+                
+                content.innerHTML = `
+                    <h2>✏️ Modifica Ricorrenza</h2>
+                    <form onsubmit="handleUpdateRecurrenceGroup(event, '${taskIds}')">
+                        <div class="form-group">
+                            <label>Titolo Task</label>
+                            <input type="text" id="editTaskTitle" name="editTaskTitle" value="${title}" disabled style="background: #3d3d3d; color: #a0a0a0;">
+                        </div>
+                        <div class="form-group">
+                            <label>Istanze Attive</label>
+                            <input type="text" id="editTaskCount" name="editTaskCount" value="${groupTasks.length}" disabled style="background: #3d3d3d; color: #a0a0a0;">
+                        </div>
+                        <div class="form-group">
+                            <label>Tipo di Ricorrenza Attuale</label>
+                            <input type="text" id="editCurrentType" name="editCurrentType" value="${recurrenceType}" disabled style="background: #3d3d3d; color: #a0a0a0;">
+                        </div>
+                        <div class="form-group">
+                            <label>Nuovo Tipo di Ricorrenza</label>
+                            <select id="editRecurrenceType" name="recurrenceType" style="background: #3d3d3d; color: #e0e0e0; border: 1px solid #4d4d4d; padding: 10px; border-radius: 4px; width: 100%;">
+                                <option value="DAILY" ${recurrenceType === 'DAILY' ? 'selected' : ''}>📅 Giornaliera</option>
+                                <option value="WEEKLY" ${recurrenceType === 'WEEKLY' ? 'selected' : ''}>📅 Settimanale</option>
+                                <option value="BIWEEKLY" ${recurrenceType === 'BIWEEKLY' ? 'selected' : ''}>📅 Ogni 2 Settimane</option>
+                                <option value="MONTHLY" ${recurrenceType === 'MONTHLY' ? 'selected' : ''}>📅 Mensile</option>
+                                <option value="QUARTERLY" ${recurrenceType === 'QUARTERLY' ? 'selected' : ''}>📅 Ogni 3 Mesi</option>
+                                <option value="YEARLY" ${recurrenceType === 'YEARLY' ? 'selected' : ''}>📅 Ogni Anno</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Data Fine Ricorrenza</label>
+                            <input type="date" id="editRecurrenceEnd" name="editRecurrenceEnd" value="${recurrenceEndValue}" style="background: #3d3d3d; color: #e0e0e0; border: 1px solid #4d4d4d; padding: 10px; border-radius: 4px; width: 100%;">
+                        </div>
+                        <div class="form-group">
+                            <label>Operatore</label>
+                            <select id="editRecurrenceOperator" name="editRecurrenceOperator" style="background: #3d3d3d; color: #e0e0e0; border: 1px solid #4d4d4d; padding: 10px; border-radius: 4px; width: 100%;">
+                                <option value="">-- Nessuno --</option>
+                                ${allOperators.map(op => `<option value="${op.id}" ${sampleTask.assignedOperator && sampleTask.assignedOperator.id === op.id ? 'selected' : ''}>${op.username}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div style="background: #3a2a1e; padding: 10px; border-radius: 6px; margin-bottom: 15px; border-left: 4px solid #f59e0b;">
+                            <p style="font-size: 13px; color: #fcd34d; margin: 0;"><strong>⚠️ Attenzione:</strong> Modificare i valori aggiornerà TUTTI i ${groupTasks.length} task di questo gruppo.</p>
+                        </div>
+                        <div class="modal-actions">
+                            <button type="submit" class="btn btn-success">Salva Modifiche</button>
+                            <button type="button" class="btn btn-secondary" onclick="openManageRecurrencesModal()">Indietro</button>
+                        </div>
+                    </form>
+                `;
+            } catch (error) {
+                showAlert('Errore: ' + error.message, 'error');
+            }
+        }
+
+        async function handleUpdateRecurrenceGroup(event, taskIdsString) {
+            event.preventDefault();
+            
+            console.log('DEBUG: taskIdsString ricevuto =', taskIdsString);
+            
+            const recurrenceType = document.getElementById('editRecurrenceType').value;
+            const recurrenceEnd = document.getElementById('editRecurrenceEnd').value;
+            const assignedOperatorId = document.getElementById('editRecurrenceOperator').value;
+            
+            console.log('DEBUG: Form values =', { recurrenceType, recurrenceEnd, assignedOperatorId });
+            
+            // Parse the task IDs from the string
+            const taskIds = taskIdsString.split(',').map(id => parseInt(id.trim()));
+            
+            console.log('DEBUG: Task IDs parsed =', taskIds);
+            console.log('DEBUG: Number of tasks to update =', taskIds.length);
+            
+            try {
+                // Update all tasks in the group
+                for (const taskId of taskIds) {
+                    console.log(`DEBUG: Updating task ${taskId}...`);
+                    
+                    const requestBody = {
+                        recurrenceType,
+                        recurrenceEnd: recurrenceEnd ? new Date(recurrenceEnd) : null,
+                        assignedOperatorId: assignedOperatorId ? parseInt(assignedOperatorId) : null
+                    };
+                    
+                    console.log(`DEBUG: Request body for task ${taskId}:`, requestBody);
+                    
+                    const updateResponse = await fetch(`${API_URL}/tasks/${taskId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify(requestBody)
+                    });
+                    
+                    console.log(`DEBUG: Response status for task ${taskId} =`, updateResponse.status);
+                    
+                    if (!updateResponse.ok) {
+                        const error = await updateResponse.json();
+                        throw new Error(error.message || 'Errore aggiornamento task');
+                    }
+                }
+                
+                console.log('DEBUG: All tasks updated successfully');
+                showAlert(`Ricorrenza aggiornata per ${taskIds.length} task!`, 'success');
+                await loadTasks();
+                await openManageRecurrencesModal();
+            } catch (error) {
+                console.error('DEBUG: Error caught =', error);
+                showAlert('Errore: ' + error.message, 'error');
+            }
+        }
+
+        async function handleDeleteRecurrenceGroup(key) {
+            if (!confirm('Sei sicuro di voler cancellare questa ricorrenza? Verranno rimossi TUTTI i task di questo gruppo.')) return;
+            
+            try {
+                const [title] = key.split('|');
+                const response = await fetch(`${API_URL}/tasks?includeRecurrences=true`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const tasks = await response.json();
+                const groupTasks = tasks.filter(t => t.title === title && t.recurrenceType);
+                
+                // Delete all tasks in the group
+                for (const task of groupTasks) {
+                    const deleteResponse = await fetch(`${API_URL}/tasks/${task.id}`, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    
+                    if (!deleteResponse.ok) throw new Error('Errore eliminazione task');
+                }
+                
+                showAlert('Ricorrenza eliminata!', 'success');
+                await loadTasks();
+                await openManageRecurrencesModal();
+            } catch (error) {
+                showAlert('Errore: ' + error.message, 'error');
+            }
         }
     </script>
 </body>

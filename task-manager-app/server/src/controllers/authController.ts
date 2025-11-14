@@ -49,11 +49,54 @@ export class AuthController {
 
             const operators = await prisma.user.findMany({
                 where: { role: 'slave' },
-                select: { id: true, username: true, role: true, createdAt: true },
+                select: { id: true, username: true, role: true, createdAt: true, image: true },
                 orderBy: { username: 'asc' },
             });
 
             res.json(operators);
+        } catch (err: unknown) {
+            const errorMsg = err instanceof Error ? err.message : 'Internal server error';
+            res.status(500).json({ message: errorMsg });
+        }
+    }
+
+    async getAdmins(req: Request, res: Response) {
+        try {
+            if (!req.user || req.user.role !== 'master') {
+                return res.status(403).json({ message: 'Only master can list admins' });
+            }
+
+            const admins = await prisma.user.findMany({
+                where: { role: 'master', id: { not: req.user.id } },
+                select: { id: true, username: true, role: true, createdAt: true, image: true },
+                orderBy: { username: 'asc' },
+            });
+
+            res.json(admins);
+        } catch (err: unknown) {
+            const errorMsg = err instanceof Error ? err.message : 'Internal server error';
+            res.status(500).json({ message: errorMsg });
+        }
+    }
+
+    async getAllUsersForAssignment(req: Request, res: Response) {
+        try {
+            if (!req.user || req.user.role !== 'master') {
+                return res.status(403).json({ message: 'Only master can list users' });
+            }
+
+            const users = await prisma.user.findMany({
+                where: {
+                    OR: [
+                        { role: 'slave' },
+                        { role: 'master', id: { not: req.user.id } }
+                    ]
+                },
+                select: { id: true, username: true, role: true, createdAt: true, image: true },
+                orderBy: { username: 'asc' },
+            });
+
+            res.json(users);
         } catch (err: unknown) {
             const errorMsg = err instanceof Error ? err.message : 'Internal server error';
             res.status(500).json({ message: errorMsg });
@@ -98,16 +141,54 @@ export class AuthController {
         }
     }
 
+    async createAdmin(req: Request, res: Response) {
+        try {
+            if (!req.user || req.user.role !== 'master') {
+                return res.status(403).json({ message: 'Only master can create admins' });
+            }
+
+            const { username, password, image } = req.body;
+
+            if (!username || !password) {
+                return res.status(400).json({ message: 'Username and password required' });
+            }
+
+            // Check if user already exists
+            const existingUser = await prisma.user.findUnique({ where: { username } });
+            if (existingUser) {
+                return res.status(400).json({ message: 'Username already exists' });
+            }
+
+            const passwordHash = await hashPassword(password);
+            const user = await prisma.user.create({
+                data: {
+                    username,
+                    passwordHash,
+                    role: 'master',
+                    image: image || null,
+                },
+            });
+
+            res.status(201).json({ 
+                message: 'Admin created successfully', 
+                user: { id: user.id, username: user.username, role: user.role, image: user.image }
+            });
+        } catch (err: unknown) {
+            const errorMsg = err instanceof Error ? err.message : 'Internal server error';
+            res.status(500).json({ message: errorMsg });
+        }
+    }
+
     async deleteOperator(req: Request, res: Response) {
         try {
             if (!req.user || req.user.role !== 'master') {
-                return res.status(403).json({ message: 'Only master can delete operators' });
+                return res.status(403).json({ message: 'Only master can delete users' });
             }
 
             const operatorId = parseInt(req.params.id);
 
             if (!operatorId) {
-                return res.status(400).json({ message: 'Operator ID required' });
+                return res.status(400).json({ message: 'User ID required' });
             }
 
             // Check if operator exists
@@ -116,11 +197,11 @@ export class AuthController {
             });
 
             if (!operator) {
-                return res.status(404).json({ message: 'Operator not found' });
+                return res.status(404).json({ message: 'User not found' });
             }
 
-            if (operator.role !== 'slave') {
-                return res.status(400).json({ message: 'Only slave users can be deleted' });
+            if (operator.role === 'master' && operator.id === req.user.id) {
+                return res.status(400).json({ message: 'Cannot delete yourself' });
             }
 
             // First, unassign any tasks assigned to this operator
@@ -134,13 +215,13 @@ export class AuthController {
                 where: { userId: operatorId }
             });
 
-            // Delete the operator
+            // Delete the operator/admin
             await prisma.user.delete({
                 where: { id: operatorId }
             });
 
             res.json({ 
-                message: 'Operator deleted successfully',
+                message: `${operator.role === 'master' ? 'Admin' : 'Operator'} deleted successfully`,
                 username: operator.username
             });
         } catch (err: unknown) {
@@ -249,14 +330,14 @@ export class AuthController {
     async updateOperator(req: Request, res: Response) {
         try {
             if (!req.user || req.user.role !== 'master') {
-                return res.status(403).json({ message: 'Only master can update operators' });
+                return res.status(403).json({ message: 'Only master can update users' });
             }
 
             const operatorId = parseInt(req.params.id);
             const { password, image } = req.body;
 
             if (!operatorId) {
-                return res.status(400).json({ message: 'Operator ID required' });
+                return res.status(400).json({ message: 'User ID required' });
             }
 
             // Check if operator exists
@@ -265,11 +346,7 @@ export class AuthController {
             });
 
             if (!existingOperator) {
-                return res.status(404).json({ message: 'Operator not found' });
-            }
-
-            if (existingOperator.role !== 'slave') {
-                return res.status(400).json({ message: 'Only slave users can be updated' });
+                return res.status(404).json({ message: 'User not found' });
             }
 
             const updateData: any = {};
@@ -288,7 +365,7 @@ export class AuthController {
             });
 
             res.json({
-                message: 'Operator updated successfully',
+                message: 'User updated successfully',
                 operator: { id: operator.id, username: operator.username, image: operator.image }
             });
         } catch (err: unknown) {
