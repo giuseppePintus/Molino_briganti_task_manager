@@ -629,7 +629,7 @@
         <!-- Quick Actions -->
         <div class="quick-actions">
             <button class="btn btn-success" data-icon="📝🔄" onclick="openCreateTaskOrRecurrenceModal()"><span>Gestione Task /<br>Ricorrenze</span></button>
-            <button class="btn btn-primary" data-icon="👥" onclick="window.location.href='operators.html'"><span>Gestione<br>Operatori</span></button>
+            <button class="btn btn-primary" data-icon="👥" onclick="window.location.href='operators.html'"><span>Gestione<br>Admin / Operatori</span></button>
         </div>
 
         <!-- Main Content -->
@@ -690,6 +690,19 @@
                     <div class="empty-state">
                         <p>Nessun task personale</p>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Day Tasks Card - Outside main-content for always visibility -->
+        <div class="card" id="dayTasksCard" style="display: none; margin: 20px auto; margin-top: 20px; max-width: 900px; border: 2px solid #4CAF50; background: linear-gradient(135deg, #2d2d2d 0%, #3d3d3d 100%); position: relative; z-index: 100;">
+            <div class="card-header">
+                <h2 id="dayTasksTitle">📅 Task del Giorno</h2>
+                <button class="btn btn-secondary btn-small" onclick="closeDayTasksCard()" style="padding: 6px 12px;" data-icon="❌"><span>Chiudi</span></button>
+            </div>
+            <div id="dayTasksList" class="task-list">
+                <div class="empty-state">
+                    <p>Nessun task per questo giorno</p>
                 </div>
             </div>
         </div>
@@ -835,6 +848,11 @@
                 if (statusFilter === 'accepted') filtered = filtered.filter(t => t.acceptedAt && !t.completed);
                 if (statusFilter === 'completed') filtered = filtered.filter(t => t.completed);
             }
+            
+            // Se siamo in visualizzazione "Task Operatori", escludiamo i task dell'admin loggato
+            if (currentViewMode === 'operatorTasks') {
+                filtered = filtered.filter(t => t.assignedOperator?.id !== currentUser.id);
+            }
 
             if (filtered.length === 0) {
                 container.innerHTML = '<div class="empty-state"><p>Nessun task disponibile</p></div>';
@@ -950,8 +968,10 @@
         function renderAdminTasks() {
             const container = document.getElementById('adminTasksList');
             
-            // Filter tasks assigned to the current admin user
-            const adminTasks = allTasks.filter(t => t.assignedOperator?.id === currentUser.id);
+            // Mostra task non assegnati + task assegnati all'admin attuale
+            const adminTasks = allTasks.filter(t => 
+                !t.assignedOperator || t.assignedOperator?.id === currentUser.id
+            );
 
             if (adminTasks.length === 0) {
                 container.innerHTML = '<div class="empty-state"><p>Nessun task personale</p></div>';
@@ -1112,7 +1132,10 @@
             
             for (let day = 1; day <= daysInMonth; day++) {
                 const date = new Date(year, month, day);
-                const dateStr = date.toISOString().split('T')[0];
+                // Crea una stringa di data in formato locale YYYY-MM-DD
+                const dateStr = String(year).padStart(4, '0') + '-' + 
+                               String(month + 1).padStart(2, '0') + '-' + 
+                               String(day).padStart(2, '0');
                 const dayOfWeek = date.getDay(); // 0 = Domenica
                 
                 // Controlla se è domenica (0) o festivo
@@ -1122,7 +1145,9 @@
                 // Conta task con data schedulata
                 const dayTasks = tasksToDisplay.filter(task => {
                     if (!task.scheduledAt) return false;
-                    return task.scheduledAt.split('T')[0] === dateStr;
+                    // Estrai solo la parte della data (YYYY-MM-DD) dalla stringa ISO
+                    const taskDateStr = task.scheduledAt.split('T')[0];
+                    return taskDateStr === dateStr;
                 });
                 
                 // Conta ricorrenze che cadono in questo giorno
@@ -1166,7 +1191,8 @@
                 const totalTasks = dayTasks.length + dayRecurrences.length;
                 const hasTasksClass = totalTasks > 0 ? 'has-tasks' : '';
                 const dayColor = isHoliday ? 'color: #ef4444;' : '';
-                html += `<div class="calendar-day ${hasTasksClass}" style="${dayColor}"><strong>${day}</strong><div style="font-size: 9px; margin-top: 2px;">${totalTasks} task</div></div>`;
+                const dateForClick = dateStr;
+                html += `<div class="calendar-day ${hasTasksClass}" style="${dayColor}; cursor: pointer;" onclick="showDayTasksModal('${dateForClick}')"><strong>${day}</strong><div style="font-size: 9px; margin-top: 2px;">${totalTasks} task</div></div>`;
             }
             
             container.innerHTML = html;
@@ -1270,8 +1296,8 @@
                                 <label>Operatore/Admin</label>
                                 <select id="modalTaskOperator">
                                     <option value="">-- Nessuno --</option>
-                                    <option value="me">👤 Per Me (Admin)</option>
-                                    ${allAssignees.map(a => `<option value="${a.id}">${a.type === 'admin' ? '👨‍💼' : '👥'} ${a.username}</option>`).join('')}
+                                    <option value="me">👨‍💼 Per Me (Admin)</option>
+                                    ${allAssignees.map(a => `<option value="${a.id}">${(a.type === 'admin' || a.role === 'master') ? '👨‍💼' : '👥'} ${a.username}</option>`).join('')}
                                 </select>
                             </div>
                             <div class="form-group">
@@ -1331,8 +1357,8 @@
                                     <label>Operatore/Admin</label>
                                     <select id="recOperator">
                                         <option value="">-- Nessuno --</option>
-                                        <option value="me">👤 Per Me (Admin)</option>
-                                        ${allAssignees.map(a => `<option value="${a.id}">${a.role === 'master' ? '👨‍💼' : '👥'} ${a.username}</option>`).join('')}
+                                        <option value="me">👨‍💼 Per Me (Admin)</option>
+                                        ${allAssignees.map(a => `<option value="${a.id}">${(a.type === 'admin' || a.role === 'master') ? '👨‍💼' : '👥'} ${a.username}</option>`).join('')}
                                     </select>
                                 </div>
                                 <div class="form-group">
@@ -2050,7 +2076,8 @@
                 currentViewMode = 'myTasks';
             }
             
-            // Aggiorna il calendario
+            // Aggiorna i task e il calendario
+            renderTasks();
             renderCalendar();
         }
 
@@ -2305,6 +2332,73 @@
             } catch (error) {
                 showAlert('Errore: ' + error.message, 'error');
             }
+        }
+
+        function showDayTasksModal(dateStr) {
+            // Filtra i task per il giorno selezionato
+            let dayTasks = allTasks.filter(task => {
+                if (!task.scheduledAt) return false;
+                return task.scheduledAt.split('T')[0] === dateStr;
+            });
+
+            // Applica i filtri di view mode
+            if (currentViewMode === 'myTasks') {
+                dayTasks = dayTasks.filter(t => t.assignedOperator?.id === currentUser.id);
+            } else if (currentViewMode === 'operatorTasks') {
+                dayTasks = dayTasks.filter(t => t.assignedOperator?.id !== currentUser.id && t.assignedOperator?.id);
+            }
+
+            // Aggiorna la card del giorno
+            const dayTasksCard = document.getElementById('dayTasksCard');
+            const dayTasksList = document.getElementById('dayTasksList');
+            const dayTasksTitle = document.getElementById('dayTasksTitle');
+
+            // Format date for display
+            const date = new Date(dateStr + 'T00:00:00');
+            const dayName = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'][date.getDay()];
+            const formatted = date.toLocaleDateString('it-IT', { year: 'numeric', month: 'long', day: 'numeric' });
+            dayTasksTitle.textContent = `📅 Task di ${dayName.charAt(0).toUpperCase() + dayName.slice(1)}, ${formatted}`;
+
+            if (dayTasks.length === 0) {
+                dayTasksList.innerHTML = '<div class="empty-state"><p>Nessun task per questo giorno</p></div>';
+                dayTasksCard.style.display = 'block';
+                return;
+            }
+
+            dayTasksList.innerHTML = dayTasks.map(task => {
+                const status = task.completed ? 'Completato' : (task.paused ? 'In Pausa' : (task.acceptedAt ? 'Accettato' : 'In Sospeso'));
+                const statusIcon = task.completed ? '✅' : (task.paused ? '⏸️' : (task.acceptedAt ? '👍' : '📋'));
+                
+                return `
+                    <div class="task-item">
+                        <div class="task-header">
+                            <h3>${task.title}</h3>
+                            <span class="task-status">${statusIcon} ${status}</span>
+                        </div>
+                        <p class="task-description">${task.description || 'Nessuna descrizione'}</p>
+                        <div class="task-meta">
+                            ${task.estimatedMinutes ? `<span>⏱️ ${task.estimatedMinutes} min</span>` : ''}
+                            ${task.assignedOperator ? `<span>👤 ${task.assignedOperator.username}</span>` : ''}
+                            ${task.priority ? `<span>${formatPriority(task.priority)}</span>` : ''}
+                        </div>
+                        <div class="task-actions">
+                            <button class="btn btn-primary btn-small" onclick="openEditTaskModal(${task.id})" data-icon="✏️"><span>Modifica</span></button>
+                            <button class="btn btn-secondary btn-small" onclick="handleDeleteTask(${task.id})" data-icon="🗑️"><span>Elimina</span></button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            dayTasksCard.style.display = 'block';
+            
+            // Scroll automatico verso la card
+            setTimeout(() => {
+                dayTasksCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        }
+
+        function closeDayTasksCard() {
+            document.getElementById('dayTasksCard').style.display = 'none';
         }
     </script>
 </body>
