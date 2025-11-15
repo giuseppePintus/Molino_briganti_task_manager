@@ -1201,6 +1201,7 @@
             const carousel = document.getElementById('operatorCarousel');
             const wrapper = document.getElementById('carouselWrapper');
             let lastX = 0;
+            let clickAllowed = true;
             
             // Helper function to get X coordinate from either mouse or touch event
             function getX(e) {
@@ -1214,6 +1215,7 @@
                 startX = x;
                 startScrollLeft = carousel.scrollLeft;
                 lastX = x;
+                clickAllowed = true;
                 wrapper.style.cursor = 'grabbing';
                 carousel.style.scrollBehavior = 'auto';
             }
@@ -1224,6 +1226,12 @@
                 
                 const walk = (x - lastX) * 1.5;
                 dragDistance += Math.abs(walk);
+                
+                // Se il drag è significativo, disabilitare click
+                if (dragDistance > 10) {
+                    clickAllowed = false;
+                }
+                
                 carousel.scrollLeft = carousel.scrollLeft - walk;
                 lastX = x;
             }
@@ -1268,22 +1276,19 @@
                 endDrag();
             });
             
-            // Touch events for mobile
+            // Touch events for mobile - senza preventDefault per permettere click
             carousel.addEventListener('touchstart', (e) => {
                 startDrag(getX(e));
-                e.preventDefault();
-            }, { passive: false });
+            });
             
             document.addEventListener('touchmove', (e) => {
                 if (!isDragging) return;
                 handleMove(getX(e));
-                e.preventDefault();
-            }, { passive: false });
+            });
             
             document.addEventListener('touchend', (e) => {
                 endDrag();
-                e.preventDefault();
-            }, { passive: false });
+            });
 
             wrapper.addEventListener('mouseleave', () => {
                 isDragging = false;
