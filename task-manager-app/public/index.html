@@ -74,6 +74,30 @@
             border: 1px solid #3d3d3d;
         }
 
+        .login-logo {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+
+        .login-logo img {
+            height: 70px;
+            width: auto;
+            object-fit: contain;
+        }
+
+        .login-logo {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 25px;
+        }
+
+        .login-logo img {
+            height: 70px;
+            width: auto;
+            object-fit: contain;
+        }
+
         .login-card h1 {
             text-align: center;
             margin-bottom: 15px;
@@ -961,6 +985,10 @@
     <!-- Login Page - Operators Carousel -->
     <div id="loginPage" class="login-container">
         <div class="login-card">
+            <div class="login-logo">
+                <img src="images/logo INSEGNA.png" alt="Molino Briganti Logo">
+            </div>
+
             <!-- Tab Navigation -->
             <div class="tab-buttons">
                 <button onclick="switchLoginTab('operators')" id="operatorsTab" class="btn btn-secondary tab-button active">👥 Operatori</button>
@@ -1045,33 +1073,57 @@
         async function loadOperatorsCarousel() {
             try {
                 let response;
+                let timeoutId;
+                
                 try {
-                    // Prova con fetch (più moderno)
-                    response = await fetch(`${API_URL}/auth/operators/public`, {
+                    // Crea un timeout controllato
+                    const fetchPromise = fetch(`${API_URL}/auth/operators/public`, {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json'
                         }
                     });
+                    
+                    const timeoutPromise = new Promise((_, reject) => {
+                        timeoutId = setTimeout(() => reject(new Error('Timeout fetch')), 5000);
+                    });
+                    
+                    response = await Promise.race([fetchPromise, timeoutPromise]);
+                    clearTimeout(timeoutId);
                 } catch (fetchError) {
+                    clearTimeout(timeoutId);
+                    console.log('Fetch fallito, provo XMLHttpRequest...');
+                    
                     // Fallback a XMLHttpRequest per compatibilità (Jelly Bean)
                     response = await new Promise((resolve, reject) => {
                         const xhr = new XMLHttpRequest();
+                        const xhrTimeout = setTimeout(() => {
+                            xhr.abort();
+                            reject(new Error('XMLHttpRequest timeout'));
+                        }, 5000);
+                        
                         xhr.open('GET', `${API_URL}/auth/operators/public`, true);
                         xhr.setRequestHeader('Content-Type', 'application/json');
                         xhr.onload = function() {
+                            clearTimeout(xhrTimeout);
                             if (xhr.status === 200 || xhr.status === 0) {
-                                resolve({
-                                    ok: true,
-                                    json: () => Promise.resolve(JSON.parse(xhr.responseText))
-                                });
+                                try {
+                                    const data = JSON.parse(xhr.responseText);
+                                    resolve({
+                                        ok: true,
+                                        json: () => Promise.resolve(data)
+                                    });
+                                } catch (e) {
+                                    reject(new Error('JSON parse error'));
+                                }
                             } else {
                                 reject(new Error(`HTTP ${xhr.status}`));
                             }
                         };
-                        xhr.onerror = () => reject(new Error('Errore di rete'));
-                        xhr.ontimeout = () => reject(new Error('Timeout'));
-                        xhr.timeout = 10000;
+                        xhr.onerror = () => {
+                            clearTimeout(xhrTimeout);
+                            reject(new Error('Errore di rete'));
+                        };
                         xhr.send();
                     });
                 }
@@ -1090,8 +1142,17 @@
                 setupDragAndDrop();
             } catch (error) {
                 console.error('Errore caricamento operatori:', error);
+                // Mostra messaggio di errore ma consenti comunque di accedere come admin
                 document.getElementById('operatorCarousel').innerHTML = 
-                    `<div class="carousel-error">Errore: ${error.message}</div>`;
+                    `<div class="carousel-error">⚠️ Caricamento operatori non disponibile. Usa il login Admin.</div>`;
+                
+                // Rendi il tab admin più visibile
+                const operatorsTab = document.getElementById('operatorsTab');
+                const masterTab = document.getElementById('masterTab');
+                if (operatorsTab && masterTab) {
+                    operatorsTab.style.opacity = '0.5';
+                    masterTab.style.opacity = '1';
+                }
             }
         }
 
@@ -1141,27 +1202,34 @@
             const wrapper = document.getElementById('carouselWrapper');
             let lastX = 0;
             
-            carousel.addEventListener('mousedown', (e) => {
+            // Helper function to get X coordinate from either mouse or touch event
+            function getX(e) {
+                return e.pageX !== undefined ? e.pageX : e.touches?.[0]?.pageX || 0;
+            }
+            
+            // Helper function to start dragging
+            function startDrag(x) {
                 isDragging = true;
                 dragDistance = 0;
-                startX = e.pageX;
+                startX = x;
                 startScrollLeft = carousel.scrollLeft;
-                lastX = e.pageX;
+                lastX = x;
                 wrapper.style.cursor = 'grabbing';
                 carousel.style.scrollBehavior = 'auto';
-            });
+            }
             
-            document.addEventListener('mousemove', (e) => {
+            // Helper function to handle move
+            function handleMove(x) {
                 if (!isDragging) return;
                 
-                const x = e.pageX;
                 const walk = (x - lastX) * 1.5;
                 dragDistance += Math.abs(walk);
                 carousel.scrollLeft = carousel.scrollLeft - walk;
                 lastX = x;
-            });
+            }
             
-            document.addEventListener('mouseup', (e) => {
+            // Helper function to end drag
+            function endDrag() {
                 if (!isDragging) return;
                 
                 isDragging = false;
@@ -1184,7 +1252,38 @@
                 }
                 
                 dragDistance = 0;
+            }
+            
+            // Mouse events
+            carousel.addEventListener('mousedown', (e) => {
+                startDrag(getX(e));
             });
+            
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                handleMove(getX(e));
+            });
+            
+            document.addEventListener('mouseup', (e) => {
+                endDrag();
+            });
+            
+            // Touch events for mobile
+            carousel.addEventListener('touchstart', (e) => {
+                startDrag(getX(e));
+                e.preventDefault();
+            }, { passive: false });
+            
+            document.addEventListener('touchmove', (e) => {
+                if (!isDragging) return;
+                handleMove(getX(e));
+                e.preventDefault();
+            }, { passive: false });
+            
+            document.addEventListener('touchend', (e) => {
+                endDrag();
+                e.preventDefault();
+            }, { passive: false });
 
             wrapper.addEventListener('mouseleave', () => {
                 isDragging = false;

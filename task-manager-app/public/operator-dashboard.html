@@ -62,11 +62,31 @@
             align-items: center;
         }
 
+        .header-logo {
+            height: 50px;
+            margin-right: 20px;
+            display: flex;
+            align-items: center;
+        }
+
+        .header-logo img {
+            height: 100%;
+            width: auto;
+            object-fit: contain;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
         .header h1 {
-            font-size: 32px;
+            font-size: 18px;
             color: #e0e0e0;
             font-weight: 700;
             letter-spacing: 0.5px;
+            margin: 0;
         }
 
         .header-actions {
@@ -76,9 +96,9 @@
         }
 
         .user-info {
-            font-size: 18px;
-            font-weight: 600;
-            color: #b0b0b0;
+            font-size: 22px;
+            font-weight: 700;
+            color: #e0e0e0;
             letter-spacing: 0.3px;
         }
 
@@ -392,7 +412,12 @@
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <h1>⚡ Operator Dashboard</h1>
+            <div class="header-left">
+                <div class="header-logo">
+                    <img src="images/logo INSEGNA.png" alt="Molino Briganti Logo">
+                </div>
+                <h1>⚡ Operator Dashboard</h1>
+            </div>
             <div class="header-actions">
                 <div class="user-info" id="userInfo"></div>
                 <button class="btn btn-secondary" onclick="handleLogout()">🚪 Logout</button>
