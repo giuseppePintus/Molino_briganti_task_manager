@@ -148,7 +148,7 @@
             flex-direction: column;
             align-items: flex-start;
             line-height: 1;
-            font-size: 8px;
+            font-size: 11px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -228,23 +228,33 @@
             display: flex;
             gap: 10px;
             margin-bottom: 20px;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
+            flex-direction: row;
         }
 
         .quick-actions .btn {
-            padding: 10px 8px;
+            padding: 10px 16px;
             min-height: 40px;
-            font-size: 12px;
+            font-size: 13px;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
 
         .quick-actions .btn::before {
-            font-size: 12px;
+            font-size: 16px;
         }
 
         .quick-actions .btn span {
-            font-size: 12px;
+            font-size: 13px;
             line-height: 1.2;
         }
+
+        /* Utility: show only on mobile */
+        .mobile-only { display: none; }
+        @media (max-width: 480px) { .mobile-only { display: inline-flex; } }
 
         .toggle-tasks-btn {
             padding: 10px 8px;
@@ -276,10 +286,88 @@
             flex: 1;
         }
 
-        #myTasksCard .card-header h2,
+        #myTasksCard {
+            border: 2px solid #ff9800;
+            background: #2d2d2d;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        #myTasksCard .card-header h2 {
+            font-size: 20px;
+            margin-bottom: 0;
+            color: #ff9800;
+            font-weight: bold;
+        }
+
+        #dayTasksCard {
+            border: 2px solid #4CAF50;
+            background: #2d2d2d;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            margin-bottom: 20px;
+        }
+
+        #dayTasksCard .card-header h2 {
+            font-size: 20px;
+            margin-bottom: 0;
+            color: #4CAF50;
+            font-weight: bold;
+        }
+
+        #operatorTasksCard {
+            border: 2px solid #2196f3;
+            background: #2d2d2d;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
         #operatorTasksCard .card-header h2 {
             font-size: 20px;
             margin-bottom: 0;
+            color: #2196f3;
+            font-weight: bold;
+        }
+
+        #tripsCard {
+            border: 2px solid #4CAF50;
+            background: #2d2d2d;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            min-width: 300px;
+        }
+
+        #tripsCard h2 {
+            font-size: 20px;
+            margin-bottom: 15px;
+            color: #4CAF50;
+            font-weight: bold;
+        }
+
+        #tripsCard .empty-state {
+            color: #888;
+            text-align: center;
+            padding: 20px;
+            font-style: italic;
+        }
+
+        @media (max-width: 768px) {
+            #tripsCard {
+                padding: 15px;
+                min-width: auto;
+            }
+            #tripsCard h2 {
+                font-size: 18px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            #tripsCard {
+                padding: 12px;
+                font-size: 14px;
+            }
+            #tripsCard h2 {
+                font-size: 16px;
+            }
         }
 
         .card-header .btn {
@@ -327,9 +415,10 @@
         }
 
         .main-content {
-            display: grid;
-            grid-template-columns: 320px 1fr;
+            display: flex;
+            flex-direction: column;
             gap: 20px;
+            margin-bottom: 20px;
         }
 
         .calendar-container {
@@ -349,6 +438,7 @@
             transition: all 0.2s;
             font-size: 18px;
             color: #b0b0b0;
+            overflow: hidden;
         }
 
         .calendar-day:hover {
@@ -367,14 +457,14 @@
         .calendar-day.has-unassigned-tasks::after {
             content: '';
             position: absolute;
-            top: 0;
-            right: 0;
+            bottom: 0;
+            left: 0;
             width: 0;
             height: 0;
             border-style: solid;
-            border-width: 0 18px 18px 0;
-            border-color: transparent #ff9800 transparent transparent;
-            border-radius: 0 4px 0 0;
+            border-width: 18px 0 0 18px;
+            border-color: transparent transparent transparent #ff9800;
+            border-radius: 0 0 0 4px;
         }
 
         .calendar-day.has-tasks {
@@ -395,9 +485,8 @@
         }
 
         .task-list {
-            max-height: 800px;
-            overflow-y: auto;
-            display: grid;
+            display: flex;
+            flex-direction: column;
             gap: 15px;
         }
 
@@ -405,8 +494,35 @@
             background: #3d3d3d;
             border-left: 4px solid var(--primary);
             padding: 15px;
-            border-radius: 4px;
-            border: 1px solid #4d4d4d;
+            border-radius: 6px;
+            border: 2px solid #4d4d4d;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+            margin-bottom: 15px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+        }
+
+        .task-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 12px rgba(0, 0, 0, 0.5);
+            border-color: #5d5d5d;
+        }
+
+        .task-item {
+            background: #3d3d3d;
+            border-left: 4px solid #4CAF50;
+            padding: 15px;
+            border-radius: 6px;
+            border: 2px solid #4d4d4d;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+            margin-bottom: 15px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .task-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 12px rgba(0, 0, 0, 0.5);
+            border-color: #5d5d5d;
         }
 
         .task-header {
@@ -419,13 +535,13 @@
         .task-title {
             font-weight: 600;
             color: #e0e0e0;
-            font-size: 18px;
+            font-size: 20px;
             text-transform: uppercase;
         }
 
         .task-status {
-            font-size: 13px;
-            padding: 4px 8px;
+            font-size: 15px;
+            padding: 6px 10px;
             border-radius: 4px;
             background: #1e3a4d;
             color: #7dd3fc;
@@ -435,13 +551,14 @@
             color: #a0a0a0;
             font-size: 16px;
             margin-bottom: 10px;
+            line-height: 1.5;
         }
 
         .task-meta {
             display: flex;
             gap: 10px;
             flex-wrap: wrap;
-            font-size: 14px;
+            font-size: 15px;
             color: #808080;
             margin-bottom: 10px;
         }
@@ -461,10 +578,10 @@
         }
 
         .btn-small {
-            padding: 6px 12px;
-            font-size: 12px;
+            padding: 8px 14px;
+            font-size: 14px;
             min-height: auto;
-            height: 32px;
+            height: 36px;
         }
 
         .empty-state {
@@ -607,7 +724,163 @@
 
         
 
+        /* Desktop calendar header */
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .calendar-btn-operators, .calendar-btn-toggle {
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+
+        .calendar-btn-prev, .calendar-btn-next {
+            padding: 8px 12px;
+            font-size: 16px;
+            min-width: 40px;
+            width: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .calendar-title {
+            margin: 0;
+            color: #e0e0e0;
+            font-size: 16px;
+            text-align: center;
+            flex: 1;
+            min-width: 150px;
+        }
+
         @media (max-width: 480px) {
+            /* Mobile: Subgrid approach */
+            .calendar-header {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr;
+                grid-template-rows: auto auto;
+                gap: 8px;
+                margin-bottom: 15px;
+            }
+
+            /* First row: 2 buttons */
+            .calendar-btn-operators {
+                grid-column: 1;
+                grid-row: 1;
+                padding: 10px 12px;
+                font-size: 13px;
+            }
+
+            .calendar-btn-toggle {
+                grid-column: 2;
+                grid-row: 1;
+                padding: 10px 12px;
+                font-size: 13px;
+            }
+
+            /* Second row: create a nested container for navigation */
+            .calendar-btn-prev {
+                grid-column: 1 / -1;
+                grid-row: 2;
+                width: 40px !important;
+                height: 40px;
+                padding: 0 !important;
+                font-size: 18px !important;
+                min-width: 40px !important;
+                max-width: 40px !important;
+                justify-self: start;
+            }
+
+            .calendar-title {
+                grid-column: 1 / -1;
+                grid-row: 2;
+                font-size: 13px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                min-width: 0;
+                margin: 0 50px;
+            }
+
+            .calendar-btn-next {
+                grid-column: 1 / -1;
+                grid-row: 2;
+                width: 40px !important;
+                height: 40px;
+                padding: 0 !important;
+                font-size: 18px !important;
+                min-width: 40px !important;
+                max-width: 40px !important;
+                justify-self: end;
+            }
+
+            /* Quick actions in 2x2 grid on mobile */
+            .quick-actions {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr !important;
+                grid-template-rows: auto auto !important;
+                gap: 10px !important;
+            }
+
+            .quick-actions .btn {
+                width: 100% !important;
+                min-width: 0 !important;
+                padding: 12px 8px !important;
+                font-size: 14px !important;
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                justify-content: center !important;
+                gap: 4px !important;
+                height: auto !important;
+                min-height: 56px !important;
+            }
+
+            /* First two buttons span full width on first row */
+            .quick-actions .btn:nth-child(1) {
+                grid-column: 1 / 2;
+                grid-row: 1;
+            }
+
+            .quick-actions .btn:nth-child(2) {
+                grid-column: 2 / 3;
+                grid-row: 1;
+            }
+
+            /* Last two buttons on second row, half width each */
+            .quick-actions .btn:nth-child(3) {
+                grid-column: 1 / 2;
+                grid-row: 2;
+            }
+
+            .quick-actions .btn:nth-child(4) {
+                grid-column: 2 / 3;
+                grid-row: 2;
+            }
+
+            .quick-actions .btn::before {
+                font-size: 36px !important;
+                margin: 0 !important;
+            }
+
+            .quick-actions .btn span {
+                font-size: 10px !important;
+                text-align: center !important;
+                line-height: 1.2 !important;
+            }
+
+            /* Ensure calendar cells don't overflow and stay legible */
+            .calendar-day {
+                font-size: 16px;
+                padding: 6px;
+            }
             .header {
                 flex-direction: row;
                 gap: 8px;
@@ -714,25 +987,25 @@
             }
 
             .task-item {
-                padding: 12px;
-                font-size: 13px;
+                padding: 14px;
+                font-size: 15px;
             }
 
             .task-item .task-info {
                 flex-direction: column;
-                gap: 5px;
+                gap: 8px;
             }
 
             .task-item .task-actions {
                 flex-direction: column;
-                gap: 5px;
+                gap: 8px;
                 width: 100%;
             }
 
             .task-item .task-actions .btn {
                 width: 100%;
-                padding: 6px 8px;
-                font-size: 12px;
+                padding: 10px 12px;
+                font-size: 14px;
             }
 
             .main-content {
@@ -771,93 +1044,140 @@
 
             #operatorTasksCard .card-header h2,
             #myTasksCard .card-header h2 {
-                font-size: 16px !important;
+                font-size: 18px !important;
                 margin-bottom: 8px !important;
             }
 
             #operatorTasksCard .task-card {
-                padding: 10px;
-                margin-bottom: 8px;
+                padding: 12px;
+                margin-bottom: 10px;
             }
 
             #operatorTasksCard .task-title {
-                font-size: 14px;
-                margin-bottom: 5px;
+                font-size: 16px;
+                margin-bottom: 6px;
             }
 
             #operatorTasksCard .task-description {
-                font-size: 13px;
-                margin-bottom: 5px;
+                font-size: 15px;
+                margin-bottom: 6px;
+                line-height: 1.4;
             }
 
             #operatorTasksCard .task-meta {
-                font-size: 12px;
-                gap: 6px;
-                margin-bottom: 8px;
+                font-size: 14px;
+                gap: 8px;
+                margin-bottom: 10px;
             }
 
             #operatorTasksCard .task-actions {
-                gap: 5px;
+                gap: 8px;
                 flex-wrap: wrap;
             }
 
             #operatorTasksCard .task-actions .btn {
-                padding: 4px 8px;
-                font-size: 10px;
-                min-height: 14px;
+                padding: 8px 12px;
+                font-size: 13px;
+                min-height: 36px;
                 flex: 1;
-                min-width: 60px;
+                min-width: 80px;
             }
 
             #operatorTasksCard .task-actions .btn::before {
-                font-size: 10px;
+                font-size: 14px;
             }
 
             #operatorTasksCard .task-actions .btn span {
-                font-size: 8px;
+                font-size: 13px;
             }
 
             /* myTasksCard specific styles for 480px */
             #myTasksCard .task-card {
-                padding: 10px;
-                margin-bottom: 8px;
+                padding: 12px;
+                margin-bottom: 10px;
             }
 
             #myTasksCard .task-title {
-                font-size: 14px;
-                margin-bottom: 5px;
+                font-size: 16px;
+                margin-bottom: 6px;
             }
 
             #myTasksCard .task-description {
-                font-size: 13px;
-                margin-bottom: 5px;
+                font-size: 15px;
+                margin-bottom: 6px;
+                line-height: 1.4;
             }
 
             #myTasksCard .task-meta {
-                font-size: 12px;
-                gap: 6px;
-                margin-bottom: 8px;
+                font-size: 14px;
+                gap: 8px;
+                margin-bottom: 10px;
             }
 
             #myTasksCard .task-actions {
-                gap: 5px;
+                gap: 8px;
                 flex-wrap: wrap;
             }
 
             #myTasksCard .task-actions .btn {
-                padding: 4px 8px;
-                font-size: 10px;
-                min-height: 14px;
+                padding: 8px 12px;
+                font-size: 13px;
+                min-height: 36px;
                 flex: 1;
-                min-width: 60px;
+                min-width: 80px;
             }
 
             #myTasksCard .task-actions .btn::before {
-                font-size: 10px;
+                font-size: 14px;
             }
 
             #myTasksCard .task-actions .btn span {
-                font-size: 8px;
+                font-size: 13px;
+            }
+
+            /* Day Tasks Card - responsive styles */
+            #dayTasksCard .task-item {
+                padding: 14px;
+            }
+
+            #dayTasksCard .task-header h3 {
+                font-size: 16px;
+            }
+
+            #dayTasksCard .task-status {
+                font-size: 14px;
+                padding: 6px 10px;
+            }
+
+            #dayTasksCard .task-description {
+                font-size: 15px;
+                line-height: 1.4;
+            }
+
+            #dayTasksCard .task-meta {
+                font-size: 14px;
+            }
+
+            #dayTasksCard .task-actions .btn {
+                padding: 10px 12px;
+                font-size: 14px;
+            }
+
+            #dayTasksCard .task-actions .btn::before {
+                font-size: 16px;
+            }
+
+            #dayTasksCard .task-actions .btn span {
+                font-size: 14px;
+            }
+
+            /* Improve button text readability on mobile */
+            .btn-small::before {
+                font-size: 16px !important;
+            }
+
+            .btn-small span {
+                font-size: 14px !important;
             }
         }
     </style>
@@ -889,40 +1209,25 @@
         <!-- Quick Actions -->
         <div class="quick-actions">
             <button class="btn btn-success" data-icon="📝🔄" onclick="openCreateTaskOrRecurrenceModal()"><span>Gestione Task / Ricorrenze</span></button>
-            <button class="btn btn-primary" data-icon="👥" onclick="window.location.href='operators.html'"><span>Gestione Admin / Operatori</span></button>
-            <button class="btn btn-primary" data-icon="👨‍💼" onclick="window.location.href='customers-management.html'"><span>Gestione Clienti</span></button>
             <button class="btn btn-primary" data-icon="📦" onclick="window.location.href='orders-planner.html'"><span>Planner Ordini</span></button>
+            <button class="btn btn-primary btn-small-mobile" data-icon="👥" onclick="window.location.href='operators.html'"><span>Gestione Admin / Operatori</span></button>
+            <button class="btn btn-primary btn-small-mobile" data-icon="👨‍💼" onclick="window.location.href='customers-management.html'"><span>Gestione Clienti</span></button>
         </div>
 
         <!-- Calendar -->
         <div class="card" style="padding: 12px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <button class="btn btn-secondary" onclick="toggleOperatorTasks()" id="toggleTasksBtn" style="padding: 8px 16px; font-size: 14px;">👁️ Operatori</button>
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <button class="btn btn-primary" onclick="previousMonth()" style="padding: 8px 12px; font-size: 16px; min-width: auto; width: 40px; display: flex; align-items: center; justify-content: center;">◀</button>
-                    <h4 id="calendarMonthYear" style="margin: 0; color: #e0e0e0; font-size: 16px; min-width: 150px; text-align: center;"></h4>
-                    <button class="btn btn-primary" onclick="nextMonth()" style="padding: 8px 12px; font-size: 16px; min-width: auto; width: 40px; display: flex; align-items: center; justify-content: center;">▶</button>
-                </div>
-                <button class="btn btn-secondary" onclick="toggleCalendarView()" id="toggleCalendarBtn" style="padding: 8px 16px; font-size: 14px;">📅 Mese</button>
+            <div class="calendar-header">
+                <button class="btn btn-secondary calendar-btn-operators" onclick="toggleOperatorTasks()" id="toggleTasksBtn">👁️ Task Operatori</button>
+                <button class="btn btn-primary calendar-btn-prev" onclick="previousMonth()">◀</button>
+                <h4 id="calendarMonthYear" class="calendar-title"></h4>
+                <button class="btn btn-primary calendar-btn-next" onclick="nextMonth()">▶</button>
+                <button class="btn btn-secondary calendar-btn-toggle" onclick="toggleCalendarView()" id="toggleCalendarBtn">📅 Mese</button>
             </div>
             <div id="calendarContainer" class="calendar-container">
                 <!-- Calendar will be generated here -->
             </div>
             <div style="text-align: center; margin-top: 15px; display: flex; gap: 10px; justify-content: center; display: none;" id="toggleTasksContainer">
                 <button class="btn btn-secondary toggle-tasks-btn" data-icon="⬅️" onclick="toggleOperatorTasks()" id="backToMyTasksBtn" style="display: none;"><span>Visualizza I Miei Task</span></button>
-            </div>
-        </div>
-
-        <!-- Day Tasks Card -->
-        <div class="card" id="dayTasksCard" style="display: none; margin: 20px auto; margin-top: 20px; max-width: 900px; border: 2px solid #4CAF50; background: linear-gradient(135deg, #2d2d2d 0%, #3d3d3d 100%); position: relative; z-index: 100;">
-            <div class="card-header">
-                <h2 id="dayTasksTitle">📅 Task del Giorno</h2>
-                <button class="btn btn-secondary btn-small" onclick="closeDayTasksCard()" style="padding: 6px 12px;" data-icon="❌"><span>Chiudi</span></button>
-            </div>
-            <div id="dayTasksList" class="task-list">
-                <div class="empty-state">
-                    <p>Nessun task per questo giorno</p>
-                </div>
             </div>
         </div>
 
@@ -944,17 +1249,27 @@
             </div>
         </div>
 
+        <!-- Viaggi Section -->
+        <div class="card" id="tripsCard" style="border: 2px solid #16a34a;">
+            <div class="card-header">
+                <h2 style="color: #16a34a;">🚚 Viaggi del Giorno</h2>
+                <button class="btn btn-primary" onclick="window.location.href='orders-planner.html'" style="background: #16a34a;">Gestisci Viaggi</button>
+            </div>
+            <div id="tripsList" style="display: flex; flex-direction: column; gap: 15px;">
+            </div>
+        </div>
+
         <!-- My Tasks (Admin Personal Tasks) - Outside main-content for full width -->
         <div class="card" id="myTasksCard">
             <div class="card-header">
-                <h2 id="myTasksTitle">📋 I Miei Task</h2>
+                <h2 id="myTasksTitle">📋 Task da Assegnare</h2>
             </div>
             <div id="adminTasksList" class="task-list">
             </div>
         </div>
 
         <!-- Day Tasks Card - Outside main-content for always visibility -->
-        <div class="card" id="dayTasksCard" style="display: none; margin: 20px auto; margin-top: 20px; max-width: 900px; border: 2px solid #4CAF50; background: linear-gradient(135deg, #2d2d2d 0%, #3d3d3d 100%); position: relative; z-index: 100;">
+        <div class="card" id="dayTasksCard" style="display: none;">
             <div class="card-header">
                 <h2 id="dayTasksTitle">📅 Task del Giorno</h2>
                 <button class="btn btn-secondary btn-small" onclick="closeDayTasksCard()" style="padding: 6px 12px;" data-icon="❌"><span>Chiudi</span></button>
@@ -986,6 +1301,8 @@
         let allAssignees = []; // Operatori + Admin
         let allTasks = [];
         let currentViewMode = 'myTasks'; // 'myTasks' o 'operatorTasks'
+        let mobileComfortMode = (localStorage.getItem('mobileComfortMode') || 'false') === 'true';
+        let lastViewedDayDate = null; // Memorizza l'ultima data del giorno visualizzato
         
         // Variabili per il calendario
         let calendarDisplayMonth = new Date().getMonth();
@@ -994,6 +1311,43 @@
         let weekStartDate = new Date(); // Data di inizio della settimana attuale
         weekStartDate.setDate(weekStartDate.getDate() - weekStartDate.getDay()); // Domenica
         let editingTaskId = null;
+
+        // Sistema viaggi (sincronizzato con orders-planner)
+        let trips = [];
+        let orders = [];
+
+        function loadTripsFromPlanner() {
+            const storedTrips = localStorage.getItem('trips');
+            const storedOrders = localStorage.getItem('orders');
+            trips = storedTrips ? JSON.parse(storedTrips) : [];
+            orders = storedOrders ? JSON.parse(storedOrders) : [];
+        }
+
+        function saveTrips() {
+            localStorage.setItem('trips', JSON.stringify(trips));
+        }
+
+        function saveOrders() {
+            localStorage.setItem('orders', JSON.stringify(orders));
+        }
+
+        function getTripOrders(tripId) {
+            const trip = trips.find(t => t.id === tripId);
+            if (!trip) return [];
+            return trip.sequence.map(orderId => orders.find(o => o.id === orderId)).filter(Boolean);
+        }
+
+        function calculateTripTotals(tripId) {
+            const tripOrders = getTripOrders(tripId);
+            const totals = {};
+            tripOrders.forEach(order => {
+                if (!totals[order.product]) {
+                    totals[order.product] = 0;
+                }
+                totals[order.product] += parseFloat(order.quantity || 0);
+            });
+            return totals;
+        }
 
         // Check authorization
         window.addEventListener('load', () => {
@@ -1028,12 +1382,28 @@
 
         async function initDashboard() {
             document.getElementById('userInfo').textContent = `👤 ${currentUser.username}`;
-            document.getElementById('myTasksTitle').textContent = `📋 Task di ${currentUser.username}`;
+            document.getElementById('myTasksTitle').textContent = `📋 Task da Assegnare`;
+            loadTripsFromPlanner();
             await loadOperators();
             await loadAssignees();
             await loadTasks();
             await updateStats();
             await renderCalendar();
+            updateMobileComfortBtn();
+        }
+
+        function toggleMobileComfort() {
+            mobileComfortMode = !mobileComfortMode;
+            localStorage.setItem('mobileComfortMode', String(mobileComfortMode));
+            updateMobileComfortBtn();
+            renderCalendar();
+        }
+
+        function updateMobileComfortBtn() {
+            const btn = document.getElementById('mobileComfortBtn');
+            if (!btn) return;
+            btn.textContent = mobileComfortMode ? '🅰️+' : '🅰️';
+            btn.title = mobileComfortMode ? 'Dimensioni grandi' : 'Dimensioni compatte';
         }
 
         async function loadAssignees() {
@@ -1093,9 +1463,63 @@
                 renderTasks();
                 renderAdminTasks();
                 await renderCalendar();
+                renderTrips();
             } catch (error) {
                 showAlert('Errore: ' + error.message, 'error');
             }
+        }
+
+        function renderTrips() {
+            const tripsList = document.getElementById('tripsList');
+            if (!tripsList) return;
+
+            // Get today's date in YYYY-MM-DD format
+            const today = new Date().toISOString().split('T')[0];
+            
+            // Filter trips for today
+            const todayTrips = trips.filter(trip => trip.date === today);
+
+            if (todayTrips.length === 0) {
+                tripsList.innerHTML = '<div class="empty-state">Nessun viaggio programmato per oggi</div>';
+                return;
+            }
+
+            tripsList.innerHTML = todayTrips.map(trip => {
+                const tripOrders = getTripOrders(trip.id);
+                const totals = calculateTripTotals(trip.id);
+                
+                return `
+                    <div class="task-card" style="border-left: 4px solid #4CAF50;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <h3 style="margin: 0; color: #4CAF50; font-size: 1.1em;">${trip.name || 'Viaggio senza nome'}</h3>
+                            <span style="color: #888; font-size: 0.9em;">${tripOrders.length} ordini</span>
+                        </div>
+                        
+                        <div style="margin-bottom: 10px;">
+                            <strong style="color: #ccc;">Ordini:</strong>
+                            <div style="margin-top: 5px;">
+                                ${tripOrders.map(order => `
+                                    <div style="color: #999; font-size: 0.9em; padding: 2px 0;">
+                                        • ${order.clientName || 'Cliente sconosciuto'}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <div style="background: rgba(76, 175, 80, 0.1); padding: 10px; border-radius: 4px;">
+                            <strong style="color: #4CAF50; font-size: 0.95em;">Totali Prodotti:</strong>
+                            <div style="margin-top: 8px;">
+                                ${Object.entries(totals).map(([product, quantity]) => `
+                                    <div style="display: flex; justify-content: space-between; color: #ccc; font-size: 0.9em; padding: 3px 0;">
+                                        <span>${product}</span>
+                                        <span style="font-weight: bold; color: #4CAF50;">${quantity}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
         }
 
         function renderTasks() {
@@ -1165,27 +1589,13 @@
                             <div class="task-title">${task.title}</div>
                             <span class="task-status">${statusIcon} ${status}</span>
                         </div>
-                        <p class="task-description">${task.description || 'Nessuna descrizione'}</p>
-                        <div class="task-meta">
-                            ${task.scheduledAt ? `<span class="meta-tag">📅 ${new Date(task.scheduledAt).toLocaleString('it-IT')}</span>` : ''}
-                            ${task.estimatedMinutes ? `<span class="meta-tag">⏱️ ${task.estimatedMinutes} min</span>` : ''}
-                            ${task.assignedOperator ? `<span class="meta-tag">👤 ${task.assignedOperator.username}</span>` : ''}
-                            ${task.priority ? `<span class="meta-tag">${formatPriority(task.priority)}</span>` : ''}
-                        </div>
-                        ${task.notes && task.notes.length > 0 ? `
-                            <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #4d4d4d; font-size: 12px;">
-                                <strong style="color: #e0e0e0;">📝 Note (${task.notes.length}):</strong>
-                                <div style="margin-top: 5px; max-height: 100px; overflow-y: auto;">
-                                    ${task.notes.slice(0, 3).map(note => `
-                                        <div style="background: #3d3d3d; padding: 5px; margin: 3px 0; border-radius: 3px; border: 1px solid #4d4d4d;">
-                                            <strong style="color: #a0a0a0;">${note.user.username}</strong>: <span style="color: #808080;">${note.note.substring(0, 60)}...</span>
-                                        </div>
-                                    `).join('')}
-                                    ${task.notes.length > 3 ? `<div style="color: #808080; margin-top: 5px;">+${task.notes.length - 3} altre note</div>` : ''}
-                                </div>
-                            </div>
-                        ` : ''}
-                        <div class="task-actions">
+                        ${task.description ? `<div style="margin-top: 8px; color: #a0a0a0; font-size: 13px;">${task.description}</div>` : ''}
+                        ${task.scheduledAt ? `<div style="margin-top: 8px; color: #a0a0a0; font-size: 13px;">📅 ${new Date(task.scheduledAt).toLocaleString('it-IT')}</div>` : ''}
+                        ${task.estimatedMinutes ? `<div style="margin-top: 4px; color: #a0a0a0; font-size: 13px;">⏱️ ${task.estimatedMinutes} min</div>` : ''}
+                        ${task.assignedOperator ? `<div style="margin-top: 4px; color: #a0a0a0; font-size: 13px;">👤 ${task.assignedOperator.username}</div>` : ''}
+                        ${task.priority ? `<div style="margin-top: 4px; color: #a0a0a0; font-size: 13px;">${formatPriority(task.priority)}</div>` : ''}
+                        ${task.notes && task.notes.length > 0 ? `<div style="margin-top: 8px; color: #e0e0e0; font-size: 12px;">📝 Note: ${task.notes.length}</div>` : ''}
+                        <div class="task-actions" style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
                             <button class="btn btn-primary btn-small" onclick="openEditTaskModal(${task.id})">✏️ Modifica</button>
                             <button class="btn btn-danger btn-small" onclick="handleDeleteTask(${task.id})">🗑️ Rimuovi</button>
                         </div>
@@ -1216,7 +1626,7 @@
                             <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
                                 ${firstTask.estimatedMinutes ? `<span style="background: #2d2d2d; padding: 3px 8px; border-radius: 3px; font-size: 11px; color: #b0b0b0;">⏱️ ${firstTask.estimatedMinutes} min</span>` : ''}
                                 ${firstTask.priority ? `<span style="background: #2d2d2d; padding: 3px 8px; border-radius: 3px; font-size: 11px; color: #b0b0b0;">${formatPriority(firstTask.priority)}</span>` : ''}
-                                <button class="btn btn-primary" data-icon="✏️" onclick="openEditTaskModal(${firstTask.id})" style="padding: 4px 8px; font-size: 12px; min-height: auto; gap: 4px;"><span style="font-size: 12px;">Modifica</span></button>
+                                <button class="btn btn-primary" data-icon="✏️" onclick="openEditTaskModal(${firstTask.id})" style="padding: 6px 10px; font-size: 14px; min-height: auto; gap: 4px;"><span style="font-size: 14px;">Modifica</span></button>
                             </div>
                         </div>
                     `;
@@ -1236,11 +1646,14 @@
         function renderAdminTasks() {
             const container = document.getElementById('adminTasksList');
             
-            // Mostra task non assegnati + task assegnati all'admin attuale
+            const isMobile = window.innerWidth <= 480;
             const adminTasks = allTasks.filter(t => 
                 !t.assignedOperator || t.assignedOperator?.id === currentUser.id
             );
 
+            const dayNames = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
+            const monthNames = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 
+                                'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
             if (adminTasks.length === 0) {
                 container.innerHTML = '<div class="empty-state"><p>Nessun task personale</p></div>';
                 return;
@@ -1267,34 +1680,18 @@
                             <div class="task-title">${task.title}</div>
                             <span class="task-status">${statusIcon} ${status}</span>
                         </div>
-                        <p class="task-description">${task.description || 'Nessuna descrizione'}</p>
-                        <div class="task-meta">
-                            ${task.scheduledAt ? `<span class="meta-tag">📅 ${new Date(task.scheduledAt).toLocaleString('it-IT')}</span>` : ''}
-                            ${task.estimatedMinutes ? `<span class="meta-tag">⏱️ ${task.estimatedMinutes} min</span>` : ''}
-                            ${task.priority ? `<span class="meta-tag">${formatPriority(task.priority)}</span>` : ''}
-                            ${task.recurring && task.recurrenceType ? `<span class="meta-tag" style="background: #1e3a4d; color: #7dd3fc;">🔄 ${getRecurrenceLabel(task.recurrenceType)}</span>` : ''}
-                        </div>
-                        ${task.notes && task.notes.length > 0 ? `
-                            <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #4d4d4d; font-size: 12px;">
-                                <strong style="color: #e0e0e0;">📝 Note (${task.notes.length}):</strong>
-                                <div style="margin-top: 5px; max-height: 100px; overflow-y: auto;">
-                                    ${task.notes.slice(0, 3).map(note => `
-                                        <div style="background: #3d3d3d; padding: 5px; margin: 3px 0; border-radius: 3px; border: 1px solid #4d4d4d;">
-                                            <strong style="color: #a0a0a0;">${note.user.username}</strong>: <span style="color: #808080;">${note.note.substring(0, 60)}...</span>
-                                        </div>
-                                    `).join('')}
-                                    ${task.notes.length > 3 ? `<div style="color: #808080; margin-top: 5px;">+${task.notes.length - 3} altre note</div>` : ''}
-                                </div>
-                            </div>
-                        ` : ''}
-                        <div class="task-actions" style="flex-wrap: wrap;">
-                            ${!task.assignedOperator ? `<button class="btn btn-info btn-small" onclick="openAssignTaskModal(${task.id})" style="flex: 1; min-width: 100px; background: #0891b2;">🔧 Assegna</button>` : ''}
-                            ${!task.acceptedAt && !task.completed ? `<button class="btn btn-success btn-small" onclick="handleTaskStatusChange(${task.id}, 'accept')" style="flex: 1; min-width: 100px; background: #22c55e;">👍 Accetta</button>` : ''}
-                            ${task.acceptedAt && !task.completed && !task.paused ? `<button class="btn btn-warning btn-small" onclick="handleTaskStatusChange(${task.id}, 'pause')" style="flex: 1; min-width: 100px; background: #ea580c;">⏸️ Pausa</button>` : ''}
-                            ${task.paused ? `<button class="btn btn-info btn-small" onclick="handleTaskStatusChange(${task.id}, 'resume')" style="flex: 1; min-width: 100px; background: #3b82f6;">▶️ Riprendi</button>` : ''}
-                            ${!task.completed ? `<button class="btn btn-success btn-small" onclick="handleTaskStatusChange(${task.id}, 'complete')" style="flex: 1; min-width: 100px; background: #22c55e;">✅ Completa</button>` : ''}
-                            <button class="btn btn-primary btn-small" onclick="openEditTaskModal(${task.id})" style="flex: 1; min-width: 100px;">✏️ Modifica</button>
-                            <button class="btn btn-danger btn-small" onclick="handleDeleteTask(${task.id})" style="flex: 1; min-width: 100px;">🗑️ Rimuovi</button>
+                        ${task.scheduledAt ? `<div style="margin-top: 8px; color: #a0a0a0; font-size: 13px;">📅 ${new Date(task.scheduledAt).toLocaleString('it-IT')}</div>` : ''}
+                        ${task.priority ? `<div style="margin-top: 4px; color: #a0a0a0; font-size: 13px;">${formatPriority(task.priority)}</div>` : ''}
+                        ${task.recurring && task.recurrenceType ? `<div style="margin-top: 4px; color: #7dd3fc; font-size: 13px;">🔄 ${getRecurrenceLabel(task.recurrenceType)}</div>` : ''}
+                        ${task.notes && task.notes.length > 0 ? `<div style="margin-top: 8px; color: #e0e0e0; font-size: 12px;">📝 Note: ${task.notes.length}</div>` : ''}
+                        <div class="task-actions" style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+                            ${!task.assignedOperator ? `<button class="btn btn-info btn-small" onclick="openAssignTaskModal(${task.id})" style="background: #0891b2;">🔧 Assegna</button>` : ''}
+                            ${!task.acceptedAt && !task.completed ? `<button class="btn btn-success btn-small" onclick="handleTaskStatusChange(${task.id}, 'accept')" style="background: #22c55e;">👍 Accetta</button>` : ''}
+                            ${task.acceptedAt && !task.completed && !task.paused ? `<button class="btn btn-warning btn-small" onclick="handleTaskStatusChange(${task.id}, 'pause')" style="background: #ea580c;">⏸️ Pausa</button>` : ''}
+                            ${task.paused ? `<button class="btn btn-info btn-small" onclick="handleTaskStatusChange(${task.id}, 'resume')" style="background: #3b82f6;">▶️ Riprendi</button>` : ''}
+                            ${!task.completed ? `<button class="btn btn-success btn-small" onclick="handleTaskStatusChange(${task.id}, 'complete')" style="background: #22c55e;">✅ Completa</button>` : ''}
+                            <button class="btn btn-primary btn-small" onclick="openEditTaskModal(${task.id})">✏️ Modifica</button>
+                            <button class="btn btn-danger btn-small" onclick="handleDeleteTask(${task.id})">🗑️ Rimuovi</button>
                         </div>
                     </div>
                 `;
@@ -1374,11 +1771,10 @@
             const container = document.getElementById('calendarContainer');
             const startDate = new Date(weekStartDate);
             
-            const dayNames = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
-            const monthNames = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 
-                               'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
+            const dayNames = ['Do', 'Lu', 'Ma', 'Me', 'Gi', 'Ve', 'Sa'];
             
-            let html = '<div style="display: flex; width: 100%; gap: 0; padding: 0; box-sizing: border-box;">';
+            // Usa lo stesso stile della vista mese: grid 7 colonne con header giorni
+            let html = dayNames.map(day => `<div style="font-weight: bold; text-align: center; padding: 6px; background: #3d3d3d; border: 1px solid #4d4d4d; border-radius: 4px; font-size: 12px; color: #b0b0b0;">${day}</div>`).join('');
             
             for (let i = 0; i < 7; i++) {
                 const date = new Date(startDate);
@@ -1403,31 +1799,22 @@
                 let taskCountHtml = '';
                 let unassignedCountHtml = '';
                 if (assignedTasks > 0) {
-                    taskCountHtml = `<div style="position: absolute; bottom: 6px; right: 6px; font-size: 12px; color: #4caf50; font-weight: bold;">${assignedTasks}</div>`;
+                    taskCountHtml = `<div style="position: absolute; bottom: 2px; right: 2px; font-size: 14px; color: #ffffff; font-weight: bold; z-index: 10;">${assignedTasks}</div>`;
                 }
                 if (unassignedTasks > 0) {
-                    unassignedCountHtml = `<div style="position: absolute; top: 4px; right: 6px; font-size: 12px; color: #ff9800; font-weight: bold;">${unassignedTasks}</div>`;
+                    unassignedCountHtml = `<div style="position: absolute; bottom: 2px; left: 2px; font-size: 14px; color: #ffffff; font-weight: bold; z-index: 10;">${unassignedTasks}</div>`;
                 }
                 
-                html += `<div class="calendar-day ${hasTasksClass} ${hasUnassignedClass}" style="cursor: pointer; position: relative; flex: 1; min-width: 80px; padding: 6px 4px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;" onclick="showDayTasksModal('${dateStr}')">
-                    <div style="font-size: 10px; font-weight: 600; margin-bottom: 4px; color: #999;">${dayNames[date.getDay()]}</div>
-                    <strong style="font-size: 18px; margin-bottom: 2px;">${date.getDate()}</strong>
-                    <div style="font-size: 9px; color: #777;">${monthNames[date.getMonth()]}</div>
-                    ${taskCountHtml}${unassignedCountHtml}
-                </div>`;
+                html += `<div class="calendar-day ${hasTasksClass} ${hasUnassignedClass}" style="cursor: pointer; position: relative;" onclick="showDayTasksModal('${dateStr}')"><strong>${date.getDate()}</strong>${taskCountHtml}${unassignedCountHtml}</div>`;
             }
             
-            html += '</div>';
             container.innerHTML = html;
             
-            // Calcola il numero della settimana
+            // Calcola il numero della settimana e mostra solo quello
             const firstDay = new Date(startDate.getFullYear(), 0, 1);
             const pastDaysOfYear = (startDate - firstDay) / 86400000;
             const weekNumber = Math.ceil((pastDaysOfYear + firstDay.getDay() + 1) / 7);
-            
-            const endDate = new Date(startDate);
-            endDate.setDate(endDate.getDate() + 6);
-            document.getElementById('calendarMonthYear').innerHTML = `<div>${startDate.getDate()} ${monthNames[startDate.getMonth()]} - ${endDate.getDate()} ${monthNames[endDate.getMonth()]}</div><div style="font-size: 12px; color: #999; margin-top: 4px;">Settimana ${weekNumber}</div>`;
+            document.getElementById('calendarMonthYear').textContent = `Settimana ${weekNumber}`;
         }
         
         function renderCalendarMonth(tasksToDisplay) {
@@ -1541,10 +1928,10 @@
                 let taskCountHtml = '';
                 let unassignedCountHtml = '';
                 if (assignedTasks > 0) {
-                    taskCountHtml = `<div style="position: absolute; bottom: 2px; right: 20px; font-size: 16px; color: #4caf50;">${assignedTasks}</div>`;
+                    taskCountHtml = `<div style="position: absolute; bottom: 2px; right: 2px; font-size: 14px; color: #ffffff; font-weight: bold; z-index: 10;">${assignedTasks}</div>`;
                 }
                 if (unassignedTasks > 0) {
-                    unassignedCountHtml = `<div style="position: absolute; top: 2px; right: 20px; font-size: 16px; color: #ff9800; font-weight: bold;">${unassignedTasks}</div>`;
+                    unassignedCountHtml = `<div style="position: absolute; bottom: 2px; left: 2px; font-size: 14px; color: #ffffff; font-weight: bold; z-index: 10;">${unassignedTasks}</div>`;
                 }
                 
                 html += `<div class="calendar-day ${hasTasksClass} ${hasUnassignedClass}" style="${dayColor}; cursor: pointer; position: relative;" onclick="showDayTasksModal('${dateForClick}')"><strong>${day}</strong>${taskCountHtml}${unassignedCountHtml}</div>`;
@@ -1835,8 +2222,8 @@
                                 </div>
                             </div>
                             <div style="display: flex; gap: 8px; margin-top: 10px;">
-                                <button class="btn btn-primary" onclick="openEditRecurrenceModal('${key}')" style="flex: 1; padding: 8px; font-size: 12px;">✏️ Modifica</button>
-                                <button class="btn btn-danger" onclick="handleDeleteGlobalRecurrence('${key}')" style="flex: 1; padding: 8px; font-size: 12px;">🗑️ Cancella</button>
+                                <button class="btn btn-primary" onclick="openEditRecurrenceModal('${key}')" style="flex: 1; padding: 10px; font-size: 14px;">✏️ Modifica</button>
+                                <button class="btn btn-danger" onclick="handleDeleteGlobalRecurrence('${key}')" style="flex: 1; padding: 10px; font-size: 14px;">🗑️ Cancella</button>
                             </div>
                         </div>
                     `).join('');
@@ -2491,25 +2878,30 @@
             const operatorCard = document.getElementById('operatorTasksCard');
             const myTasksCard = document.getElementById('myTasksCard');
             const btn = document.getElementById('toggleTasksBtn');
-            const span = btn.querySelector('span');
+            const dayTasksCard = document.getElementById('dayTasksCard');
             
             if (operatorCard.style.display === 'none') {
                 // Mostra Task Operatori, nascondi I Miei Task
                 operatorCard.style.display = 'block';
                 myTasksCard.style.display = 'none';
-                span.innerHTML = 'Visualizza<br>I Miei Task';
+                btn.textContent = '👁️ I Miei Task';
                 currentViewMode = 'operatorTasks';
             } else {
                 // Nascondi Task Operatori, mostra I Miei Task
                 operatorCard.style.display = 'none';
                 myTasksCard.style.display = 'block';
-                span.innerHTML = 'Visualizza<br>Task Operatori';
+                btn.textContent = '👁️ Task Operatori';
                 currentViewMode = 'myTasks';
             }
             
             // Aggiorna i task e il calendario
             renderTasks();
             renderCalendar();
+            
+            // Se c'è una card del giorno aperta, aggiornala con la nuova vista
+            if (dayTasksCard.style.display === 'block' && lastViewedDayDate) {
+                showDayTasksModal(lastViewedDayDate);
+            }
         }
 
         function showAlert(message, type) {
@@ -2583,8 +2975,8 @@
                                 </div>
                             </div>
                             <div style="display: flex; gap: 8px; margin-top: 10px;">
-                                <button class="btn btn-primary" onclick="openEditRecurrenceGroupModal('${key}')" style="flex: 1; padding: 8px; font-size: 12px;">✏️ Modifica</button>
-                                <button class="btn btn-danger" onclick="handleDeleteRecurrenceGroup('${key}')" style="flex: 1; padding: 8px; font-size: 12px;">🗑️ Cancella</button>
+                                <button class="btn btn-primary" onclick="openEditRecurrenceGroupModal('${key}')" style="flex: 1; padding: 10px; font-size: 14px;">✏️ Modifica</button>
+                                <button class="btn btn-danger" onclick="handleDeleteRecurrenceGroup('${key}')" style="flex: 1; padding: 10px; font-size: 14px;">🗑️ Cancella</button>
                             </div>
                         </div>
                     `).join('');
@@ -2766,6 +3158,9 @@
         }
 
         function showDayTasksModal(dateStr) {
+            // Salva la data visualizzata
+            lastViewedDayDate = dateStr;
+            
             // Filtra i task per il giorno selezionato
             let dayTasks = allTasks.filter(task => {
                 if (!task.scheduledAt) return false;

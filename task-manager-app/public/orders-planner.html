@@ -63,15 +63,37 @@
 
         .header-left {
             display: flex;
-            align-items: flex-start;
-            gap: 12px;
+            align-items: center;
+            gap: 15px;
             flex: 1;
+            min-width: 0;
+        }
+
+        .header-logo {
+            flex-shrink: 0;
+        }
+
+        .header-logo img {
+            height: 45px;
+            width: auto;
+            display: block;
+        }
+
+        .header-title {
+            flex: 1;
+            min-width: 0;
         }
 
         .header h1 {
-            font-size: 14px;
+            font-size: 24px;
             color: #e0e0e0;
             margin: 0;
+            margin-bottom: 4px;
+        }
+
+        .user-info {
+            font-size: 14px;
+            color: #a0a0a0;
         }
 
         @media (max-width: 768px) {
@@ -125,7 +147,7 @@
             padding: 8px 14px;
             border: none;
             border-radius: 6px;
-            font-size: 12px;
+            font-size: 14px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
@@ -214,32 +236,27 @@
         }
 
         .orders-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            display: flex;
+            flex-direction: column;
             gap: 15px;
             margin-bottom: 20px;
-        }
-
-        @media (max-width: 768px) {
-            .orders-grid {
-                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-                gap: 12px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .orders-grid {
-                grid-template-columns: 1fr;
-                gap: 10px;
-            }
         }
 
         .order-card {
             background: #3d3d3d;
             border-left: 4px solid var(--primary);
             padding: 15px;
-            border-radius: 4px;
-            border: 1px solid #4d4d4d;
+            border-radius: 6px;
+            border: 2px solid #4d4d4d;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+            margin-bottom: 15px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .order-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 12px rgba(0, 0, 0, 0.5);
+            border-color: #5d5d5d;
         }
 
         @media (max-width: 768px) {
@@ -264,24 +281,24 @@
         .order-title {
             font-weight: 600;
             color: #e0e0e0;
-            font-size: 16px;
+              font-size: 20px;
         }
 
         @media (max-width: 768px) {
             .order-title {
-                font-size: 15px;
+                 font-size: 18px;
             }
         }
 
         @media (max-width: 480px) {
             .order-title {
-                font-size: 14px;
+                 font-size: 16px;
             }
         }
 
         .order-status {
-            font-size: 12px;
-            padding: 4px 8px;
+            font-size: 15px;
+            padding: 6px 10px;
             border-radius: 4px;
             background: #1e3a4d;
             color: #7dd3fc;
@@ -298,20 +315,21 @@
         }
 
         .order-details {
-            font-size: 13px;
+            font-size: 16px;
             color: #a0a0a0;
             margin-bottom: 10px;
+            line-height: 1.5;
         }
 
         @media (max-width: 768px) {
             .order-details {
-                font-size: 12px;
+                 font-size: 15px;
             }
         }
 
         @media (max-width: 480px) {
             .order-details {
-                font-size: 11px;
+                 font-size: 15px;
             }
         }
 
@@ -509,6 +527,17 @@
             padding: 10px 0;
         }
 
+        .calendar-header-day {
+            font-weight: 700;
+            text-align: center;
+            padding: 6px;
+            background: #3d3d3d;
+            border: 1px solid #4d4d4d;
+            border-radius: 4px;
+            font-size: 12px; /* match admin dashboard */
+            color: #b0b0b0;
+        }
+
         .calendar-day {
             border: 1px solid #4d4d4d;
             padding: 6px;
@@ -517,8 +546,10 @@
             background: #3d3d3d;
             cursor: pointer;
             transition: all 0.2s;
-            font-size: 11px;
+            font-size: 18px;
             color: #b0b0b0;
+            position: relative;
+            overflow: hidden;
         }
 
         .calendar-day:hover {
@@ -526,16 +557,50 @@
         }
 
         .calendar-day.has-orders {
-            background: #1e3a2a;
-            border-color: #4caf50;
+            background: #1e2a4d;
+            border-color: var(--primary);
+            position: relative;
         }
+
+        .calendar-day.has-unassigned-orders {
+            position: relative;
+        }
+
+        .calendar-day.has-unassigned-orders::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 0;
+            border-style: solid;
+            border-width: 18px 0 0 18px;
+            border-color: transparent transparent transparent #ff9800;
+            border-radius: 0 0 0 4px;
+        }
+
+        .calendar-day.has-orders::before {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 0;
+            height: 0;
+            border-style: solid;
+            border-width: 0 0 18px 18px;
+            border-color: transparent transparent var(--primary) transparent;
+            border-radius: 0 0 4px 0;
+        }
+
+        
 
         @media (max-width: 768px) {
             .calendar-day {
                 min-height: 40px;
-                padding: 4px;
-                font-size: 10px;
+                padding: 6px;
+                font-size: 16px;
             }
+            
         }
 
         @media (max-width: 480px) {
@@ -544,6 +609,7 @@
                 padding: 3px;
                 font-size: 9px;
             }
+            
         }
 
         .empty-state {
@@ -552,6 +618,51 @@
             color: #808080;
             font-size: 12px;
         }
+
+        /* Desktop calendar header */
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .calendar-btn-prev, .calendar-btn-next {
+            padding: 8px 12px;
+            font-size: 16px;
+            min-width: 40px;
+            width: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .calendar-title {
+            margin: 0;
+            color: #e0e0e0;
+            font-size: 16px;
+            text-align: center;
+            flex: 1;
+            min-width: 150px;
+        }
+
+        @media (max-width: 480px) {
+            .calendar-header {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .calendar-btn-prev, .calendar-btn-next {
+                padding: 8px 10px;
+                font-size: 14px;
+            }
+
+            .calendar-title {
+                font-size: 14px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -559,12 +670,17 @@
         <!-- Header -->
         <div class="header">
             <div class="header-left">
-                <div>
+                <div class="header-logo">
+                    <img src="images/logo INSEGNA.png" alt="Molino Briganti Logo">
+                </div>
+                <div class="header-title">
                     <h1>📦 Planner Ordini</h1>
+                    <div class="user-info" id="userInfo"></div>
                 </div>
             </div>
             <div class="header-actions">
                 <button class="btn btn-primary" onclick="openOrderModal()">➕ Nuovo Ordine</button>
+                <button class="btn btn-primary" onclick="openTripsManager()" style="background: #16a34a;">🚚 Gestisci Viaggi</button>
                 <button class="btn btn-warning" onclick="generateSampleOrders()">🔄 Genera Dati</button>
                 <button class="btn btn-secondary" onclick="goBack()">← Indietro</button>
             </div>
@@ -587,15 +703,12 @@
         </div>
 
         <!-- Calendar -->
-        <div class="card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h2 style="margin: 0;">📅 Calendario Ordini</h2>
-                <div style="display: flex; gap: 8px;">
-                    <button class="btn btn-secondary" onclick="previousMonth()" style="padding: 6px 10px; min-height: auto;">← Mese Prec.</button>
-                    <button class="btn btn-secondary" onclick="nextMonth()" style="padding: 6px 10px; min-height: auto;">Mese Succ. →</button>
-                </div>
+        <div class="card" style="padding: 12px;">
+            <div class="calendar-header">
+                <button class="btn btn-primary calendar-btn-prev" onclick="previousMonth()">◀</button>
+                <h4 id="calendarMonthYear" class="calendar-title"></h4>
+                <button class="btn btn-primary calendar-btn-next" onclick="nextMonth()">▶</button>
             </div>
-            <h4 id="calendarMonthYear" style="margin: 0 0 10px 0; color: #e0e0e0; font-size: 14px;"></h4>
             <div id="calendarContainer" class="calendar-container">
                 <!-- Calendar will be generated here -->
             </div>
@@ -612,19 +725,19 @@
             </div>
         </div>
 
-        <!-- Order Tasks (Generati dagli ordini) -->
-        <div class="card">
-            <h2 style="display:flex;align-items:center;gap:6px;margin:0 0 15px 0;">🛠️ Task da Assegnare <span id="tasksCount" style="font-size:11px;color:#a0a0a0;font-weight:400;"></span></h2>
-            <div class="orders-grid" id="orderTasksGrid">
-                <!-- Order generated tasks will appear here -->
+        <!-- Viaggi Section -->
+        <div class="card" id="tripsSection" style="display: none;">
+            <h2 style="display:flex;align-items:center;gap:6px;margin:0 0 15px 0;">🚚 Viaggi <span id="tripsCount" style="font-size:11px;color:#a0a0a0;font-weight:400;"></span></h2>
+            <div id="tripsGrid" class="orders-grid">
+                <!-- Trips will appear here -->
             </div>
         </div>
 
-        <!-- Orders List -->
+        <!-- Unified Orders + Tasks -->
         <div class="card">
-            <h2>📋 Ordini Programmati</h2>
-            <div class="orders-grid" id="ordersGrid">
-                <!-- Orders will be populated here -->
+            <h2 style="display:flex;align-items:center;gap:6px;margin:0 0 15px 0;">📋 Ordini e Task <span id="tasksCount" style="font-size:11px;color:#a0a0a0;font-weight:400;"></span></h2>
+            <div class="orders-grid" id="orderTasksGrid">
+                <!-- Order generated tasks will appear here -->
             </div>
         </div>
     </div>
@@ -715,6 +828,9 @@
         let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
         let token = localStorage.getItem('token') || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
         const API_URL = 'http://localhost:5000/api';
+        
+        // Sistema viaggi
+        let trips = []; // Array di viaggi: {id, name, date, orderIds: [], sequence: []}
         
         // Log currentUser al caricamento
         console.log('📋 currentUser caricato:', currentUser);
@@ -807,6 +923,55 @@
         function loadOrderTasks() {
             const stored = localStorage.getItem('orderTasks');
             orderTasks = stored ? JSON.parse(stored) : [];
+
+            // Migrazioni: titoli e struttura ID DB
+            try {
+                let changed = false;
+                // 1) Normalizza titoli a "consegna/ritiro - cliente"
+                orderTasks.forEach(t => {
+                    const relatedOrder = Array.isArray(orders) ? orders.find(o => o.id === t.orderId) : null;
+                    let typeWord = 'consegna';
+                    if (relatedOrder && relatedOrder.type) {
+                        typeWord = relatedOrder.type === 'consegnato' ? 'consegna' : 'ritiro';
+                    } else if (t.title && /ritiro/i.test(t.title)) {
+                        typeWord = 'ritiro';
+                    }
+                    const clientLower = String((relatedOrder && relatedOrder.client) || t.client || '').toLowerCase();
+                    const normalized = `${typeWord} - ${clientLower}`;
+                    if (t.title !== normalized) {
+                        t.title = normalized;
+                        changed = true;
+                    }
+                });
+                // 2) Normalizza tracking ID DB (evita duplicati)
+                orderTasks.forEach(t => {
+                    if (!t.dbIdsByOperator || typeof t.dbIdsByOperator !== 'object') {
+                        t.dbIdsByOperator = {};
+                        changed = true;
+                    }
+                    if (t.dbId && Array.isArray(t.assignedTo)) {
+                        if (t.assignedTo.length === 0) {
+                            if (!t.dbIdUnassigned) {
+                                t.dbIdUnassigned = t.dbId;
+                            }
+                            delete t.dbId;
+                            changed = true;
+                        } else {
+                            const first = t.assignedTo[0];
+                            if (!t.dbIdsByOperator[first]) {
+                                t.dbIdsByOperator[first] = t.dbId;
+                            }
+                            delete t.dbId;
+                            changed = true;
+                        }
+                    }
+                });
+                if (changed) {
+                    saveOrderTasks();
+                }
+            } catch (e) {
+                console.warn('Migrazione task fallita:', e);
+            }
         }
         function saveOrderTasks() {
             localStorage.setItem('orderTasks', JSON.stringify(orderTasks));
@@ -816,7 +981,7 @@
             // Evita duplicati se già presente
             if (orderTasks.some(t => t.orderId === order.id)) return;
             const cliente = clienti.find(c => c.nome === order.client);
-            const title = `${order.type === 'consegnato' ? 'Consegna' : 'Ritiro'} ${order.product} - ${order.client}`;
+            const title = `${order.type === 'consegnato' ? 'consegna' : 'ritiro'} - ${String(order.client || '').toLowerCase()}`;
             
             // Crea task in memoria
             const newTask = {
@@ -837,17 +1002,21 @@
                     consegna_inizio: cliente.orario_consegna_inizio,
                     consegna_fine: cliente.orario_consegna_fine
                 } : null,
-                createdAt: new Date().toISOString()
+                createdAt: new Date().toISOString(),
+                dbIdsByOperator: {},
+                dbIdUnassigned: null
             };
             
             orderTasks.push(newTask);
             saveOrderTasks();
             
-            // Salva nel database se loggato
-            console.log('🔄 generateTaskForOrder: currentUser=', currentUser, 'role=', currentUser?.role);
+            // Strategia DB:
+            // - "consegnato": crea subito un task non assegnato per visibilità admin
+            // - "ritira": non creare qui; ci pensa l'upsert a evitare duplicati
             if (currentUser?.id && currentUser?.role === 'master') {
-                console.log('💾 Salvo nel DB...');
-                saveTaskToDatabase(newTask, assignedOperators);
+                if (order.type === 'consegnato') {
+                    saveTaskToDatabase(newTask, []);
+                }
             } else {
                 console.warn('⚠️ Non loggato come admin - task solo locale');
             }
@@ -895,6 +1064,213 @@
             }
         }
 
+        // Helpers to sync 'ritiro' tasks to operators in backend so they appear in operator dashboards
+        function getOperatorIdByUsername(username) {
+            const op = allOperators.find(o => o.username === username);
+            return op ? op.id : null;
+        }
+
+        async function updateDbTaskAssignedOperator(taskDbId, operatorId) {
+            try {
+                const currentToken = localStorage.getItem('token') || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+                if (!currentToken || !taskDbId || !operatorId) return;
+                await fetch(`${API_URL}/tasks/${taskDbId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentToken}`
+                    },
+                    body: JSON.stringify({ assignedOperatorId: operatorId })
+                });
+            } catch (e) {
+                console.warn('Errore aggiornamento assegnazione task DB:', e);
+            }
+        }
+
+        async function createDbTaskForOperator(task, operatorId) {
+            try {
+                const currentToken = localStorage.getItem('token') || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+                if (!currentToken) return null;
+                const resp = await fetch(`${API_URL}/tasks`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentToken}`
+                    },
+                    body: JSON.stringify({
+                        title: task.title,
+                        description: `Cliente: ${task.client}\nProdotto: ${task.product}\nQuantità: ${task.quantity} kg\nNote: ${task.notes || ''}`,
+                        scheduledAt: task.dateTime,
+                        assignedOperatorId: operatorId || null,
+                        estimatedMinutes: 60,
+                        priority: 'MEDIUM'
+                    })
+                });
+                if (resp.ok) {
+                    const saved = await resp.json();
+                    return saved;
+                }
+            } catch (e) {
+                console.warn('Errore creazione task DB per operatore:', e);
+            }
+            return null;
+        }
+
+        async function deleteDbTask(taskDbId) {
+            try {
+                const currentToken = localStorage.getItem('token') || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+                if (!currentToken || !taskDbId) return;
+                await fetch(`${API_URL}/tasks/${taskDbId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${currentToken}`
+                    }
+                });
+            } catch (e) {
+                console.warn('Errore cancellazione task DB:', e);
+            }
+        }
+
+        async function deleteBackendEntriesForTask(task) {
+            try {
+                // Elimina placeholder non assegnato
+                if (task.dbIdUnassigned) {
+                    await deleteDbTask(task.dbIdUnassigned);
+                    task.dbIdUnassigned = null;
+                }
+                // Elimina mappature per operatore
+                if (task.dbIdsByOperator && typeof task.dbIdsByOperator === 'object') {
+                    for (const [username, id] of Object.entries(task.dbIdsByOperator)) {
+                        if (id) await deleteDbTask(id);
+                    }
+                    task.dbIdsByOperator = {};
+                }
+                // Compat: elimina vecchio dbId singolo se presente
+                if (task.dbId) {
+                    await deleteDbTask(task.dbId);
+                    delete task.dbId;
+                }
+            } catch (e) {
+                console.warn('Errore cleanup backend task per ordine:', e);
+            }
+        }
+
+        async function upsertRitiroTasksForOperators(task, selectedUsernames) {
+            try {
+                const relatedOrder = orders.find(o => o.id === task.orderId);
+                if (!relatedOrder || relatedOrder.type !== 'ritira') return; // solo per ritiro
+                const currentToken = localStorage.getItem('token') || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+                if (!currentToken) return; // serve login admin per scrivere nel DB
+
+                // Normalizza struttura di tracking
+                if (!task.dbIdsByOperator || typeof task.dbIdsByOperator !== 'object') {
+                    task.dbIdsByOperator = {};
+                }
+                const selected = Array.isArray(selectedUsernames) ? Array.from(new Set(selectedUsernames)) : [];
+                const existingUsernames = Object.keys(task.dbIdsByOperator);
+
+                const toId = (username) => getOperatorIdByUsername(username);
+
+                if (selected.length === 0) {
+                    // Nessun operatore selezionato: elimina task per-operator e crea/garantisci placeholder non assegnato
+                    for (const u of existingUsernames) {
+                        const id = task.dbIdsByOperator[u];
+                        if (id) await deleteDbTask(id);
+                    }
+                    task.dbIdsByOperator = {};
+
+                    // migra eventuale vecchio dbId
+                    if (task.dbId && !task.dbIdUnassigned) {
+                        task.dbIdUnassigned = task.dbId;
+                        delete task.dbId;
+                    }
+
+                    if (!task.dbIdUnassigned) {
+                        const created = await createDbTaskForOperator(task, null);
+                        if (created?.id) task.dbIdUnassigned = created.id;
+                    }
+                    saveOrderTasks();
+                    return;
+                }
+
+                // Almeno un operatore selezionato
+                const firstUsername = selected[0];
+                const firstOpId = toId(firstUsername);
+
+                if (!task.dbIdsByOperator[firstUsername]) {
+                    if (task.dbIdUnassigned) {
+                        await updateDbTaskAssignedOperator(task.dbIdUnassigned, firstOpId);
+                        task.dbIdsByOperator[firstUsername] = task.dbIdUnassigned;
+                        task.dbIdUnassigned = null;
+                    } else if (task.dbId) {
+                        await updateDbTaskAssignedOperator(task.dbId, firstOpId);
+                        task.dbIdsByOperator[firstUsername] = task.dbId;
+                        delete task.dbId;
+                    } else {
+                        const created = await createDbTaskForOperator(task, firstOpId);
+                        if (created?.id) task.dbIdsByOperator[firstUsername] = created.id;
+                    }
+                }
+
+                // Garantisci task per gli altri operatori
+                for (let i = 1; i < selected.length; i++) {
+                    const u = selected[i];
+                    if (task.dbIdsByOperator[u]) continue;
+                    const opId = toId(u);
+                    if (!opId) continue;
+                    const created = await createDbTaskForOperator(task, opId);
+                    if (created?.id) task.dbIdsByOperator[u] = created.id;
+                }
+
+                // Rimuovi task per operatori deselezionati
+                for (const u of existingUsernames) {
+                    if (!selected.includes(u)) {
+                        const id = task.dbIdsByOperator[u];
+                        if (id) await deleteDbTask(id);
+                        delete task.dbIdsByOperator[u];
+                    }
+                }
+
+                // Elimina eventuale placeholder residuo
+                if (task.dbIdUnassigned) {
+                    await deleteDbTask(task.dbIdUnassigned);
+                    task.dbIdUnassigned = null;
+                }
+
+                saveOrderTasks();
+            } catch (e) {
+                console.warn('Errore upsert ritiro tasks per operatori:', e);
+            }
+        }
+
+        // Admin-only background sync to ensure 'ritira' orders are visible to admins in backend
+        async function syncRitiroOrdersToDb() {
+            try {
+                if (!currentUser?.id || currentUser?.role !== 'master') return;
+                const currentToken = localStorage.getItem('token') || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+                if (!currentToken) return;
+
+                // Assicura task locali per tutti gli ordini "ritira"
+                orders.filter(o => o.type === 'ritira').forEach(o => {
+                    const existing = orderTasks.find(t => t.orderId === o.id);
+                    if (!existing) {
+                        generateTaskForOrder(o, []);
+                    }
+                });
+
+                // Allinea ogni task "ritira" nel backend in base all'assegnazione corrente
+                for (const t of orderTasks) {
+                    const ord = orders.find(o => o.id === t.orderId);
+                    if (!ord) continue;
+                    if (ord.type === 'ritira') {
+                        await upsertRitiroTasksForOperators(t, Array.isArray(t.assignedTo) ? t.assignedTo : []);
+                    }
+                }
+            } catch (e) {
+                console.warn('Errore syncRitiroOrdersToDb:', e);
+            }
+        }
+
         function renderOrderTasks() {
             const grid = document.getElementById('orderTasksGrid');
             const countSpan = document.getElementById('tasksCount');
@@ -909,8 +1285,12 @@
                 const assigned = task.assignedTo.length > 0;
                 const statusBadge = assigned ? '<span style="background:#1e3a2a;color:#86efac;padding:2px 6px;border-radius:4px;font-size:10px;">Assegnato</span>' : '<span style="background:#4a3a1e;color:#fcd34d;padding:2px 6px;border-radius:4px;font-size:10px;">Da assegnare</span>';
                 const operatorsHtml = assigned ? `<p style=\"margin:4px 0;\"><strong>Assegnato a:</strong> ${task.assignedTo.join(', ')}</p>` : '';
-                const orariHtml = task.clienteOrari ? `<p style=\"margin:4px 0;\"><strong>Orari Cliente:</strong> ${task.clienteOrari.apertura}-${task.clienteOrari.chiusura} / Consegne ${task.clienteOrari.consegna_inizio}-${task.clienteOrari.consegna_fine}</p>` : '';
-                return `<div class=\"order-card\" style=\"border-left:4px solid ${assigned ? '#16a34a' : '#f59e0b'};background:${assigned ? '#253524' : '#3d2f1e'};\">\n  <div class=\"order-header\">\n    <div class=\"order-title\" style=\"font-size:15px;\">🛠️ ${task.title}</div>\n    ${statusBadge}\n  </div>\n  <div class=\"order-details\" style=\"font-size:12px;\">\n    <p style=\"margin:4px 0;\"><strong>Cliente:</strong> ${task.client}</p>\n    <p style=\"margin:4px 0;\"><strong>Prodotto:</strong> ${task.product}</p>\n    <p style=\"margin:4px 0;\"><strong>Quantità:</strong> ${task.quantity} kg</p>\n    <p style=\"margin:4px 0;\"><strong>Programmazione:</strong> ${task.dateTime ? new Date(task.dateTime).toLocaleString('it-IT',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : 'N/D'}</p>\n    ${orariHtml}\n    ${operatorsHtml}\n    ${task.notes ? `<p style=\\"margin:4px 0;\\"><strong>Note:</strong> ${task.notes}</p>` : ''}\n  </div>\n  <div class=\"order-actions\">\n    <button class=\"btn btn-warning\" onclick=\"openAssignTaskModal('${task.id}')\">🔧 Assegna</button>\n    <button class=\"btn btn-primary\" onclick=\"markTaskCompleted('${task.id}')\">✓ Completa</button>\n    <button class=\"btn btn-danger\" onclick=\"deleteOrderTask('${task.id}')\">🗑️ Elimina</button>\n  </div>\n</div>`;
+                const timeOnly = task.dateTime ? new Date(task.dateTime).toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'}) : 'N/D';
+                const relatedOrder = orders.find(o => o.id === task.orderId);
+                const displayTitle = (task.title && typeof task.title === 'string' && task.title.length > 0)
+                    ? task.title
+                    : `${(relatedOrder && relatedOrder.type === 'consegnato') ? 'consegna' : 'ritiro'} - ${String((relatedOrder && relatedOrder.client) || task.client || '').toLowerCase()}`;
+                return `<div class=\"order-card\" style=\"border-left:4px solid ${assigned ? '#16a34a' : '#f59e0b'};background:${assigned ? '#1e2a4d' : '#1e2a4d'};border:2px solid ${assigned ? '#16a34a' : '#f59e0b'};\">\n  <div class=\"order-header\">\n    <div class=\"order-title\" style=\"font-size:20px;color:#7dd3fc;font-weight:700;margin-bottom:4px;\">${displayTitle}</div>\n    ${statusBadge}\n  </div>\n  <div class=\"order-details\" style=\"font-size:18px;line-height:1.8;margin-top:12px;\">\n    <p style=\"margin:8px 0;\"><strong style=\"color:#93c5fd;font-size:20px;\">📦 Prodotto:</strong> <span style=\"color:#e0e0e0;font-size:20px;font-weight:600;\">${task.product}</span></p>\n    <p style=\"margin:8px 0;\"><strong style=\"color:#93c5fd;font-size:20px;\">📊 Quantità:</strong> <span style=\"color:#fcd34d;font-size:22px;font-weight:700;\">${task.quantity} kg</span></p>\n    <p style=\"margin:8px 0;\"><strong style=\"color:#93c5fd;font-size:20px;\">⏰ Orario Programmato:</strong> <span style=\"color:#86efac;font-size:22px;font-weight:700;\">${timeOnly}</span></p>\n    ${operatorsHtml}\n  </div>\n  <div class=\"order-actions\" style=\"display:flex;gap:6px;justify-content:flex-end;margin-top:15px;flex-wrap:wrap;\">\n    <button class=\"btn btn-warning\" onclick=\"openAssignTaskModal('${task.id}')\" style=\"padding:6px 10px;font-size:12px;\">🔧 Assegna</button>\n    <button class=\"btn btn-primary\" onclick=\"markTaskCompleted('${task.id}')\" style=\"padding:6px 10px;font-size:12px;\">✓ Completa</button>\n    <button class=\"btn btn-secondary\" onclick=\"openEditOrderModal(${task.orderId})\" style=\"padding:6px 10px;font-size:12px;\">✏️ Modifica</button>\n    <button class=\"btn btn-danger\" onclick=\"deleteOrderTask('${task.id}')\" style=\"padding:6px 10px;font-size:12px;\">🗑️ Elimina</button>\n  </div>\n</div>`;
             }).join('');
         }
 
@@ -941,6 +1321,8 @@
                 task.status = selected.length > 0 ? 'assigned' : 'unassigned';
                 saveOrderTasks();
                 renderOrderTasks();
+                // Se ritiro, sincronizza nel DB i task assegnati agli operatori
+                upsertRitiroTasksForOperators(task, selected);
             }
             closeAssignTaskModal();
         }
@@ -949,14 +1331,33 @@
             if (task) {
                 task.status = 'completed';
                 saveOrderTasks();
+                // Sync also the related order status
+                const order = orders.find(o => ('task-' + o.id) === taskId || o.id === task.orderId);
+                if (order) {
+                    order.status = 'completed';
+                    saveOrders();
+                }
                 renderOrderTasks();
+                updateStats();
+                renderCalendar();
             }
         }
 
-        function deleteOrderTask(taskId) {
+        async function deleteOrderTask(taskId) {
+            const task = orderTasks.find(t => t.id === taskId);
+            if (task) {
+                await deleteBackendEntriesForTask(task);
+            }
             orderTasks = orderTasks.filter(t => t.id !== taskId);
             saveOrderTasks();
+            // Also delete underlying order if present
+            if (task && task.orderId) {
+                orders = orders.filter(o => o.id !== task.orderId);
+                saveOrders();
+            }
             renderOrderTasks();
+            updateStats();
+            renderCalendar();
         }
 
         // Analizza CSV
@@ -1007,8 +1408,100 @@
             localStorage.setItem('orders', JSON.stringify(orders));
         }
 
+        // === GESTIONE VIAGGI ===
+        function loadTrips() {
+            const stored = localStorage.getItem('trips');
+            trips = stored ? JSON.parse(stored) : [];
+        }
+
+        function saveTrips() {
+            localStorage.setItem('trips', JSON.stringify(trips));
+        }
+
+        function createTrip(name, date) {
+            const trip = {
+                id: Date.now(),
+                name: name,
+                date: date,
+                orderIds: [],
+                sequence: [],
+                createdAt: new Date().toISOString()
+            };
+            trips.push(trip);
+            saveTrips();
+            return trip;
+        }
+
+        function addOrderToTrip(tripId, orderId) {
+            const trip = trips.find(t => t.id === tripId);
+            if (trip && !trip.orderIds.includes(orderId)) {
+                trip.orderIds.push(orderId);
+                trip.sequence.push(orderId);
+                saveTrips();
+                const order = orders.find(o => o.id === orderId);
+                if (order) {
+                    order.tripId = tripId;
+                    saveOrders();
+                }
+            }
+        }
+
+        function removeOrderFromTrip(tripId, orderId) {
+            const trip = trips.find(t => t.id === tripId);
+            if (trip) {
+                trip.orderIds = trip.orderIds.filter(id => id !== orderId);
+                trip.sequence = trip.sequence.filter(id => id !== orderId);
+                saveTrips();
+                const order = orders.find(o => o.id === orderId);
+                if (order) {
+                    delete order.tripId;
+                    saveOrders();
+                }
+            }
+        }
+
+        function deleteTrip(tripId) {
+            trips = trips.filter(t => t.id !== tripId);
+            saveTrips();
+            orders.forEach(o => {
+                if (o.tripId === tripId) {
+                    delete o.tripId;
+                }
+            });
+            saveOrders();
+        }
+
+        function reorderTripSequence(tripId, newSequence) {
+            const trip = trips.find(t => t.id === tripId);
+            if (trip) {
+                trip.sequence = newSequence;
+                saveTrips();
+            }
+        }
+
+        function getTripOrders(tripId) {
+            const trip = trips.find(t => t.id === tripId);
+            if (!trip) return [];
+            return trip.sequence.map(orderId => orders.find(o => o.id === orderId)).filter(Boolean);
+        }
+
+        function calculateTripTotals(tripId) {
+            const tripOrders = getTripOrders(tripId);
+            const totals = {};
+            tripOrders.forEach(order => {
+                if (!totals[order.product]) {
+                    totals[order.product] = 0;
+                }
+                totals[order.product] += parseFloat(order.quantity || 0);
+            });
+            return totals;
+        }
+
         // Apri modal ordine
         function openOrderModal() {
+            document.querySelector('#orderModal h2').textContent = '📝 Nuovo Ordine';
+            document.getElementById('orderForm').dataset.editingId = '';
+            
             // Popola dropdown clienti
             const clientSelect = document.getElementById('orderClient');
             clientSelect.innerHTML = '<option value="">-- Seleziona Cliente --</option>' +
@@ -1038,6 +1531,57 @@
 
             document.getElementById('orderModal').classList.add('active');
             document.getElementById('orderForm').reset();
+        }
+
+        // Apri modal per modificare ordine esistente
+        function openEditOrderModal(orderId) {
+            const order = orders.find(o => o.id === orderId);
+            if (!order) return;
+
+            document.querySelector('#orderModal h2').textContent = '✏️ Modifica Ordine';
+            document.getElementById('orderForm').dataset.editingId = orderId;
+            
+            // Popola dropdown clienti
+            const clientSelect = document.getElementById('orderClient');
+            clientSelect.innerHTML = '<option value="">-- Seleziona Cliente --</option>' +
+                clienti.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
+            clientSelect.value = order.client;
+
+            // Popola dropdown articoli
+            const productSelect = document.getElementById('orderProduct');
+            productSelect.innerHTML = '<option value="">-- Seleziona Articolo --</option>' +
+                articoli.map(a => `<option value="${a.nome}">${a.codice} - ${a.nome}</option>`).join('');
+            productSelect.value = order.product;
+
+            // Riempi i campi
+            document.getElementById('orderLotto').value = order.lotto || '';
+            document.getElementById('orderRitiroConsegna').value = order.ritiro_consegna || '';
+            document.getElementById('orderPosizione').value = order.posizione || '';
+            document.getElementById('orderQuantity').value = order.quantity;
+            document.getElementById('orderType').value = order.type;
+            document.getElementById('orderDateTime').value = order.dateTime;
+            document.getElementById('orderStatus').value = order.status;
+            document.getElementById('orderNotes').value = order.notes || '';
+
+            // Popola checklist operatori con selezione esistente
+            const task = orderTasks.find(t => t.orderId === orderId);
+            const checklistDiv = document.getElementById('orderOperatorsChecklist');
+            if (allOperators.length > 0) {
+                checklistDiv.innerHTML = allOperators.map(op => {
+                    const icon = op.role === 'master' ? '👨‍💼' : '👷';
+                    const suffix = (currentUser.id === op.id) ? ' (per me)' : '';
+                    const checked = task && task.assignedTo.includes(op.username) ? 'checked' : '';
+                    return `
+                    <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer;">
+                        <input type="checkbox" class="orderOperatorCheckbox" value="${op.username}" ${checked} style="cursor: pointer;">
+                        <span>${icon} ${op.username}${suffix}</span>
+                    </label>
+                `;
+                }).join('');
+            }
+
+            updateClientInfo();
+            document.getElementById('orderModal').classList.add('active');
         }
 
         // Chiudi modal ordine
@@ -1079,15 +1623,14 @@
             }
         }
 
-        // Salva nuovo ordine
+        // Salva nuovo ordine o modifica esistente
         function saveOrder(event) {
             event.preventDefault();
             
-            // Raccogli operatori selezionati
+            const editingId = document.getElementById('orderForm').dataset.editingId;
             const selectedOperators = Array.from(document.querySelectorAll('.orderOperatorCheckbox:checked')).map(cb => cb.value);
             
-            const order = {
-                id: Date.now(),
+            const orderData = {
                 client: document.getElementById('orderClient').value,
                 product: document.getElementById('orderProduct').value,
                 quantity: parseFloat(document.getElementById('orderQuantity').value),
@@ -1097,14 +1640,59 @@
                 lotto: document.getElementById('orderLotto').value,
                 ritiro_consegna: document.getElementById('orderRitiroConsegna').value,
                 posizione: document.getElementById('orderPosizione').value,
-                notes: document.getElementById('orderNotes').value,
-                createdAt: new Date().toISOString()
+                notes: document.getElementById('orderNotes').value
             };
 
-            orders.push(order);
-            // Genera task associato all'ordine con operatori pre-assegnati
-            console.log('📝 Nuovo ordine creato:', order.client, 'selectedOperators:', selectedOperators);
-            generateTaskForOrder(order, selectedOperators);
+            if (editingId) {
+                // Modifica ordine esistente
+                const order = orders.find(o => o.id == editingId);
+                if (order) {
+                    Object.assign(order, orderData);
+                    
+                    // Aggiorna anche il task associato
+                    const task = orderTasks.find(t => t.orderId == editingId);
+                    if (task) {
+                        // Aggiorna titolo con nuovo formato semplificato
+                        task.title = `${orderData.type === 'consegnato' ? 'consegna' : 'ritiro'} - ${String(orderData.client || '').toLowerCase()}`;
+                        task.client = orderData.client;
+                        task.product = orderData.product;
+                        task.quantity = orderData.quantity;
+                        task.dateTime = orderData.dateTime;
+                        task.notes = orderData.notes;
+                        task.assignedTo = selectedOperators;
+                        task.status = selectedOperators.length > 0 ? 'assigned' : 'unassigned';
+                        const cliente = clienti.find(c => c.nome === orderData.client);
+                        if (cliente) {
+                            task.clienteOrari = {
+                                apertura: cliente.orario_apertura,
+                                chiusura: cliente.orario_chiusura,
+                                consegna_inizio: cliente.orario_consegna_inizio,
+                                consegna_fine: cliente.orario_consegna_fine
+                            };
+                        }
+                        saveOrderTasks();
+                        // Se ritiro, sincronizza nel DB i task assegnati agli operatori
+                        upsertRitiroTasksForOperators(task, selectedOperators);
+                    }
+                    console.log('✏️ Ordine modificato:', order.client);
+                }
+            } else {
+                // Nuovo ordine
+                const order = {
+                    id: Date.now(),
+                    ...orderData,
+                    createdAt: new Date().toISOString()
+                };
+                orders.push(order);
+                generateTaskForOrder(order, selectedOperators);
+                // Sync DB per ritiro dopo generazione
+                const generatedTask = orderTasks.find(t => t.orderId === order.id);
+                if (generatedTask) {
+                    upsertRitiroTasksForOperators(generatedTask, selectedOperators);
+                }
+                console.log('📝 Nuovo ordine creato:', order.client, 'selectedOperators:', selectedOperators);
+            }
+
             renderOrderTasks();
             saveOrders();
             renderOrders();
@@ -1114,9 +1702,21 @@
         }
 
         // Elimina ordine
-        function deleteOrder(id) {
+        async function deleteOrder(id) {
+            // Elimina eventuale task collegato anche nel backend
+            const task = orderTasks.find(t => t.orderId === id);
+            if (task) {
+                await deleteBackendEntriesForTask(task);
+            }
             orders = orders.filter(o => o.id !== id);
             saveOrders();
+            // Also remove generated task for this order, if any
+            const prevLen = orderTasks.length;
+            orderTasks = orderTasks.filter(t => t.orderId !== id);
+            if (orderTasks.length !== prevLen) {
+                saveOrderTasks();
+                renderOrderTasks();
+            }
             renderOrders();
             updateStats();
             renderCalendar();
@@ -1129,6 +1729,15 @@
                 order.status = newStatus;
                 saveOrders();
                 renderOrders();
+                // If marking completed, sync related task status too
+                if (newStatus === 'completed') {
+                    const task = orderTasks.find(t => t.orderId === id);
+                    if (task) {
+                        task.status = 'completed';
+                        saveOrderTasks();
+                        renderOrderTasks();
+                    }
+                }
                 updateStats();
                 renderCalendar();
             }
@@ -1137,6 +1746,7 @@
         // Renderizza ordini
         function renderOrders() {
             const grid = document.getElementById('ordersGrid');
+            if (!grid) return;
             
             if (orders.length === 0) {
                 grid.innerHTML = '<p style="color: #808080; grid-column: 1/-1; text-align: center; padding: 20px;">Nessun ordine presente. Crea il primo ordine!</p>';
@@ -1316,6 +1926,12 @@
             const year = calendarDisplayYear;
             const month = calendarDisplayMonth;
             
+            // Festivi italiani fissi
+            const italianHolidays = [
+                '01-01', '01-06', '04-25', '05-01', '06-02',
+                '08-15', '11-01', '12-08', '12-25', '12-26'
+            ];
+            
             // Aggiorna il titolo del mese
             const monthNames = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 
                                'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
@@ -1327,7 +1943,7 @@
             const startingDayOfWeek = firstDay.getDay();
             
             const dayNames = ['Do', 'Lu', 'Ma', 'Me', 'Gi', 'Ve', 'Sa'];
-            let html = dayNames.map(day => `<div style="font-weight: bold; text-align: center; padding: 6px; background: #3d3d3d; border: 1px solid #4d4d4d; border-radius: 4px; font-size: 11px; color: #b0b0b0;">${day}</div>`).join('');
+            let html = dayNames.map(day => `<div style="font-weight: bold; text-align: center; padding: 6px; background: #3d3d3d; border: 1px solid #4d4d4d; border-radius: 4px; font-size: 12px; color: #b0b0b0;">${day}</div>`).join('');
             
             for (let i = 0; i < startingDayOfWeek; i++) {
                 html += '<div></div>';
@@ -1335,10 +1951,12 @@
             
             for (let day = 1; day <= daysInMonth; day++) {
                 const date = new Date(year, month, day);
-                // Crea una stringa di data in formato YYYY-MM-DD
                 const dateStr = String(year).padStart(4, '0') + '-' + 
                                String(month + 1).padStart(2, '0') + '-' + 
                                String(day).padStart(2, '0');
+                const dayOfWeek = date.getDay();
+                const monthDay = String(month + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+                const isHoliday = dayOfWeek === 0 || italianHolidays.includes(monthDay);
                 
                 // Conta ordini con data schedulata
                 const dayOrders = orders.filter(order => {
@@ -1346,22 +1964,32 @@
                     return order.dateTime.startsWith(dateStr);
                 });
 
-                // Estrai orari di consegna (senza duplicati)
-                const deliveryTimes = [...new Set(
-                    dayOrders
-                        .filter(o => o.type === 'consegnato')
-                        .map(o => o.dateTime.slice(11, 16))
-                )].sort();
+                // Conta ordini assegnati e da assegnare
+                const assignedOrders = dayOrders.filter(order => {
+                    const task = orderTasks.find(t => t.orderId === order.id);
+                    return task && task.assignedTo.length > 0;
+                }).length;
                 
+                const unassignedOrders = dayOrders.filter(order => {
+                    const task = orderTasks.find(t => t.orderId === order.id);
+                    return !task || task.assignedTo.length === 0;
+                }).length;
+
                 const totalOrders = dayOrders.length;
-                const hasOrdersClass = totalOrders > 0 ? 'has-orders' : '';
-                
-                // Mostra orari di consegna compatti
-                const timesDisplay = deliveryTimes.length > 0 ? 
-                    `<div style="font-size: 8px; margin-top: 2px; color: #86efac; font-weight: bold;">${deliveryTimes.join(', ')}</div>` : 
-                    '';
-                
-                html += `<div class="calendar-day ${hasOrdersClass}" style="cursor: pointer;" onclick="showDayOrdersModal('${dateStr}')"><strong>${day}</strong><div style="font-size: 9px; margin-top: 2px;">${totalOrders} ordini</div>${timesDisplay}</div>`;
+                const hasOrdersClass = assignedOrders > 0 ? 'has-orders' : '';
+                const hasUnassignedClass = unassignedOrders > 0 ? 'has-unassigned-orders' : '';
+                const dayColor = isHoliday ? 'color: #ef4444;' : '';
+
+                let assignedCountHtml = '';
+                let unassignedCountHtml = '';
+                if (assignedOrders > 0) {
+                    assignedCountHtml = `<div style="position: absolute; bottom: 2px; right: 2px; font-size: 14px; color: #ffffff; font-weight: bold; z-index: 10;">${assignedOrders}</div>`;
+                }
+                if (unassignedOrders > 0) {
+                    unassignedCountHtml = `<div style="position: absolute; bottom: 2px; left: 2px; font-size: 14px; color: #ffffff; font-weight: bold; z-index: 10;">${unassignedOrders}</div>`;
+                }
+
+                html += `<div class="calendar-day ${hasOrdersClass} ${hasUnassignedClass}" style="${dayColor}" onclick="showDayOrdersModal('${dateStr}')"><strong>${day}</strong>${assignedCountHtml}${unassignedCountHtml}</div>`;
             }
             
             container.innerHTML = html;
@@ -1412,32 +2040,23 @@
 
             // Crea le card degli ordini
             dayOrdersList.innerHTML = dayOrders.map(order => {
-                const cliente = clienti.find(c => c.nome === order.client);
-                const orariInfo = cliente ? `
-                    <p><strong>Apertura:</strong> ${cliente.orario_apertura} - ${cliente.orario_chiusura}</p>
-                    <p><strong>Finestra Consegne:</strong> ${cliente.orario_consegna_inizio} - ${cliente.orario_consegna_fine}</p>
-                ` : '';
-                
+                const timeOnly = order.dateTime ? new Date(order.dateTime).toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'}) : 'N/D';
+                const headerTitle = `${order.type === 'consegnato' ? 'consegna' : 'ritiro'} - ${String(order.client || '').toLowerCase()}`;
                 return `
-                <div class="order-card">
+                <div class="order-card" style="background: #1e2a4d; border-left: 4px solid var(--primary); border: 2px solid #2563eb;">
                     <div class="order-header">
-                        <div class="order-title">${order.client}</div>
-                        <div class="order-status ${order.status}">${getStatusLabel(order.status)}</div>
+                        <div class="order-title" style="font-size: 20px; color: #7dd3fc; font-weight: 700;">${headerTitle}</div>
+                        <div class="order-status ${order.status}" style="font-size: 14px;">${getStatusLabel(order.status)}</div>
                     </div>
-                    <div class="order-details">
-                        <p><strong>Prodotto:</strong> ${order.product}</p>
-                        <p><strong>Quantità:</strong> ${order.quantity} kg</p>
-                        <p><strong>Tipo:</strong> ${order.type === 'consegnato' ? '📦 Consegnato' : '🏪 Ritira Cliente'}</p>
-                        <p><strong>Data e Orario:</strong> ${order.dateTime ? new Date(order.dateTime).toLocaleString('it-IT', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'N/D'}</p>
-                        ${orariInfo}
-                        ${order.lotto ? `<p><strong>Lotto:</strong> ${order.lotto}</p>` : ''}
-                        ${order.ritiro_consegna ? `<p><strong>Ritiro/Consegna:</strong> ${order.ritiro_consegna}</p>` : ''}
-                        ${order.posizione ? `<p><strong>Scaffale:</strong> ${order.posizione}</p>` : ''}
-                        ${order.notes ? `<p><strong>Note:</strong> ${order.notes}</p>` : ''}
+                    <div class="order-details" style="font-size: 18px; line-height: 1.8; margin-top: 12px;">
+                        <p style="margin: 8px 0;"><strong style="color: #93c5fd; font-size: 20px;">📦 Prodotto:</strong> <span style="color: #e0e0e0; font-size: 20px; font-weight: 600;">${order.product}</span></p>
+                        <p style="margin: 8px 0;"><strong style="color: #93c5fd; font-size: 20px;">📊 Quantità:</strong> <span style="color: #fcd34d; font-size: 22px; font-weight: 700;">${order.quantity} kg</span></p>
+                        <p style="margin: 8px 0;"><strong style="color: #93c5fd; font-size: 20px;">⏰ Orario Programmato:</strong> <span style="color: #86efac; font-size: 22px; font-weight: 700;">${timeOnly}</span></p>
                     </div>
-                    <div class="order-actions">
-                        <button class="btn btn-primary" onclick="updateOrderStatus(${order.id}, 'completed')">✓ Completa</button>
-                        <button class="btn btn-danger" onclick="deleteOrder(${order.id})">🗑️ Elimina</button>
+                    <div class="order-actions" style="margin-top: 15px;">
+                        <button class="btn btn-warning" onclick="updateOrderStatus(${order.id}, 'in_progress')" style="font-size: 14px;">⚙️ In Lavorazione</button>
+                        <button class="btn btn-primary" onclick="updateOrderStatus(${order.id}, 'completed')" style="font-size: 14px;">✓ Completa</button>
+                        <button class="btn btn-danger" onclick="deleteOrder(${order.id})" style="font-size: 14px;">🗑️ Elimina</button>
                     </div>
                 </div>
             `}).join('');
@@ -1455,14 +2074,231 @@
             document.getElementById('dayOrdersCard').style.display = 'none';
         }
 
+        // === UI VIAGGI ===
+        let currentTripId = null;
+
+        function openTripsManager() {
+            renderTripsManager();
+            document.getElementById('tripsManagerModal').classList.add('active');
+        }
+
+        function closeTripsManager() {
+            document.getElementById('tripsManagerModal').classList.remove('active');
+        }
+
+        function renderTripsManager() {
+            const container = document.getElementById('tripsManagerList');
+            if (trips.length === 0) {
+                container.innerHTML = '<p style="color:#808080;text-align:center;padding:20px;">Nessun viaggio creato</p>';
+                return;
+            }
+
+            container.innerHTML = trips.map(trip => {
+                const tripOrders = getTripOrders(trip.id);
+                const totals = calculateTripTotals(trip.id);
+                const totalsHtml = Object.entries(totals).map(([product, qty]) => 
+                    `<span style="background:#1e3a2a;color:#86efac;padding:4px 8px;border-radius:4px;font-size:12px;margin-right:6px;">${product}: ${qty.toFixed(1)}kg</span>`
+                ).join('');
+
+                return `
+                    <div class="order-card" style="border-left:4px solid #16a34a;margin-bottom:15px;">
+                        <div class="order-header">
+                            <div class="order-title">${trip.name}</div>
+                            <span class="order-status" style="background:#1e3a2a;color:#86efac;">${tripOrders.length} ordini</span>
+                        </div>
+                        <div class="order-details">
+                            <p><strong>📅 Data:</strong> ${new Date(trip.date).toLocaleDateString('it-IT')}</p>
+                            ${totalsHtml ? `<p><strong>📊 Totali:</strong><br>${totalsHtml}</p>` : ''}
+                        </div>
+                        <div class="order-actions" style="justify-content:flex-end;gap:8px;margin-top:10px;">
+                            <button class="btn btn-primary" onclick="openTripOrders(${trip.id})" style="padding:6px 10px;font-size:12px;">📦 Gestisci Ordini</button>
+                            <button class="btn btn-danger" onclick="confirmDeleteTrip(${trip.id})" style="padding:6px 10px;font-size:12px;">🗑️ Elimina</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function openCreateTripModal() {
+            document.getElementById('createTripForm').reset();
+            document.getElementById('tripDate').valueAsDate = new Date();
+            document.getElementById('createTripModal').classList.add('active');
+        }
+
+        function closeCreateTripModal() {
+            document.getElementById('createTripModal').classList.remove('active');
+        }
+
+        function saveNewTrip(event) {
+            event.preventDefault();
+            const name = document.getElementById('tripName').value;
+            const date = document.getElementById('tripDate').value;
+            createTrip(name, date);
+            closeCreateTripModal();
+            renderTripsManager();
+            alert('✅ Viaggio creato con successo!');
+        }
+
+        function confirmDeleteTrip(tripId) {
+            if (confirm('Eliminare questo viaggio? Gli ordini non verranno eliminati.')) {
+                deleteTrip(tripId);
+                renderTripsManager();
+                renderOrderTasks();
+            }
+        }
+
+        function openTripOrders(tripId) {
+            currentTripId = tripId;
+            const trip = trips.find(t => t.id === tripId);
+            if (!trip) return;
+
+            document.getElementById('tripOrdersTitle').textContent = `📦 ${trip.name} - Gestione Ordini`;
+            renderAvailableOrders(tripId);
+            renderTripOrdersList(tripId);
+            renderTripTotals(tripId);
+            document.getElementById('tripOrdersModal').classList.add('active');
+        }
+
+        function closeTripOrdersModal() {
+            document.getElementById('tripOrdersModal').classList.remove('active');
+            currentTripId = null;
+            renderTripsManager();
+        }
+
+        function renderAvailableOrders(tripId) {
+            const trip = trips.find(t => t.id === tripId);
+            const tripDate = trip.date.split('T')[0];
+            const available = orders.filter(o => {
+                const orderDate = o.dateTime ? o.dateTime.split('T')[0] : null;
+                return o.type === 'consegnato' && 
+                       orderDate === tripDate && 
+                       !o.tripId;
+            });
+
+            const container = document.getElementById('availableOrdersList');
+            if (available.length === 0) {
+                container.innerHTML = '<p style="color:#808080;font-size:12px;">Nessun ordine disponibile per questa data</p>';
+                return;
+            }
+
+            container.innerHTML = available.map(order => `
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:8px;background:#2d2d2d;margin-bottom:6px;border-radius:4px;">
+                    <div style="font-size:12px;">
+                        <strong>${order.client}</strong> - ${order.product} (${order.quantity}kg)
+                        <span style="color:#a0a0a0;margin-left:8px;">${new Date(order.dateTime).toLocaleTimeString('it-IT', {hour:'2-digit',minute:'2-digit'})}</span>
+                    </div>
+                    <button class="btn btn-primary" onclick="addOrderToCurrentTrip(${order.id})" style="padding:4px 8px;font-size:11px;">➕ Aggiungi</button>
+                </div>
+            `).join('');
+        }
+
+        function renderTripOrdersList(tripId) {
+            const tripOrders = getTripOrders(tripId);
+            const container = document.getElementById('tripOrdersList');
+            
+            if (tripOrders.length === 0) {
+                container.innerHTML = '<p style="color:#808080;font-size:12px;padding:10px;text-align:center;">Nessun ordine nel viaggio</p>';
+                return;
+            }
+
+            container.innerHTML = tripOrders.map((order, index) => `
+                <div style="display:flex;align-items:center;padding:10px;background:#3d3d3d;margin-bottom:8px;border-radius:4px;border-left:4px solid #16a34a;">
+                    <div style="display:flex;flex-direction:column;gap:6px;margin-right:10px;">
+                        <button class="btn btn-secondary" onclick="moveOrderUp(${tripId}, ${index})" ${index === 0 ? 'disabled' : ''} style="padding:2px 6px;font-size:10px;">▲</button>
+                        <button class="btn btn-secondary" onclick="moveOrderDown(${tripId}, ${index})" ${index === tripOrders.length - 1 ? 'disabled' : ''} style="padding:2px 6px;font-size:10px;">▼</button>
+                    </div>
+                    <div style="flex:1;">
+                        <div style="font-weight:600;font-size:14px;margin-bottom:4px;color:#16a34a;">#${index + 1} - ${order.client}</div>
+                        <div style="font-size:12px;color:#a0a0a0;">
+                            ${order.product} - ${order.quantity}kg
+                            <span style="margin-left:10px;">⏰ ${new Date(order.dateTime).toLocaleTimeString('it-IT', {hour:'2-digit',minute:'2-digit'})}</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-danger" onclick="removeOrderFromCurrentTrip(${order.id})" style="padding:4px 8px;font-size:11px;">✖</button>
+                </div>
+            `).join('');
+        }
+
+        function renderTripTotals(tripId) {
+            const totals = calculateTripTotals(tripId);
+            const container = document.getElementById('tripTotals');
+            
+            if (Object.keys(totals).length === 0) {
+                container.innerHTML = '<p style="color:#808080;font-size:12px;">Nessun prodotto</p>';
+                return;
+            }
+
+            container.innerHTML = Object.entries(totals).map(([product, qty]) => `
+                <div style="display:flex;justify-content:space-between;padding:8px;background:#3d3d3d;margin-bottom:6px;border-radius:4px;">
+                    <span style="font-weight:600;color:#e0e0e0;">${product}</span>
+                    <span style="color:#86efac;font-weight:700;">${qty.toFixed(1)} kg</span>
+                </div>
+            `).join('');
+        }
+
+        function addOrderToCurrentTrip(orderId) {
+            if (!currentTripId) return;
+            addOrderToTrip(currentTripId, orderId);
+            renderAvailableOrders(currentTripId);
+            renderTripOrdersList(currentTripId);
+            renderTripTotals(currentTripId);
+            renderOrderTasks();
+        }
+
+        function removeOrderFromCurrentTrip(orderId) {
+            if (!currentTripId) return;
+            removeOrderFromTrip(currentTripId, orderId);
+            renderAvailableOrders(currentTripId);
+            renderTripOrdersList(currentTripId);
+            renderTripTotals(currentTripId);
+            renderOrderTasks();
+        }
+
+        function moveOrderUp(tripId, index) {
+            const trip = trips.find(t => t.id === tripId);
+            if (!trip || index === 0) return;
+            
+            const newSequence = [...trip.sequence];
+            [newSequence[index], newSequence[index - 1]] = [newSequence[index - 1], newSequence[index]];
+            reorderTripSequence(tripId, newSequence);
+            renderTripOrdersList(tripId);
+        }
+
+        function moveOrderDown(tripId, index) {
+            const trip = trips.find(t => t.id === tripId);
+            if (!trip || index === trip.sequence.length - 1) return;
+            
+            const newSequence = [...trip.sequence];
+            [newSequence[index], newSequence[index + 1]] = [newSequence[index + 1], newSequence[index]];
+            reorderTripSequence(tripId, newSequence);
+            renderTripOrdersList(tripId);
+        }
+
         // Inizializza
         window.addEventListener('load', async () => {
+                // Display user info
+                const token = localStorage.getItem('token');
+                if (token) {
+                    try {
+                        const payload = JSON.parse(atob(token.split('.')[1]));
+                        const userInfo = document.getElementById('userInfo');
+                        if (userInfo && payload.username) {
+                            userInfo.textContent = `👤 ${payload.username}`;
+                        }
+                    } catch (e) {
+                        console.error('Error parsing token:', e);
+                    }
+                }
+            
             await loadOperators();
             await loadCSVData();
             loadOrders();
             loadOrderTasks();
+            loadTrips();
             renderOrderTasks();
             renderCalendar();
+            // Admin: assicura che gli ordini 'ritira' siano sincronizzati nel DB e visibili
+            await syncRitiroOrdersToDb();
         });
     </script>
 
@@ -1478,6 +2314,61 @@
                     <button type="button" class="btn btn-secondary" onclick="closeAssignTaskModal()">❌ Chiudi</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Modal Gestione Viaggi -->
+    <div id="tripsManagerModal" class="modal">
+        <div class="modal-content" style="max-width:900px;max-height:80vh;overflow-y:auto;">
+            <h2>🚚 Gestione Viaggi</h2>
+            <button class="btn btn-primary" onclick="openCreateTripModal()" style="margin-bottom:15px;">➕ Nuovo Viaggio</button>
+            <div id="tripsManagerList"></div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeTripsManager()">❌ Chiudi</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Crea Viaggio -->
+    <div id="createTripModal" class="modal">
+        <div class="modal-content">
+            <h2>➕ Nuovo Viaggio</h2>
+            <form id="createTripForm" onsubmit="saveNewTrip(event)">
+                <div class="form-group">
+                    <label for="tripName">Nome Viaggio:</label>
+                    <input type="text" id="tripName" required placeholder="Es: Giro Mattina">
+                </div>
+                <div class="form-group">
+                    <label for="tripDate">Data:</label>
+                    <input type="date" id="tripDate" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary">💾 Crea</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeCreateTripModal()">❌ Annulla</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Gestione Ordini Viaggio -->
+    <div id="tripOrdersModal" class="modal">
+        <div class="modal-content" style="max-width:800px;max-height:80vh;overflow-y:auto;">
+            <h2 id="tripOrdersTitle">📦 Gestione Ordini Viaggio</h2>
+            <div style="margin-bottom:15px;">
+                <h3 style="font-size:16px;margin-bottom:10px;">Ordini Disponibili (consegnati):</h3>
+                <div id="availableOrdersList" style="max-height:200px;overflow-y:auto;background:#3d3d3d;padding:10px;border-radius:6px;"></div>
+            </div>
+            <div style="margin-bottom:15px;">
+                <h3 style="font-size:16px;margin-bottom:10px;">Ordini nel Viaggio:</h3>
+                <div id="tripOrdersList"></div>
+            </div>
+            <div style="margin-top:15px;padding:15px;background:#2d2d2d;border-radius:6px;border:2px solid #16a34a;">
+                <h3 style="font-size:16px;margin-bottom:10px;color:#16a34a;">📊 Totali Prodotti:</h3>
+                <div id="tripTotals"></div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeTripOrdersModal()">❌ Chiudi</button>
+            </div>
         </div>
     </div>
 </body>
