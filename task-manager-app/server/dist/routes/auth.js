@@ -8,6 +8,7 @@ const authController = new authController_1.AuthController();
 router.post('/login', (req, res) => authController.login(req, res));
 router.post('/quick-login', (req, res) => authController.quickLogin(req, res));
 router.get('/operators/public', (req, res) => authController.getPublicOperators(req, res));
+router.get('/admins/public', (req, res) => authController.getPublicAdmins(req, res));
 router.get('/operators', auth_1.authMiddleware, auth_1.requireMaster, (req, res) => authController.getOperators(req, res));
 router.get('/admins', auth_1.authMiddleware, auth_1.requireMaster, (req, res) => authController.getAdmins(req, res));
 router.get('/users-for-assignment', auth_1.authMiddleware, auth_1.requireMaster, (req, res) => authController.getAllUsersForAssignment(req, res));

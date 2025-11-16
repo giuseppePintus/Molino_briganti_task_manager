@@ -347,7 +347,7 @@
             background: #3d3d3d;
             cursor: pointer;
             transition: all 0.2s;
-            font-size: 11px;
+            font-size: 18px;
             color: #b0b0b0;
         }
 
@@ -358,6 +358,40 @@
         .calendar-day.has-tasks {
             background: #1e3a2a;
             border-color: #4caf50;
+        }
+
+        .calendar-day.has-unassigned-tasks {
+            position: relative;
+        }
+
+        .calendar-day.has-unassigned-tasks::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 0;
+            height: 0;
+            border-style: solid;
+            border-width: 0 18px 18px 0;
+            border-color: transparent #ff9800 transparent transparent;
+            border-radius: 0 4px 0 0;
+        }
+
+        .calendar-day.has-tasks {
+            position: relative;
+        }
+
+        .calendar-day.has-tasks::before {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 0;
+            height: 0;
+            border-style: solid;
+            border-width: 0 0 18px 18px;
+            border-color: transparent transparent #4caf50 transparent;
+            border-radius: 0 0 4px 0;
         }
 
         .task-list {
@@ -571,188 +605,7 @@
             }
         }
 
-        @media (max-width: 768px) {
-            .header {
-                flex-direction: row;
-                gap: 10px;
-                padding: 10px 15px;
-                align-items: flex-start;
-            }
-
-            .header-left {
-                gap: 10px;
-                align-items: flex-start;
-            }
-
-            .header-logo {
-                height: 40px;
-            }
-
-            .header h1 {
-                font-size: 13px;
-            }
-
-            .header-actions {
-                flex-wrap: wrap;
-                justify-content: flex-end;
-                gap: 8px;
-            }
-
-            .user-info {
-                font-size: 14px;
-            }
-
-            .header .btn-danger {
-                min-width: auto;
-                padding: 8px 14px;
-                font-size: 12px;
-                min-height: auto;
-                gap: 6px;
-            }
-
-            .header .btn-danger::before {
-                font-size: 16px;
-            }
-
-            .header .btn-danger span {
-                font-size: 12px;
-            }
-
-            .quick-actions {
-                gap: 8px;
-                flex-direction: row;
-                flex-wrap: wrap;
-            }
-
-            .quick-actions .btn {
-                flex: 0 1 calc(50% - 4px);
-                min-width: auto;
-                padding: 4px 8px;
-                gap: 3px;
-                min-height: 16px;
-            }
-
-            .quick-actions .btn::before {
-                font-size: 12px;
-            }
-
-            .quick-actions .btn span {
-                font-size: 12px;
-                line-height: 1;
-            }
-
-            .btn::before {
-                font-size: 12px;
-            }
-
-            .btn span {
-                font-size: 8px;
-                line-height: 1;
-            }
-
-            /* Main Content Responsive at 768px */
-            .main-content {
-                grid-template-columns: 1fr;
-                gap: 15px;
-            }
-
-            .task-list {
-                max-height: 600px;
-            }
-
-            /* Task Operatori Responsive at 768px */
-            #operatorTasksCard,
-            #myTasksCard {
-                padding: 15px;
-            }
-
-            #operatorTasksCard .card-header h2,
-            #myTasksCard .card-header h2 {
-                font-size: 18px !important;
-                margin-bottom: 10px !important;
-            }
-
-            #operatorTasksCard .task-card {
-                padding: 12px;
-                margin-bottom: 10px;
-            }
-
-            #operatorTasksCard .task-title {
-                font-size: 15px;
-                margin-bottom: 6px;
-            }
-
-            #operatorTasksCard .task-description {
-                font-size: 14px;
-                margin-bottom: 6px;
-            }
-
-            #operatorTasksCard .task-meta {
-                font-size: 13px;
-                gap: 8px;
-                margin-bottom: 8px;
-            }
-
-            #operatorTasksCard .task-actions {
-                gap: 6px;
-            }
-
-            #operatorTasksCard .task-actions .btn {
-                padding: 6px 10px;
-                font-size: 11px;
-                min-height: 16px;
-                flex: 0 1 auto;
-            }
-
-            #operatorTasksCard .task-actions .btn::before {
-                font-size: 11px;
-            }
-
-            #operatorTasksCard .task-actions .btn span {
-                font-size: 8px;
-            }
-
-            /* myTasksCard specific styles for 768px */
-            #myTasksCard .task-card {
-                padding: 12px;
-                margin-bottom: 10px;
-            }
-
-            #myTasksCard .task-title {
-                font-size: 15px;
-                margin-bottom: 6px;
-            }
-
-            #myTasksCard .task-description {
-                font-size: 14px;
-                margin-bottom: 6px;
-            }
-
-            #myTasksCard .task-meta {
-                font-size: 13px;
-                gap: 8px;
-                margin-bottom: 8px;
-            }
-
-            #myTasksCard .task-actions {
-                gap: 6px;
-            }
-
-            #myTasksCard .task-actions .btn {
-                padding: 6px 10px;
-                font-size: 11px;
-                min-height: 16px;
-                flex: 0 1 auto;
-            }
-
-            #myTasksCard .task-actions .btn::before {
-                font-size: 11px;
-            }
-
-            #myTasksCard .task-actions .btn span {
-                font-size: 8px;
-            }
-        }
+        
 
         @media (max-width: 480px) {
             .header {
@@ -1037,20 +890,25 @@
         <div class="quick-actions">
             <button class="btn btn-success" data-icon="📝🔄" onclick="openCreateTaskOrRecurrenceModal()"><span>Gestione Task / Ricorrenze</span></button>
             <button class="btn btn-primary" data-icon="👥" onclick="window.location.href='operators.html'"><span>Gestione Admin / Operatori</span></button>
+            <button class="btn btn-primary" data-icon="👨‍💼" onclick="window.location.href='customers-management.html'"><span>Gestione Clienti</span></button>
+            <button class="btn btn-primary" data-icon="📦" onclick="window.location.href='orders-planner.html'"><span>Planner Ordini</span></button>
         </div>
 
         <!-- Calendar -->
         <div class="card" style="padding: 12px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <button class="btn btn-primary" onclick="previousMonth()" style="padding: 8px 12px; font-size: 16px; min-width: auto; width: 40px; display: flex; align-items: center; justify-content: center;">◀</button>
-                <h4 id="calendarMonthYear" style="margin: 0; color: #e0e0e0; font-size: 16px;"></h4>
-                <button class="btn btn-primary" onclick="nextMonth()" style="padding: 8px 12px; font-size: 16px; min-width: auto; width: 40px; display: flex; align-items: center; justify-content: center;">▶</button>
+                <button class="btn btn-secondary" onclick="toggleOperatorTasks()" id="toggleTasksBtn" style="padding: 8px 16px; font-size: 14px;">👁️ Operatori</button>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button class="btn btn-primary" onclick="previousMonth()" style="padding: 8px 12px; font-size: 16px; min-width: auto; width: 40px; display: flex; align-items: center; justify-content: center;">◀</button>
+                    <h4 id="calendarMonthYear" style="margin: 0; color: #e0e0e0; font-size: 16px; min-width: 150px; text-align: center;"></h4>
+                    <button class="btn btn-primary" onclick="nextMonth()" style="padding: 8px 12px; font-size: 16px; min-width: auto; width: 40px; display: flex; align-items: center; justify-content: center;">▶</button>
+                </div>
+                <button class="btn btn-secondary" onclick="toggleCalendarView()" id="toggleCalendarBtn" style="padding: 8px 16px; font-size: 14px;">📅 Mese</button>
             </div>
             <div id="calendarContainer" class="calendar-container">
                 <!-- Calendar will be generated here -->
             </div>
-            <div style="text-align: center; margin-top: 15px; display: flex; gap: 10px; justify-content: center;">
-                <button class="btn btn-secondary toggle-tasks-btn" data-icon="👁️" onclick="toggleOperatorTasks()" id="toggleTasksBtn"><span>Visualizza Task Operatori</span></button>
+            <div style="text-align: center; margin-top: 15px; display: flex; gap: 10px; justify-content: center; display: none;" id="toggleTasksContainer">
                 <button class="btn btn-secondary toggle-tasks-btn" data-icon="⬅️" onclick="toggleOperatorTasks()" id="backToMyTasksBtn" style="display: none;"><span>Visualizza I Miei Task</span></button>
             </div>
         </div>
@@ -1084,14 +942,14 @@
                 <div id="tasksList" class="task-list">
                 </div>
             </div>
+        </div>
 
-            <!-- My Tasks (Admin Personal Tasks) -->
-            <div class="card" id="myTasksCard">
-                <div class="card-header">
-                    <h2>📋 I Miei Task</h2>
-                </div>
-                <div id="adminTasksList" class="task-list">
-                </div>
+        <!-- My Tasks (Admin Personal Tasks) - Outside main-content for full width -->
+        <div class="card" id="myTasksCard">
+            <div class="card-header">
+                <h2 id="myTasksTitle">📋 I Miei Task</h2>
+            </div>
+            <div id="adminTasksList" class="task-list">
             </div>
         </div>
 
@@ -1132,6 +990,9 @@
         // Variabili per il calendario
         let calendarDisplayMonth = new Date().getMonth();
         let calendarDisplayYear = new Date().getFullYear();
+        let calendarViewMode = 'week'; // 'week' o 'month'
+        let weekStartDate = new Date(); // Data di inizio della settimana attuale
+        weekStartDate.setDate(weekStartDate.getDate() - weekStartDate.getDay()); // Domenica
         let editingTaskId = null;
 
         // Check authorization
@@ -1167,6 +1028,7 @@
 
         async function initDashboard() {
             document.getElementById('userInfo').textContent = `👤 ${currentUser.username}`;
+            document.getElementById('myTasksTitle').textContent = `📋 Task di ${currentUser.username}`;
             await loadOperators();
             await loadAssignees();
             await loadTasks();
@@ -1196,24 +1058,27 @@
 
         async function loadOperators() {
             try {
-                const response = await fetch(`${API_URL}/auth/operators`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (!response.ok) throw new Error('Errore caricamento operatori');
+                // Carica operatori e admin
+                const [operatorsRes, adminsRes] = await Promise.all([
+                    fetch(`${API_URL}/auth/operators/public`),
+                    fetch(`${API_URL}/auth/admins/public`)
+                ]);
                 
-                allOperators = await response.json();
+                const operators = operatorsRes.ok ? await operatorsRes.json() : [];
+                const admins = adminsRes.ok ? await adminsRes.json() : [];
                 
-                // Populate filter select
-                const select = document.getElementById('operatorFilter');
-                select.innerHTML = '<option value="">Tutti gli Operatori</option>';
-                allOperators.forEach(op => {
-                    const option = document.createElement('option');
-                    option.value = op.id;
-                    option.textContent = op.username;
-                    select.appendChild(option);
-                });
+                // Aggiungi role field
+                const opsWithRole = operators.map(op => ({ ...op, role: 'slave' }));
+                const adminsWithRole = admins.map(a => ({ ...a, role: 'master' }));
+                
+                // Combina: admin prima, poi operatori, entrambi alfabetici
+                const sortedAdmins = adminsWithRole.sort((a, b) => a.username.localeCompare(b.username));
+                const sortedOps = opsWithRole.sort((a, b) => a.username.localeCompare(b.username));
+                allOperators = [...sortedAdmins, ...sortedOps];
+                
+                console.log('✅ Operatori/Admin caricati:', allOperators.length);
             } catch (error) {
-                console.error('Errore:', error);
+                console.error('Errore caricamento operatori:', error);
             }
         }
 
@@ -1423,6 +1288,7 @@
                             </div>
                         ` : ''}
                         <div class="task-actions" style="flex-wrap: wrap;">
+                            ${!task.assignedOperator ? `<button class="btn btn-info btn-small" onclick="openAssignTaskModal(${task.id})" style="flex: 1; min-width: 100px; background: #0891b2;">🔧 Assegna</button>` : ''}
                             ${!task.acceptedAt && !task.completed ? `<button class="btn btn-success btn-small" onclick="handleTaskStatusChange(${task.id}, 'accept')" style="flex: 1; min-width: 100px; background: #22c55e;">👍 Accetta</button>` : ''}
                             ${task.acceptedAt && !task.completed && !task.paused ? `<button class="btn btn-warning btn-small" onclick="handleTaskStatusChange(${task.id}, 'pause')" style="flex: 1; min-width: 100px; background: #ea580c;">⏸️ Pausa</button>` : ''}
                             ${task.paused ? `<button class="btn btn-info btn-small" onclick="handleTaskStatusChange(${task.id}, 'resume')" style="flex: 1; min-width: 100px; background: #3b82f6;">▶️ Riprendi</button>` : ''}
@@ -1475,8 +1341,10 @@
             let tasksToDisplay = allTasks;
             
             if (currentViewMode === 'myTasks') {
-                // Mostra solo i task dell'admin attuale
-                tasksToDisplay = allTasks.filter(t => t.assignedOperator?.id === currentUser.id);
+                // Mostra task dell'admin attuale + task non assegnati (da assegnare)
+                tasksToDisplay = allTasks.filter(t => 
+                    t.assignedOperator?.id === currentUser.id || !t.assignedOperator?.id
+                );
             } else if (currentViewMode === 'operatorTasks') {
                 // Mostra solo i task degli operatori (non assegnati all'admin)
                 tasksToDisplay = allTasks.filter(t => t.assignedOperator?.id !== currentUser.id && t.assignedOperator?.id);
@@ -1494,10 +1362,78 @@
                 }
             }
             
-            if (!tasksToDisplay || tasksToDisplay.length === 0) {
-                container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 15px; color: #808080; font-size: 12px;">Nessun task</div>';
-                return;
+            // Usa renderCalendarWeek o renderCalendarMonth in base alla vista
+            if (calendarViewMode === 'week') {
+                renderCalendarWeek(tasksToDisplay);
+            } else {
+                renderCalendarMonth(tasksToDisplay);
             }
+        }
+        
+        function renderCalendarWeek(tasksToDisplay) {
+            const container = document.getElementById('calendarContainer');
+            const startDate = new Date(weekStartDate);
+            
+            const dayNames = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
+            const monthNames = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 
+                               'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
+            
+            let html = '<div style="display: flex; width: 100%; gap: 0; padding: 0; box-sizing: border-box;">';
+            
+            for (let i = 0; i < 7; i++) {
+                const date = new Date(startDate);
+                date.setDate(date.getDate() + i);
+                const dateStr = String(date.getFullYear()).padStart(4, '0') + '-' + 
+                               String(date.getMonth() + 1).padStart(2, '0') + '-' + 
+                               String(date.getDate()).padStart(2, '0');
+                
+                const dayTasks = tasksToDisplay.filter(task => {
+                    if (!task.scheduledAt) return false;
+                    const taskDateStr = task.scheduledAt.split('T')[0];
+                    return taskDateStr === dateStr;
+                });
+                
+                const unassignedTasks = dayTasks.filter(t => !t.assignedOperator?.id).length;
+                const totalTasks = dayTasks.length;
+                const assignedTasks = totalTasks - unassignedTasks;
+                
+                const hasTasksClass = totalTasks > 0 ? 'has-tasks' : '';
+                const hasUnassignedClass = unassignedTasks > 0 ? 'has-unassigned-tasks' : '';
+                
+                let taskCountHtml = '';
+                let unassignedCountHtml = '';
+                if (assignedTasks > 0) {
+                    taskCountHtml = `<div style="position: absolute; bottom: 6px; right: 6px; font-size: 12px; color: #4caf50; font-weight: bold;">${assignedTasks}</div>`;
+                }
+                if (unassignedTasks > 0) {
+                    unassignedCountHtml = `<div style="position: absolute; top: 4px; right: 6px; font-size: 12px; color: #ff9800; font-weight: bold;">${unassignedTasks}</div>`;
+                }
+                
+                html += `<div class="calendar-day ${hasTasksClass} ${hasUnassignedClass}" style="cursor: pointer; position: relative; flex: 1; min-width: 80px; padding: 6px 4px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;" onclick="showDayTasksModal('${dateStr}')">
+                    <div style="font-size: 10px; font-weight: 600; margin-bottom: 4px; color: #999;">${dayNames[date.getDay()]}</div>
+                    <strong style="font-size: 18px; margin-bottom: 2px;">${date.getDate()}</strong>
+                    <div style="font-size: 9px; color: #777;">${monthNames[date.getMonth()]}</div>
+                    ${taskCountHtml}${unassignedCountHtml}
+                </div>`;
+            }
+            
+            html += '</div>';
+            container.innerHTML = html;
+            
+            // Calcola il numero della settimana
+            const firstDay = new Date(startDate.getFullYear(), 0, 1);
+            const pastDaysOfYear = (startDate - firstDay) / 86400000;
+            const weekNumber = Math.ceil((pastDaysOfYear + firstDay.getDay() + 1) / 7);
+            
+            const endDate = new Date(startDate);
+            endDate.setDate(endDate.getDate() + 6);
+            document.getElementById('calendarMonthYear').innerHTML = `<div>${startDate.getDate()} ${monthNames[startDate.getMonth()]} - ${endDate.getDate()} ${monthNames[endDate.getMonth()]}</div><div style="font-size: 12px; color: #999; margin-top: 4px;">Settimana ${weekNumber}</div>`;
+        }
+        
+        function renderCalendarMonth(tasksToDisplay) {
+            const container = document.getElementById('calendarContainer');
+            
+            // Continua a renderizzare il calendario anche se non ci sono task
 
             // Festivi italiani fissi
             const italianHolidays = [
@@ -1527,7 +1463,7 @@
             const startingDayOfWeek = firstDay.getDay();
             
             const dayNames = ['Do', 'Lu', 'Ma', 'Me', 'Gi', 'Ve', 'Sa'];
-            let html = dayNames.map(day => `<div style="font-weight: bold; text-align: center; padding: 6px; background: #3d3d3d; border: 1px solid #4d4d4d; border-radius: 4px; font-size: 11px; color: #b0b0b0;">${day}</div>`).join('');
+            let html = dayNames.map(day => `<div style="font-weight: bold; text-align: center; padding: 6px; background: #3d3d3d; border: 1px solid #4d4d4d; border-radius: 4px; font-size: 12px; color: #b0b0b0;">${day}</div>`).join('');
             
             for (let i = 0; i < startingDayOfWeek; i++) {
                 html += '<div></div>';
@@ -1591,31 +1527,66 @@
                     return false;
                 });
                 
+                // Conta task da assegnare (non assegnati)
+                const unassignedTasks = dayTasks.filter(t => !t.assignedOperator?.id).length +
+                                       dayRecurrences.filter(t => !t.assignedOperator?.id).length;
+                
                 const totalTasks = dayTasks.length + dayRecurrences.length;
+                const assignedTasks = totalTasks - unassignedTasks;
                 const hasTasksClass = totalTasks > 0 ? 'has-tasks' : '';
+                const hasUnassignedClass = unassignedTasks > 0 ? 'has-unassigned-tasks' : '';
                 const dayColor = isHoliday ? 'color: #ef4444;' : '';
                 const dateForClick = dateStr;
-                html += `<div class="calendar-day ${hasTasksClass}" style="${dayColor}; cursor: pointer;" onclick="showDayTasksModal('${dateForClick}')"><strong>${day}</strong><div style="font-size: 9px; margin-top: 2px;">${totalTasks} task</div></div>`;
+                
+                let taskCountHtml = '';
+                let unassignedCountHtml = '';
+                if (assignedTasks > 0) {
+                    taskCountHtml = `<div style="position: absolute; bottom: 2px; right: 20px; font-size: 16px; color: #4caf50;">${assignedTasks}</div>`;
+                }
+                if (unassignedTasks > 0) {
+                    unassignedCountHtml = `<div style="position: absolute; top: 2px; right: 20px; font-size: 16px; color: #ff9800; font-weight: bold;">${unassignedTasks}</div>`;
+                }
+                
+                html += `<div class="calendar-day ${hasTasksClass} ${hasUnassignedClass}" style="${dayColor}; cursor: pointer; position: relative;" onclick="showDayTasksModal('${dateForClick}')"><strong>${day}</strong>${taskCountHtml}${unassignedCountHtml}</div>`;
             }
             
             container.innerHTML = html;
         }
         
         function previousMonth() {
-            calendarDisplayMonth--;
-            if (calendarDisplayMonth < 0) {
-                calendarDisplayMonth = 11;
-                calendarDisplayYear--;
+            if (calendarViewMode === 'week') {
+                // Scorrere indietro di una settimana
+                weekStartDate.setDate(weekStartDate.getDate() - 7);
+            } else {
+                // Vista mese: scorrere indietro di un mese
+                calendarDisplayMonth--;
+                if (calendarDisplayMonth < 0) {
+                    calendarDisplayMonth = 11;
+                    calendarDisplayYear--;
+                }
             }
             renderCalendar();
         }
         
         function nextMonth() {
-            calendarDisplayMonth++;
-            if (calendarDisplayMonth > 11) {
-                calendarDisplayMonth = 0;
-                calendarDisplayYear++;
+            if (calendarViewMode === 'week') {
+                // Scorrere avanti di una settimana
+                weekStartDate.setDate(weekStartDate.getDate() + 7);
+            } else {
+                // Vista mese: scorrere avanti di un mese
+                calendarDisplayMonth++;
+                if (calendarDisplayMonth > 11) {
+                    calendarDisplayMonth = 0;
+                    calendarDisplayYear++;
+                }
             }
+            renderCalendar();
+        }
+
+        function toggleCalendarView() {
+            calendarViewMode = calendarViewMode === 'week' ? 'month' : 'week';
+            const btn = document.getElementById('toggleCalendarBtn');
+            btn.textContent = calendarViewMode === 'week' ? '📅 Mese' : '📅 Settimana';
             renderCalendar();
         }
 
@@ -2185,6 +2156,65 @@
             const recurrenceSelect = document.getElementById('modalTaskRecurrence');
             const endGroup = document.getElementById('recurrenceEndGroup');
             endGroup.style.display = recurrenceSelect.value ? 'block' : 'none';
+        }
+
+        async function openAssignTaskModal(taskId) {
+            const task = allTasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            const modal = document.getElementById('taskModal');
+            const content = modal.querySelector('.modal-content');
+            
+            content.innerHTML = `
+                <h2>🔧 Assegna Task</h2>
+                <form onsubmit="handleAssignTask(event, ${taskId})">
+                    <div class="form-group">
+                        <label>Task</label>
+                        <div style="padding: 10px; background: #3d3d3d; border-radius: 6px; border: 1px solid #4d4d4d; color: #e0e0e0;">
+                            ${task.title}
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Assegna a *</label>
+                        <select id="assignOperatorSelect" required>
+                            <option value="">-- Seleziona Operatore --</option>
+                            ${allOperators.map(op => `<option value="${op.id}">${op.role === 'master' ? '👨‍💼' : '👷'} ${op.username}${op.id === currentUser.id ? ' (per me)' : ''}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div style="display: flex; gap: 10px; margin-top: 20px;">
+                        <button type="submit" class="btn btn-success" style="flex: 1;">✅ Assegna</button>
+                        <button type="button" class="btn btn-danger" style="flex: 1;" onclick="document.getElementById('taskModal').classList.remove('active');">❌ Annulla</button>
+                    </div>
+                </form>
+            `;
+            modal.classList.add('active');
+        }
+
+        async function handleAssignTask(e, taskId) {
+            e.preventDefault();
+            const operatorId = document.getElementById('assignOperatorSelect').value;
+            if (!operatorId) return;
+
+            try {
+                const response = await fetch(`${API_URL}/tasks/${taskId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        assignedOperatorId: parseInt(operatorId)
+                    })
+                });
+
+                if (!response.ok) throw new Error('Errore assegnazione');
+                
+                showAlert('Task assegnato con successo!', 'success');
+                document.getElementById('taskModal').classList.remove('active');
+                await loadTasks();
+            } catch (error) {
+                showAlert('Errore: ' + error.message, 'error');
+            }
         }
 
         async function openEditTaskModal(taskId) {

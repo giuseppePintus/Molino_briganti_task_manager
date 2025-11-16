@@ -237,12 +237,33 @@ export class AuthController {
                 select: { 
                     id: true, 
                     username: true,
+                    role: true,
                     image: true
                 },
                 orderBy: { username: 'asc' },
             });
 
             res.json(operators);
+        } catch (err: unknown) {
+            const errorMsg = err instanceof Error ? err.message : 'Internal server error';
+            res.status(500).json({ message: errorMsg });
+        }
+    }
+
+    async getPublicAdmins(req: Request, res: Response) {
+        try {
+            const admins = await prisma.user.findMany({
+                where: { role: 'master' },
+                select: { 
+                    id: true, 
+                    username: true,
+                    role: true,
+                    image: true
+                },
+                orderBy: { username: 'asc' },
+            });
+
+            res.json(admins);
         } catch (err: unknown) {
             const errorMsg = err instanceof Error ? err.message : 'Internal server error';
             res.status(500).json({ message: errorMsg });

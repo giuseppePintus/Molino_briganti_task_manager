@@ -1,0 +1,17 @@
+id,codice,nome,categoria,descrizione,lotto,ritiro_consegna,posizione_scaffale
+1,FAR001,Farina 0,Farine,Farina tipo 0 - uso generale,LOT20251101,Consegna,A1.1
+2,FAR002,Farina 00,Farine,Farina tipo 00 - uso dolci,LOT20251102,Ritiro,A1.2
+3,FAR003,Farina Integrale,Farine,Farina integrale macinata a pietra,LOT20251103,Consegna,A2.1
+4,FAR004,Farina Manitoba,Farine,Farina Manitoba ad alta proteine,LOT20251104,Ritiro,A2.2
+5,FAR005,Farina di Segale,Farine,Farina di segale scura,LOT20251105,Consegna,A3.1
+6,FAR006,Farina di Mais,Farine,Farina di mais giallo macinata,LOT20251106,Ritiro,A3.2
+7,FAR007,Farina di Castagne,Farine,Farina di castagne dolce,LOT20251107,Consegna,A4.1
+8,FAR008,Farina di Riso,Farine,Farina di riso bianca,LOT20251108,Ritiro,B1.1
+9,FAR009,Semola,Farine,Semola di grano duro,LOT20251109,Consegna,B1.2
+10,FAR010,Semolino,Farine,Semolino per dolci e impasti,LOT20251110,Ritiro,B2.1
+11,DER001,Lievito Madre,Derivati,Lievito madre disidratato,LOT20251111,Consegna,B2.2
+12,DER002,Lievito Chimico,Derivati,Lievito chimico per dolci,LOT20251112,Ritiro,B3.1
+13,DER003,Malto d'Orzo,Derivati,Malto d'orzo in polvere,LOT20251113,Consegna,B3.2
+14,DER004,Crusca,Derivati,Crusca di frumento,LOT20251114,Ritiro,B4.1
+15,DER005,Glutine,Derivati,Glutine di frumento puro,LOT20251115,Consegna,B4.2
+

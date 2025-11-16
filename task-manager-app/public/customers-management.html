@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestione Clienti - Molino Briganti</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2563eb;
+            --success: #16a34a;
+            --danger: #dc2626;
+            --warning: #ea580c;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a1a;
+            color: #e0e0e0;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: #2d2d2d;
+            padding: 10px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .header h1 {
+            font-size: 14px;
+            color: #e0e0e0;
+            margin: 0;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 8px 14px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1d4ed8;
+        }
+
+        .btn-secondary {
+            background: #3d3d3d;
+            color: #e0e0e0;
+            border: 1px solid #4d4d4d;
+        }
+
+        .btn-secondary:hover {
+            background: #4d4d4d;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+            padding: 6px 10px;
+            font-size: 11px;
+        }
+
+        .btn-danger:hover {
+            background: #b91c1c;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+            padding: 6px 10px;
+            font-size: 11px;
+        }
+
+        .btn-success:hover {
+            background: #15803d;
+        }
+
+        .card {
+            background: #2d2d2d;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+        }
+
+        .card h2 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #e0e0e0;
+        }
+
+        .customers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+        }
+
+        .customer-card {
+            background: #3d3d3d;
+            border-left: 4px solid var(--primary);
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid #4d4d4d;
+        }
+
+        .customer-card h3 {
+            color: #e0e0e0;
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+
+        .customer-info {
+            font-size: 13px;
+            color: #a0a0a0;
+            margin-bottom: 10px;
+        }
+
+        .customer-info p {
+            margin: 5px 0;
+        }
+
+        .customer-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #2d2d2d;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 5px 50px rgba(0,0,0,0.5);
+        }
+
+        .modal-content h2 {
+            margin-bottom: 20px;
+            color: #e0e0e0;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            font-size: 14px;
+            color: #e0e0e0;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #4d4d4d;
+            border-radius: 6px;
+            font-size: 14px;
+            background: #3d3d3d;
+            color: #e0e0e0;
+            font-family: inherit;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: flex-end;
+        }
+
+        .modal-actions .btn {
+            padding: 6px 10px;
+            min-height: 16px;
+            font-size: 11px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #808080;
+            font-size: 14px;
+        }
+
+        @media (max-width: 768px) {
+            .customers-grid {
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            }
+
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .header-actions {
+                width: 100%;
+                flex-wrap: wrap;
+            }
+
+            .customer-actions {
+                flex-direction: column;
+            }
+
+            .customer-actions .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .customers-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>👥 Gestione Clienti</h1>
+            <div class="header-actions">
+                <button class="btn btn-primary" onclick="openCustomerModal()">➕ Nuovo Cliente</button>
+                <button class="btn btn-secondary" onclick="goBack()">← Indietro</button>
+            </div>
+        </div>
+
+        <!-- Customers List -->
+        <div class="card">
+            <h2>📋 Clienti</h2>
+            <div class="customers-grid" id="customersGrid">
+                <!-- Customers will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Customer Modal -->
+    <div id="customerModal" class="modal">
+        <div class="modal-content">
+            <h2 id="modalTitle">📝 Nuovo Cliente</h2>
+            <form id="customerForm" onsubmit="saveCustomer(event)">
+                <div class="form-group">
+                    <label for="customerName">Nome Azienda *</label>
+                    <input type="text" id="customerName" required placeholder="Es. Azienda XYZ">
+                </div>
+                <div class="form-group">
+                    <label for="customerEmail">Email *</label>
+                    <input type="email" id="customerEmail" required placeholder="Es. info@azienda.it">
+                </div>
+                <div class="form-group">
+                    <label for="customerPhone">Telefono *</label>
+                    <input type="tel" id="customerPhone" required placeholder="Es. 0123456789">
+                </div>
+                <div class="form-group">
+                    <label for="customerAddress">Indirizzo *</label>
+                    <input type="text" id="customerAddress" required placeholder="Es. Via Roma 123">
+                </div>
+                <div class="form-group">
+                    <label for="customerCity">Città *</label>
+                    <input type="text" id="customerCity" required placeholder="Es. Milano">
+                </div>
+                <div class="form-group">
+                    <label>Orario Apertura Mattina *</label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="time" id="customerOpenMorningStart" required placeholder="Es. 08:00" style="flex: 1;" onchange="syncDeliveryHours()">
+                        <span style="color: #a0a0a0;">alle</span>
+                        <input type="time" id="customerOpenMorningEnd" required placeholder="Es. 13:00" style="flex: 1;" onchange="syncDeliveryHours()">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Orario Apertura Pomeriggio (opzionale)</label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="time" id="customerOpenAfternoonStart" placeholder="Es. 15:00" style="flex: 1;" onchange="syncDeliveryHours()">
+                        <span style="color: #a0a0a0;">alle</span>
+                        <input type="time" id="customerOpenAfternoonEnd" placeholder="Es. 19:00" style="flex: 1;" onchange="syncDeliveryHours()">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Finestra Consegne Mattina *</label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="time" id="customerDeliveryMorningStart" required placeholder="Es. 08:00" style="flex: 1;">
+                        <span style="color: #a0a0a0;">alle</span>
+                        <input type="time" id="customerDeliveryMorningEnd" required placeholder="Es. 12:00" style="flex: 1;">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Finestra Consegne Pomeriggio (opzionale)</label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="time" id="customerDeliveryAfternoonStart" placeholder="Es. 15:00" style="flex: 1;">
+                        <span style="color: #a0a0a0;">alle</span>
+                        <input type="time" id="customerDeliveryAfternoonEnd" placeholder="Es. 18:00" style="flex: 1;">
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary">💾 Salva</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeCustomerModal()">❌ Annulla</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let customers = [];
+        let editingCustomerId = null;
+
+        // Carica clienti da CSV
+        async function loadCustomers() {
+            try {
+                const response = await fetch('data/clienti.csv');
+                const text = await response.text();
+                const lines = text.trim().split('\n');
+                const headers = lines[0].split(',');
+                
+                customers = lines.slice(1).map(line => {
+                    const values = line.split(',');
+                    return {
+                        id: values[0].trim(),
+                        nome: values[1].trim(),
+                        email: values[2].trim(),
+                        telefono: values[3].trim(),
+                        indirizzo: values[4].trim(),
+                        città: values[5].trim(),
+                        orario_apertura: values[6]?.trim() || '',
+                        orario_chiusura: values[7]?.trim() || '',
+                        orario_consegna_inizio: values[8]?.trim() || '',
+                        orario_consegna_fine: values[9]?.trim() || '',
+                        // Parse split hours if available (format: "08:00-13:00,15:00-19:00")
+                        orari_split: values[6]?.includes('-') ? values[6].trim() : ''
+                    };
+                });
+
+                renderCustomers();
+            } catch (error) {
+                console.error('Errore caricamento clienti:', error);
+            }
+        }
+
+        // Renderizza clienti
+        function renderCustomers() {
+            const grid = document.getElementById('customersGrid');
+
+            if (customers.length === 0) {
+                grid.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;">Nessun cliente. Crea il primo cliente!</div>';
+                return;
+            }
+
+            grid.innerHTML = customers.map(customer => {
+                let orariDisplay = '';
+                if (customer.orario_apertura && customer.orario_chiusura) {
+                    orariDisplay = `<p>⏰ Apertura: ${customer.orario_apertura} - ${customer.orario_chiusura}</p>`;
+                }
+                if (customer.orario_consegna_inizio && customer.orario_consegna_fine) {
+                    orariDisplay += `<p>🚚 Consegne: ${customer.orario_consegna_inizio} - ${customer.orario_consegna_fine}</p>`;
+                }
+                
+                return `
+                <div class="customer-card">
+                    <h3>${customer.nome}</h3>
+                    <div class="customer-info">
+                        <p>📧 ${customer.email}</p>
+                        <p>📞 ${customer.telefono}</p>
+                        <p>📍 ${customer.indirizzo}</p>
+                        <p>🏙️ ${customer.città}</p>
+                        ${orariDisplay}
+                    </div>
+                    <div class="customer-actions">
+                        <button class="btn btn-success" onclick="editCustomer(${customer.id})">✏️ Modifica</button>
+                        <button class="btn btn-danger" onclick="deleteCustomer(${customer.id})">🗑️ Elimina</button>
+                    </div>
+                </div>
+            `}).join('');
+        }
+
+        // Sincronizza orari di consegna con orari di apertura
+        function syncDeliveryHours() {
+            const morningStart = document.getElementById('customerOpenMorningStart').value;
+            const morningEnd = document.getElementById('customerOpenMorningEnd').value;
+            const afternoonStart = document.getElementById('customerOpenAfternoonStart').value;
+            const afternoonEnd = document.getElementById('customerOpenAfternoonEnd').value;
+            
+            // Sincronizza solo se i campi di consegna sono vuoti
+            if (!document.getElementById('customerDeliveryMorningStart').value && morningStart) {
+                document.getElementById('customerDeliveryMorningStart').value = morningStart;
+            }
+            if (!document.getElementById('customerDeliveryMorningEnd').value && morningEnd) {
+                document.getElementById('customerDeliveryMorningEnd').value = morningEnd;
+            }
+            if (!document.getElementById('customerDeliveryAfternoonStart').value && afternoonStart) {
+                document.getElementById('customerDeliveryAfternoonStart').value = afternoonStart;
+            }
+            if (!document.getElementById('customerDeliveryAfternoonEnd').value && afternoonEnd) {
+                document.getElementById('customerDeliveryAfternoonEnd').value = afternoonEnd;
+            }
+        }
+
+        // Apri modal nuovo cliente
+        function openCustomerModal() {
+            editingCustomerId = null;
+            document.getElementById('modalTitle').textContent = '📝 Nuovo Cliente';
+            document.getElementById('customerForm').reset();
+            document.getElementById('customerModal').classList.add('active');
+        }
+
+        // Chiudi modal
+        function closeCustomerModal() {
+            document.getElementById('customerModal').classList.remove('active');
+            editingCustomerId = null;
+        }
+
+        // Modifica cliente
+        function editCustomer(id) {
+            const customer = customers.find(c => c.id == id);
+            if (!customer) return;
+
+            editingCustomerId = id;
+            document.getElementById('modalTitle').textContent = '✏️ Modifica Cliente';
+            document.getElementById('customerName').value = customer.nome;
+            document.getElementById('customerEmail').value = customer.email;
+            document.getElementById('customerPhone').value = customer.telefono;
+            document.getElementById('customerAddress').value = customer.indirizzo;
+            document.getElementById('customerCity').value = customer.città;
+            
+            // Parse opening hours (format: "08:00" or stored separately)
+            document.getElementById('customerOpenMorningStart').value = customer.orario_apertura || '';
+            document.getElementById('customerOpenMorningEnd').value = customer.orario_chiusura || '';
+            document.getElementById('customerOpenAfternoonStart').value = '';
+            document.getElementById('customerOpenAfternoonEnd').value = '';
+            
+            // Parse delivery windows
+            document.getElementById('customerDeliveryMorningStart').value = customer.orario_consegna_inizio || '';
+            document.getElementById('customerDeliveryMorningEnd').value = customer.orario_consegna_fine || '';
+            document.getElementById('customerDeliveryAfternoonStart').value = '';
+            document.getElementById('customerDeliveryAfternoonEnd').value = '';
+            document.getElementById('customerModal').classList.add('active');
+        }
+
+        // Salva cliente
+        function saveCustomer(event) {
+            event.preventDefault();
+
+            const morningStart = document.getElementById('customerOpenMorningStart').value;
+            const morningEnd = document.getElementById('customerOpenMorningEnd').value;
+            const afternoonStart = document.getElementById('customerOpenAfternoonStart').value;
+            const afternoonEnd = document.getElementById('customerOpenAfternoonEnd').value;
+            
+            const deliveryMorningStart = document.getElementById('customerDeliveryMorningStart').value;
+            const deliveryMorningEnd = document.getElementById('customerDeliveryMorningEnd').value;
+            const deliveryAfternoonStart = document.getElementById('customerDeliveryAfternoonStart').value;
+            const deliveryAfternoonEnd = document.getElementById('customerDeliveryAfternoonEnd').value;
+            
+            // Format: "08:00-13:00" or "08:00-13:00, 15:00-19:00"
+            let orarioDisplay = `${morningStart}-${morningEnd}`;
+            if (afternoonStart && afternoonEnd) {
+                orarioDisplay += `, ${afternoonStart}-${afternoonEnd}`;
+            }
+            
+            let deliveryDisplay = `${deliveryMorningStart}-${deliveryMorningEnd}`;
+            if (deliveryAfternoonStart && deliveryAfternoonEnd) {
+                deliveryDisplay += `, ${deliveryAfternoonStart}-${deliveryAfternoonEnd}`;
+            }
+            
+            const customerData = {
+                id: editingCustomerId || Math.max(...customers.map(c => parseInt(c.id)), 0) + 1,
+                nome: document.getElementById('customerName').value,
+                email: document.getElementById('customerEmail').value,
+                telefono: document.getElementById('customerPhone').value,
+                indirizzo: document.getElementById('customerAddress').value,
+                città: document.getElementById('customerCity').value,
+                orario_apertura: morningStart,
+                orario_chiusura: afternoonEnd || morningEnd,
+                orario_display: orarioDisplay,
+                orario_consegna_inizio: deliveryMorningStart,
+                orario_consegna_fine: deliveryAfternoonEnd || deliveryMorningEnd,
+                orario_consegna_display: deliveryDisplay
+            };
+
+            if (editingCustomerId) {
+                // Modifica cliente esistente
+                const index = customers.findIndex(c => c.id == editingCustomerId);
+                if (index >= 0) {
+                    customers[index] = customerData;
+                }
+            } else {
+                // Nuovo cliente
+                customers.push(customerData);
+            }
+
+            saveToLocalStorage();
+            renderCustomers();
+            closeCustomerModal();
+            alert('✅ Cliente salvato con successo!');
+        }
+
+        // Elimina cliente
+        function deleteCustomer(id) {
+            if (confirm('Sei sicuro di voler eliminare questo cliente?')) {
+                customers = customers.filter(c => c.id != id);
+                saveToLocalStorage();
+                renderCustomers();
+                alert('✅ Cliente eliminato!');
+            }
+        }
+
+        // Salva in localStorage
+        function saveToLocalStorage() {
+            localStorage.setItem('customers', JSON.stringify(customers));
+        }
+
+        // Carica da localStorage
+        function loadFromLocalStorage() {
+            const stored = localStorage.getItem('customers');
+            if (stored) {
+                customers = JSON.parse(stored);
+            }
+        }
+
+        // Torna indietro
+        function goBack() {
+            window.history.back();
+        }
+
+        // Inizializza
+        window.addEventListener('load', async () => {
+            await loadCustomers();
+            loadFromLocalStorage();
+            renderCustomers();
+        });
+    </script>
+</body>
+</html>
