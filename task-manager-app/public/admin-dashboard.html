@@ -57,20 +57,21 @@
 
         .header {
             background: #2d2d2d;
-            padding: 20px;
+            padding: 10px 20px;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.3);
             margin-bottom: 20px;
             display: flex;
             justify-content: space-between;
-            align-items: center;
+            align-items: flex-start;
+            gap: 15px;
         }
 
         .header-logo {
-            height: 50px;
-            margin-right: 20px;
+            height: 45px;
             display: flex;
             align-items: center;
+            flex-shrink: 0;
         }
 
         .header-logo img {
@@ -81,34 +82,45 @@
 
         .header-left {
             display: flex;
-            align-items: center;
-            gap: 15px;
+            align-items: flex-start;
+            gap: 12px;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .header-title {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
         }
 
         .header h1 {
-            font-size: 18px;
+            font-size: 14px;
             color: #e0e0e0;
             margin: 0;
+            line-height: 1.2;
         }
 
         .header-actions {
             display: flex;
             gap: 10px;
             align-items: center;
+            flex-shrink: 0;
         }
 
         .user-info {
-            font-size: 22px;
+            font-size: 16px;
             font-weight: 700;
             color: #e0e0e0;
             letter-spacing: 0.3px;
+            min-width: fit-content;
         }
 
         .btn {
-            padding: 12px 24px;
+            padding: 3px 6px;
             border: none;
             border-radius: 6px;
-            font-size: 18px;
+            font-size: 9px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
@@ -118,13 +130,13 @@
             display: flex;
             align-items: center;
             justify-content: flex-start;
-            gap: 12px;
-            min-height: 60px;
+            gap: 3px;
+            min-height: 16px;
         }
 
         .btn::before {
             content: attr(data-icon);
-            font-size: 36px;
+            font-size: 12px;
             flex-shrink: 0;
             display: flex;
             align-items: center;
@@ -135,8 +147,8 @@
             display: flex;
             flex-direction: column;
             align-items: flex-start;
-            line-height: 1.2;
-            font-size: 18px;
+            line-height: 1;
+            font-size: 8px;
         }
 
         .btn-primary {
@@ -179,28 +191,33 @@
 
         .stats {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 12px;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 8px;
             margin-bottom: 20px;
         }
 
         .stat-card {
             background: #2d2d2d;
-            padding: 15px;
+            padding: 6px 8px;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.3);
             border-left: 4px solid var(--primary);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 40px;
         }
 
         .stat-card .number {
-            font-size: 28px;
+            font-size: 16px;
             font-weight: bold;
             color: #e0e0e0;
-            margin-bottom: 3px;
+            margin-bottom: 0px;
         }
 
         .stat-card .label {
-            font-size: 12px;
+            font-size: 9px;
             color: #a0a0a0;
         }
 
@@ -209,12 +226,6 @@
             gap: 10px;
             margin-bottom: 20px;
             flex-wrap: wrap;
-        }
-
-        .quick-actions .btn {
-            flex: 1;
-            min-width: 150px;
-            padding: 12px 16px;
         }
 
         .card-header {
@@ -376,7 +387,9 @@
 
         .btn-small {
             padding: 6px 12px;
-            font-size: 14px;
+            font-size: 12px;
+            min-height: auto;
+            height: 32px;
         }
 
         .empty-state {
@@ -504,54 +517,49 @@
 
         @media (max-width: 768px) {
             .header {
-                flex-direction: column;
-                gap: 12px;
-                padding: 15px;
-                align-items: stretch;
+                flex-direction: row;
+                gap: 10px;
+                padding: 10px 15px;
+                align-items: flex-start;
             }
 
             .header-left {
-                flex-direction: column;
-                align-items: center;
-                text-align: center;
-                gap: 8px;
-                width: 100%;
+                gap: 10px;
+                align-items: flex-start;
             }
 
             .header-logo {
-                height: 45px;
-                margin-right: 0;
-                justify-content: center;
+                height: 40px;
             }
 
             .header h1 {
-                font-size: 16px;
+                font-size: 13px;
             }
 
             .header-actions {
                 flex-wrap: wrap;
-                justify-content: center;
-                width: 100%;
+                justify-content: flex-end;
+                gap: 8px;
             }
 
             .user-info {
-                font-size: 18px;
-                order: -1;
+                font-size: 14px;
             }
 
             .header .btn-danger {
                 min-width: auto;
-                padding: 10px 16px;
-                font-size: 14px;
-                min-height: 45px;
+                padding: 8px 14px;
+                font-size: 12px;
+                min-height: auto;
+                gap: 6px;
             }
 
             .header .btn-danger::before {
-                font-size: 20px;
+                font-size: 16px;
             }
 
             .header .btn-danger span {
-                font-size: 13px;
+                font-size: 12px;
             }
 
             .quick-actions {
@@ -563,102 +571,78 @@
             .quick-actions .btn {
                 flex: 0 1 calc(50% - 4px);
                 min-width: auto;
-                padding: 10px 12px;
-                gap: 8px;
+                padding: 4px 8px;
+                gap: 3px;
+                min-height: 16px;
+            }
+
+            .quick-actions .btn::before {
+                font-size: 12px;
+            }
+
+            .quick-actions .btn span {
+                font-size: 8px;
+                line-height: 1;
             }
 
             .btn::before {
-                font-size: 28px;
+                font-size: 12px;
             }
 
             .btn span {
-                font-size: 16px;
-                line-height: 1.1;
-            }
-
-            .main-content {
-                grid-template-columns: 1fr;
-                display: flex;
-                flex-direction: column;
-            }
-
-            .main-content > .card:first-child {
-                order: 2;
-            }
-
-            .main-content > div:not(.card) {
-                order: 1;
-            }
-
-            .card {
-                padding: 18px;
-            }
-
-            .card-header {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-
-            .task-item {
-                padding: 14px;
-            }
-
-            .task-item .task-actions {
-                flex-wrap: wrap;
+                font-size: 8px;
+                line-height: 1;
             }
         }
 
         @media (max-width: 480px) {
             .header {
-                flex-direction: column;
-                gap: 10px;
-                padding: 12px;
+                flex-direction: row;
+                gap: 8px;
+                padding: 8px 12px;
+                align-items: flex-start;
             }
 
             .header-left {
-                flex-direction: column;
-                align-items: center;
-                text-align: center;
-                gap: 6px;
-                width: 100%;
+                gap: 8px;
+                min-width: 0;
             }
 
             .header-logo {
-                height: 40px;
-                margin-right: 0;
+                height: 35px;
             }
 
             .header h1 {
-                font-size: 14px;
+                font-size: 12px;
             }
 
             .header-actions {
-                flex-direction: column;
-                gap: 8px;
-                width: 100%;
-                justify-content: center;
+                flex-direction: row;
+                gap: 6px;
+                width: auto;
+                justify-content: flex-end;
+                flex-shrink: 0;
             }
 
             .user-info {
-                font-size: 16px;
-                text-align: center;
-                width: 100%;
-                order: -1;
+                font-size: 12px;
+                min-width: fit-content;
             }
 
             .header .btn-danger {
-                width: 100%;
-                min-height: 42px;
-                font-size: 13px;
-                padding: 8px 12px;
+                width: auto;
+                min-height: auto;
+                font-size: 11px;
+                padding: 6px 10px;
+                gap: 4px;
             }
 
             .header .btn-danger::before {
-                font-size: 18px;
+                font-size: 14px;
             }
 
             .header .btn-danger span {
-                font-size: 12px;
+                font-size: 10px;
             }
 
             .quick-actions {
@@ -669,19 +653,28 @@
             .quick-actions .btn {
                 min-width: auto;
                 width: 100%;
-                padding: 10px 14px;
-                gap: 10px;
-                font-size: 18px;
-                min-height: 55px;
+                padding: 3px 6px;
+                gap: 3px;
+                font-size: 9px;
+                min-height: 16px;
+            }
+
+            .quick-actions .btn::before {
+                font-size: 10px;
+            }
+
+            .quick-actions .btn span {
+                font-size: 7px;
+                line-height: 1;
             }
 
             .btn::before {
-                font-size: 28px;
+                font-size: 10px;
             }
 
             .btn span {
-                font-size: 16px;
-                line-height: 1.1;
+                font-size: 7px;
+                line-height: 1;
             }
 
             .card {
@@ -729,6 +722,28 @@
                 padding: 6px 8px;
                 font-size: 12px;
             }
+
+            .main-content {
+                grid-template-columns: 1fr;
+                display: flex;
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .main-content > .card {
+                min-width: 0;
+                max-width: 100%;
+            }
+
+            .filter-bar {
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .filter-bar input,
+            .filter-bar select {
+                width: 100%;
+            }
         }
     </style>
 </head>
@@ -740,10 +755,12 @@
                 <div class="header-logo">
                     <img src="images/logo INSEGNA.png" alt="Molino Briganti Logo">
                 </div>
-                <h1>📊 Admin Dashboard</h1>
+                <div class="header-title">
+                    <h1>📊 Admin Dashboard</h1>
+                    <div class="user-info" id="userInfo"></div>
+                </div>
             </div>
             <div class="header-actions">
-                <div class="user-info" id="userInfo"></div>
                 <button class="btn btn-danger" data-icon="🚪" onclick="handleLogout()"><span>Logout</span></button>
             </div>
         </div>
@@ -760,64 +777,58 @@
             <button class="btn btn-primary" data-icon="👥" onclick="window.location.href='operators.html'"><span>Gestione<br>Admin / Operatori</span></button>
         </div>
 
-        <!-- Main Content -->
-        <div class="main-content">
-            <!-- Calendar -->
-            <div class="card" style="padding: 12px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <button class="btn btn-primary" onclick="previousMonth()" style="padding: 8px 12px; font-size: 16px; min-width: auto; width: 40px; display: flex; align-items: center; justify-content: center;">◀</button>
-                    <h4 id="calendarMonthYear" style="margin: 0; color: #e0e0e0; font-size: 16px;"></h4>
-                    <button class="btn btn-primary" onclick="nextMonth()" style="padding: 8px 12px; font-size: 16px; min-width: auto; width: 40px; display: flex; align-items: center; justify-content: center;">▶</button>
-                </div>
-                <div id="calendarContainer" class="calendar-container">
-                    <!-- Calendar will be generated here -->
+        <!-- Calendar -->
+        <div class="card" style="padding: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <button class="btn btn-primary" onclick="previousMonth()" style="padding: 8px 12px; font-size: 16px; min-width: auto; width: 40px; display: flex; align-items: center; justify-content: center;">◀</button>
+                <h4 id="calendarMonthYear" style="margin: 0; color: #e0e0e0; font-size: 16px;"></h4>
+                <button class="btn btn-primary" onclick="nextMonth()" style="padding: 8px 12px; font-size: 16px; min-width: auto; width: 40px; display: flex; align-items: center; justify-content: center;">▶</button>
+            </div>
+            <div id="calendarContainer" class="calendar-container">
+                <!-- Calendar will be generated here -->
+            </div>
+            <div style="text-align: center; margin-top: 15px; display: flex; gap: 10px; justify-content: center;">
+                <button class="btn btn-secondary" data-icon="👁️" onclick="toggleOperatorTasks()" id="toggleTasksBtn" style="display: inline-flex; font-size: 14px; padding: 8px 14px; min-height: auto;"><span>Visualizza<br>Task Operatori</span></button>
+                <button class="btn btn-secondary" data-icon="⬅️" onclick="toggleOperatorTasks()" id="backToMyTasksBtn" style="display: none; font-size: 14px; padding: 8px 14px; min-height: auto;"><span>Visualizza<br>I Miei Task</span></button>
+            </div>
+        </div>
+
+        <!-- Day Tasks Card -->
+        <div class="card" id="dayTasksCard" style="display: none; margin: 20px auto; margin-top: 20px; max-width: 900px; border: 2px solid #4CAF50; background: linear-gradient(135deg, #2d2d2d 0%, #3d3d3d 100%); position: relative; z-index: 100;">
+            <div class="card-header">
+                <h2 id="dayTasksTitle">📅 Task del Giorno</h2>
+                <button class="btn btn-secondary btn-small" onclick="closeDayTasksCard()" style="padding: 6px 12px;" data-icon="❌"><span>Chiudi</span></button>
+            </div>
+            <div id="dayTasksList" class="task-list">
+                <div class="empty-state">
+                    <p>Nessun task per questo giorno</p>
                 </div>
             </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
 
             <!-- Task List with Filters -->
             <div class="card" id="operatorTasksCard" style="display: none;">
-                <div style="text-align: center; margin-bottom: 15px;">
-                    <button class="btn btn-secondary" data-icon="⬅️" onclick="toggleOperatorTasks()" id="backToMyTasksBtn" style="display: inline-flex; margin: 0 auto;"><span>Torna ai<br>Miei Task</span></button>
-                </div>
                 <div class="card-header">
                     <h2>📋 Task Operatori</h2>
                 </div>
                 
                 <!-- Filters Inside Card -->
                 <div class="filter-bar" style="margin-bottom: 20px; border-bottom: 1px solid #4d4d4d; padding-bottom: 15px;">
-                    <label style="font-weight: 600; display: block; margin-bottom: 10px; color: #e0e0e0;">🔍 Filtri:</label>
-                    <div style="display: flex; gap: 10px;">
-                        <select id="operatorFilter" aria-label="Filtra per operatore" onchange="applyFilters()" style="flex: 1;">
-                            <option value="">Tutti gli Operatori</option>
-                        </select>
-                        <select id="statusFilter" aria-label="Filtra per stato" onchange="applyFilters()" style="flex: 1;">
-                            <option value="">Tutti gli Stati</option>
-                            <option value="pending">In Sospeso</option>
-                            <option value="accepted">Accettato</option>
-                            <option value="completed">Completato</option>
-                        </select>
-                    </div>
                 </div>
                 
                 <div id="tasksList" class="task-list">
-                    <div class="empty-state">
-                        <p>Nessun task disponibile</p>
-                    </div>
                 </div>
             </div>
 
             <!-- My Tasks (Admin Personal Tasks) -->
             <div class="card" id="myTasksCard">
-                <div style="text-align: center; margin-bottom: 15px;">
-                    <button class="btn btn-secondary" data-icon="👁️" onclick="toggleOperatorTasks()" id="toggleTasksBtn" style="display: inline-flex; margin: 0 auto;"><span>Visualizza<br>Task Operatori</span></button>
-                </div>
                 <div class="card-header">
                     <h2>📋 I Miei Task</h2>
                 </div>
                 <div id="adminTasksList" class="task-list">
-                    <div class="empty-state">
-                        <p>Nessun task personale</p>
-                    </div>
                 </div>
             </div>
         </div>
@@ -962,8 +973,10 @@
 
         function renderTasks() {
             const container = document.getElementById('tasksList');
-            const operatorFilter = document.getElementById('operatorFilter').value;
-            const statusFilter = document.getElementById('statusFilter').value;
+            const operatorFilterEl = document.getElementById('operatorFilter');
+            const statusFilterEl = document.getElementById('statusFilter');
+            const operatorFilter = operatorFilterEl ? operatorFilterEl.value : '';
+            const statusFilter = statusFilterEl ? statusFilterEl.value : '';
 
             let filtered = allTasks;
             
@@ -2194,7 +2207,7 @@
                 // Mostra Task Operatori, nascondi I Miei Task
                 operatorCard.style.display = 'block';
                 myTasksCard.style.display = 'none';
-                span.innerHTML = 'Torna ai<br>Miei Task';
+                span.innerHTML = 'Visualizza<br>I Miei Task';
                 currentViewMode = 'operatorTasks';
             } else {
                 // Nascondi Task Operatori, mostra I Miei Task
