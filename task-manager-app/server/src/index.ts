@@ -9,7 +9,6 @@ import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
 import tasksRoutes from './routes/tasks';
 import authRoutes from './routes/auth';
-import settingsRoutes from './routes/settings';
 
 const app = express();
 const prisma = new PrismaClient();
@@ -25,7 +24,6 @@ app.use(express.static(path.join(__dirname, '../../public')));
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/tasks', tasksRoutes);
-app.use('/api/settings', settingsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
