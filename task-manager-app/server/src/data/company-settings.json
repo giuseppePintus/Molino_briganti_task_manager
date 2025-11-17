@@ -1,0 +1,31 @@
+{
+  "businessName": "Molino Briganti",
+  "logoUrl": "images/logo INSEGNA.png",
+  "openingDays": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+  ],
+  "openMorningStart": "08:00",
+  "openMorningEnd": "13:00",
+  "openAfternoonStart": "15:00",
+  "openAfternoonEnd": "18:00",
+  "deliveryDays": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+  ],
+  "deliveryMorningStart": "08:00",
+  "deliveryMorningEnd": "12:00",
+  "deliveryAfternoonStart": "15:00",
+  "deliveryAfternoonEnd": "18:00",
+  "holidays": [],
+  "vehicles": 2,
+  "updatedAt": "2025-11-17T18:30:25.906Z"
+}
