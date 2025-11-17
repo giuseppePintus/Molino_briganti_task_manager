@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Planner Ordini - Molino Briganti</title>
+    <link rel="stylesheet" href="css/common.css">
     <style>
         * {
             margin: 0;
@@ -33,166 +34,9 @@
             padding: 20px;
         }
 
-        .header {
-            background: #2d2d2d;
-            padding: 10px 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 15px;
-            flex-wrap: wrap;
-        }
+        /* Header styles unified via css/common.css */
 
-        @media (max-width: 768px) {
-            .header {
-                padding: 8px 12px;
-                gap: 10px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .header {
-                padding: 6px 10px;
-                gap: 8px;
-                flex-direction: column;
-            }
-        }
-
-        .header-left {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            flex: 1;
-            min-width: 0;
-        }
-
-        .header-logo {
-            flex-shrink: 0;
-        }
-
-        .header-logo img {
-            height: 45px;
-            width: auto;
-            display: block;
-        }
-
-        .header-title {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .header h1 {
-            font-size: 24px;
-            color: #e0e0e0;
-            margin: 0;
-            margin-bottom: 4px;
-        }
-
-        .user-info {
-            font-size: 14px;
-            color: #a0a0a0;
-        }
-
-        @media (max-width: 768px) {
-            .header h1 {
-                font-size: 12px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .header h1 {
-                font-size: 11px;
-            }
-        }
-
-        .header-actions {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            flex-shrink: 0;
-            flex-wrap: wrap;
-        }
-
-        @media (max-width: 768px) {
-            .header-actions {
-                gap: 6px;
-            }
-
-            .header-actions .btn {
-                padding: 6px 10px;
-                font-size: 11px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .header-actions {
-                width: 100%;
-                gap: 6px;
-                justify-content: flex-start;
-            }
-
-            .header-actions .btn {
-                padding: 5px 8px;
-                font-size: 10px;
-                flex: 1;
-                min-width: 80px;
-                justify-content: center;
-            }
-        }
-
-        .btn {
-            padding: 8px 14px;
-            border: none;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .btn-primary {
-            background: var(--primary);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: #1d4ed8;
-            transform: translateY(-2px);
-        }
-
-        .btn-secondary {
-            background: #3d3d3d;
-            color: #e0e0e0;
-            border: 1px solid #4d4d4d;
-        }
-
-        .btn-secondary:hover {
-            background: #4d4d4d;
-        }
-
-        .btn-warning {
-            background: var(--warning);
-            color: white;
-        }
-
-        .btn-warning:hover {
-            background: #d97706;
-        }
-
-        .btn-danger {
-            background: var(--danger);
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background: #b91c1c;
-        }
+        /* Base button styles moved to css/common.css. Page keeps only contextual overrides. */
 
         .card {
             background: #2d2d2d;
@@ -480,6 +324,20 @@
             color: #a0a0a0;
         }
 
+        /* Planner Actions (below stats) */
+        .planner-actions {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0 20px 0;
+            flex-wrap: wrap;
+        }
+        @media (max-width: 768px) {
+            .planner-actions .btn { padding: 8px 12px; font-size: 13px; }
+        }
+        @media (max-width: 480px) {
+            .planner-actions { gap: 8px; }
+            .planner-actions .btn { flex: 1; justify-content: center; }
+        }
         @media (max-width: 768px) {
             .stats-overview {
                 grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
@@ -648,19 +506,52 @@
         }
 
         @media (max-width: 480px) {
+            /* Mobile: mantieni le frecce in riga come admin */
             .calendar-header {
-                display: flex;
-                flex-direction: column;
+                display: grid !important;
+                grid-template-columns: 40px 1fr 40px;
+                grid-template-rows: auto;
+                align-items: center;
                 gap: 8px;
+                margin-bottom: 15px;
             }
 
-            .calendar-btn-prev, .calendar-btn-next {
-                padding: 8px 10px;
-                font-size: 14px;
+            .calendar-btn-prev {
+                grid-column: 1;
+                grid-row: 1;
+                width: 40px !important;
+                height: 40px;
+                padding: 0 !important;
+                font-size: 18px !important;
+                min-width: 40px !important;
+                max-width: 40px !important;
+                justify-self: start;
             }
 
             .calendar-title {
+                grid-column: 2;
+                grid-row: 1;
                 font-size: 14px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                min-width: 0;
+                margin: 0 4px;
+            }
+
+            .calendar-btn-next {
+                grid-column: 3;
+                grid-row: 1;
+                width: 40px !important;
+                height: 40px;
+                padding: 0 !important;
+                font-size: 18px !important;
+                min-width: 40px !important;
+                max-width: 40px !important;
+                justify-self: end;
             }
         }
     </style>
@@ -679,9 +570,6 @@
                 </div>
             </div>
             <div class="header-actions">
-                <button class="btn btn-primary" onclick="openOrderModal()">➕ Nuovo Ordine</button>
-                <button class="btn btn-primary" onclick="openTripsManager()" style="background: #16a34a;">🚚 Gestisci Viaggi</button>
-                <button class="btn btn-warning" onclick="generateSampleOrders()">🔄 Genera Dati</button>
                 <button class="btn btn-secondary" onclick="goBack()">← Indietro</button>
             </div>
         </div>
@@ -700,6 +588,13 @@
                 <div class="stat-number" id="completedOrders">0</div>
                 <div class="stat-label">Completati</div>
             </div>
+        </div>
+
+        <!-- Planner Actions moved below stats -->
+        <div class="planner-actions">
+            <button class="btn btn-primary" onclick="openOrderModal()">➕ Nuovo Ordine</button>
+            <button class="btn btn-success" onclick="openTripsManager()">🚚 Gestisci Viaggi</button>
+            <button class="btn btn-warning" onclick="generateSampleOrders()">🔄 Genera Dati</button>
         </div>
 
         <!-- Calendar -->
@@ -1425,7 +1320,9 @@
                 date: date,
                 orderIds: [],
                 sequence: [],
-                createdAt: new Date().toISOString()
+                createdAt: new Date().toISOString(),
+                assignedOperatorId: null,
+                tripTaskId: null
             };
             trips.push(trip);
             saveTrips();
@@ -1443,6 +1340,8 @@
                     order.tripId = tripId;
                     saveOrders();
                 }
+                // Sync trip task with backend
+                syncTripTask(tripId);
             }
         }
 
@@ -1457,6 +1356,13 @@
                     delete order.tripId;
                     saveOrders();
                 }
+                // If no more orders, delete trip task, else update it
+                const remaining = trip.orderIds.length;
+                if (remaining === 0) {
+                    deleteTripTask(tripId);
+                } else {
+                    syncTripTask(tripId);
+                }
             }
         }
 
@@ -1469,6 +1375,8 @@
                 }
             });
             saveOrders();
+            // Remove backend task too
+            deleteTripTask(tripId);
         }
 
         function reorderTripSequence(tripId, newSequence) {
@@ -1476,6 +1384,8 @@
             if (trip) {
                 trip.sequence = newSequence;
                 saveTrips();
+                // Re-sequencing changes description; update backend task if exists
+                syncTripTask(tripId);
             }
         }
 
@@ -1495,6 +1405,86 @@
                 totals[order.product] += parseFloat(order.quantity || 0);
             });
             return totals;
+        }
+
+        // === Task Viaggio (un task per viaggio) ===
+        function buildTripTaskTitle(trip) {
+            const d = trip.date ? new Date(trip.date) : null;
+            const dateStr = d ? d.toLocaleDateString('it-IT') : '';
+            return `🚚 Viaggio: ${trip.name}${dateStr ? ' • ' + dateStr : ''}`;
+        }
+
+        function buildTripTaskDescription(trip) {
+            const tripOrders = getTripOrders(trip.id);
+            const totals = calculateTripTotals(trip.id);
+            const ordersList = tripOrders.map((o, idx) => `#${idx + 1} ${o.client} • ${o.product} ${o.quantity}kg`).join('\n');
+            const totalsList = Object.entries(totals).map(([p, q]) => `${p}: ${q.toFixed(1)}kg`).join(', ');
+            return `Ordini nel viaggio: ${tripOrders.length}\n\nSequenza:\n${ordersList || '-'}\n\nTotali prodotti: ${totalsList || '-'}`;
+        }
+
+        async function syncTripTask(tripId) {
+            try {
+                const trip = trips.find(t => t.id === tripId);
+                if (!trip) return;
+                if (!currentUser?.id || currentUser?.role !== 'master') return; // solo admin crea/aggiorna
+                const auth = localStorage.getItem('token') || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+                if (!auth) return;
+                // Crea/aggiorna solo se ci sono ordini
+                if (!trip.orderIds || trip.orderIds.length === 0) return;
+
+                const payload = {
+                    title: buildTripTaskTitle(trip),
+                    description: buildTripTaskDescription(trip),
+                    scheduledAt: trip.date || null,
+                    assignedOperatorId: trip.assignedOperatorId || null,
+                    estimatedMinutes: Math.max(60, getTripOrders(trip.id).length * 15),
+                    priority: 'HIGH'
+                };
+
+                if (trip.tripTaskId) {
+                    const resp = await fetch(`${API_URL}/tasks/${trip.tripTaskId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${auth}` },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!resp.ok) console.warn('Aggiornamento task viaggio fallito', resp.status);
+                } else {
+                    const resp = await fetch(`${API_URL}/tasks`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${auth}` },
+                        body: JSON.stringify(payload)
+                    });
+                    if (resp.ok) {
+                        const saved = await resp.json();
+                        trip.tripTaskId = saved.id;
+                        saveTrips();
+                    } else {
+                        console.warn('Creazione task viaggio fallita', resp.status);
+                    }
+                }
+            } catch (e) {
+                console.error('Errore syncTripTask:', e);
+            }
+        }
+
+        async function deleteTripTask(tripId) {
+            try {
+                const trip = trips.find(t => t.id === tripId);
+                if (!trip || !trip.tripTaskId) return;
+                if (!currentUser?.id || currentUser?.role !== 'master') return;
+                const auth = localStorage.getItem('token') || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+                if (!auth) return;
+                const resp = await fetch(`${API_URL}/tasks/${trip.tripTaskId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${auth}` }
+                });
+                if (resp.status === 204 || resp.ok) {
+                    trip.tripTaskId = null;
+                    saveTrips();
+                }
+            } catch (e) {
+                console.error('Errore deleteTripTask:', e);
+            }
         }
 
         // Apri modal ordine
@@ -2153,6 +2143,7 @@
             if (!trip) return;
 
             document.getElementById('tripOrdersTitle').textContent = `📦 ${trip.name} - Gestione Ordini`;
+            renderTripOperatorAssign(tripId);
             renderAvailableOrders(tripId);
             renderTripOrdersList(tripId);
             renderTripTotals(tripId);
@@ -2274,6 +2265,33 @@
             renderTripOrdersList(tripId);
         }
 
+        function renderTripOperatorAssign(tripId) {
+            const container = document.getElementById('tripOperatorAssign');
+            const select = document.getElementById('tripOperatorSelect');
+            const trip = trips.find(t => t.id === tripId);
+            if (!trip || !select) return;
+            // Populate operators select (prefer operators/slave)
+            const ops = allOperators || [];
+            select.innerHTML = '<option value="">-- Non assegnato --</option>' +
+                ops.map(op => `<option value="${op.id}">${op.username}</option>`).join('');
+            if (trip.assignedOperatorId) {
+                select.value = String(trip.assignedOperatorId);
+            }
+        }
+
+        function saveTripOperator() {
+            if (!currentTripId) return;
+            const trip = trips.find(t => t.id === currentTripId);
+            if (!trip) return;
+            const select = document.getElementById('tripOperatorSelect');
+            const val = select && select.value ? parseInt(select.value) : null;
+            trip.assignedOperatorId = val || null;
+            saveTrips();
+            // Update or create the backend task with new assignment
+            syncTripTask(trip.id);
+            alert('✅ Operatore viaggio salvato');
+        }
+
         // Inizializza
         window.addEventListener('load', async () => {
                 // Display user info
@@ -2354,6 +2372,11 @@
     <div id="tripOrdersModal" class="modal">
         <div class="modal-content" style="max-width:800px;max-height:80vh;overflow-y:auto;">
             <h2 id="tripOrdersTitle">📦 Gestione Ordini Viaggio</h2>
+            <div id="tripOperatorAssign" style="margin:10px 0 18px 0;padding:10px;background:#2d2d2d;border-radius:6px;border:1px solid #4d4d4d;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                <label for="tripOperatorSelect" style="font-weight:600;color:#e0e0e0;">👷 Operatore del Viaggio:</label>
+                <select id="tripOperatorSelect" style="flex:1;min-width:220px;padding:8px;background:#3d3d3d;border:1px solid #4d4d4d;border-radius:6px;color:#e0e0e0;"></select>
+                <button class="btn btn-primary" onclick="saveTripOperator()">💾 Salva</button>
+            </div>
             <div style="margin-bottom:15px;">
                 <h3 style="font-size:16px;margin-bottom:10px;">Ordini Disponibili (consegnati):</h3>
                 <div id="availableOrdersList" style="max-height:200px;overflow-y:auto;background:#3d3d3d;padding:10px;border-radius:6px;"></div>

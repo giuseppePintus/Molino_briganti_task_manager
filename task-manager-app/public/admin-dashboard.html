@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - Molino Briganti</title>
+    <link rel="stylesheet" href="css/common.css">
     <style>
         * {
             margin: 0;
@@ -116,81 +117,8 @@
             min-width: fit-content;
         }
 
-        .btn {
-            padding: 3px 6px;
-            border: none;
-            border-radius: 6px;
-            font-size: 9px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            letter-spacing: 0.5px;
-            position: relative;
-            overflow: visible;
-            display: flex;
-            align-items: center;
-            justify-content: flex-start;
-            gap: 3px;
-            min-height: 16px;
-        }
-
-        .btn::before {
-            content: attr(data-icon);
-            font-size: 12px;
-            flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .btn span {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            line-height: 1;
-            font-size: 11px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .btn-primary {
-            background: var(--primary);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: #1d4ed8;
-            transform: translateY(-2px);
-        }
-
-        .btn-success {
-            background: var(--success);
-            color: white;
-        }
-
-        .btn-success:hover {
-            background: #15803d;
-        }
-
-        .btn-danger {
-            background: var(--danger);
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background: #b91c1c;
-        }
-
-        .btn-secondary {
-            background: #3d3d3d;
-            color: #e0e0e0;
-            border: 1px solid #4d4d4d;
-        }
-
-        .btn-secondary:hover {
-            background: #4d4d4d;
-        }
+        /* Base button styles moved to css/common.css. */
+        /* Keep page-specific overrides below (quick-actions, modal-actions, etc.). */
 
         .stats {
             display: grid;

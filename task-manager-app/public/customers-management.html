@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestione Clienti - Molino Briganti</title>
+    <link rel="stylesheet" href="css/common.css">
     <style>
         * {
             margin: 0;
@@ -30,82 +31,10 @@
             padding: 20px;
         }
 
-        .header {
-            background: #2d2d2d;
-            padding: 10px 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 15px;
-        }
+        /* Header styles unified via css/common.css */
+        .header-actions { display: flex; gap: 10px; }
 
-        .header h1 {
-            font-size: 14px;
-            color: #e0e0e0;
-            margin: 0;
-        }
-
-        .header-actions {
-            display: flex;
-            gap: 10px;
-        }
-
-        .btn {
-            padding: 8px 14px;
-            border: none;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .btn-primary {
-            background: var(--primary);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: #1d4ed8;
-        }
-
-        .btn-secondary {
-            background: #3d3d3d;
-            color: #e0e0e0;
-            border: 1px solid #4d4d4d;
-        }
-
-        .btn-secondary:hover {
-            background: #4d4d4d;
-        }
-
-        .btn-danger {
-            background: var(--danger);
-            color: white;
-            padding: 6px 10px;
-            font-size: 11px;
-        }
-
-        .btn-danger:hover {
-            background: #b91c1c;
-        }
-
-        .btn-success {
-            background: var(--success);
-            color: white;
-            padding: 6px 10px;
-            font-size: 11px;
-        }
-
-        .btn-success:hover {
-            background: #15803d;
-        }
+        /* Base button styles moved to css/common.css. Keep only contextual size overrides below. */
 
         .card {
             background: #2d2d2d;
@@ -242,28 +171,10 @@
         }
 
         @media (max-width: 768px) {
-            .customers-grid {
-                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            }
-
-            .header {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-
-            .header-actions {
-                width: 100%;
-                flex-wrap: wrap;
-            }
-
-            .customer-actions {
-                flex-direction: column;
-            }
-
-            .customer-actions .btn {
-                width: 100%;
-                justify-content: center;
-            }
+            .customers-grid { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
+            .header-actions { width: 100%; flex-wrap: wrap; }
+            .customer-actions { flex-direction: column; }
+            .customer-actions .btn { width: 100%; justify-content: center; }
         }
 
         @media (max-width: 480px) {
@@ -277,7 +188,14 @@
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <h1>👥 Gestione Clienti</h1>
+            <div class="header-left">
+                <div class="header-logo">
+                    <img src="images/logo INSEGNA.png" alt="Molino Briganti Logo">
+                </div>
+                <div class="header-title">
+                    <h1>👥 Gestione Clienti</h1>
+                </div>
+            </div>
             <div class="header-actions">
                 <button class="btn btn-primary" onclick="openCustomerModal()">➕ Nuovo Cliente</button>
                 <button class="btn btn-secondary" onclick="goBack()">← Indietro</button>
