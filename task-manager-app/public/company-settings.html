@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Impostazioni Azienda - Molino Briganti</title>
+  <link rel="stylesheet" href="css/common.css">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:#1a1a1a; color:#e0e0e0; }
+    .container { max-width: 1000px; margin: 0 auto; padding: 20px; }
+    .card { background:#2d2d2d; padding:20px; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.3); margin-bottom:20px; }
+    .card h2 { font-size:20px; margin-bottom:12px; }
+    .form-row { display:grid; grid-template-columns:1fr 1fr; gap:15px; }
+    .form-group { margin-bottom:12px; }
+    .form-group label { display:block; font-weight:600; margin-bottom:6px; }
+    .form-group input, .form-group select { width:100%; padding:10px; border:1px solid #4d4d4d; border-radius:6px; background:#3d3d3d; color:#e0e0e0; }
+    .days-grid { display:grid; grid-template-columns: repeat(7, 1fr); gap:8px; }
+    .day-item { background:#3d3d3d; border:1px solid #4d4d4d; padding:8px; border-radius:6px; display:flex; gap:6px; align-items:center; justify-content:center; }
+    .section { margin-top:10px; }
+    .holidays { display:flex; gap:10px; align-items:center; margin-top:8px; }
+    .holidays-list { margin-top:10px; display:flex; flex-wrap:wrap; gap:8px; }
+    .holiday-pill { background:#3d3d3d; border:1px solid #4d4d4d; color:#e0e0e0; padding:6px 10px; border-radius:999px; display:flex; align-items:center; gap:8px; font-size:12px; }
+    .holiday-pill button { padding:2px 6px; font-size:11px; }
+    @media (max-width: 768px) { .form-row { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="header-left">
+        <div class="header-logo">
+          <img src="images/logo INSEGNA.png" alt="Molino Briganti Logo">
+        </div>
+        <div class="header-title">
+          <h1>🏢 Impostazioni Azienda</h1>
+          <div class="user-info" id="userInfo"></div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-secondary" onclick="goBack()">← Indietro</button>
+      </div>
+    </div>
+
+    <div id="alert" class="alert"></div>
+
+    <div class="card">
+      <h2>📇 Dati Aziendali</h2>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="businessName">Ragione Sociale</label>
+          <input type="text" id="businessName" placeholder="Es. Molino Briganti S.r.l.">
+        </div>
+        <div class="form-group">
+          <label for="logoUrl">Logo (URL)</label>
+          <input type="text" id="logoUrl" placeholder="https://...">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🕒 Giorni e Orari di Apertura</h2>
+      <div class="section">
+        <label>Giorni di apertura</label>
+        <div id="openingDays" class="days-grid"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Mattina (inizio - fine)</label>
+          <div style="display:flex; gap:10px;">
+            <input type="time" id="openMorningStart" value="08:00">
+            <input type="time" id="openMorningEnd" value="13:00">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Pomeriggio (inizio - fine, opzionale)</label>
+          <div style="display:flex; gap:10px;">
+            <input type="time" id="openAfternoonStart" value="15:00">
+            <input type="time" id="openAfternoonEnd" value="18:00">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🚚 Giorni e Orari di Consegna/Ritiro</h2>
+      <div class="section">
+        <label>Giorni di consegna/ritiro</label>
+        <div id="deliveryDays" class="days-grid"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Mattina (inizio - fine)</label>
+          <div style="display:flex; gap:10px;">
+            <input type="time" id="deliveryMorningStart" value="08:00">
+            <input type="time" id="deliveryMorningEnd" value="12:00">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Pomeriggio (inizio - fine, opzionale)</label>
+          <div style="display:flex; gap:10px;">
+            <input type="time" id="deliveryAfternoonStart" value="15:00">
+            <input type="time" id="deliveryAfternoonEnd" value="18:00">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🎉 Giorni Festivi</h2>
+      <div class="section">
+        <div class="holidays">
+          <input type="date" id="holidayDate">
+          <button class="btn btn-primary" onclick="addHoliday()">➕ Aggiungi Festivo</button>
+        </div>
+        <div id="holidaysList" class="holidays-list"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🚛 Vettori</h2>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="vehicles">Numero vettori</label>
+          <input type="number" id="vehicles" min="1" value="2">
+        </div>
+      </div>
+      <div class="form-row">
+        <button class="btn btn-primary" onclick="saveSettings()">💾 Salva Impostazioni</button>
+        <button class="btn btn-secondary" onclick="resetDefaults()">↺ Ripristina Default</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const DAYS = ['Dom','Lun','Mar','Mer','Gio','Ven','Sab'];
+    const API_URL = 'http://localhost:5000/api';
+
+    function defaultCompanySettings() {
+      return {
+        businessName: 'Molino Briganti',
+        logoUrl: 'images/logo INSEGNA.png',
+        openingDays: [1,2,3,4,5,6], // lun-sab
+        openMorningStart: '08:00', openMorningEnd: '13:00',
+        openAfternoonStart: '15:00', openAfternoonEnd: '18:00',
+        deliveryDays: [1,2,3,4,5,6],
+        deliveryMorningStart: '08:00', deliveryMorningEnd: '12:00',
+        deliveryAfternoonStart: '15:00', deliveryAfternoonEnd: '18:00',
+        holidays: [],
+        vehicles: 2
+      };
+    }
+
+    async function loadSettingsAsync() {
+      try {
+        const resp = await fetch(`${API_URL}/settings`);
+        if (resp.ok) {
+          const json = await resp.json();
+          localStorage.setItem('companySettings', JSON.stringify(json));
+          return json;
+        }
+      } catch {}
+      try { return JSON.parse(localStorage.getItem('companySettings')) || defaultCompanySettings(); } catch { return defaultCompanySettings(); }
+    }
+
+    async function saveSettings() {
+      const s = collectForm();
+      try {
+        const token = localStorage.getItem('token') || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+        const resp = await fetch(`${API_URL}/settings`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify(s)
+        });
+        if (resp.ok) {
+          const saved = await resp.json();
+          localStorage.setItem('companySettings', JSON.stringify(saved));
+          alert('✅ Impostazioni salvate');
+          return;
+        }
+      } catch {}
+      // Fallback local save
+      localStorage.setItem('companySettings', JSON.stringify(s));
+      alert('✅ Impostazioni salvate localmente');
+    }
+
+    function resetDefaults() {
+      const s = defaultCompanySettings();
+      localStorage.setItem('companySettings', JSON.stringify(s));
+      renderForm(s);
+      alert('✅ Default ripristinati');
+    }
+
+    function collectForm() {
+      const openingDays = collectDays('openingDays');
+      const deliveryDays = collectDays('deliveryDays');
+      return {
+        businessName: document.getElementById('businessName').value.trim(),
+        logoUrl: document.getElementById('logoUrl').value.trim(),
+        openingDays,
+        openMorningStart: document.getElementById('openMorningStart').value,
+        openMorningEnd: document.getElementById('openMorningEnd').value,
+        openAfternoonStart: document.getElementById('openAfternoonStart').value,
+        openAfternoonEnd: document.getElementById('openAfternoonEnd').value,
+        deliveryDays,
+        deliveryMorningStart: document.getElementById('deliveryMorningStart').value,
+        deliveryMorningEnd: document.getElementById('deliveryMorningEnd').value,
+        deliveryAfternoonStart: document.getElementById('deliveryAfternoonStart').value,
+        deliveryAfternoonEnd: document.getElementById('deliveryAfternoonEnd').value,
+        holidays: loadSettings().holidays || [],
+        vehicles: parseInt(document.getElementById('vehicles').value) || 1
+      }
+    }
+
+    function collectDays(containerId) {
+      const checks = document.querySelectorAll(`#${containerId} input[type=checkbox]`);
+      const arr = [];
+      checks.forEach((cb, idx) => { if (cb.checked) arr.push(idx); });
+      return arr;
+    }
+
+    function renderDays(containerId, selectedDays) {
+      const c = document.getElementById(containerId);
+      c.innerHTML = DAYS.map((d, idx) => `
+        <label class="day-item">
+          <input type="checkbox" ${selectedDays.includes(idx) ? 'checked' : ''}>
+          <span>${d}</span>
+        </label>
+      `).join('');
+    }
+
+    function renderHolidays(list) {
+      const container = document.getElementById('holidaysList');
+      if (!container) return;
+      if (!Array.isArray(list) || list.length === 0) {
+        container.innerHTML = '<span style="color:#a0a0a0;font-size:12px;">Nessun giorno festivo impostato</span>';
+        return;
+      }
+      container.innerHTML = list.map((d, i) => `
+        <span class="holiday-pill">${new Date(d+'T00:00:00').toLocaleDateString('it-IT')} <button class="btn btn-secondary btn-small" onclick="removeHoliday(${i})">✖</button></span>
+      `).join('');
+    }
+
+    async function addHoliday() {
+      const input = document.getElementById('holidayDate');
+      const val = input.value;
+      if (!val) return;
+      const s = await loadSettingsAsync();
+      s.holidays = Array.from(new Set([...(s.holidays||[]), val]));
+      try {
+        const token = localStorage.getItem('token') || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+        await fetch(`${API_URL}/settings`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(s) });
+      } catch {}
+      localStorage.setItem('companySettings', JSON.stringify(s));
+      input.value = '';
+      renderHolidays(s.holidays);
+      alert('✅ Giorno festivo aggiunto');
+    }
+
+    async function removeHoliday(index) {
+      const s = await loadSettingsAsync();
+      if (!Array.isArray(s.holidays)) s.holidays = [];
+      s.holidays.splice(index, 1);
+      try {
+        const token = localStorage.getItem('token') || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+        await fetch(`${API_URL}/settings`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(s) });
+      } catch {}
+      localStorage.setItem('companySettings', JSON.stringify(s));
+      renderHolidays(s.holidays);
+    }
+
+    function renderForm(s) {
+      document.getElementById('businessName').value = s.businessName || '';
+      document.getElementById('logoUrl').value = s.logoUrl || '';
+      renderDays('openingDays', s.openingDays || []);
+      document.getElementById('openMorningStart').value = s.openMorningStart || '08:00';
+      document.getElementById('openMorningEnd').value = s.openMorningEnd || '13:00';
+      document.getElementById('openAfternoonStart').value = s.openAfternoonStart || '';
+      document.getElementById('openAfternoonEnd').value = s.openAfternoonEnd || '';
+      renderDays('deliveryDays', s.deliveryDays || []);
+      document.getElementById('deliveryMorningStart').value = s.deliveryMorningStart || '08:00';
+      document.getElementById('deliveryMorningEnd').value = s.deliveryMorningEnd || '12:00';
+      document.getElementById('deliveryAfternoonStart').value = s.deliveryAfternoonStart || '';
+      document.getElementById('deliveryAfternoonEnd').value = s.deliveryAfternoonEnd || '';
+      document.getElementById('vehicles').value = s.vehicles || 1;
+      renderHolidays(s.holidays || []);
+    }
+
+    function goBack(){ window.location.href = 'admin-dashboard.html'; }
+
+    window.addEventListener('load', () => {
+      // Basic auth gate: allow only master if token present
+      const token = localStorage.getItem('token');
+      const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+      if (!token || currentUser.role !== 'master') { window.location.href = 'index.html'; return; }
+      const userInfo = document.getElementById('userInfo');
+      if (userInfo && currentUser.username) userInfo.textContent = `👤 ${currentUser.username}`;
+
+      loadSettingsAsync().then(renderForm);
+    });
+  </script>
+</body>
+</html>

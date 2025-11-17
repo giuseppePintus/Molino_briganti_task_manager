@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Planner Ordini - Molino Briganti</title>
     <link rel="stylesheet" href="css/common.css">
+    <script src="js/settings-utils.js"></script>
     <style>
         * {
             margin: 0;
@@ -593,7 +594,7 @@
         <!-- Planner Actions moved below stats -->
         <div class="planner-actions">
             <button class="btn btn-primary" onclick="openOrderModal()">➕ Nuovo Ordine</button>
-            <button class="btn btn-success" onclick="openTripsManager()">🚚 Gestisci Viaggi</button>
+            <button class="btn btn-success" onclick="window.location.href='trips-management.html'">🚚 Gestione Viaggi</button>
             <button class="btn btn-warning" onclick="generateSampleOrders()">🔄 Genera Dati</button>
         </div>
 
@@ -723,6 +724,15 @@
         let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
         let token = localStorage.getItem('token') || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
         const API_URL = 'http://localhost:5000/api';
+        function fmtLocalDateTime(d){
+            const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const da=String(d.getDate()).padStart(2,'0');
+            const hh=String(d.getHours()).padStart(2,'0'); const mm=String(d.getMinutes()).padStart(2,'0');
+            return `${y}-${m}-${da}T${hh}:${mm}`;
+        }
+        function fmtLocalDate(d){
+            const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const da=String(d.getDate()).padStart(2,'0');
+            return `${y}-${m}-${da}`;
+        }
         
         // Sistema viaggi
         let trips = []; // Array di viaggi: {id, name, date, orderIds: [], sequence: []}
@@ -1521,6 +1531,23 @@
 
             document.getElementById('orderModal').classList.add('active');
             document.getElementById('orderForm').reset();
+
+            // Aggancia validazione data/ora contro festivi e orari consegna
+            const dt = document.getElementById('orderDateTime');
+            if (dt) {
+                dt.onchange = function(){
+                    if (!window.SettingsUtils) return;
+                    const val = dt.value;
+                    if (!val) return;
+                    const d = new Date(val);
+                    const clamped = window.SettingsUtils.clampToDeliveryWindows(d);
+                    const newVal = fmtLocalDateTime(clamped);
+                    if (newVal !== val) {
+                        dt.value = newVal;
+                        alert('ℹ️ Data/ora adeguata ai giorni/orari di consegna');
+                    }
+                };
+            }
         }
 
         // Apri modal per modificare ordine esistente
@@ -1572,6 +1599,22 @@
 
             updateClientInfo();
             document.getElementById('orderModal').classList.add('active');
+
+            const dt = document.getElementById('orderDateTime');
+            if (dt) {
+                dt.onchange = function(){
+                    if (!window.SettingsUtils) return;
+                    const val = dt.value;
+                    if (!val) return;
+                    const d = new Date(val);
+                    const clamped = window.SettingsUtils.clampToDeliveryWindows(d);
+                    const newVal = fmtLocalDateTime(clamped);
+                    if (newVal !== val) {
+                        dt.value = newVal;
+                        alert('ℹ️ Data/ora adeguata ai giorni/orari di consegna');
+                    }
+                };
+            }
         }
 
         // Chiudi modal ordine
@@ -1620,12 +1663,28 @@
             const editingId = document.getElementById('orderForm').dataset.editingId;
             const selectedOperators = Array.from(document.querySelectorAll('.orderOperatorCheckbox:checked')).map(cb => cb.value);
             
+            // Valida/sistema data/ora rispetto a festivi e orari di consegna
+            let rawDateTime = document.getElementById('orderDateTime').value;
+            if (window.SettingsUtils && rawDateTime) {
+                const selectedType = document.getElementById('orderType').value;
+                const dateObj = new Date(rawDateTime);
+                const clamped = (selectedType === 'ritira')
+                    ? window.SettingsUtils.clampToOpeningWindows(dateObj)
+                    : window.SettingsUtils.clampToDeliveryWindows(dateObj);
+                const fmt = fmtLocalDateTime(clamped);
+                if (fmt !== rawDateTime) {
+                    rawDateTime = fmt;
+                    document.getElementById('orderDateTime').value = fmt;
+                    alert('ℹ️ Data/ora adeguata ai giorni/orari aziendali');
+                }
+            }
+
             const orderData = {
                 client: document.getElementById('orderClient').value,
                 product: document.getElementById('orderProduct').value,
                 quantity: parseFloat(document.getElementById('orderQuantity').value),
                 type: document.getElementById('orderType').value,
-                dateTime: document.getElementById('orderDateTime').value,
+                dateTime: rawDateTime,
                 status: document.getElementById('orderStatus').value,
                 lotto: document.getElementById('orderLotto').value,
                 ritiro_consegna: document.getElementById('orderRitiroConsegna').value,
@@ -1816,13 +1875,17 @@
                 const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
                 const randomType = types[Math.floor(Math.random() * types.length)];
                 const randomQuantity = (Math.random() * 49 + 1).toFixed(1);
-                const randomDays = Math.floor(Math.random() * 11);
-                
-                const dueDate = new Date();
-                dueDate.setDate(dueDate.getDate() + randomDays);
-                const dateStr = String(dueDate.getFullYear()).padStart(4, '0') + '-' + 
-                               String(dueDate.getMonth() + 1).padStart(2, '0') + '-' + 
-                               String(dueDate.getDate()).padStart(2, '0');
+                // pick a base day within next 10 days that fits rules by type
+                let base = new Date();
+                base.setDate(base.getDate() + Math.floor(Math.random() * 11));
+                if (window.SettingsUtils) {
+                    if (randomType === 'ritira') {
+                        base = window.SettingsUtils.nextValidOpeningDateTime(base);
+                    } else {
+                        base = window.SettingsUtils.nextValidDeliveryDateTime(base);
+                    }
+                }
+                const dateStr = fmtLocalDate(base);
 
                 if (!ordersByDay[dateStr]) {
                     ordersByDay[dateStr] = { deliveries: [], pickups: [] };
@@ -1856,7 +1919,18 @@
                 const loadFactor = Math.min(totalLoad / 1200, 1); // Normalizza a 0-1
                 const minutesPerDelivery = Math.round(15 + (loadFactor * 30)); // 15-45 minuti
                 
-                let currentTime = 8 * 60; // Inizia alle 8:00 (in minuti)
+                // Start at first valid delivery window start, else 8:00
+                let currentTime = 8 * 60; // default
+                if (window.SettingsUtils) {
+                    const windows = window.SettingsUtils && window.SettingsUtils.load ? (function(){
+                        // ensure we use delivery windows here
+                        const s = window.SettingsUtils.load();
+                        const t = (s.deliveryMorningStart || '08:00');
+                        const [hh,mm] = t.split(':').map(x=>parseInt(x,10));
+                        return [{ start: (hh||8)*60+(mm||0)}];
+                    })() : null;
+                    if (windows && windows[0] && windows[0].start) currentTime = windows[0].start;
+                }
                 
                 // Processa consegne con tempi progressivi
                 dayData.deliveries.forEach((orderData) => {
@@ -1876,13 +1950,43 @@
                     
                     // Incrementa il tempo per la prossima consegna
                     currentTime += minutesPerDelivery;
+                    // If we exceed delivery windows, move to next allowed day first window
+                    if (window.SettingsUtils) {
+                        const dt = new Date(date + 'T00:00:00');
+                        dt.setHours(Math.floor(currentTime/60), currentTime%60, 0, 0);
+                        const clamped = window.SettingsUtils.clampToDeliveryWindows(dt);
+                        const clampedDateStr = fmtLocalDate(clamped);
+                        const clampedTime = clamped.getHours()*60 + clamped.getMinutes();
+                        if (clampedDateStr !== date) {
+                            // skip remaining deliveries into the next day is complex; keep within same date by resetting to last window end
+                            currentTime = clampedTime; // approximate
+                        } else {
+                            currentTime = clampedTime;
+                        }
+                    }
                 });
                 
                 // Processa ritiri con orari casuali
                 dayData.pickups.forEach((orderData) => {
-                    const randomHour = Math.floor(Math.random() * 11) + 8; // 8-18
-                    const randomMin = Math.floor(Math.random() * 60);
-                    const timeStr = `${String(randomHour).padStart(2, '0')}:${String(randomMin).padStart(2, '0')}`;
+                    // Prefer random time within opening windows
+                    let timeStr = '09:00';
+                    if (window.SettingsUtils) {
+                        const s = window.SettingsUtils.load();
+                        const candidates = [];
+                        if (s.openMorningStart && s.openMorningEnd) candidates.push([s.openMorningStart, s.openMorningEnd]);
+                        if (s.openAfternoonStart && s.openAfternoonEnd) candidates.push([s.openAfternoonStart, s.openAfternoonEnd]);
+                        if (candidates.length>0) {
+                            const pick = candidates[Math.floor(Math.random()*candidates.length)];
+                            const [sh,sm] = pick[0].split(':').map(n=>parseInt(n,10));
+                            const [eh,em] = pick[1].split(':').map(n=>parseInt(n,10));
+                            const startMin = (sh||9)*60 + (sm||0);
+                            const endMin = (eh||12)*60 + (em||0);
+                            const randMin = startMin + Math.floor(Math.random() * Math.max(1, (endMin-startMin-1)));
+                            const hh = String(Math.floor(randMin/60)).padStart(2,'0');
+                            const mm = String(randMin%60).padStart(2,'0');
+                            timeStr = `${hh}:${mm}`;
+                        }
+                    }
                     
                     orders.push({
                         id: orderId++,
@@ -1916,11 +2020,8 @@
             const year = calendarDisplayYear;
             const month = calendarDisplayMonth;
             
-            // Festivi italiani fissi
-            const italianHolidays = [
-                '01-01', '01-06', '04-25', '05-01', '06-02',
-                '08-15', '11-01', '12-08', '12-25', '12-26'
-            ];
+            // Impostazioni azienda per festivi e giorni consentiti
+            const companySettings = (window.SettingsUtils && window.SettingsUtils.load) ? window.SettingsUtils.load() : null;
             
             // Aggiorna il titolo del mese
             const monthNames = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 
@@ -1945,8 +2046,8 @@
                                String(month + 1).padStart(2, '0') + '-' + 
                                String(day).padStart(2, '0');
                 const dayOfWeek = date.getDay();
-                const monthDay = String(month + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
-                const isHoliday = dayOfWeek === 0 || italianHolidays.includes(monthDay);
+                const isHoliday = (window.SettingsUtils && window.SettingsUtils.isHolidayDate) ? window.SettingsUtils.isHolidayDate(date) : false;
+                const isAllowed = (window.SettingsUtils && window.SettingsUtils.isDeliveryAllowedDate) ? window.SettingsUtils.isDeliveryAllowedDate(date) : (dayOfWeek !== 0);
                 
                 // Conta ordini con data schedulata
                 const dayOrders = orders.filter(order => {
@@ -1968,7 +2069,7 @@
                 const totalOrders = dayOrders.length;
                 const hasOrdersClass = assignedOrders > 0 ? 'has-orders' : '';
                 const hasUnassignedClass = unassignedOrders > 0 ? 'has-unassigned-orders' : '';
-                const dayColor = isHoliday ? 'color: #ef4444;' : '';
+                const dayColor = (!isAllowed || isHoliday) ? 'color: #ef4444;' : '';
 
                 let assignedCountHtml = '';
                 let unassignedCountHtml = '';
@@ -2308,6 +2409,10 @@
                     }
                 }
             
+            // Load fresh company settings from backend
+            if (window.SettingsUtils && window.SettingsUtils.loadAsync) {
+                await window.SettingsUtils.loadAsync();
+            }
             await loadOperators();
             await loadCSVData();
             loadOrders();

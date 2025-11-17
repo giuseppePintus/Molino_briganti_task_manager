@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestione Viaggi - Molino Briganti</title>
+    <link rel="stylesheet" href="css/common.css">
+    <script src="js/settings-utils.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2563eb;
+            --success: #16a34a;
+            --danger: #dc2626;
+            --warning: #ea580c;
+            --dark: #1f2937;
+            --light: #f3f4f6;
+            --border: #e5e7eb;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a1a;
+            color: #e0e0e0;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header styles unified via css/common.css */
+
+        .alert {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .alert-success {
+            background: #1e3a2a;
+            color: #86efac;
+            border-left: 4px solid #10b981;
+        }
+
+        .alert-error {
+            background: #3a1e1e;
+            color: #fca5a5;
+            border-left: 4px solid #dc2626;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: #2d2d2d;
+            padding: 3px 4px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            border-left: 4px solid var(--primary);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 20px;
+        }
+
+        .stat-card .number {
+            font-size: 12px;
+            font-weight: bold;
+            color: #e0e0e0;
+            margin-bottom: 0px;
+        }
+
+        .stat-card .label {
+            font-size: 8px;
+            color: #a0a0a0;
+        }
+
+        .quick-actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .quick-actions .btn {
+            padding: 10px 16px;
+            min-height: 40px;
+            font-size: 13px;
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .card {
+            background: #2d2d2d;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+        }
+
+        .card h2 {
+            font-size: 20px;
+            margin-bottom: 15px;
+            color: #e0e0e0;
+        }
+
+        .trips-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .trip-card {
+            background: #3d3d3d;
+            border-left: 4px solid #16a34a;
+            padding: 15px;
+            border-radius: 6px;
+            border: 2px solid #4d4d4d;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .trip-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 12px rgba(0, 0, 0, 0.5);
+            border-color: #16a34a;
+        }
+
+        .trip-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 10px;
+        }
+
+        .trip-title {
+            font-weight: 600;
+            color: #e0e0e0;
+            font-size: 20px;
+        }
+
+        .trip-status {
+            font-size: 15px;
+            padding: 6px 10px;
+            border-radius: 4px;
+            background: #1e3a2a;
+            color: #86efac;
+        }
+
+        .trip-details {
+            font-size: 16px;
+            color: #a0a0a0;
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+
+        .trip-details p {
+            margin: 5px 0;
+        }
+
+        .trip-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        .product-totals {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .product-badge {
+            background: #1e3a2a;
+            color: #86efac;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #2d2d2d;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 800px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 5px 50px rgba(0,0,0,0.5);
+        }
+
+        .modal-content h2 {
+            margin-bottom: 20px;
+            color: #e0e0e0;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            font-size: 14px;
+            color: #e0e0e0;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #4d4d4d;
+            border-radius: 6px;
+            font-size: 14px;
+            background: #3d3d3d;
+            color: #e0e0e0;
+            font-family: inherit;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: flex-end;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #808080;
+            font-size: 14px;
+        }
+
+        .orders-list {
+            max-height: 200px;
+            overflow-y: auto;
+            background: #3d3d3d;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+
+        .order-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            background: #2d2d2d;
+            margin-bottom: 6px;
+            border-radius: 4px;
+        }
+
+        .order-item-info {
+            font-size: 12px;
+            flex: 1;
+        }
+
+        .trip-orders-sequence {
+            margin-top: 15px;
+        }
+
+        .sequence-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background: #3d3d3d;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            border-left: 4px solid #16a34a;
+        }
+
+        .sequence-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-right: 10px;
+        }
+
+        .sequence-controls button {
+            padding: 2px 6px;
+            font-size: 10px;
+        }
+
+        .sequence-info {
+            flex: 1;
+        }
+
+        .sequence-number {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 4px;
+            color: #16a34a;
+        }
+
+        .sequence-details {
+            font-size: 12px;
+            color: #a0a0a0;
+        }
+
+        @media (max-width: 768px) {
+            .stats {
+                grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+            }
+
+            .quick-actions {
+                flex-direction: column;
+            }
+
+            .quick-actions .btn {
+                width: 100%;
+            }
+
+            .trip-actions {
+                flex-direction: column;
+            }
+
+            .trip-actions .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .trip-title {
+                font-size: 16px;
+            }
+
+            .trip-details {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-left">
+                <div class="header-logo">
+                    <img src="images/logo INSEGNA.png" alt="Molino Briganti Logo">
+                </div>
+                <div class="header-title">
+                    <h1>🚚 Gestione Viaggi</h1>
+                    <div class="user-info" id="userInfo"></div>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-secondary" onclick="goBack()">← Indietro</button>
+            </div>
+        </div>
+
+        <!-- Alert -->
+        <div id="alert" class="alert"></div>
+
+        <!-- Stats -->
+        <div class="stats" id="stats">
+            <div class="stat-card">
+                <div class="number" id="totalTrips">0</div>
+                <div class="label">Viaggi Totali</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" id="todayTrips">0</div>
+                <div class="label">Oggi</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" id="assignedTrips">0</div>
+                <div class="label">Assegnati</div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="quick-actions">
+            <button class="btn btn-success" onclick="openCreateTripModal()">➕ Nuovo Viaggio</button>
+            <button class="btn btn-primary" onclick="window.location.href='orders-planner.html'">📦 Planner Ordini</button>
+        </div>
+
+        <!-- Trips List -->
+        <div class="card">
+            <h2>📋 Elenco Viaggi</h2>
+            <div id="tripsList" class="trips-grid">
+                <!-- Trips will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Crea Viaggio -->
+    <div id="createTripModal" class="modal">
+        <div class="modal-content">
+            <h2>➕ Nuovo Viaggio</h2>
+            <form id="createTripForm" onsubmit="saveNewTrip(event)">
+                <div class="form-group">
+                    <label for="tripName">Nome Viaggio *</label>
+                    <input type="text" id="tripName" required placeholder="Es: Giro Mattina">
+                </div>
+                <div class="form-group">
+                    <label for="tripDate">Data *</label>
+                    <input type="date" id="tripDate" required>
+                </div>
+                <div class="form-group">
+                    <label for="tripOperator">Operatore</label>
+                    <select id="tripOperator">
+                        <option value="">-- Non assegnato --</option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary">💾 Crea</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeCreateTripModal()">❌ Annulla</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Gestione Ordini Viaggio -->
+    <div id="tripOrdersModal" class="modal">
+        <div class="modal-content">
+            <h2 id="tripOrdersTitle">📦 Gestione Ordini Viaggio</h2>
+            
+            <!-- Operator Assignment -->
+            <div style="margin:10px 0 18px 0;padding:10px;background:#2d2d2d;border-radius:6px;border:1px solid #4d4d4d;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                <label for="tripOperatorSelect" style="font-weight:600;color:#e0e0e0;">👷 Operatore:</label>
+                <select id="tripOperatorSelect" style="flex:1;min-width:220px;padding:8px;background:#3d3d3d;border:1px solid #4d4d4d;border-radius:6px;color:#e0e0e0;"></select>
+                <button class="btn btn-primary" onclick="saveTripOperator()">💾 Salva</button>
+            </div>
+
+            <!-- Available Orders -->
+            <div style="margin-bottom:15px;">
+                <h3 style="font-size:16px;margin-bottom:10px;">Ordini Disponibili (consegnati):</h3>
+                <div id="availableOrdersList" class="orders-list"></div>
+            </div>
+
+            <!-- Trip Orders Sequence -->
+            <div style="margin-bottom:15px;">
+                <h3 style="font-size:16px;margin-bottom:10px;">Ordini nel Viaggio:</h3>
+                <div id="tripOrdersList"></div>
+            </div>
+
+            <!-- Product Totals -->
+            <div style="margin-top:15px;padding:15px;background:#2d2d2d;border-radius:6px;border:2px solid #16a34a;">
+                <h3 style="font-size:16px;margin-bottom:10px;color:#16a34a;">📊 Totali Prodotti:</h3>
+                <div id="tripTotals"></div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeTripOrdersModal()">❌ Chiudi</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000/api';
+        let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        let token = localStorage.getItem('token') || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+        
+        let trips = [];
+        let orders = [];
+        let allOperators = [];
+        let currentTripId = null;
+
+        function fmtLocalDate(d){
+            const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const da=String(d.getDate()).padStart(2,'0');
+            return `${y}-${m}-${da}`;
+        }
+
+        // Load operators
+        async function loadOperators() {
+            try {
+                const cachedOperators = localStorage.getItem('cachedOperators');
+                if (cachedOperators) {
+                    const cached = JSON.parse(cachedOperators);
+                    if (cached.length > 0 && cached[0].role) {
+                        const admins = cached.filter(op => op.role === 'master').sort((a, b) => a.username.localeCompare(b.username));
+                        const operators = cached.filter(op => op.role === 'slave').sort((a, b) => a.username.localeCompare(b.username));
+                        allOperators = [...admins, ...operators];
+                        return;
+                    }
+                }
+                
+                const operatorsResponse = await fetch(`${API_URL}/auth/operators/public`);
+                const adminsResponse = await fetch(`${API_URL}/auth/admins/public`);
+
+                if (operatorsResponse.ok && adminsResponse.ok) {
+                    const operators = await operatorsResponse.json();
+                    const admins = await adminsResponse.json();
+                    const sortedAdmins = admins.sort((a, b) => a.username.localeCompare(b.username));
+                    const sortedOperators = operators.sort((a, b) => a.username.localeCompare(b.username));
+                    allOperators = [...sortedAdmins, ...sortedOperators];
+                    localStorage.setItem('cachedOperators', JSON.stringify(allOperators));
+                }
+            } catch (error) {
+                console.error('Errore caricamento operatori:', error);
+            }
+        }
+
+        // Load trips
+        function loadTrips() {
+            const stored = localStorage.getItem('trips');
+            trips = stored ? JSON.parse(stored) : [];
+            updateStats();
+            renderTrips();
+        }
+
+        // Save trips
+        function saveTrips() {
+            localStorage.setItem('trips', JSON.stringify(trips));
+        }
+
+        // Load orders
+        function loadOrders() {
+            const stored = localStorage.getItem('orders');
+            orders = stored ? JSON.parse(stored) : [];
+        }
+
+        // Save orders
+        function saveOrders() {
+            localStorage.setItem('orders', JSON.stringify(orders));
+        }
+
+        // Update stats
+        function updateStats() {
+            const today = new Date().toISOString().split('T')[0];
+            const todayTrips = trips.filter(t => t.date && t.date.split('T')[0] === today);
+            const assignedTrips = trips.filter(t => t.assignedOperatorId);
+
+            document.getElementById('totalTrips').textContent = trips.length;
+            document.getElementById('todayTrips').textContent = todayTrips.length;
+            document.getElementById('assignedTrips').textContent = assignedTrips.length;
+        }
+
+        // Render trips
+        function renderTrips() {
+            const container = document.getElementById('tripsList');
+            
+            if (trips.length === 0) {
+                container.innerHTML = '<div class="empty-state">Nessun viaggio creato. Crea il primo viaggio!</div>';
+                return;
+            }
+
+            // Sort trips by date (newest first)
+            const sortedTrips = [...trips].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            container.innerHTML = sortedTrips.map(trip => {
+                const tripOrders = getTripOrders(trip.id);
+                const totals = calculateTripTotals(trip.id);
+                const operator = trip.assignedOperatorId ? allOperators.find(op => op.id === trip.assignedOperatorId) : null;
+                
+                const totalsHtml = Object.entries(totals).map(([product, qty]) => 
+                    `<span class="product-badge">${product}: ${qty.toFixed(1)}kg</span>`
+                ).join('');
+
+                return `
+                    <div class="trip-card">
+                        <div class="trip-header">
+                            <div class="trip-title">${trip.name}</div>
+                            <span class="trip-status">${tripOrders.length} ordini</span>
+                        </div>
+                        <div class="trip-details">
+                            <p><strong>📅 Data:</strong> ${new Date(trip.date).toLocaleDateString('it-IT')}</p>
+                            ${operator ? `<p><strong>👷 Operatore:</strong> ${operator.username}</p>` : '<p><strong>👷 Operatore:</strong> Non assegnato</p>'}
+                            ${totalsHtml ? `<p><strong>📊 Totali:</strong></p><div class="product-totals">${totalsHtml}</div>` : ''}
+                        </div>
+                        <div class="trip-actions">
+                            <button class="btn btn-primary" onclick="openTripOrders(${trip.id})">📦 Gestisci Ordini</button>
+                            <button class="btn btn-danger" onclick="confirmDeleteTrip(${trip.id})">🗑️ Elimina</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Create trip
+        function createTrip(name, date, operatorId = null) {
+            const trip = {
+                id: Date.now(),
+                name: name,
+                date: date,
+                orderIds: [],
+                sequence: [],
+                createdAt: new Date().toISOString(),
+                assignedOperatorId: operatorId,
+                tripTaskId: null
+            };
+            trips.push(trip);
+            saveTrips();
+            return trip;
+        }
+
+        // Get trip orders
+        function getTripOrders(tripId) {
+            const trip = trips.find(t => t.id === tripId);
+            if (!trip) return [];
+            return trip.sequence.map(orderId => orders.find(o => o.id === orderId)).filter(Boolean);
+        }
+
+        // Calculate trip totals
+        function calculateTripTotals(tripId) {
+            const tripOrders = getTripOrders(tripId);
+            const totals = {};
+            tripOrders.forEach(order => {
+                if (!totals[order.product]) {
+                    totals[order.product] = 0;
+                }
+                totals[order.product] += parseFloat(order.quantity || 0);
+            });
+            return totals;
+        }
+
+        // Add order to trip
+        function addOrderToTrip(tripId, orderId) {
+            const trip = trips.find(t => t.id === tripId);
+            if (trip && !trip.orderIds.includes(orderId)) {
+                trip.orderIds.push(orderId);
+                trip.sequence.push(orderId);
+                saveTrips();
+                const order = orders.find(o => o.id === orderId);
+                if (order) {
+                    order.tripId = tripId;
+                    saveOrders();
+                }
+                syncTripTask(tripId);
+            }
+        }
+
+        // Remove order from trip
+        function removeOrderFromTrip(tripId, orderId) {
+            const trip = trips.find(t => t.id === tripId);
+            if (trip) {
+                trip.orderIds = trip.orderIds.filter(id => id !== orderId);
+                trip.sequence = trip.sequence.filter(id => id !== orderId);
+                saveTrips();
+                const order = orders.find(o => o.id === orderId);
+                if (order) {
+                    delete order.tripId;
+                    saveOrders();
+                }
+                const remaining = trip.orderIds.length;
+                if (remaining === 0) {
+                    deleteTripTask(tripId);
+                } else {
+                    syncTripTask(tripId);
+                }
+            }
+        }
+
+        // Delete trip
+        function deleteTrip(tripId) {
+            trips = trips.filter(t => t.id !== tripId);
+            saveTrips();
+            orders.forEach(o => {
+                if (o.tripId === tripId) {
+                    delete o.tripId;
+                }
+            });
+            saveOrders();
+            deleteTripTask(tripId);
+        }
+
+        // Reorder trip sequence
+        function reorderTripSequence(tripId, newSequence) {
+            const trip = trips.find(t => t.id === tripId);
+            if (trip) {
+                trip.sequence = newSequence;
+                saveTrips();
+                syncTripTask(tripId);
+            }
+        }
+
+        // Build trip task title
+        function buildTripTaskTitle(trip) {
+            const d = trip.date ? new Date(trip.date) : null;
+            const dateStr = d ? d.toLocaleDateString('it-IT') : '';
+            return `🚚 Viaggio: ${trip.name}${dateStr ? ' • ' + dateStr : ''}`;
+        }
+
+        // Build trip task description
+        function buildTripTaskDescription(trip) {
+            const tripOrders = getTripOrders(trip.id);
+            const totals = calculateTripTotals(trip.id);
+            const ordersList = tripOrders.map((o, idx) => `#${idx + 1} ${o.client} • ${o.product} ${o.quantity}kg`).join('\n');
+            const totalsList = Object.entries(totals).map(([p, q]) => `${p}: ${q.toFixed(1)}kg`).join(', ');
+            return `Ordini nel viaggio: ${tripOrders.length}\n\nSequenza:\n${ordersList || '-'}\n\nTotali prodotti: ${totalsList || '-'}`;
+        }
+
+        // Sync trip task with backend
+        async function syncTripTask(tripId) {
+            try {
+                const trip = trips.find(t => t.id === tripId);
+                if (!trip) return;
+                if (!currentUser?.id || currentUser?.role !== 'master') return;
+                const auth = localStorage.getItem('token') || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+                if (!auth) return;
+                if (!trip.orderIds || trip.orderIds.length === 0) return;
+
+                const payload = {
+                    title: buildTripTaskTitle(trip),
+                    description: buildTripTaskDescription(trip),
+                    scheduledAt: trip.date || null,
+                    assignedOperatorId: trip.assignedOperatorId || null,
+                    estimatedMinutes: Math.max(60, getTripOrders(trip.id).length * 15),
+                    priority: 'HIGH'
+                };
+
+                if (trip.tripTaskId) {
+                    const resp = await fetch(`${API_URL}/tasks/${trip.tripTaskId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${auth}` },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!resp.ok) console.warn('Aggiornamento task viaggio fallito', resp.status);
+                } else {
+                    const resp = await fetch(`${API_URL}/tasks`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${auth}` },
+                        body: JSON.stringify(payload)
+                    });
+                    if (resp.ok) {
+                        const saved = await resp.json();
+                        trip.tripTaskId = saved.id;
+                        saveTrips();
+                    } else {
+                        console.warn('Creazione task viaggio fallita', resp.status);
+                    }
+                }
+            } catch (e) {
+                console.error('Errore syncTripTask:', e);
+            }
+        }
+
+        // Delete trip task from backend
+        async function deleteTripTask(tripId) {
+            try {
+                const trip = trips.find(t => t.id === tripId);
+                if (!trip || !trip.tripTaskId) return;
+                if (!currentUser?.id || currentUser?.role !== 'master') return;
+                const auth = localStorage.getItem('token') || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+                if (!auth) return;
+                const resp = await fetch(`${API_URL}/tasks/${trip.tripTaskId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${auth}` }
+                });
+                if (resp.status === 204 || resp.ok) {
+                    trip.tripTaskId = null;
+                    saveTrips();
+                }
+            } catch (e) {
+                console.error('Errore deleteTripTask:', e);
+            }
+        }
+
+        // Modal: Create Trip
+        function openCreateTripModal() {
+            document.getElementById('createTripForm').reset();
+            document.getElementById('tripDate').valueAsDate = new Date();
+            
+            // Populate operator select
+            const select = document.getElementById('tripOperator');
+            select.innerHTML = '<option value="">-- Non assegnato --</option>' +
+                allOperators.map(op => `<option value="${op.id}">${op.username}</option>`).join('');
+            
+            document.getElementById('createTripModal').classList.add('active');
+
+            const tripDate = document.getElementById('tripDate');
+            if (tripDate) {
+                tripDate.onchange = function(){
+                    if (!window.SettingsUtils) return;
+                    const val = tripDate.value;
+                    if (!val) return;
+                    const base = new Date(val+'T00:00:00');
+                    if (!window.SettingsUtils.isDeliveryAllowedDate(base)) {
+                        const next = window.SettingsUtils.nextValidDeliveryDateTime(base);
+                        const fmt = fmtLocalDate(next);
+                        tripDate.value = fmt;
+                        alert('ℹ️ Data viaggio spostata al prossimo giorno utile secondo impostazioni aziendali');
+                    }
+                };
+            }
+        }
+
+        function closeCreateTripModal() {
+            document.getElementById('createTripModal').classList.remove('active');
+        }
+
+        function saveNewTrip(event) {
+            event.preventDefault();
+            const name = document.getElementById('tripName').value;
+            let date = document.getElementById('tripDate').value;
+            const operatorId = document.getElementById('tripOperator').value;
+            if (window.SettingsUtils && date) {
+                const base = new Date(date+'T00:00:00');
+                if (!window.SettingsUtils.isDeliveryAllowedDate(base)) {
+                    const next = window.SettingsUtils.nextValidDeliveryDateTime(base);
+                    date = fmtLocalDate(next);
+                    document.getElementById('tripDate').value = date;
+                    alert('ℹ️ Data viaggio adeguata al prossimo giorno consentito');
+                }
+            }
+            
+            createTrip(name, date, operatorId ? parseInt(operatorId) : null);
+            closeCreateTripModal();
+            loadTrips();
+            showAlert('✅ Viaggio creato con successo!', 'success');
+        }
+
+        // Modal: Manage Trip Orders
+        function openTripOrders(tripId) {
+            currentTripId = tripId;
+            const trip = trips.find(t => t.id === tripId);
+            if (!trip) return;
+
+            document.getElementById('tripOrdersTitle').textContent = `📦 ${trip.name} - Gestione Ordini`;
+            renderTripOperatorAssign(tripId);
+            renderAvailableOrders(tripId);
+            renderTripOrdersList(tripId);
+            renderTripTotals(tripId);
+            document.getElementById('tripOrdersModal').classList.add('active');
+        }
+
+        function closeTripOrdersModal() {
+            document.getElementById('tripOrdersModal').classList.remove('active');
+            currentTripId = null;
+            loadTrips();
+        }
+
+        function renderTripOperatorAssign(tripId) {
+            const select = document.getElementById('tripOperatorSelect');
+            const trip = trips.find(t => t.id === tripId);
+            if (!trip || !select) return;
+            
+            select.innerHTML = '<option value="">-- Non assegnato --</option>' +
+                allOperators.map(op => `<option value="${op.id}">${op.username}</option>`).join('');
+            
+            if (trip.assignedOperatorId) {
+                select.value = String(trip.assignedOperatorId);
+            }
+        }
+
+        function saveTripOperator() {
+            if (!currentTripId) return;
+            const trip = trips.find(t => t.id === currentTripId);
+            if (!trip) return;
+            const select = document.getElementById('tripOperatorSelect');
+            const val = select && select.value ? parseInt(select.value) : null;
+            trip.assignedOperatorId = val || null;
+            saveTrips();
+            syncTripTask(trip.id);
+            loadTrips();
+            showAlert('✅ Operatore viaggio salvato', 'success');
+        }
+
+        function renderAvailableOrders(tripId) {
+            const trip = trips.find(t => t.id === tripId);
+            const tripDate = trip.date.split('T')[0];
+            const available = orders.filter(o => {
+                const orderDate = o.dateTime ? o.dateTime.split('T')[0] : null;
+                return o.type === 'consegnato' && 
+                       orderDate === tripDate && 
+                       !o.tripId;
+            });
+
+            const container = document.getElementById('availableOrdersList');
+            if (available.length === 0) {
+                container.innerHTML = '<p style="color:#808080;font-size:12px;">Nessun ordine disponibile per questa data</p>';
+                return;
+            }
+
+            container.innerHTML = available.map(order => `
+                <div class="order-item">
+                    <div class="order-item-info">
+                        <strong>${order.client}</strong> - ${order.product} (${order.quantity}kg)
+                        <span style="color:#a0a0a0;margin-left:8px;">${new Date(order.dateTime).toLocaleTimeString('it-IT', {hour:'2-digit',minute:'2-digit'})}</span>
+                    </div>
+                    <button class="btn btn-primary" onclick="addOrderToCurrentTrip(${order.id})" style="padding:4px 8px;font-size:11px;">➕ Aggiungi</button>
+                </div>
+            `).join('');
+        }
+
+        function renderTripOrdersList(tripId) {
+            const tripOrders = getTripOrders(tripId);
+            const container = document.getElementById('tripOrdersList');
+            
+            if (tripOrders.length === 0) {
+                container.innerHTML = '<p style="color:#808080;font-size:12px;padding:10px;text-align:center;">Nessun ordine nel viaggio</p>';
+                return;
+            }
+
+            container.innerHTML = tripOrders.map((order, index) => `
+                <div class="sequence-item">
+                    <div class="sequence-controls">
+                        <button class="btn btn-secondary" onclick="moveOrderUp(${tripId}, ${index})" ${index === 0 ? 'disabled' : ''}>▲</button>
+                        <button class="btn btn-secondary" onclick="moveOrderDown(${tripId}, ${index})" ${index === tripOrders.length - 1 ? 'disabled' : ''}>▼</button>
+                    </div>
+                    <div class="sequence-info">
+                        <div class="sequence-number">#${index + 1} - ${order.client}</div>
+                        <div class="sequence-details">
+                            ${order.product} - ${order.quantity}kg
+                            <span style="margin-left:10px;">⏰ ${new Date(order.dateTime).toLocaleTimeString('it-IT', {hour:'2-digit',minute:'2-digit'})}</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-danger" onclick="removeOrderFromCurrentTrip(${order.id})" style="padding:4px 8px;font-size:11px;">✖</button>
+                </div>
+            `).join('');
+        }
+
+        function renderTripTotals(tripId) {
+            const totals = calculateTripTotals(tripId);
+            const container = document.getElementById('tripTotals');
+            
+            if (Object.keys(totals).length === 0) {
+                container.innerHTML = '<p style="color:#808080;font-size:12px;">Nessun prodotto</p>';
+                return;
+            }
+
+            container.innerHTML = Object.entries(totals).map(([product, qty]) => `
+                <div style="display:flex;justify-content:space-between;padding:8px;background:#3d3d3d;margin-bottom:6px;border-radius:4px;">
+                    <span style="font-weight:600;color:#e0e0e0;">${product}</span>
+                    <span style="color:#86efac;font-weight:700;">${qty.toFixed(1)} kg</span>
+                </div>
+            `).join('');
+        }
+
+        function addOrderToCurrentTrip(orderId) {
+            if (!currentTripId) return;
+            addOrderToTrip(currentTripId, orderId);
+            renderAvailableOrders(currentTripId);
+            renderTripOrdersList(currentTripId);
+            renderTripTotals(currentTripId);
+        }
+
+        function removeOrderFromCurrentTrip(orderId) {
+            if (!currentTripId) return;
+            removeOrderFromTrip(currentTripId, orderId);
+            renderAvailableOrders(currentTripId);
+            renderTripOrdersList(currentTripId);
+            renderTripTotals(currentTripId);
+        }
+
+        function moveOrderUp(tripId, index) {
+            const trip = trips.find(t => t.id === tripId);
+            if (!trip || index === 0) return;
+            
+            const newSequence = [...trip.sequence];
+            [newSequence[index], newSequence[index - 1]] = [newSequence[index - 1], newSequence[index]];
+            reorderTripSequence(tripId, newSequence);
+            renderTripOrdersList(tripId);
+        }
+
+        function moveOrderDown(tripId, index) {
+            const trip = trips.find(t => t.id === tripId);
+            if (!trip || index === trip.sequence.length - 1) return;
+            
+            const newSequence = [...trip.sequence];
+            [newSequence[index], newSequence[index + 1]] = [newSequence[index + 1], newSequence[index]];
+            reorderTripSequence(tripId, newSequence);
+            renderTripOrdersList(tripId);
+        }
+
+        function confirmDeleteTrip(tripId) {
+            if (confirm('Eliminare questo viaggio? Gli ordini non verranno eliminati.')) {
+                deleteTrip(tripId);
+                loadTrips();
+                showAlert('✅ Viaggio eliminato', 'success');
+            }
+        }
+
+        // Utilities
+        function showAlert(message, type) {
+            const alert = document.getElementById('alert');
+            alert.textContent = message;
+            alert.className = `alert alert-${type} show`;
+            setTimeout(() => {
+                alert.classList.remove('show');
+            }, 5000);
+        }
+
+        function goBack() {
+            window.location.href = 'admin-dashboard.html';
+        }
+
+        // Initialize
+        window.addEventListener('load', async () => {
+            // Check auth
+            if (!token || currentUser.role !== 'master') {
+                window.location.href = 'index.html';
+                return;
+            }
+
+            // Display user info
+            const userInfo = document.getElementById('userInfo');
+            if (userInfo && currentUser.username) {
+                userInfo.textContent = `👤 ${currentUser.username}`;
+            }
+
+            // Load fresh company settings from backend
+            if (window.SettingsUtils && window.SettingsUtils.loadAsync) {
+                await window.SettingsUtils.loadAsync();
+            }
+            await loadOperators();
+            loadOrders();
+            loadTrips();
+        });
+    </script>
+</body>
+</html>
