@@ -666,6 +666,14 @@
             font-size: 14px;
         }
 
+        /* Tablet and up: make left/right buttons same width */
+        @media (min-width: 768px) {
+            .calendar-btn-operators, .calendar-btn-toggle {
+                width: 160px; /* equalize widths */
+                text-align: center;
+            }
+        }
+
         .calendar-btn-prev, .calendar-btn-next {
             padding: 8px 12px;
             font-size: 16px;
@@ -1147,7 +1155,7 @@
         <!-- Calendar -->
         <div class="card" style="padding: 12px;">
             <div class="calendar-header">
-                <button class="btn btn-secondary calendar-btn-operators" onclick="toggleOperatorTasks()" id="toggleTasksBtn">👁️ Task Operatori</button>
+                <button class="btn btn-secondary calendar-btn-operators" onclick="toggleOperatorTasks()" id="toggleTasksBtn">👁️ I Miei Task</button>
                 <button class="btn btn-primary calendar-btn-prev" onclick="previousMonth()">◀</button>
                 <h4 id="calendarMonthYear" class="calendar-title"></h4>
                 <button class="btn btn-primary calendar-btn-next" onclick="nextMonth()">▶</button>
@@ -2814,13 +2822,13 @@
                 // Mostra Task Operatori, nascondi I Miei Task
                 operatorCard.style.display = 'block';
                 myTasksCard.style.display = 'none';
-                btn.textContent = '👁️ I Miei Task';
+                btn.textContent = '👁️ Task Operatori';
                 currentViewMode = 'operatorTasks';
             } else {
                 // Nascondi Task Operatori, mostra I Miei Task
                 operatorCard.style.display = 'none';
                 myTasksCard.style.display = 'block';
-                btn.textContent = '👁️ Task Operatori';
+                btn.textContent = '👁️ I Miei Task';
                 currentViewMode = 'myTasks';
             }
             

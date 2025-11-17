@@ -325,19 +325,36 @@
             color: #a0a0a0;
         }
 
-        /* Planner Actions (below stats) */
+        /* Planner Actions (below stats) - aligned to Trips Management */
         .planner-actions {
-            display: flex;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
             gap: 10px;
-            margin: 10px 0 20px 0;
-            flex-wrap: wrap;
+            margin-bottom: 20px;
         }
+        
+        .planner-actions .btn {
+            padding: 10px 12px;
+            min-height: 40px;
+            font-size: 13px;
+            width: 100%;
+        }
+        
         @media (max-width: 768px) {
-            .planner-actions .btn { padding: 8px 12px; font-size: 13px; }
+            .planner-actions {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+            }
+            .planner-actions .btn {
+                padding: 10px 12px;
+                font-size: 13px;
+            }
         }
+        
         @media (max-width: 480px) {
-            .planner-actions { gap: 8px; }
-            .planner-actions .btn { flex: 1; justify-content: center; }
+            .planner-actions {
+                grid-template-columns: 1fr;
+            }
         }
         @media (max-width: 768px) {
             .stats-overview {
@@ -487,6 +504,19 @@
             margin-bottom: 15px;
         }
 
+        .calendar-btn-dummy, .calendar-btn-toggle {
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+
+        /* Tablet and up: equalize header button widths */
+        @media (min-width: 768px) {
+            .calendar-btn-dummy, .calendar-btn-toggle {
+                width: 160px;
+                text-align: center;
+            }
+        }
+
         .calendar-btn-prev, .calendar-btn-next {
             padding: 8px 12px;
             font-size: 16px;
@@ -506,13 +536,12 @@
             min-width: 150px;
         }
 
-        @media (max-width: 480px) {
-            /* Mobile: mantieni le frecce in riga come admin */
+        @media (max-width: 768px) {
+            /* Tablet: stack toggle button below */
             .calendar-header {
                 display: grid !important;
                 grid-template-columns: 40px 1fr 40px;
-                grid-template-rows: auto;
-                align-items: center;
+                grid-template-rows: auto auto;
                 gap: 8px;
                 margin-bottom: 15px;
             }
@@ -520,6 +549,56 @@
             .calendar-btn-prev {
                 grid-column: 1;
                 grid-row: 1;
+            }
+
+            .calendar-title {
+                grid-column: 2;
+                grid-row: 1;
+            }
+
+            .calendar-btn-next {
+                grid-column: 3;
+                grid-row: 1;
+            }
+
+            .calendar-btn-toggle {
+                grid-column: 1 / -1;
+                grid-row: 2;
+                width: 100%;
+                font-size: 13px;
+                padding: 8px 12px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            /* Mobile: 2 buttons on row 1, navigation on row 2 */
+            .calendar-header {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr;
+                grid-template-rows: auto auto;
+                gap: 8px;
+                margin-bottom: 15px;
+            }
+
+            /* First row: 2 buttons */
+            .calendar-btn-dummy {
+                grid-column: 1;
+                grid-row: 1;
+                padding: 10px 12px;
+                font-size: 13px;
+            }
+
+            .calendar-btn-toggle {
+                grid-column: 2;
+                grid-row: 1;
+                padding: 10px 12px;
+                font-size: 13px;
+            }
+
+            /* Second row: navigation controls */
+            .calendar-btn-prev {
+                grid-column: 1 / -1;
+                grid-row: 2;
                 width: 40px !important;
                 height: 40px;
                 padding: 0 !important;
@@ -530,9 +609,9 @@
             }
 
             .calendar-title {
-                grid-column: 2;
-                grid-row: 1;
-                font-size: 14px;
+                grid-column: 1 / -1;
+                grid-row: 2;
+                font-size: 13px;
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
@@ -540,12 +619,12 @@
                 align-items: center;
                 justify-content: center;
                 min-width: 0;
-                margin: 0 4px;
+                margin: 0 50px;
             }
 
             .calendar-btn-next {
-                grid-column: 3;
-                grid-row: 1;
+                grid-column: 1 / -1;
+                grid-row: 2;
                 width: 40px !important;
                 height: 40px;
                 padding: 0 !important;
@@ -601,39 +680,24 @@
         <!-- Calendar -->
         <div class="card" style="padding: 12px;">
             <div class="calendar-header">
-                <button class="btn btn-primary calendar-btn-prev" onclick="previousMonth()">◀</button>
+                <button class="btn btn-secondary calendar-btn-dummy" onclick="toggleShowAllOrders()" id="toggleShowAllBtn2">👁️ Visualizza Tutti</button>
+                <button class="btn btn-primary calendar-btn-prev" onclick="previousPeriod()">◀</button>
                 <h4 id="calendarMonthYear" class="calendar-title"></h4>
-                <button class="btn btn-primary calendar-btn-next" onclick="nextMonth()">▶</button>
+                <button class="btn btn-primary calendar-btn-next" onclick="nextPeriod()">▶</button>
+                <button class="btn btn-secondary calendar-btn-toggle" onclick="toggleCalendarView()" id="toggleCalendarBtn">🗓️ Settimana</button>
             </div>
             <div id="calendarContainer" class="calendar-container">
                 <!-- Calendar will be generated here -->
             </div>
         </div>
 
-        <!-- Day Orders Card -->
-        <div class="card" id="dayOrdersCard" style="display: none;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h2 id="dayOrdersTitle" style="margin: 0;">📋 Ordini del Giorno</h2>
-                <button class="btn btn-secondary" onclick="closeDayOrdersCard()" style="padding: 6px 10px; min-height: auto;">✕ Chiudi</button>
-            </div>
-            <div id="dayOrdersList" class="orders-grid">
-                <!-- Orders for the selected day will be populated here -->
-            </div>
-        </div>
-
-        <!-- Viaggi Section -->
-        <div class="card" id="tripsSection" style="display: none;">
-            <h2 style="display:flex;align-items:center;gap:6px;margin:0 0 15px 0;">🚚 Viaggi <span id="tripsCount" style="font-size:11px;color:#a0a0a0;font-weight:400;"></span></h2>
-            <div id="tripsGrid" class="orders-grid">
-                <!-- Trips will appear here -->
-            </div>
-        </div>
-
-        <!-- Unified Orders + Tasks -->
+        <!-- Unified Orders Section -->
         <div class="card">
-            <h2 style="display:flex;align-items:center;gap:6px;margin:0 0 15px 0;">📋 Ordini e Task <span id="tasksCount" style="font-size:11px;color:#a0a0a0;font-weight:400;"></span></h2>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;flex-wrap:wrap;gap:10px;">
+                <h2 style="display:flex;align-items:center;gap:6px;margin:0;">📋 Ordini <span id="tasksCount" style="font-size:11px;color:#a0a0a0;font-weight:400;"></span></h2>
+            </div>
             <div class="orders-grid" id="orderTasksGrid">
-                <!-- Order generated tasks will appear here -->
+                <!-- Orders will appear here -->
             </div>
         </div>
     </div>
@@ -686,21 +750,32 @@
                     <input type="datetime-local" id="orderDateTime" required>
                 </div>
                 <div class="form-group">
-                    <label for="orderStatus">Stato:</label>
-                    <select id="orderStatus" required>
-                        <option value="pending">In Sospeso</option>
-                        <option value="in_progress">In Lavorazione</option>
-                        <option value="completed">Completato</option>
-                    </select>
-                </div>
-                <div class="form-group">
                     <label for="orderNotes">Note:</label>
                     <textarea id="orderNotes" rows="3" placeholder="Note aggiuntive..."></textarea>
                 </div>
-                <div class="form-group">
-                    <label>🔧 Assegna Operatori (opzionale):</label>
-                    <div id="orderOperatorsChecklist" style="display: flex; flex-direction: column; gap: 6px; padding: 8px; background: #3d3d3d; border-radius: 4px; border: 1px solid #4d4d4d;">
-                        <!-- Checkboxes operatori generati dinamicamente -->
+                <!-- Opzioni per consegna: crea viaggio e assegna task -->
+                <div id="deliveryTripOptions" class="section" style="display:none;border-top:1px solid #4d4d4d;margin-top:10px;padding-top:10px;">
+                    <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                        <input type="checkbox" id="createTripNow"> Crea subito un viaggio e il relativo task
+                    </label>
+                    <div id="tripFields" style="display:none;">
+                        <div class="form-row" style="grid-template-columns:1fr 160px;">
+                            <div class="form-group">
+                                <label for="tripNameInline">Nome Viaggio</label>
+                                <input type="text" id="tripNameInline" placeholder="Es: Consegne del ...">
+                            </div>
+                            <div class="form-group">
+                                <label for="tripDateInline">Data Viaggio</label>
+                                <input type="date" id="tripDateInline">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="tripOperatorInline">Assegna a Operatore (opzionale)</label>
+                            <select id="tripOperatorInline">
+                                <option value="">-- Non assegnato --</option>
+                            </select>
+                        </div>
+                        <div style="font-size:12px;color:#a0a0a0;">Se selezioni un operatore, il task del viaggio verrà assegnato direttamente.</div>
                     </div>
                 </div>
                 <div class="modal-actions">
@@ -736,6 +811,15 @@
         
         // Sistema viaggi
         let trips = []; // Array di viaggi: {id, name, date, orderIds: [], sequence: []}
+        
+        // Calendario
+        let calendarViewMode = 'week'; // 'week' o 'month'
+        let weekStartDate = new Date();
+        weekStartDate.setDate(weekStartDate.getDate() - weekStartDate.getDay()); // Domenica
+        
+        // Filtro ordini
+        let showAllOrders = false; // false = solo oggi, true = tutti
+        let selectedDate = null; // Data specifica selezionata dal calendario (null = oggi)
         
         // Log currentUser al caricamento
         console.log('📋 currentUser caricato:', currentUser);
@@ -883,10 +967,17 @@
         }
 
         function generateTaskForOrder(order, assignedOperators = []) {
+            // Le CONSEGNE non generano task individuali - solo i VIAGGI generano task
+            if (order.type === 'consegnato') {
+                console.log('📦 Consegna: il task verrà creato quando aggiungi l\'ordine a un viaggio');
+                return;
+            }
+            
+            // Solo per RITIRI: genera task individuale
             // Evita duplicati se già presente
             if (orderTasks.some(t => t.orderId === order.id)) return;
             const cliente = clienti.find(c => c.nome === order.client);
-            const title = `${order.type === 'consegnato' ? 'consegna' : 'ritiro'} - ${String(order.client || '').toLowerCase()}`;
+            const title = `ritiro - ${String(order.client || '').toLowerCase()}`;
             
             // Crea task in memoria
             const newTask = {
@@ -897,8 +988,8 @@
                 product: order.product,
                 quantity: order.quantity,
                 dateTime: order.dateTime,
-                status: assignedOperators.length > 0 ? 'assigned' : 'unassigned',
-                assignedTo: assignedOperators,
+                status: 'unassigned',
+                assignedTo: [],
                 autogenerated: true,
                 notes: order.notes || '',
                 clienteOrari: cliente ? {
@@ -915,13 +1006,9 @@
             orderTasks.push(newTask);
             saveOrderTasks();
             
-            // Strategia DB:
-            // - "consegnato": crea subito un task non assegnato per visibilità admin
-            // - "ritira": non creare qui; ci pensa l'upsert a evitare duplicati
+            // Salva nel DB solo per ritiri (non assegnato - l'admin lo assegnerà)
             if (currentUser?.id && currentUser?.role === 'master') {
-                if (order.type === 'consegnato') {
-                    saveTaskToDatabase(newTask, []);
-                }
+                saveTaskToDatabase(newTask, []);
             } else {
                 console.warn('⚠️ Non loggato come admin - task solo locale');
             }
@@ -1180,23 +1267,71 @@
             const grid = document.getElementById('orderTasksGrid');
             const countSpan = document.getElementById('tasksCount');
             if (!grid) return;
-            if (orderTasks.length === 0) {
-                grid.innerHTML = '<p style="color:#808080;grid-column:1/-1;text-align:center;padding:20px;">Nessun task generato. Creando ordini compariranno qui.</p>';
-                countSpan.textContent = '(0)';
+            
+            // Filtra ordini in base a showAllOrders o selectedDate
+            let ordersToShow = orders;
+            if (!showAllOrders) {
+                // Usa selectedDate se disponibile, altrimenti oggi
+                const filterDate = selectedDate || new Date().toISOString().split('T')[0];
+                ordersToShow = orders.filter(order => {
+                    if (!order.dateTime) return false;
+                    return order.dateTime.startsWith(filterDate);
+                });
+            }
+            
+            // Aggiorna contatore
+            if (countSpan) {
+                if (showAllOrders) {
+                    countSpan.textContent = `(${ordersToShow.length} totali)`;
+                } else if (selectedDate) {
+                    // Formatta la data selezionata
+                    const date = new Date(selectedDate + 'T00:00:00');
+                    const formatted = date.toLocaleDateString('it-IT', { 
+                        weekday: 'short', 
+                        day: 'numeric', 
+                        month: 'short'
+                    });
+                    countSpan.textContent = `(${ordersToShow.length} - ${formatted})`;
+                } else {
+                    countSpan.textContent = `(${ordersToShow.length} oggi)`;
+                }
+            }
+            
+            if (ordersToShow.length === 0) {
+                grid.innerHTML = '<p style="color:#808080;grid-column:1/-1;text-align:center;padding:20px;">Nessun ordine ' + (showAllOrders ? '' : 'per oggi') + '</p>';
                 return;
             }
-            countSpan.textContent = `(${orderTasks.length})`;
-            grid.innerHTML = orderTasks.map(task => {
-                const assigned = task.assignedTo.length > 0;
-                const statusBadge = assigned ? '<span style="background:#1e3a2a;color:#86efac;padding:2px 6px;border-radius:4px;font-size:10px;">Assegnato</span>' : '<span style="background:#4a3a1e;color:#fcd34d;padding:2px 6px;border-radius:4px;font-size:10px;">Da assegnare</span>';
-                const operatorsHtml = assigned ? `<p style=\"margin:4px 0;\"><strong>Assegnato a:</strong> ${task.assignedTo.join(', ')}</p>` : '';
-                const timeOnly = task.dateTime ? new Date(task.dateTime).toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'}) : 'N/D';
-                const relatedOrder = orders.find(o => o.id === task.orderId);
-                const displayTitle = (task.title && typeof task.title === 'string' && task.title.length > 0)
-                    ? task.title
-                    : `${(relatedOrder && relatedOrder.type === 'consegnato') ? 'consegna' : 'ritiro'} - ${String((relatedOrder && relatedOrder.client) || task.client || '').toLowerCase()}`;
-                return `<div class=\"order-card\" style=\"border-left:4px solid ${assigned ? '#16a34a' : '#f59e0b'};background:${assigned ? '#1e2a4d' : '#1e2a4d'};border:2px solid ${assigned ? '#16a34a' : '#f59e0b'};\">\n  <div class=\"order-header\">\n    <div class=\"order-title\" style=\"font-size:20px;color:#7dd3fc;font-weight:700;margin-bottom:4px;\">${displayTitle}</div>\n    ${statusBadge}\n  </div>\n  <div class=\"order-details\" style=\"font-size:18px;line-height:1.8;margin-top:12px;\">\n    <p style=\"margin:8px 0;\"><strong style=\"color:#93c5fd;font-size:20px;\">📦 Prodotto:</strong> <span style=\"color:#e0e0e0;font-size:20px;font-weight:600;\">${task.product}</span></p>\n    <p style=\"margin:8px 0;\"><strong style=\"color:#93c5fd;font-size:20px;\">📊 Quantità:</strong> <span style=\"color:#fcd34d;font-size:22px;font-weight:700;\">${task.quantity} kg</span></p>\n    <p style=\"margin:8px 0;\"><strong style=\"color:#93c5fd;font-size:20px;\">⏰ Orario Programmato:</strong> <span style=\"color:#86efac;font-size:22px;font-weight:700;\">${timeOnly}</span></p>\n    ${operatorsHtml}\n  </div>\n  <div class=\"order-actions\" style=\"display:flex;gap:6px;justify-content:flex-end;margin-top:15px;flex-wrap:wrap;\">\n    <button class=\"btn btn-warning\" onclick=\"openAssignTaskModal('${task.id}')\" style=\"padding:6px 10px;font-size:12px;\">🔧 Assegna</button>\n    <button class=\"btn btn-primary\" onclick=\"markTaskCompleted('${task.id}')\" style=\"padding:6px 10px;font-size:12px;\">✓ Completa</button>\n    <button class=\"btn btn-secondary\" onclick=\"openEditOrderModal(${task.orderId})\" style=\"padding:6px 10px;font-size:12px;\">✏️ Modifica</button>\n    <button class=\"btn btn-danger\" onclick=\"deleteOrderTask('${task.id}')\" style=\"padding:6px 10px;font-size:12px;\">🗑️ Elimina</button>\n  </div>\n</div>`;
+            
+            // Sort orders by dateTime
+            ordersToShow.sort((a, b) => {
+                if (!a.dateTime && !b.dateTime) return 0;
+                if (!a.dateTime) return 1;
+                if (!b.dateTime) return -1;
+                return new Date(a.dateTime) - new Date(b.dateTime);
+            });
+            
+            grid.innerHTML = ordersToShow.map(order => {
+                const timeOnly = order.dateTime ? new Date(order.dateTime).toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'}) : 'N/D';
+                const statusLabel = getStatusLabel(order.status);
+                const typeLabel = order.type === 'consegnato' ? '🚚 Consegna' : '📥 Ritiro';
+                return `<div class=\"order-card\" style=\"border-left:4px solid #3b82f6;\">\n  <div class=\"order-header\">\n    <div class=\"order-title\" style=\"font-size:20px;color:#7dd3fc;font-weight:700;margin-bottom:4px;\">${order.client}</div>\n    <span style=\"background:#3d3d3d;color:#60a5fa;padding:4px 8px;border-radius:6px;font-size:12px;font-weight:600;\">${typeLabel}</span>\n  </div>\n  <div class=\"order-details\" style=\"font-size:18px;line-height:1.8;margin-top:12px;\">\n    <p style=\"margin:8px 0;\"><strong style=\"color:#93c5fd;font-size:20px;\">📦 Prodotto:</strong> <span style=\"color:#e0e0e0;font-size:20px;font-weight:600;\">${order.product}</span></p>\n    <p style=\"margin:8px 0;\"><strong style=\"color:#93c5fd;font-size:20px;\">📊 Quantità:</strong> <span style=\"color:#fcd34d;font-size:22px;font-weight:700;\">${order.quantity} kg</span></p>\n    <p style=\"margin:8px 0;\"><strong style=\"color:#93c5fd;font-size:20px;\">⏰ Orario:</strong> <span style=\"color:#86efac;font-size:22px;font-weight:700;\">${timeOnly}</span></p>\n    <p style=\"margin:8px 0;\"><strong style=\"color:#93c5fd;font-size:16px;\">📍 Stato:</strong> <span style=\"color:#a0a0a0;font-size:16px;\">${statusLabel}</span></p>\n  </div>\n  <div class=\"order-actions\" style=\"display:flex;gap:6px;justify-content:flex-end;margin-top:15px;flex-wrap:wrap;\">\n    <button class=\"btn btn-primary\" onclick=\"updateOrderStatus(${order.id}, 'completed')\" style=\"padding:6px 10px;font-size:12px;\">✓ Completa</button>\n    <button class=\"btn btn-secondary\" onclick=\"openEditOrderModal(${order.id})\" style=\"padding:6px 10px;font-size:12px;\">✏️ Modifica</button>\n    <button class=\"btn btn-danger\" onclick=\"deleteOrder(${order.id})\" style=\"padding:6px 10px;font-size:12px;\">🗑️ Elimina</button>\n  </div>\n</div>`;
             }).join('');
+        }
+        
+        function toggleShowAllOrders() {
+            showAllOrders = !showAllOrders;
+            selectedDate = null; // Reset data selezionata
+            const btn = document.getElementById('toggleShowAllBtn2');
+            if (showAllOrders) {
+                btn.textContent = '📅 Solo Oggi';
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-secondary');
+            } else {
+                btn.textContent = '👁️ Visualizza Tutti';
+                btn.classList.remove('btn-secondary');
+                btn.classList.add('btn-primary');
+            }
+            renderOrderTasks();
         }
 
         function openAssignTaskModal(taskId) {
@@ -1446,7 +1581,7 @@
                     title: buildTripTaskTitle(trip),
                     description: buildTripTaskDescription(trip),
                     scheduledAt: trip.date || null,
-                    assignedOperatorId: trip.assignedOperatorId || null,
+                    assignedOperatorId: trip.assignedOperatorId || null,  // assegna se presente
                     estimatedMinutes: Math.max(60, getTripOrders(trip.id).length * 15),
                     priority: 'HIGH'
                 };
@@ -1512,25 +1647,25 @@
             productSelect.innerHTML = '<option value="">-- Seleziona Articolo --</option>' +
                 articoli.map(a => `<option value="${a.nome}">${a.codice} - ${a.nome}</option>`).join('');
 
-            // Popola checklist operatori - verifica che siano già caricati
-            const checklistDiv = document.getElementById('orderOperatorsChecklist');
-            if (allOperators.length > 0) {
-                checklistDiv.innerHTML = allOperators.map(op => {
-                    const icon = op.role === 'master' ? '👨‍💼' : '👷';
-                    const suffix = (currentUser.id === op.id) ? ' (per me)' : '';
-                    return `
-                    <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer;">
-                        <input type="checkbox" class="orderOperatorCheckbox" value="${op.username}" style="cursor: pointer;">
-                        <span>${icon} ${op.username}${suffix}</span>
-                    </label>
-                `;
-                }).join('');
-            } else {
-                checklistDiv.innerHTML = '<p style="color: #a0a0a0; font-size: 11px;">Caricamento operatori...</p>';
-            }
-
             document.getElementById('orderModal').classList.add('active');
             document.getElementById('orderForm').reset();
+
+            // Reset e nascondi sezione viaggio inline
+            const tripOpts = document.getElementById('deliveryTripOptions');
+            const tripFields = document.getElementById('tripFields');
+            const createNowCb = document.getElementById('createTripNow');
+            const tripNameInline = document.getElementById('tripNameInline');
+            const tripDateInline = document.getElementById('tripDateInline');
+            const tripOpSelect = document.getElementById('tripOperatorInline');
+            if (tripOpSelect) {
+                tripOpSelect.innerHTML = '<option value="">-- Non assegnato --</option>' +
+                    allOperators.map(op => `<option value="${op.id}">${op.username}</option>`).join('');
+            }
+            if (tripOpts && tripFields && createNowCb) {
+                tripOpts.style.display = 'none';
+                tripFields.style.display = 'none';
+                createNowCb.checked = false;
+            }
 
             // Aggancia validazione data/ora contro festivi e orari consegna
             const dt = document.getElementById('orderDateTime');
@@ -1546,6 +1681,40 @@
                         dt.value = newVal;
                         alert('ℹ️ Data/ora adeguata ai giorni/orari di consegna');
                     }
+                };
+            }
+
+            // Mostra opzioni viaggio se tipo = consegnato
+            const typeSel = document.getElementById('orderType');
+            if (typeSel) {
+                const toggleTripSection = () => {
+                    if (!tripOpts) return;
+                    if (typeSel.value === 'consegnato') {
+                        tripOpts.style.display = '';
+                        // Precompila nome e data viaggio in base alla data ordine
+                        const dtVal = document.getElementById('orderDateTime').value;
+                        if (dtVal && tripDateInline) {
+                            const dateOnly = dtVal.split('T')[0];
+                            tripDateInline.value = dateOnly;
+                        }
+                        if (tripNameInline) {
+                            const when = tripDateInline && tripDateInline.value ? new Date(tripDateInline.value + 'T00:00:00').toLocaleDateString('it-IT') : 'oggi';
+                            tripNameInline.value = `Consegne ${when}`;
+                        }
+                    } else {
+                        tripOpts.style.display = 'none';
+                        if (createNowCb) createNowCb.checked = false;
+                        if (tripFields) tripFields.style.display = 'none';
+                    }
+                };
+                typeSel.onchange = toggleTripSection;
+                toggleTripSection();
+            }
+
+            // Mostra/nascondi campi viaggio se spunta la checkbox
+            if (createNowCb && tripFields) {
+                createNowCb.onchange = () => {
+                    tripFields.style.display = createNowCb.checked ? '' : 'none';
                 };
             }
         }
@@ -1577,25 +1746,7 @@
             document.getElementById('orderQuantity').value = order.quantity;
             document.getElementById('orderType').value = order.type;
             document.getElementById('orderDateTime').value = order.dateTime;
-            document.getElementById('orderStatus').value = order.status;
             document.getElementById('orderNotes').value = order.notes || '';
-
-            // Popola checklist operatori con selezione esistente
-            const task = orderTasks.find(t => t.orderId === orderId);
-            const checklistDiv = document.getElementById('orderOperatorsChecklist');
-            if (allOperators.length > 0) {
-                checklistDiv.innerHTML = allOperators.map(op => {
-                    const icon = op.role === 'master' ? '👨‍💼' : '👷';
-                    const suffix = (currentUser.id === op.id) ? ' (per me)' : '';
-                    const checked = task && task.assignedTo.includes(op.username) ? 'checked' : '';
-                    return `
-                    <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer;">
-                        <input type="checkbox" class="orderOperatorCheckbox" value="${op.username}" ${checked} style="cursor: pointer;">
-                        <span>${icon} ${op.username}${suffix}</span>
-                    </label>
-                `;
-                }).join('');
-            }
 
             updateClientInfo();
             document.getElementById('orderModal').classList.add('active');
@@ -1657,11 +1808,10 @@
         }
 
         // Salva nuovo ordine o modifica esistente
-        function saveOrder(event) {
+        async function saveOrder(event) {
             event.preventDefault();
             
             const editingId = document.getElementById('orderForm').dataset.editingId;
-            const selectedOperators = Array.from(document.querySelectorAll('.orderOperatorCheckbox:checked')).map(cb => cb.value);
             
             // Valida/sistema data/ora rispetto a festivi e orari di consegna
             let rawDateTime = document.getElementById('orderDateTime').value;
@@ -1685,7 +1835,7 @@
                 quantity: parseFloat(document.getElementById('orderQuantity').value),
                 type: document.getElementById('orderType').value,
                 dateTime: rawDateTime,
-                status: document.getElementById('orderStatus').value,
+                status: 'pending',  // Default status for new orders
                 lotto: document.getElementById('orderLotto').value,
                 ritiro_consegna: document.getElementById('orderRitiroConsegna').value,
                 posizione: document.getElementById('orderPosizione').value,
@@ -1708,8 +1858,6 @@
                         task.quantity = orderData.quantity;
                         task.dateTime = orderData.dateTime;
                         task.notes = orderData.notes;
-                        task.assignedTo = selectedOperators;
-                        task.status = selectedOperators.length > 0 ? 'assigned' : 'unassigned';
                         const cliente = clienti.find(c => c.nome === orderData.client);
                         if (cliente) {
                             task.clienteOrari = {
@@ -1720,8 +1868,6 @@
                             };
                         }
                         saveOrderTasks();
-                        // Se ritiro, sincronizza nel DB i task assegnati agli operatori
-                        upsertRitiroTasksForOperators(task, selectedOperators);
                     }
                     console.log('✏️ Ordine modificato:', order.client);
                 }
@@ -1733,13 +1879,33 @@
                     createdAt: new Date().toISOString()
                 };
                 orders.push(order);
-                generateTaskForOrder(order, selectedOperators);
-                // Sync DB per ritiro dopo generazione
-                const generatedTask = orderTasks.find(t => t.orderId === order.id);
-                if (generatedTask) {
-                    upsertRitiroTasksForOperators(generatedTask, selectedOperators);
+                // Genera task solo per ritiri (le consegne generano task quando aggiunte a un viaggio)
+                if (order.type === 'ritira') {
+                    generateTaskForOrder(order, []);
+                } else {
+                    // Se consegna e richiesto, crea viaggio e assegna task
+                    const createTripNow = document.getElementById('createTripNow');
+                    if (createTripNow && createTripNow.checked) {
+                        const nameEl = document.getElementById('tripNameInline');
+                        const dateEl = document.getElementById('tripDateInline');
+                        const opEl = document.getElementById('tripOperatorInline');
+                        const tripName = (nameEl && nameEl.value.trim()) || `Consegne ${new Date(order.dateTime).toLocaleDateString('it-IT')}`;
+                        const tripDate = (dateEl && dateEl.value) || order.dateTime.split('T')[0];
+                        const operatorId = opEl && opEl.value ? parseInt(opEl.value, 10) : null;
+                        const trip = createTrip(tripName, tripDate);
+                        addOrderToTrip(trip.id, order.id);
+                        if (operatorId) {
+                            const t = trips.find(t => t.id === trip.id);
+                            if (t) {
+                                t.assignedOperatorId = operatorId;
+                                saveTrips();
+                            }
+                        }
+                        // Crea/aggiorna task del viaggio (se admin autenticato)
+                        await syncTripTask(trip.id);
+                    }
                 }
-                console.log('📝 Nuovo ordine creato:', order.client, 'selectedOperators:', selectedOperators);
+                console.log('📝 Nuovo ordine creato:', order.client, order.type === 'consegnato' ? '(task verrà creato con il viaggio)' : '(task creato)');
             }
 
             renderOrderTasks();
@@ -1838,7 +2004,6 @@
         function getStatusLabel(status) {
             const labels = {
                 'pending': '⏳ Sospeso',
-                'in_progress': '⚙️ In Lavorazione',
                 'completed': '✓ Completato'
             };
             return labels[status] || status;
@@ -1862,7 +2027,7 @@
                 if (!confirm) return;
             }
 
-            const statuses = ['pending', 'in_progress', 'completed'];
+            const statuses = ['pending', 'completed'];
             const types = ['consegnato', 'ritira'];
             
             // Genera ordini raggruppati per giorno per calcolare carico e tempi
@@ -1946,7 +2111,7 @@
                         notes: '',
                         createdAt: new Date().toISOString()
                     });
-                    generateTaskForOrder(orders[orders.length - 1]);
+                    // Le consegne NON generano task - solo i viaggi generano task
                     
                     // Incrementa il tempo per la prossima consegna
                     currentTime += minutesPerDelivery;
@@ -1996,6 +2161,7 @@
                         notes: '',
                         createdAt: new Date().toISOString()
                     });
+                    // I ritiri generano task individuali
                     generateTaskForOrder(orders[orders.length - 1]);
                 });
             }
@@ -2013,8 +2179,76 @@
             window.history.back();
         }
 
-        // Renderizza calendario
+        // Renderizza calendario (settimana o mese)
         function renderCalendar() {
+            if (calendarViewMode === 'week') {
+                renderCalendarWeek();
+            } else {
+                renderCalendarMonth();
+            }
+        }
+        
+        // Renderizza vista settimanale
+        function renderCalendarWeek() {
+            const container = document.getElementById('calendarContainer');
+            const startDate = new Date(weekStartDate);
+            
+            const dayNames = ['Do', 'Lu', 'Ma', 'Me', 'Gi', 'Ve', 'Sa'];
+            
+            let html = dayNames.map(day => `<div style="font-weight: bold; text-align: center; padding: 6px; background: #3d3d3d; border: 1px solid #4d4d4d; border-radius: 4px; font-size: 12px; color: #b0b0b0;">${day}</div>`).join('');
+            
+            for (let i = 0; i < 7; i++) {
+                const date = new Date(startDate);
+                date.setDate(date.getDate() + i);
+                const dateStr = String(date.getFullYear()).padStart(4, '0') + '-' + 
+                               String(date.getMonth() + 1).padStart(2, '0') + '-' + 
+                               String(date.getDate()).padStart(2, '0');
+                
+                const isHoliday = (window.SettingsUtils && window.SettingsUtils.isHolidayDate) ? window.SettingsUtils.isHolidayDate(date) : false;
+                const isAllowed = (window.SettingsUtils && window.SettingsUtils.isDeliveryAllowedDate) ? window.SettingsUtils.isDeliveryAllowedDate(date) : (date.getDay() !== 0);
+                
+                const dayOrders = orders.filter(order => {
+                    if (!order.dateTime) return false;
+                    return order.dateTime.startsWith(dateStr);
+                });
+                
+                const assignedOrders = dayOrders.filter(order => {
+                    const task = orderTasks.find(t => t.orderId === order.id);
+                    return task && task.assignedTo.length > 0;
+                }).length;
+                
+                const unassignedOrders = dayOrders.filter(order => {
+                    const task = orderTasks.find(t => t.orderId === order.id);
+                    return !task || task.assignedTo.length === 0;
+                }).length;
+                
+                const hasOrdersClass = assignedOrders > 0 ? 'has-orders' : '';
+                const hasUnassignedClass = unassignedOrders > 0 ? 'has-unassigned-orders' : '';
+                const dayColor = (!isAllowed || isHoliday) ? 'color: #ef4444;' : '';
+                
+                let assignedCountHtml = '';
+                let unassignedCountHtml = '';
+                if (assignedOrders > 0) {
+                    assignedCountHtml = `<div style="position: absolute; bottom: 2px; right: 2px; font-size: 14px; color: #ffffff; font-weight: bold; z-index: 10;">${assignedOrders}</div>`;
+                }
+                if (unassignedOrders > 0) {
+                    unassignedCountHtml = `<div style="position: absolute; bottom: 2px; left: 2px; font-size: 14px; color: #ffffff; font-weight: bold; z-index: 10;">${unassignedOrders}</div>`;
+                }
+                
+                html += `<div class="calendar-day ${hasOrdersClass} ${hasUnassignedClass}" style="cursor: pointer; position: relative; ${dayColor}" onclick="showDayOrdersModal('${dateStr}')"><strong>${date.getDate()}</strong>${assignedCountHtml}${unassignedCountHtml}</div>`;
+            }
+            
+            container.innerHTML = html;
+            
+            // Calcola numero settimana
+            const firstDay = new Date(startDate.getFullYear(), 0, 1);
+            const pastDaysOfYear = (startDate - firstDay) / 86400000;
+            const weekNumber = Math.ceil((pastDaysOfYear + firstDay.getDay() + 1) / 7);
+            document.getElementById('calendarMonthYear').textContent = `Settimana ${weekNumber}`;
+        }
+        
+        // Renderizza vista mensile
+        function renderCalendarMonth() {
             const container = document.getElementById('calendarContainer');
             
             const year = calendarDisplayYear;
@@ -2086,83 +2320,66 @@
             container.innerHTML = html;
         }
         
-        function previousMonth() {
-            calendarDisplayMonth--;
-            if (calendarDisplayMonth < 0) {
-                calendarDisplayMonth = 11;
-                calendarDisplayYear--;
+        function previousPeriod() {
+            if (calendarViewMode === 'week') {
+                weekStartDate.setDate(weekStartDate.getDate() - 7);
+            } else {
+                calendarDisplayMonth--;
+                if (calendarDisplayMonth < 0) {
+                    calendarDisplayMonth = 11;
+                    calendarDisplayYear--;
+                }
             }
             renderCalendar();
         }
         
-        function nextMonth() {
-            calendarDisplayMonth++;
-            if (calendarDisplayMonth > 11) {
-                calendarDisplayMonth = 0;
-                calendarDisplayYear++;
+        function nextPeriod() {
+            if (calendarViewMode === 'week') {
+                weekStartDate.setDate(weekStartDate.getDate() + 7);
+            } else {
+                calendarDisplayMonth++;
+                if (calendarDisplayMonth > 11) {
+                    calendarDisplayMonth = 0;
+                    calendarDisplayYear++;
+                }
+            }
+            renderCalendar();
+        }
+        
+        function toggleCalendarView() {
+            const btn = document.getElementById('toggleCalendarBtn');
+            if (calendarViewMode === 'week') {
+                calendarViewMode = 'month';
+                btn.textContent = '📅 Mese';
+            } else {
+                calendarViewMode = 'week';
+                btn.textContent = '🗓️ Settimana';
+                // Sincronizza weekStartDate con il mese corrente
+                weekStartDate = new Date(calendarDisplayYear, calendarDisplayMonth, 1);
+                weekStartDate.setDate(weekStartDate.getDate() - weekStartDate.getDay());
             }
             renderCalendar();
         }
 
-        // Mostra ordini del giorno in modal
+        // Mostra ordini del giorno (filtra per data selezionata)
         function showDayOrdersModal(dateStr) {
-            const dayOrdersList = document.getElementById('dayOrdersList');
-            const dayOrdersCard = document.getElementById('dayOrdersCard');
-            const dayOrdersTitle = document.getElementById('dayOrdersTitle');
-
-            // Filtra gli ordini per il giorno selezionato
-            const dayOrders = orders.filter(order => {
-                if (!order.dateTime) return false;
-                return order.dateTime.startsWith(dateStr);
-            });
-
-            // Formatta la data per il display
-            const date = new Date(dateStr + 'T00:00:00');
-            const dayNames = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
-            const dayName = dayNames[date.getDay()];
-            const formatted = date.toLocaleDateString('it-IT', { year: 'numeric', month: 'long', day: 'numeric' });
-            dayOrdersTitle.textContent = `📋 Ordini di ${dayName.charAt(0).toUpperCase() + dayName.slice(1)}, ${formatted}`;
-
-            if (dayOrders.length === 0) {
-                dayOrdersList.innerHTML = '<div class="empty-state">Nessun ordine per questo giorno</div>';
-                dayOrdersCard.style.display = 'block';
-                return;
-            }
-
-            // Crea le card degli ordini
-            dayOrdersList.innerHTML = dayOrders.map(order => {
-                const timeOnly = order.dateTime ? new Date(order.dateTime).toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'}) : 'N/D';
-                const headerTitle = `${order.type === 'consegnato' ? 'consegna' : 'ritiro'} - ${String(order.client || '').toLowerCase()}`;
-                return `
-                <div class="order-card" style="background: #1e2a4d; border-left: 4px solid var(--primary); border: 2px solid #2563eb;">
-                    <div class="order-header">
-                        <div class="order-title" style="font-size: 20px; color: #7dd3fc; font-weight: 700;">${headerTitle}</div>
-                        <div class="order-status ${order.status}" style="font-size: 14px;">${getStatusLabel(order.status)}</div>
-                    </div>
-                    <div class="order-details" style="font-size: 18px; line-height: 1.8; margin-top: 12px;">
-                        <p style="margin: 8px 0;"><strong style="color: #93c5fd; font-size: 20px;">📦 Prodotto:</strong> <span style="color: #e0e0e0; font-size: 20px; font-weight: 600;">${order.product}</span></p>
-                        <p style="margin: 8px 0;"><strong style="color: #93c5fd; font-size: 20px;">📊 Quantità:</strong> <span style="color: #fcd34d; font-size: 22px; font-weight: 700;">${order.quantity} kg</span></p>
-                        <p style="margin: 8px 0;"><strong style="color: #93c5fd; font-size: 20px;">⏰ Orario Programmato:</strong> <span style="color: #86efac; font-size: 22px; font-weight: 700;">${timeOnly}</span></p>
-                    </div>
-                    <div class="order-actions" style="margin-top: 15px;">
-                        <button class="btn btn-warning" onclick="updateOrderStatus(${order.id}, 'in_progress')" style="font-size: 14px;">⚙️ In Lavorazione</button>
-                        <button class="btn btn-primary" onclick="updateOrderStatus(${order.id}, 'completed')" style="font-size: 14px;">✓ Completa</button>
-                        <button class="btn btn-danger" onclick="deleteOrder(${order.id})" style="font-size: 14px;">🗑️ Elimina</button>
-                    </div>
-                </div>
-            `}).join('');
-
-            dayOrdersCard.style.display = 'block';
-
-            // Scroll automatico verso la card
+            // Imposta la data selezionata
+            selectedDate = dateStr;
+            showAllOrders = false;
+            
+            // Aggiorna pulsante
+            const btn = document.getElementById('toggleShowAllBtn2');
+            btn.textContent = '👁️ Visualizza Tutti';
+            btn.classList.remove('btn-secondary');
+            btn.classList.add('btn-primary');
+            
+            // Re-render ordini con la nuova data
+            renderOrderTasks();
+            
+            // Scroll alla sezione ordini
             setTimeout(() => {
-                dayOrdersCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                document.getElementById('orderTasksGrid').parentElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }, 100);
-        }
-
-        // Chiudi la card degli ordini del giorno
-        function closeDayOrdersCard() {
-            document.getElementById('dayOrdersCard').style.display = 'none';
         }
 
         // === UI VIAGGI ===
@@ -2244,7 +2461,6 @@
             if (!trip) return;
 
             document.getElementById('tripOrdersTitle').textContent = `📦 ${trip.name} - Gestione Ordini`;
-            renderTripOperatorAssign(tripId);
             renderAvailableOrders(tripId);
             renderTripOrdersList(tripId);
             renderTripTotals(tripId);
@@ -2366,33 +2582,6 @@
             renderTripOrdersList(tripId);
         }
 
-        function renderTripOperatorAssign(tripId) {
-            const container = document.getElementById('tripOperatorAssign');
-            const select = document.getElementById('tripOperatorSelect');
-            const trip = trips.find(t => t.id === tripId);
-            if (!trip || !select) return;
-            // Populate operators select (prefer operators/slave)
-            const ops = allOperators || [];
-            select.innerHTML = '<option value="">-- Non assegnato --</option>' +
-                ops.map(op => `<option value="${op.id}">${op.username}</option>`).join('');
-            if (trip.assignedOperatorId) {
-                select.value = String(trip.assignedOperatorId);
-            }
-        }
-
-        function saveTripOperator() {
-            if (!currentTripId) return;
-            const trip = trips.find(t => t.id === currentTripId);
-            if (!trip) return;
-            const select = document.getElementById('tripOperatorSelect');
-            const val = select && select.value ? parseInt(select.value) : null;
-            trip.assignedOperatorId = val || null;
-            saveTrips();
-            // Update or create the backend task with new assignment
-            syncTripTask(trip.id);
-            alert('✅ Operatore viaggio salvato');
-        }
-
         // Inizializza
         window.addEventListener('load', async () => {
                 // Display user info
@@ -2477,10 +2666,8 @@
     <div id="tripOrdersModal" class="modal">
         <div class="modal-content" style="max-width:800px;max-height:80vh;overflow-y:auto;">
             <h2 id="tripOrdersTitle">📦 Gestione Ordini Viaggio</h2>
-            <div id="tripOperatorAssign" style="margin:10px 0 18px 0;padding:10px;background:#2d2d2d;border-radius:6px;border:1px solid #4d4d4d;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-                <label for="tripOperatorSelect" style="font-weight:600;color:#e0e0e0;">👷 Operatore del Viaggio:</label>
-                <select id="tripOperatorSelect" style="flex:1;min-width:220px;padding:8px;background:#3d3d3d;border:1px solid #4d4d4d;border-radius:6px;color:#e0e0e0;"></select>
-                <button class="btn btn-primary" onclick="saveTripOperator()">💾 Salva</button>
+            <div style="margin:10px 0 18px 0;padding:10px;background:#2d2d2d;border-radius:6px;border:2px solid #3b82f6;">
+                <p style="color:#60a5fa;font-size:13px;margin:0;">💡 <strong>Nota:</strong> L'operatore verrà assegnato dall'admin tramite il task generato dal viaggio nella dashboard principale</p>
             </div>
             <div style="margin-bottom:15px;">
                 <h3 style="font-size:16px;margin-bottom:10px;">Ordini Disponibili (consegnati):</h3>

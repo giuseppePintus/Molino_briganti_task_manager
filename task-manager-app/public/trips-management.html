@@ -93,18 +93,18 @@
         }
 
         .quick-actions {
-            display: flex;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
             gap: 10px;
             margin-bottom: 20px;
-            flex-wrap: wrap;
+            align-items: stretch;
         }
 
         .quick-actions .btn {
-            padding: 10px 16px;
+            padding: 10px 12px; /* allinea a admin mobile */
             min-height: 40px;
             font-size: 13px;
-            flex: 1;
-            min-width: 150px;
+            width: 100%;
         }
 
         .card {
@@ -119,6 +119,117 @@
             font-size: 20px;
             margin-bottom: 15px;
             color: #e0e0e0;
+        }
+
+        /* Calendar styles (aligned with admin) */
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .calendar-btn-dummy, .calendar-btn-toggle {
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+        @media (min-width: 768px) {
+            .calendar-btn-dummy, .calendar-btn-toggle {
+                width: 160px;
+                text-align: center;
+            }
+        }
+        .calendar-btn-prev, .calendar-btn-next {
+            padding: 8px 12px;
+            font-size: 16px;
+            min-width: 40px;
+            width: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .calendar-title {
+            margin: 0;
+            color: #e0e0e0;
+            font-size: 16px;
+            text-align: center;
+            flex: 1;
+            min-width: 150px;
+        }
+        .calendar-container {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px;
+        }
+        .calendar-day {
+            border: 1px solid #4d4d4d;
+            padding: 6px;
+            min-height: 50px;
+            border-radius: 4px;
+            background: #3d3d3d;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 18px;
+            color: #b0b0b0;
+            position: relative;
+            overflow: hidden;
+        }
+        .calendar-day:hover {
+            background: #4d4d4d;
+        }
+        .calendar-day.has-trips {
+            background: #1e3a2a;
+            border-color: #4caf50;
+            position: relative;
+        }
+        .calendar-day.has-trips::before {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 0;
+            height: 0;
+            border-style: solid;
+            border-width: 0 0 18px 18px;
+            border-color: transparent transparent #4caf50 transparent;
+            border-radius: 0 0 4px 0;
+        }
+        @media (max-width: 768px) {
+            .calendar-day {
+                min-height: 40px;
+                padding: 6px;
+                font-size: 16px;
+            }
+        }
+        @media (max-width: 480px) {
+            .calendar-day {
+                min-height: 35px;
+                padding: 3px;
+                font-size: 9px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .calendar-header {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr;
+                grid-template-rows: auto auto;
+                gap: 8px;
+                margin-bottom: 15px;
+            }
+            .calendar-btn-dummy {
+                grid-column: 1;
+                grid-row: 1;
+                padding: 10px 12px;
+                font-size: 13px;
+            }
+            .calendar-btn-toggle { grid-column: 2; grid-row: 1; padding: 10px 12px; font-size: 13px; }
+            .calendar-btn-prev { grid-column: 1 / -1; grid-row: 2; width: 40px !important; height: 40px; padding: 0 !important; font-size: 18px !important; min-width: 40px !important; max-width: 40px !important; justify-self: start; }
+            .calendar-title { grid-column: 1 / -1; grid-row: 2; font-size: 13px; display: flex; align-items: center; justify-content: center; margin: 0 50px; }
+            .calendar-btn-next { grid-column: 1 / -1; grid-row: 2; width: 40px !important; height: 40px; padding: 0 !important; font-size: 18px !important; min-width: 40px !important; max-width: 40px !important; justify-self: end; }
+        }
+        @media (min-width: 768px) {
+            .calendar-btn-toggle { width: 160px; text-align: center; }
         }
 
         .trips-grid {
@@ -180,6 +291,13 @@
             gap: 8px;
             margin-top: 10px;
             flex-wrap: wrap;
+        }
+
+        /* Uniforma i pulsanti delle card come in admin */
+        .trip-actions .btn {
+            padding: 8px 12px;
+            font-size: 13px;
+            min-height: 36px;
         }
 
         .product-totals {
@@ -349,12 +467,11 @@
                 grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
             }
 
+            /* Mantieni 2 colonne come in admin (mobile header) */
             .quick-actions {
-                flex-direction: column;
-            }
-
-            .quick-actions .btn {
-                width: 100%;
+                display: grid !important;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
             }
 
             .trip-actions {
@@ -374,6 +491,12 @@
 
             .trip-details {
                 font-size: 14px;
+            }
+
+            /* Pulsanti coerenti con admin su mobile */
+            .quick-actions .btn {
+                padding: 10px 12px;
+                font-size: 13px;
             }
         }
     </style>
@@ -421,6 +544,18 @@
             <button class="btn btn-primary" onclick="window.location.href='orders-planner.html'">📦 Planner Ordini</button>
         </div>
 
+        <!-- Calendar -->
+        <div class="card" style="padding: 12px;">
+            <div class="calendar-header">
+                <button class="btn btn-secondary calendar-btn-dummy" onclick="toggleShowAllTrips()" id="toggleShowAllBtn">👁️ Visualizza Tutti</button>
+                <button class="btn btn-primary calendar-btn-prev" onclick="previousPeriod()">◀</button>
+                <h4 id="calendarMonthYear" class="calendar-title"></h4>
+                <button class="btn btn-primary calendar-btn-next" onclick="nextPeriod()">▶</button>
+                <button class="btn btn-secondary calendar-btn-toggle" onclick="toggleCalendarView()" id="toggleCalendarBtn">📅 Settimana</button>
+            </div>
+            <div id="calendarContainer" class="calendar-container"></div>
+        </div>
+
         <!-- Trips List -->
         <div class="card">
             <h2>📋 Elenco Viaggi</h2>
@@ -443,11 +578,8 @@
                     <label for="tripDate">Data *</label>
                     <input type="date" id="tripDate" required>
                 </div>
-                <div class="form-group">
-                    <label for="tripOperator">Operatore</label>
-                    <select id="tripOperator">
-                        <option value="">-- Non assegnato --</option>
-                    </select>
+                <div style="padding:10px;background:#3d3d3d;border-radius:6px;margin:10px 0;">
+                    <p style="color:#60a5fa;font-size:12px;margin:0;">💡 L'operatore verrà assegnato dall'admin tramite il task generato dal viaggio</p>
                 </div>
                 <div class="modal-actions">
                     <button type="submit" class="btn btn-primary">💾 Crea</button>
@@ -462,11 +594,9 @@
         <div class="modal-content">
             <h2 id="tripOrdersTitle">📦 Gestione Ordini Viaggio</h2>
             
-            <!-- Operator Assignment -->
-            <div style="margin:10px 0 18px 0;padding:10px;background:#2d2d2d;border-radius:6px;border:1px solid #4d4d4d;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-                <label for="tripOperatorSelect" style="font-weight:600;color:#e0e0e0;">👷 Operatore:</label>
-                <select id="tripOperatorSelect" style="flex:1;min-width:220px;padding:8px;background:#3d3d3d;border:1px solid #4d4d4d;border-radius:6px;color:#e0e0e0;"></select>
-                <button class="btn btn-primary" onclick="saveTripOperator()">💾 Salva</button>
+            <!-- Info Assignment -->
+            <div style="margin:10px 0 18px 0;padding:10px;background:#2d2d2d;border-radius:6px;border:2px solid #3b82f6;">
+                <p style="color:#60a5fa;font-size:13px;margin:0;">💡 <strong>Nota:</strong> L'operatore verrà assegnato dall'admin tramite il task generato dal viaggio nella dashboard principale</p>
             </div>
 
             <!-- Available Orders -->
@@ -503,9 +633,66 @@
         let allOperators = [];
         let currentTripId = null;
 
+        // Calendar state
+        let calendarViewMode = 'week';
+        let weekStartDate = new Date();
+        weekStartDate.setDate(weekStartDate.getDate() - weekStartDate.getDay()); // Sunday
+        let calendarDisplayMonth = new Date().getMonth();
+        let calendarDisplayYear = new Date().getFullYear();
+        let selectedDate = null;
+        let showAllTrips = true;
+
         function fmtLocalDate(d){
             const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const da=String(d.getDate()).padStart(2,'0');
             return `${y}-${m}-${da}`;
+        }
+
+        function fmtMonthYear(date){
+            return date.toLocaleDateString('it-IT', { month:'long', year:'numeric' });
+        }
+
+        // Salva stato calendario in localStorage
+        function saveCalendarState() {
+            const state = {
+                selectedDate: selectedDate,
+                showAllTrips: showAllTrips,
+                calendarViewMode: calendarViewMode
+            };
+            localStorage.setItem('tripsCalendarState', JSON.stringify(state));
+        }
+
+        // Carica stato calendario da localStorage
+        function loadCalendarState() {
+            const saved = localStorage.getItem('tripsCalendarState');
+            if (saved) {
+                try {
+                    const state = JSON.parse(saved);
+                    if (state.selectedDate !== undefined) selectedDate = state.selectedDate;
+                    if (state.showAllTrips !== undefined) showAllTrips = state.showAllTrips;
+                    if (state.calendarViewMode !== undefined) calendarViewMode = state.calendarViewMode;
+                } catch (e) {
+                    console.error('Errore caricamento stato calendario:', e);
+                }
+            }
+        }
+
+        // Aggiorna UI pulsanti calendario dopo render
+        function updateCalendarButtons() {
+            // Aggiorna pulsante Visualizza Tutti
+            const btn = document.getElementById('toggleShowAllBtn');
+            if (btn) {
+                if (showAllTrips || !selectedDate) {
+                    btn.textContent = '👁️ Visualizza Tutti';
+                } else {
+                    btn.textContent = `📅 ${new Date(selectedDate+'T00:00:00').toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit'})}`;
+                }
+            }
+            
+            // Aggiorna pulsante toggle vista
+            const toggleBtn = document.getElementById('toggleCalendarBtn');
+            if (toggleBtn) {
+                toggleBtn.textContent = calendarViewMode === 'week' ? '📅 Settimana' : '📅 Mese';
+            }
         }
 
         // Load operators
@@ -544,6 +731,7 @@
             trips = stored ? JSON.parse(stored) : [];
             updateStats();
             renderTrips();
+            renderCalendar();
         }
 
         // Save trips
@@ -566,29 +754,37 @@
         function updateStats() {
             const today = new Date().toISOString().split('T')[0];
             const todayTrips = trips.filter(t => t.date && t.date.split('T')[0] === today);
-            const assignedTrips = trips.filter(t => t.assignedOperatorId);
 
             document.getElementById('totalTrips').textContent = trips.length;
             document.getElementById('todayTrips').textContent = todayTrips.length;
-            document.getElementById('assignedTrips').textContent = assignedTrips.length;
+            // Nascondi la stat "Assegnati" visto che l'assegnazione avviene tramite task
+            const assignedCard = document.getElementById('assignedTrips')?.parentElement;
+            if (assignedCard) assignedCard.style.display = 'none';
         }
 
         // Render trips
         function renderTrips() {
             const container = document.getElementById('tripsList');
             
-            if (trips.length === 0) {
+            // Filtra per data selezionata se presente
+            let tripsToRender = trips;
+            if (selectedDate && !showAllTrips) {
+                tripsToRender = trips.filter(t => (t.date || '').startsWith(selectedDate));
+                if (tripsToRender.length === 0) {
+                    container.innerHTML = `<div class="empty-state">Nessun viaggio per ${new Date(selectedDate+'T00:00:00').toLocaleDateString('it-IT')}</div>`;
+                    return;
+                }
+            } else if (trips.length === 0) {
                 container.innerHTML = '<div class="empty-state">Nessun viaggio creato. Crea il primo viaggio!</div>';
                 return;
             }
 
             // Sort trips by date (newest first)
-            const sortedTrips = [...trips].sort((a, b) => new Date(b.date) - new Date(a.date));
+            const sortedTrips = [...tripsToRender].sort((a, b) => new Date(b.date) - new Date(a.date));
 
             container.innerHTML = sortedTrips.map(trip => {
                 const tripOrders = getTripOrders(trip.id);
                 const totals = calculateTripTotals(trip.id);
-                const operator = trip.assignedOperatorId ? allOperators.find(op => op.id === trip.assignedOperatorId) : null;
                 
                 const totalsHtml = Object.entries(totals).map(([product, qty]) => 
                     `<span class="product-badge">${product}: ${qty.toFixed(1)}kg</span>`
@@ -602,7 +798,6 @@
                         </div>
                         <div class="trip-details">
                             <p><strong>📅 Data:</strong> ${new Date(trip.date).toLocaleDateString('it-IT')}</p>
-                            ${operator ? `<p><strong>👷 Operatore:</strong> ${operator.username}</p>` : '<p><strong>👷 Operatore:</strong> Non assegnato</p>'}
                             ${totalsHtml ? `<p><strong>📊 Totali:</strong></p><div class="product-totals">${totalsHtml}</div>` : ''}
                         </div>
                         <div class="trip-actions">
@@ -614,8 +809,145 @@
             }).join('');
         }
 
+        // Calendar rendering
+        function renderCalendar() {
+            console.log('renderCalendar called', {calendarViewMode, weekStartDate, trips: trips.length});
+            const title = document.getElementById('calendarMonthYear');
+            const container = document.getElementById('calendarContainer');
+            if (!container) {
+                console.error('calendarContainer not found!');
+                return;
+            }
+
+            if (calendarViewMode === 'week') {
+                const ref = new Date(weekStartDate);
+                title.textContent = fmtMonthYear(ref);
+                renderCalendarWeek();
+            } else {
+                const ref = new Date(calendarDisplayYear, calendarDisplayMonth, 1);
+                title.textContent = fmtMonthYear(ref);
+                renderCalendarMonth();
+            }
+        }
+
+        function renderCalendarWeek() {
+            const container = document.getElementById('calendarContainer');
+            const start = new Date(weekStartDate);
+            
+            const dayNames = ['Do', 'Lu', 'Ma', 'Me', 'Gi', 'Ve', 'Sa'];
+            
+            // Header giorni settimana (stile Admin)
+            let html = dayNames.map(day => `<div style="font-weight: bold; text-align: center; padding: 6px; background: #3d3d3d; border: 1px solid #4d4d4d; border-radius: 4px; font-size: 12px; color: #b0b0b0;">${day}</div>`).join('');
+            
+            for (let i=0;i<7;i++) {
+                const d = new Date(start); d.setDate(start.getDate()+i);
+                const ymd = fmtLocalDate(d);
+                const dayTrips = trips.filter(t => (t.date||'').startsWith(ymd));
+                let tripCountHtml = '';
+                if (dayTrips.length > 0) {
+                    tripCountHtml = `<div style="position: absolute; bottom: 2px; right: 2px; font-size: 14px; color: #ffffff; font-weight: bold; z-index: 10;">${dayTrips.length}</div>`;
+                }
+                const hasTripClass = dayTrips.length > 0 ? 'has-trips' : '';
+                html += `<div class="calendar-day ${hasTripClass}" style="cursor: pointer; position: relative;" onclick="showDayTrips('${ymd}')"><strong>${d.getDate()}</strong>${tripCountHtml}</div>`;
+            }
+            container.innerHTML = html;
+            
+            // Calcola numero settimana
+            const firstDay = new Date(start.getFullYear(), 0, 1);
+            const pastDaysOfYear = (start - firstDay) / 86400000;
+            const weekNumber = Math.ceil((pastDaysOfYear + firstDay.getDay() + 1) / 7);
+            document.getElementById('calendarMonthYear').textContent = `Settimana ${weekNumber}`;
+        }
+
+        function renderCalendarMonth() {
+            const container = document.getElementById('calendarContainer');
+            const first = new Date(calendarDisplayYear, calendarDisplayMonth, 1);
+            const last = new Date(calendarDisplayYear, calendarDisplayMonth+1, 0);
+            const startDow = first.getDay();
+            
+            const dayNames = ['Do', 'Lu', 'Ma', 'Me', 'Gi', 'Ve', 'Sa'];
+            
+            // Header giorni settimana (stile Admin)
+            let html = dayNames.map(day => `<div style="font-weight: bold; text-align: center; padding: 6px; background: #3d3d3d; border: 1px solid #4d4d4d; border-radius: 4px; font-size: 12px; color: #b0b0b0;">${day}</div>`).join('');
+            
+            // Celle vuote prima del primo giorno
+            for (let i=0;i<startDow;i++) html += '<div></div>';
+            
+            for (let day=1; day<=last.getDate(); day++) {
+                const date = new Date(calendarDisplayYear, calendarDisplayMonth, day);
+                const ymd = fmtLocalDate(date);
+                const dayTrips = trips.filter(t => (t.date||'').startsWith(ymd));
+                let tripCountHtml = '';
+                if (dayTrips.length > 0) {
+                    tripCountHtml = `<div style="position: absolute; bottom: 2px; right: 2px; font-size: 14px; color: #ffffff; font-weight: bold; z-index: 10;">${dayTrips.length}</div>`;
+                }
+                const hasTripClass = dayTrips.length > 0 ? 'has-trips' : '';
+                html += `<div class="calendar-day ${hasTripClass}" style="cursor: pointer; position: relative;" onclick="showDayTrips('${ymd}')"><strong>${day}</strong>${tripCountHtml}</div>`;
+            }
+            container.innerHTML = html;
+            
+            // Aggiorna il titolo del mese
+            const monthNames = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 
+                               'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
+            document.getElementById('calendarMonthYear').textContent = `${monthNames[calendarDisplayMonth]} ${calendarDisplayYear}`;
+        }
+
+        function previousPeriod(){
+            if (calendarViewMode === 'week') {
+                weekStartDate.setDate(weekStartDate.getDate()-7);
+            } else {
+                if (calendarDisplayMonth===0){ calendarDisplayMonth=11; calendarDisplayYear--; } else { calendarDisplayMonth--; }
+            }
+            renderCalendar();
+        }
+        function nextPeriod(){
+            if (calendarViewMode === 'week') {
+                weekStartDate.setDate(weekStartDate.getDate()+7);
+            } else {
+                if (calendarDisplayMonth===11){ calendarDisplayMonth=0; calendarDisplayYear++; } else { calendarDisplayMonth++; }
+            }
+            renderCalendar();
+        }
+        function toggleCalendarView(){
+            calendarViewMode = calendarViewMode==='week'?'month':'week';
+            const btn = document.getElementById('toggleCalendarBtn');
+            btn.textContent = calendarViewMode==='week' ? '📅 Settimana' : '📅 Mese';
+            saveCalendarState();
+            renderCalendar();
+        }
+
+        function toggleShowAllTrips() {
+            showAllTrips = !showAllTrips;
+            const btn = document.getElementById('toggleShowAllBtn');
+            if (showAllTrips) {
+                selectedDate = null;
+                btn.textContent = '👁️ Visualizza Tutti';
+            } else {
+                const today = fmtLocalDate(new Date());
+                selectedDate = today;
+                btn.textContent = `📅 ${new Date().toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit'})}`;
+            }
+            saveCalendarState();
+            renderTrips();
+            const listCard = document.getElementById('tripsList').parentElement;
+            if (listCard) listCard.scrollIntoView({behavior:'smooth', block:'start'});
+        }
+
+        function showDayTrips(dateStr){
+            selectedDate = dateStr;
+            showAllTrips = false;
+            const btn = document.getElementById('toggleShowAllBtn');
+            btn.textContent = `📅 ${new Date(dateStr+'T00:00:00').toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit'})}`;
+            saveCalendarState();
+            renderTrips();
+            const container = document.getElementById('tripsList');
+            if (container && container.parentElement) {
+                container.parentElement.scrollIntoView({behavior:'smooth', block:'start'});
+            }
+        }
+
         // Create trip
-        function createTrip(name, date, operatorId = null) {
+        function createTrip(name, date) {
             const trip = {
                 id: Date.now(),
                 name: name,
@@ -623,7 +955,6 @@
                 orderIds: [],
                 sequence: [],
                 createdAt: new Date().toISOString(),
-                assignedOperatorId: operatorId,
                 tripTaskId: null
             };
             trips.push(trip);
@@ -741,7 +1072,7 @@
                     title: buildTripTaskTitle(trip),
                     description: buildTripTaskDescription(trip),
                     scheduledAt: trip.date || null,
-                    assignedOperatorId: trip.assignedOperatorId || null,
+                    assignedOperatorId: null,  // L'admin assegnerà il task dalla dashboard
                     estimatedMinutes: Math.max(60, getTripOrders(trip.id).length * 15),
                     priority: 'HIGH'
                 };
@@ -797,12 +1128,7 @@
         function openCreateTripModal() {
             document.getElementById('createTripForm').reset();
             document.getElementById('tripDate').valueAsDate = new Date();
-            
-            // Populate operator select
-            const select = document.getElementById('tripOperator');
-            select.innerHTML = '<option value="">-- Non assegnato --</option>' +
-                allOperators.map(op => `<option value="${op.id}">${op.username}</option>`).join('');
-            
+
             document.getElementById('createTripModal').classList.add('active');
 
             const tripDate = document.getElementById('tripDate');
@@ -830,7 +1156,6 @@
             event.preventDefault();
             const name = document.getElementById('tripName').value;
             let date = document.getElementById('tripDate').value;
-            const operatorId = document.getElementById('tripOperator').value;
             if (window.SettingsUtils && date) {
                 const base = new Date(date+'T00:00:00');
                 if (!window.SettingsUtils.isDeliveryAllowedDate(base)) {
@@ -841,9 +1166,11 @@
                 }
             }
             
-            createTrip(name, date, operatorId ? parseInt(operatorId) : null);
+            createTrip(name, date);
             closeCreateTripModal();
-            loadTrips();
+            updateStats();
+            renderTrips();
+            renderCalendar();
             showAlert('✅ Viaggio creato con successo!', 'success');
         }
 
@@ -854,7 +1181,6 @@
             if (!trip) return;
 
             document.getElementById('tripOrdersTitle').textContent = `📦 ${trip.name} - Gestione Ordini`;
-            renderTripOperatorAssign(tripId);
             renderAvailableOrders(tripId);
             renderTripOrdersList(tripId);
             renderTripTotals(tripId);
@@ -1003,7 +1329,9 @@
         function confirmDeleteTrip(tripId) {
             if (confirm('Eliminare questo viaggio? Gli ordini non verranno eliminati.')) {
                 deleteTrip(tripId);
-                loadTrips();
+                updateStats();
+                renderTrips();
+                renderCalendar();
                 showAlert('✅ Viaggio eliminato', 'success');
             }
         }
@@ -1024,6 +1352,7 @@
 
         // Initialize
         window.addEventListener('load', async () => {
+            console.log('Trips Management: Init started');
             // Check auth
             if (!token || currentUser.role !== 'master') {
                 window.location.href = 'index.html';
@@ -1040,9 +1369,23 @@
             if (window.SettingsUtils && window.SettingsUtils.loadAsync) {
                 await window.SettingsUtils.loadAsync();
             }
+            console.log('Trips Management: Loading data...');
             await loadOperators();
             loadOrders();
+            try {
+                loadCalendarState(); // Carica stato PRIMA di renderizzare
+            } catch (e) {
+                console.error('Errore loadCalendarState:', e);
+            }
             loadTrips();
+            console.log('Trips Management: Rendering calendar...');
+            try {
+                renderCalendar(); // Renderizza calendario anche se vuoto
+                updateCalendarButtons(); // Aggiorna pulsanti DOPO render
+            } catch (e) {
+                console.error('Errore render calendario:', e);
+            }
+            console.log('Trips Management: Init completed');
         });
     </script>
 </body>
