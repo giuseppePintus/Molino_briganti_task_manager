@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Molino Briganti</title>
+    <link rel="stylesheet" href="css/common.css">
     <style>
         * {
             margin: 0;
@@ -154,63 +155,7 @@
             box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
         }
 
-        .btn {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .btn-primary {
-            background: var(--primary);
-            color: white;
-            width: 100%;
-        }
-
-        .btn-primary:hover {
-            background: #1d4ed8;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(37, 99, 235, 0.3);
-        }
-
-        .btn-secondary {
-            background: #3d3d3d;
-            color: #e0e0e0;
-            border: 1px solid #4d4d4d;
-        }
-
-        .btn-secondary:hover {
-            background: #4d4d4d;
-        }
-
-        .btn-success {
-            background: var(--success);
-            color: white;
-        }
-
-        .btn-success:hover {
-            background: #15803d;
-        }
-
-        .btn-danger {
-            background: var(--danger);
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background: #b91c1c;
-        }
-
-        .btn-small {
-            padding: 8px 12px;
-            font-size: 12px;
-        }
+        /* Base button styles moved to css/common.css. Page retains width helpers like .submit-button-full. */
 
         .alert {
             padding: 15px;

@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestione Admin / Operatori - Molino Briganti</title>
+    <link rel="stylesheet" href="css/common.css">
     <style>
         * {
             margin: 0;
@@ -43,64 +44,7 @@
             width: 100%;
         }
 
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #2d2d2d;
-            padding: 20px;
-            border-radius: 0 0 8px 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-            border: 1px solid #4d4d4d;
-            border-top: none;
-            flex-shrink: 0;
-            z-index: 100;
-        }
-
-        .header-logo {
-            height: 50px;
-            margin-right: 20px;
-            display: flex;
-            align-items: center;
-        }
-
-        .header-logo img {
-            height: 100%;
-            width: auto;
-            object-fit: contain;
-        }
-
-        .header-left {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .header h1 {
-            font-size: 18px;
-            color: #e0e0e0;
-            margin: 0;
-        }
-
-        .header .user-info {
-            font-size: 22px;
-            font-weight: 700;
-            color: #e0e0e0;
-        }
-
-        .header .btn {
-            padding: 10px 16px;
-            min-height: auto;
-            font-size: 16px;
-        }
-
-        .header .btn span {
-            font-size: 14px;
-        }
-
-        .header .btn::before {
-            font-size: 28px;
-        }
+        /* Header styles unified via css/common.css */
 
         .main-content {
             flex: 1;
@@ -111,80 +55,7 @@
             margin: 0 auto;
         }
 
-        .btn {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 6px;
-            font-size: 18px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            letter-spacing: 0.5px;
-            position: relative;
-            overflow: visible;
-            display: flex;
-            align-items: center;
-            justify-content: flex-start;
-            gap: 12px;
-            min-height: 60px;
-        }
-
-        .btn::before {
-            content: attr(data-icon);
-            font-size: 36px;
-            flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .btn span {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            line-height: 1.2;
-            font-size: 18px;
-        }
-
-        .btn-primary {
-            background: var(--primary);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: #1d4ed8;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(37, 99, 235, 0.3);
-        }
-
-        .btn-secondary {
-            background: #3d3d3d;
-            color: #e0e0e0;
-            border: 1px solid #4d4d4d;
-        }
-
-        .btn-secondary:hover {
-            background: #4d4d4d;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        }
-
-        .btn-danger {
-            background: var(--danger);
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background: #b91c1c;
-        }
-
-        .btn-warning {
-            background: var(--warning);
-            color: white;
-        }
-
-        .btn-warning:hover {
-            background: #d97706;
-        }
+        /* Base button styles moved to css/common.css. Keep layout/size overrides below. */
 
         .btn-small {
             padding: 12px 24px;
@@ -360,182 +231,31 @@
         }
 
         @media (max-width: 768px) {
-            .header {
-                flex-direction: column;
-                gap: 12px;
-                padding: 15px;
-                align-items: stretch;
-            }
-
-            .header-left {
-                flex-direction: column;
-                align-items: center;
-                text-align: center;
-                gap: 8px;
-                width: 100%;
-            }
-
-            .header-logo {
-                height: 45px;
-                margin-right: 0;
-                justify-content: center;
-            }
-
-            .header h1 {
-                font-size: 16px;
-            }
-
-            .header-actions {
-                flex-wrap: wrap;
-                justify-content: center;
-                width: 100%;
-            }
-
-            .header .user-info {
-                font-size: 18px;
-                text-align: center;
-            }
-
-            .header > div {
-                width: 100%;
-                justify-content: center;
-            }
-
-            .form-row {
-                grid-template-columns: 1fr;
-            }
-
-            .operators-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .btn {
-                padding: 10px 12px;
-                min-height: 50px;
-                font-size: 16px;
-            }
-
-            .btn span {
-                font-size: 14px;
-            }
-
-            .card {
-                padding: 12px;
-            }
-
-            .card h2 {
-                font-size: 18px;
-            }
+            .form-row { grid-template-columns: 1fr; }
+            .operators-grid { grid-template-columns: 1fr; }
+            .card { padding: 12px; }
+            .card h2 { font-size: 18px; }
+            .btn { padding: 10px 12px; min-height: 50px; font-size: 16px; }
+            .btn span { font-size: 14px; }
         }
 
         @media (max-width: 480px) {
-            .header {
-                flex-direction: column;
-                gap: 10px;
-                padding: 12px;
-            }
-
-            .header-left {
-                flex-direction: column;
-                align-items: center;
-                text-align: center;
-                gap: 6px;
-                width: 100%;
-            }
-
-            .header-logo {
-                height: 40px;
-                margin-right: 0;
-            }
-
-            .header h1 {
-                font-size: 14px;
-            }
-
-            .header-actions {
-                flex-direction: column;
-                gap: 8px;
-                width: 100%;
-                justify-content: center;
-            }
-
-            .header .user-info {
-                font-size: 16px;
-                text-align: center;
-                width: 100%;
-            }
-
-            .header > div {
-                gap: 8px;
-                width: 100%;
-                justify-content: center;
-            }
-
-            .btn {
-                padding: 8px 10px;
-                min-height: 45px;
-                font-size: 14px;
-                gap: 6px;
-            }
-
-            .btn::before {
-                font-size: 28px;
-            }
-
-            .btn span {
-                font-size: 12px;
-            }
-
-            .btn-small {
-                padding: 6px 8px;
-                min-height: 40px;
-                font-size: 12px;
-            }
-
-            .btn-small::before {
-                font-size: 20px;
-            }
-
-            .btn-small span {
-                font-size: 11px;
-            }
-
-            .card {
-                padding: 10px;
-                margin-bottom: 15px;
-            }
-
-            .card h2 {
-                font-size: 16px;
-                margin-bottom: 10px;
-            }
-
-            .form-group label {
-                font-size: 13px;
-            }
-
+            .btn { padding: 8px 10px; min-height: 45px; font-size: 14px; gap: 6px; }
+            .btn::before { font-size: 28px; }
+            .btn span { font-size: 12px; }
+            .btn-small { padding: 6px 8px; min-height: 40px; font-size: 12px; }
+            .btn-small::before { font-size: 20px; }
+            .btn-small span { font-size: 11px; }
+            .card { padding: 10px; margin-bottom: 15px; }
+            .card h2 { font-size: 16px; margin-bottom: 10px; }
+            .form-group label { font-size: 13px; }
             .form-group input,
             .form-group textarea,
-            .form-group select {
-                padding: 8px;
-                font-size: 13px;
-            }
-
-            .operator-card {
-                padding: 10px;
-            }
-
-            .operator-card h3 {
-                font-size: 14px;
-            }
-
-            .operator-info div {
-                font-size: 12px;
-            }
-
-            .operator-actions {
-                gap: 8px;
-            }
+            .form-group select { padding: 8px; font-size: 13px; }
+            .operator-card { padding: 10px; }
+            .operator-card h3 { font-size: 14px; }
+            .operator-info div { font-size: 12px; }
+            .operator-actions { gap: 8px; }
         }
     </style>
 </head>
