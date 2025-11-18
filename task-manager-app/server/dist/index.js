@@ -54,17 +54,23 @@ const cors_1 = __importDefault(require("cors"));
 const client_1 = require("@prisma/client");
 const tasks_1 = __importDefault(require("./routes/tasks"));
 const auth_1 = __importDefault(require("./routes/auth"));
+const backup_1 = __importDefault(require("./routes/backup"));
+const backupMiddleware_1 = __importDefault(require("./middleware/backupMiddleware"));
+const backupService_1 = __importDefault(require("./services/backupService"));
 const app = (0, express_1.default)();
 const prisma = new client_1.PrismaClient();
 const PORT = process.env.PORT || 5000;
 // Middleware
 app.use((0, cors_1.default)());
 app.use(express_1.default.json());
+// Setup backup middleware (attiva backup automatico su ogni operazione DB)
+(0, backupMiddleware_1.default)(prisma);
 // Serve static files
 app.use(express_1.default.static(path_1.default.join(__dirname, '../../public')));
 // Routes
 app.use('/api/auth', auth_1.default);
 app.use('/api/tasks', tasks_1.default);
+app.use('/api/backup', backup_1.default);
 // Health check
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok' });
@@ -78,8 +84,26 @@ app.listen(PORT, () => __awaiter(void 0, void 0, void 0, function* () {
     try {
         yield prisma.$connect();
         console.log('Database connected successfully');
+        // Ripristina ultimo backup dal NAS se disponibile
+        try {
+            console.log('🔄 Checking for backups on NAS...');
+            yield backupService_1.default.restoreLatestFromNas();
+        }
+        catch (err) {
+            console.log('ℹ️ No backups available on NAS (first run)');
+        }
+        // Attiva backup automatico ogni ora
+        backupService_1.default.setupAutoBackup(60);
+        // Backup iniziale
+        try {
+            yield backupService_1.default.backupDatabase();
+        }
+        catch (err) {
+            console.warn('⚠️ Initial backup failed:', err);
+        }
         console.log(`Server is running on port ${PORT}`);
         console.log(`Web UI: http://localhost:${PORT}`);
+        console.log(`Backup API: http://localhost:${PORT}/api/backup`);
     }
     catch (err) {
         console.error('Database connection error:', err);

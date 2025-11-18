@@ -5,8 +5,8 @@ import BackupService from '../services/backupService';
  * Configura middleware Prisma per attivare backup automatico
  * su ogni operazione di database (create, update, delete)
  */
-export function setupBackupMiddleware(prisma: PrismaClient): void {
-  prisma.$use(async (params, next) => {
+export function setupBackupMiddleware(prisma: any): void {
+  prisma.$use(async (params: any, next: any) => {
     // Esegui query originale
     const result = await next(params);
 
@@ -20,7 +20,7 @@ export function setupBackupMiddleware(prisma: PrismaClient): void {
       params.action === 'deleteMany'
     ) {
       // Backup asincrono in background (non blocca la response)
-      BackupService.backupDatabase().catch(err =>
+      BackupService.backupDatabase().catch((err: any) =>
         console.error(`Backup middleware error after ${params.action}:`, err)
       );
     }
