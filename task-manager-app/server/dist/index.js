@@ -63,8 +63,6 @@ const PORT = process.env.PORT || 5000;
 // Middleware
 app.use((0, cors_1.default)());
 app.use(express_1.default.json());
-// Setup backup middleware (attiva backup automatico su ogni operazione DB)
-(0, backupMiddleware_1.default)(prisma);
 // Serve static files
 app.use(express_1.default.static(path_1.default.join(__dirname, '../../public')));
 // Routes
@@ -84,6 +82,8 @@ app.listen(PORT, () => __awaiter(void 0, void 0, void 0, function* () {
     try {
         yield prisma.$connect();
         console.log('Database connected successfully');
+        // Setup backup middleware DOPO connessione
+        (0, backupMiddleware_1.default)(prisma);
         // Ripristina ultimo backup dal NAS se disponibile
         try {
             console.log('🔄 Checking for backups on NAS...');
