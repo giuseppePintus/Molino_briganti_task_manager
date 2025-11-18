@@ -753,6 +753,21 @@
                     <label for="orderNotes">Note:</label>
                     <textarea id="orderNotes" rows="3" placeholder="Note aggiuntive..."></textarea>
                 </div>
+                <!-- Sezione: Assegna a Viaggio o Operatore -->
+                <div id="assignmentSection" class="section" style="border-top:1px solid #4d4d4d;margin-top:10px;padding-top:10px;">
+                    <div class="form-group">
+                        <label for="assignToTrip">📋 Assegna a Viaggio Esistente:</label>
+                        <select id="assignToTrip">
+                            <option value="">-- Nessuno (crea viaggio nuovo) --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="assignToOperator">👤 Assegna a Operatore:</label>
+                        <select id="assignToOperator">
+                            <option value="">-- Non assegnato --</option>
+                        </select>
+                    </div>
+                </div>
                 <!-- Opzioni per consegna: crea viaggio e assegna task -->
                 <div id="deliveryTripOptions" class="section" style="display:none;border-top:1px solid #4d4d4d;margin-top:10px;padding-top:10px;">
                     <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
@@ -1748,6 +1763,33 @@
             document.getElementById('orderDateTime').value = order.dateTime;
             document.getElementById('orderNotes').value = order.notes || '';
 
+            // Popola dropdown viaggio
+            const assignToTrip = document.getElementById('assignToTrip');
+            assignToTrip.innerHTML = '<option value="">-- Nessuno (crea viaggio nuovo) --</option>';
+            if (typeof trips !== 'undefined' && trips && trips.length > 0) {
+                assignToTrip.innerHTML += trips.map(t => `<option value="${t.id}">${t.name} (${t.date})</option>`).join('');
+            }
+            // Imposta il viaggio associato se esiste
+            if (typeof trips !== 'undefined' && trips) {
+                const tripForOrder = trips.find(t => t.orders && t.orders.includes(orderId));
+                if (tripForOrder) {
+                    assignToTrip.value = tripForOrder.id;
+                } else if (order.assignedTrip) {
+                    assignToTrip.value = order.assignedTrip;
+                }
+            }
+
+            // Popola dropdown operatori
+            const assignToOperator = document.getElementById('assignToOperator');
+            assignToOperator.innerHTML = '<option value="">-- Non assegnato --</option>';
+            if (typeof allOperators !== 'undefined' && allOperators && allOperators.length > 0) {
+                assignToOperator.innerHTML += allOperators.map(op => `<option value="${op.id}">${op.name || op.username}</option>`).join('');
+            }
+            // Imposta l'operatore associato se esiste
+            if (order.assignedOperatorId) {
+                assignToOperator.value = order.assignedOperatorId;
+            }
+
             updateClientInfo();
             document.getElementById('orderModal').classList.add('active');
 
@@ -1839,13 +1881,40 @@
                 lotto: document.getElementById('orderLotto').value,
                 ritiro_consegna: document.getElementById('orderRitiroConsegna').value,
                 posizione: document.getElementById('orderPosizione').value,
-                notes: document.getElementById('orderNotes').value
+                notes: document.getElementById('orderNotes').value,
+                assignedTrip: document.getElementById('assignToTrip').value || null,
+                assignedOperatorId: document.getElementById('assignToOperator').value ? parseInt(document.getElementById('assignToOperator').value, 10) : null
             };
 
             if (editingId) {
                 // Modifica ordine esistente
                 const order = orders.find(o => o.id == editingId);
                 if (order) {
+                    // Gestisci cambio assegnazione viaggio
+                    const previousTrip = typeof trips !== 'undefined' && trips ? trips.find(t => t.orders && t.orders.includes(editingId)) : null;
+                    const newTripId = orderData.assignedTrip ? parseInt(orderData.assignedTrip, 10) : null;
+                    
+                    if (previousTrip && newTripId !== previousTrip.id) {
+                        // Rimuovi da viaggio precedente
+                        previousTrip.orders = previousTrip.orders.filter(id => id !== editingId);
+                    }
+                    
+                    if (newTripId && (!previousTrip || previousTrip.id !== newTripId)) {
+                        // Aggiungi al nuovo viaggio
+                        const newTrip = typeof trips !== 'undefined' && trips ? trips.find(t => t.id === newTripId) : null;
+                        if (newTrip) {
+                            if (!newTrip.orders) newTrip.orders = [];
+                            if (!newTrip.orders.includes(editingId)) {
+                                newTrip.orders.push(editingId);
+                            }
+                            // Se assegnato a operatore, assegna anche il viaggio a quell'operatore
+                            if (orderData.assignedOperatorId) {
+                                newTrip.assignedOperatorId = orderData.assignedOperatorId;
+                            }
+                            saveTrips();
+                        }
+                    }
+                    
                     Object.assign(order, orderData);
                     
                     // Aggiorna anche il task associato
@@ -1858,6 +1927,7 @@
                         task.quantity = orderData.quantity;
                         task.dateTime = orderData.dateTime;
                         task.notes = orderData.notes;
+                        task.assignedOperatorId = orderData.assignedOperatorId;
                         const cliente = clienti.find(c => c.nome === orderData.client);
                         if (cliente) {
                             task.clienteOrari = {
@@ -1869,7 +1939,7 @@
                         }
                         saveOrderTasks();
                     }
-                    console.log('✏️ Ordine modificato:', order.client);
+                    console.log('✏️ Ordine modificato:', order.client, order.assignedTrip ? ` (Viaggio: ${order.assignedTrip})` : '', order.assignedOperatorId ? ` (Operatore: ${order.assignedOperatorId})` : '');
                 }
             } else {
                 // Nuovo ordine
