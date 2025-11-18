@@ -1,0 +1,130 @@
+version: '3.8'
+
+services:
+  # Servizio principale dell'applicazione
+  molino-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: molino-briganti-task-manager
+    ports:
+      - "5000:5000"
+    environment:
+      # Server
+      - PORT=5000
+      - NODE_ENV=production
+      
+      # Database
+      - DATABASE_URL=file:/app/server/prisma/data/tasks.db
+      
+      # JWT
+      - JWT_SECRET=${JWT_SECRET:-your-secret-key-change-this}
+      
+      # Admin
+      - DEFAULT_MASTER_USER=master
+      - DEFAULT_MASTER_PASS=masterpass
+      
+      # Backup
+      - BACKUP_DIR=/app/backups
+      - NAS_URL=${NAS_URL:-192.168.1.100}
+      - NAS_PORT=${NAS_PORT:-5000}
+      - NAS_PATH=/mnt/nas/backups
+    
+    volumes:
+      # Backups locali
+      - backup_data:/app/backups
+      
+      # Database persistente
+      - db_data:/app/server/prisma/data
+      
+      # Mount NAS (commentare se non disponibile)
+      # - type: volume
+      #   source: nas_backup
+      #   target: /mnt/nas/backups
+      #   volume:
+      #     nocopy: true
+    
+    depends_on:
+      - nas-server
+    
+    restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    networks:
+      - molino-network
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Servizio NAS locale per backup (opzionale, per testing)
+  nas-server:
+    image: node:18-alpine
+    container_name: molino-nas-server
+    working_dir: /app
+    command: >
+      sh -c "npm install express cors && 
+             node -e \"
+             const express = require('express');
+             const cors = require('cors');
+             const fs = require('fs');
+             const path = require('path');
+             const app = express();
+             app.use(cors());
+             app.use(express.raw({ type: 'application/octet-stream', limit: '100mb' }));
+             const backupDir = '/backups';
+             if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
+             
+             app.get('/api/backup/list', (req, res) => {
+               const files = fs.readdirSync(backupDir).filter(f => f.startsWith('db-backup-')).sort().reverse();
+               res.json({ files });
+             });
+             
+             app.post('/api/backup/upload', (req, res) => {
+               const name = req.headers['x-backup-name'];
+               if (!name) return res.status(400).json({ error: 'Missing name' });
+               fs.writeFileSync(path.join(backupDir, name), req.body);
+               res.json({ success: true });
+             });
+             
+             app.get('/api/backup/download/:name', (req, res) => {
+               const file = path.join(backupDir, req.params.name);
+               if (!fs.existsSync(file)) return res.status(404).json({ error: 'Not found' });
+               res.download(file);
+             });
+             
+             app.listen(5000, () => console.log('NAS Server on :5000'));
+             \"
+             "
+    ports:
+      - "5001:5000"
+    volumes:
+      - backup_data:/backups
+    networks:
+      - molino-network
+    restart: unless-stopped
+
+volumes:
+  backup_data:
+    driver: local
+  db_data:
+    driver: local
+  # NAS mount (uncomment e configurare per NAS reale)
+  # nas_backup:
+  #   driver: local
+  #   driver_opts:
+  #     type: nfs
+  #     o: addr=192.168.1.100,vers=4,soft,timeo=180,bg,tcp
+  #     device: ":/backups"
+
+networks:
+  molino-network:
+    driver: bridge
