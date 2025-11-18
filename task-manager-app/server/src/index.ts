@@ -21,9 +21,6 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-// Setup backup middleware (attiva backup automatico su ogni operazione DB)
-setupBackupMiddleware(prisma);
-
 // Serve static files
 app.use(express.static(path.join(__dirname, '../../public')));
 
@@ -47,6 +44,9 @@ app.listen(PORT, async () => {
   try {
     await prisma.$connect();
     console.log('Database connected successfully');
+
+    // Setup backup middleware DOPO connessione
+    setupBackupMiddleware(prisma);
 
     // Ripristina ultimo backup dal NAS se disponibile
     try {
