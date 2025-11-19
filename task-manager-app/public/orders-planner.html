@@ -417,7 +417,7 @@
         .calendar-day {
             border: 1px solid #4d4d4d;
             padding: 6px;
-            min-height: 50px;
+            min-height: 85px;
             border-radius: 4px;
             background: #3d3d3d;
             cursor: pointer;
@@ -432,9 +432,19 @@
             background: #4d4d4d;
         }
 
+        .calendar-day.is-today {
+            border: 2px solid #16a34a;
+            font-weight: bold;
+        }
+
+        .calendar-day.is-selected {
+            border: 2px solid #06b6d4;
+            background: #164e63;
+        }
+
         .calendar-day.has-orders {
-            background: #1e2a4d;
-            border-color: var(--primary);
+            background: #1e2a1e;
+            border-color: #16a34a;
             position: relative;
         }
 
@@ -455,6 +465,24 @@
             border-radius: 0 0 0 4px;
         }
 
+        .calendar-day.has-trips {
+            position: relative;
+        }
+
+        .calendar-day.has-trips::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 0;
+            height: 0;
+            border-style: solid;
+            border-width: 0 18px 18px 0;
+            border-color: transparent #2563eb transparent transparent;
+            border-radius: 0 4px 0 0;
+            z-index: 10;
+        }
+
         .calendar-day.has-orders::before {
             content: '';
             position: absolute;
@@ -464,7 +492,7 @@
             height: 0;
             border-style: solid;
             border-width: 0 0 18px 18px;
-            border-color: transparent transparent var(--primary) transparent;
+            border-color: transparent transparent #16a34a transparent;
             border-radius: 0 0 4px 0;
         }
 
@@ -672,9 +700,9 @@
 
         <!-- Planner Actions moved below stats -->
         <div class="planner-actions">
-            <button class="btn btn-primary" onclick="openOrderModal()">➕ Nuovo Ordine</button>
-            <button class="btn btn-success" onclick="window.location.href='trips-management.html'">🚚 Gestione Viaggi</button>
-            <button class="btn btn-warning" onclick="generateSampleOrders()">🔄 Genera Dati</button>
+            <button class="btn btn-success" onclick="openOrderModal()">➕ Nuovo Ordine</button>
+            <button class="btn btn-primary" onclick="window.location.href='trips-management.html'">🚚 Gestione Viaggi</button>
+            <button class="btn btn-success" onclick="window.location.href='customers-management.html'">👥 Nuovo Cliente</button>
         </div>
 
         <!-- Calendar -->
@@ -828,6 +856,8 @@
         let trips = []; // Array di viaggi: {id, name, date, orderIds: [], sequence: []}
         
         // Calendario
+        let calendarClickTimer = null;
+        let lastClickedDate = null;
         let calendarViewMode = 'week'; // 'week' o 'month'
         let weekStartDate = new Date();
         weekStartDate.setDate(weekStartDate.getDate() - weekStartDate.getDay()); // Domenica
@@ -1327,9 +1357,38 @@
             
             grid.innerHTML = ordersToShow.map(order => {
                 const timeOnly = order.dateTime ? new Date(order.dateTime).toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'}) : 'N/D';
+                const createdAtTime = order.createdAt ? new Date(order.createdAt).toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'}) : new Date().toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'});
                 const statusLabel = getStatusLabel(order.status);
-                const typeLabel = order.type === 'consegnato' ? '🚚 Consegna' : '📥 Ritiro';
-                return `<div class=\"order-card\" style=\"border-left:4px solid #3b82f6;\">\n  <div class=\"order-header\">\n    <div class=\"order-title\" style=\"font-size:20px;color:#7dd3fc;font-weight:700;margin-bottom:4px;\">${order.client}</div>\n    <span style=\"background:#3d3d3d;color:#60a5fa;padding:4px 8px;border-radius:6px;font-size:12px;font-weight:600;\">${typeLabel}</span>\n  </div>\n  <div class=\"order-details\" style=\"font-size:18px;line-height:1.8;margin-top:12px;\">\n    <p style=\"margin:8px 0;\"><strong style=\"color:#93c5fd;font-size:20px;\">📦 Prodotto:</strong> <span style=\"color:#e0e0e0;font-size:20px;font-weight:600;\">${order.product}</span></p>\n    <p style=\"margin:8px 0;\"><strong style=\"color:#93c5fd;font-size:20px;\">📊 Quantità:</strong> <span style=\"color:#fcd34d;font-size:22px;font-weight:700;\">${order.quantity} kg</span></p>\n    <p style=\"margin:8px 0;\"><strong style=\"color:#93c5fd;font-size:20px;\">⏰ Orario:</strong> <span style=\"color:#86efac;font-size:22px;font-weight:700;\">${timeOnly}</span></p>\n    <p style=\"margin:8px 0;\"><strong style=\"color:#93c5fd;font-size:16px;\">📍 Stato:</strong> <span style=\"color:#a0a0a0;font-size:16px;\">${statusLabel}</span></p>\n  </div>\n  <div class=\"order-actions\" style=\"display:flex;gap:6px;justify-content:flex-end;margin-top:15px;flex-wrap:wrap;\">\n    <button class=\"btn btn-primary\" onclick=\"updateOrderStatus(${order.id}, 'completed')\" style=\"padding:6px 10px;font-size:12px;\">✓ Completa</button>\n    <button class=\"btn btn-secondary\" onclick=\"openEditOrderModal(${order.id})\" style=\"padding:6px 10px;font-size:12px;\">✏️ Modifica</button>\n    <button class=\"btn btn-danger\" onclick=\"deleteOrder(${order.id})\" style=\"padding:6px 10px;font-size:12px;\">🗑️ Elimina</button>\n  </div>\n</div>`;
+                const typeLabel = order.type === 'consegnato' ? 'Consegna' : 'Ritiro';
+                const typeIcon = order.type === 'consegnato' ? '🚚' : '📥';
+                const borderColor = order.type === 'consegnato' ? '#3b82f6' : '#f97316';
+                const statusColor = order.type === 'consegnato' ? '#60a5fa' : '#fb923c';
+                return `
+                    <div class="task-card" style="border-left: 4px solid ${borderColor};">
+                        <div class="task-header">
+                            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                                <span style="font-size: 32px;">${typeIcon}</span>
+                                <div>
+                                    <div style="font-size: 18px; font-weight: 700; color: #e0e0e0;">${typeLabel}</div>
+                                    <div style="font-size: 14px; color: #a0a0a0; margin-top: 2px;">Cliente: <strong style="color: #e0e0e0;">${order.client}</strong></div>
+                                </div>
+                            </div>
+                            <span class="task-status" style="background: ${borderColor}; color: white; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600;">${statusLabel}</span>
+                        </div>
+                        <div style="margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px; color: #a0a0a0;">
+                            <div><strong>📦 Prodotto:</strong> ${order.product}</div>
+                            <div><strong>📊 Quantità:</strong> ${order.quantity} kg</div>
+                            <div><strong>⏰ Consegna:</strong> ${timeOnly}</div>
+                            <div><strong>📨 Ricevuto:</strong> ${createdAtTime}</div>
+                        </div>
+                        ${order.notes ? `<div style="margin-top: 10px; padding: 8px; background: #2d2d2d; border-radius: 6px; font-size: 12px; color: #e0e0e0;"><strong>📝 Note:</strong> ${order.notes}</div>` : ''}
+                        <div class="task-actions" style="display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap;">
+                            <button class="btn btn-primary btn-small" onclick="updateOrderStatus(${order.id}, 'completed')" style="flex: 1; min-width: 100px;">✓ Completa</button>
+                            <button class="btn btn-secondary btn-small" onclick="openEditOrderModal(${order.id})" style="flex: 1; min-width: 100px;">✏️ Modifica</button>
+                            <button class="btn btn-danger btn-small" onclick="deleteOrder(${order.id})" style="flex: 1; min-width: 100px;">🗑️ Elimina</button>
+                        </div>
+                    </div>
+                `;
             }).join('');
         }
         
@@ -1648,9 +1707,14 @@
         }
 
         // Apri modal ordine
-        function openOrderModal() {
+        function openOrderModal(selectedDate = null) {
             document.querySelector('#orderModal h2').textContent = '📝 Nuovo Ordine';
             document.getElementById('orderForm').dataset.editingId = '';
+            
+            // Se c'è una data selezionata dal calendario, preselezionala
+            if (selectedDate) {
+                document.getElementById('orderDateTime').value = selectedDate + 'T12:00';
+            }
             
             // Popola dropdown clienti
             const clientSelect = document.getElementById('orderClient');
@@ -2249,6 +2313,28 @@
             window.history.back();
         }
 
+        // Funzioni per gestire singolo e doppio click nel calendario
+        function handleCalendarDayClick(dateStr) {
+            selectedDate = dateStr;
+            if (calendarClickTimer) {
+                clearTimeout(calendarClickTimer);
+                calendarClickTimer = null;
+                // È un doppio click
+                handleCalendarDayDoubleClick(dateStr);
+            } else {
+                // Singolo click - attendi 300ms per verificare se è doppio
+                calendarClickTimer = setTimeout(() => {
+                    showDayOrdersModal(dateStr);
+                    renderCalendar();
+                    calendarClickTimer = null;
+                }, 300);
+            }
+        }
+        
+        function handleCalendarDayDoubleClick(dateStr) {
+            openOrderModal(dateStr);
+        }
+
         // Renderizza calendario (settimana o mese)
         function renderCalendar() {
             if (calendarViewMode === 'week') {
@@ -2265,7 +2351,10 @@
             
             const dayNames = ['Do', 'Lu', 'Ma', 'Me', 'Gi', 'Ve', 'Sa'];
             
-            let html = dayNames.map(day => `<div style="font-weight: bold; text-align: center; padding: 6px; background: #3d3d3d; border: 1px solid #4d4d4d; border-radius: 4px; font-size: 12px; color: #b0b0b0;">${day}</div>`).join('');
+            let html = dayNames.map((day, idx) => {
+                const color = idx === 0 ? '#ef4444' : '#b0b0b0'; // Domenica rossa
+                return `<div style="font-weight: bold; text-align: center; padding: 6px; background: #3d3d3d; border: 1px solid #4d4d4d; border-radius: 4px; font-size: 12px; color: ${color};">${day}</div>`;
+            }).join('');
             
             for (let i = 0; i < 7; i++) {
                 const date = new Date(startDate);
@@ -2292,20 +2381,35 @@
                     return !task || task.assignedTo.length === 0;
                 }).length;
                 
+                // Controlla viaggi per questo giorno
+                const dayTrips = trips.filter(trip => trip.date?.startsWith(dateStr));
+                const hasTrips = dayTrips.length > 0;
+                const hasTripsClass = hasTrips ? 'has-trips' : '';
+                
                 const hasOrdersClass = assignedOrders > 0 ? 'has-orders' : '';
                 const hasUnassignedClass = unassignedOrders > 0 ? 'has-unassigned-orders' : '';
+                
+                // Calcola highlight per giorno corrente e selezionato
+                const today = new Date().toISOString().split('T')[0];
+                const isTodayClass = dateStr === today ? 'is-today' : '';
+                const isSelectedClass = dateStr === selectedDate ? 'is-selected' : '';
+                
                 const dayColor = (!isAllowed || isHoliday) ? 'color: #ef4444;' : '';
                 
                 let assignedCountHtml = '';
                 let unassignedCountHtml = '';
+                let tripCountHtml = '';
                 if (assignedOrders > 0) {
-                    assignedCountHtml = `<div style="position: absolute; bottom: 2px; right: 2px; font-size: 14px; color: #ffffff; font-weight: bold; z-index: 10;">${assignedOrders}</div>`;
+                    assignedCountHtml = `<div style="position: absolute; bottom: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #16a34a; border-radius: 3px; padding: 2px 4px;">${assignedOrders}</div>`;
                 }
                 if (unassignedOrders > 0) {
-                    unassignedCountHtml = `<div style="position: absolute; bottom: 2px; left: 2px; font-size: 14px; color: #ffffff; font-weight: bold; z-index: 10;">${unassignedOrders}</div>`;
+                    unassignedCountHtml = `<div style="position: absolute; bottom: 8px; left: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #ff9800; border-radius: 3px; padding: 2px 4px;">${unassignedOrders}</div>`;
+                }
+                if (dayTrips.length > 0) {
+                    tripCountHtml = `<div style="position: absolute; top: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #2563eb; border-radius: 3px; padding: 2px 4px;">${dayTrips.length}</div>`;
                 }
                 
-                html += `<div class="calendar-day ${hasOrdersClass} ${hasUnassignedClass}" style="cursor: pointer; position: relative; ${dayColor}" onclick="showDayOrdersModal('${dateStr}')"><strong>${date.getDate()}</strong>${assignedCountHtml}${unassignedCountHtml}</div>`;
+                html += `<div class="calendar-day ${hasOrdersClass} ${hasUnassignedClass} ${hasTripsClass} ${isTodayClass} ${isSelectedClass}" style="cursor: pointer; position: relative; ${dayColor}" onclick="handleCalendarDayClick('${dateStr}')"><strong>${date.getDate()}</strong>${assignedCountHtml}${unassignedCountHtml}${tripCountHtml}</div>`;
             }
             
             container.innerHTML = html;
@@ -2338,7 +2442,10 @@
             const startingDayOfWeek = firstDay.getDay();
             
             const dayNames = ['Do', 'Lu', 'Ma', 'Me', 'Gi', 'Ve', 'Sa'];
-            let html = dayNames.map(day => `<div style="font-weight: bold; text-align: center; padding: 6px; background: #3d3d3d; border: 1px solid #4d4d4d; border-radius: 4px; font-size: 12px; color: #b0b0b0;">${day}</div>`).join('');
+            let html = dayNames.map((day, idx) => {
+                const color = idx === 0 ? '#ef4444' : '#b0b0b0'; // Domenica rossa
+                return `<div style="font-weight: bold; text-align: center; padding: 6px; background: #3d3d3d; border: 1px solid #4d4d4d; border-radius: 4px; font-size: 12px; color: ${color};">${day}</div>`;
+            }).join('');
             
             for (let i = 0; i < startingDayOfWeek; i++) {
                 html += '<div></div>';
@@ -2373,18 +2480,33 @@
                 const totalOrders = dayOrders.length;
                 const hasOrdersClass = assignedOrders > 0 ? 'has-orders' : '';
                 const hasUnassignedClass = unassignedOrders > 0 ? 'has-unassigned-orders' : '';
+                
+                // Calcola highlight per giorno corrente e selezionato
+                const today = new Date().toISOString().split('T')[0];
+                const isTodayClass = dateStr === today ? 'is-today' : '';
+                const isSelectedClass = dateStr === selectedDate ? 'is-selected' : '';
+                
+                // Controlla viaggi per questo giorno
+                const dayTrips = trips.filter(trip => trip.date?.startsWith(dateStr));
+                const hasTrips = dayTrips.length > 0;
+                const hasTripsClass = hasTrips ? 'has-trips' : '';
+                
                 const dayColor = (!isAllowed || isHoliday) ? 'color: #ef4444;' : '';
 
                 let assignedCountHtml = '';
                 let unassignedCountHtml = '';
+                let tripCountHtml = '';
                 if (assignedOrders > 0) {
-                    assignedCountHtml = `<div style="position: absolute; bottom: 2px; right: 2px; font-size: 14px; color: #ffffff; font-weight: bold; z-index: 10;">${assignedOrders}</div>`;
+                    assignedCountHtml = `<div style="position: absolute; bottom: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #16a34a; border-radius: 3px; padding: 2px 4px;">${assignedOrders}</div>`;
                 }
                 if (unassignedOrders > 0) {
-                    unassignedCountHtml = `<div style="position: absolute; bottom: 2px; left: 2px; font-size: 14px; color: #ffffff; font-weight: bold; z-index: 10;">${unassignedOrders}</div>`;
+                    unassignedCountHtml = `<div style="position: absolute; bottom: 8px; left: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #ff9800; border-radius: 3px; padding: 2px 4px;">${unassignedOrders}</div>`;
+                }
+                if (dayTrips.length > 0) {
+                    tripCountHtml = `<div style="position: absolute; top: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #2563eb; border-radius: 3px; padding: 2px 4px;">${dayTrips.length}</div>`;
                 }
 
-                html += `<div class="calendar-day ${hasOrdersClass} ${hasUnassignedClass}" style="${dayColor}" onclick="showDayOrdersModal('${dateStr}')"><strong>${day}</strong>${assignedCountHtml}${unassignedCountHtml}</div>`;
+                html += `<div class="calendar-day ${hasOrdersClass} ${hasUnassignedClass} ${hasTripsClass} ${isTodayClass} ${isSelectedClass}" style="${dayColor}" onclick="handleCalendarDayClick('${dateStr}')" ondblclick=""><strong>${day}</strong>${assignedCountHtml}${unassignedCountHtml}${tripCountHtml}</div>`;
             }
             
             container.innerHTML = html;
@@ -2518,11 +2640,9 @@
         }
 
         function confirmDeleteTrip(tripId) {
-            if (confirm('Eliminare questo viaggio? Gli ordini non verranno eliminati.')) {
-                deleteTrip(tripId);
-                renderTripsManager();
-                renderOrderTasks();
-            }
+            deleteTrip(tripId);
+            renderTripsManager();
+            renderOrderTasks();
         }
 
         function openTripOrders(tripId) {
@@ -2682,6 +2802,26 @@
             // Admin: assicura che gli ordini 'ritira' siano sincronizzati nel DB e visibili
             await syncRitiroOrdersToDb();
         });
+
+        // Sincronizza dati quando cambiano da un'altra pagina (storage event listener)
+        window.addEventListener('storage', (event) => {
+            if (event.key === 'orders') {
+                console.log('📦 Sincronizzando ordini da un\'altra pagina...');
+                loadOrders();
+                renderOrders();
+                renderCalendar();
+                updateStats();
+            } else if (event.key === 'trips') {
+                console.log('🚚 Sincronizzando viaggi da un\'altra pagina...');
+                loadTrips();
+                renderCalendar();
+            } else if (event.key === 'orderTasks') {
+                console.log('✅ Sincronizzando task ordini da un\'altra pagina...');
+                loadOrderTasks();
+                renderOrderTasks();
+                renderCalendar();
+            }
+        });
     </script>
 
     <!-- Modal Assegna Task -->
@@ -2755,6 +2895,11 @@
                 <button type="button" class="btn btn-secondary" onclick="closeTripOrdersModal()">❌ Chiudi</button>
             </div>
         </div>
+    </div>
+
+    <!-- Genera Dati Button at Bottom -->
+    <div style="position: fixed; bottom: 20px; right: 20px; z-index: 100;">
+        <button class="btn btn-warning" onclick="generateSampleOrders()" title="Genera dati di test">🔄 Genera Dati</button>
     </div>
 </body>
 </html>

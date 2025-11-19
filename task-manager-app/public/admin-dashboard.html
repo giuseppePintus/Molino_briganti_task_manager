@@ -228,7 +228,7 @@
         }
 
         #dayTasksCard {
-            border: 2px solid #4CAF50;
+            border: 2px solid #ea580c;
             background: #2d2d2d;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
             margin-bottom: 20px;
@@ -237,7 +237,7 @@
         #dayTasksCard .card-header h2 {
             font-size: 20px;
             margin-bottom: 0;
-            color: #4CAF50;
+            color: #ea580c;
             font-weight: bold;
         }
 
@@ -359,7 +359,7 @@
         .calendar-day {
             border: 1px solid #4d4d4d;
             padding: 6px;
-            min-height: 50px;
+            min-height: 85px;
             border-radius: 4px;
             background: #3d3d3d;
             cursor: pointer;
@@ -373,9 +373,34 @@
             background: #4d4d4d;
         }
 
+        .calendar-day.is-today {
+            border: 2px solid #16a34a;
+            font-weight: bold;
+        }
+
+        .calendar-day.is-selected {
+            border: 2px solid #06b6d4;
+            background: #164e63;
+        }
+
         .calendar-day.has-tasks {
-            background: #1e3a2a;
-            border-color: #4caf50;
+            background: #2a1e1e;
+            border-color: #ea580c;
+            position: relative;
+        }
+
+        .calendar-day.has-tasks::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 0;
+            height: 0;
+            border-style: solid;
+            border-width: 0 0 18px 18px;
+            border-color: transparent transparent #16a34a transparent;
+            border-radius: 0 0 4px 0;
+            z-index: 10;
         }
 
         .calendar-day.has-unassigned-tasks {
@@ -393,23 +418,25 @@
             border-width: 18px 0 0 18px;
             border-color: transparent transparent transparent #ff9800;
             border-radius: 0 0 0 4px;
+            z-index: 10;
         }
 
-        .calendar-day.has-tasks {
+        .calendar-day.has-trips {
             position: relative;
         }
 
-        .calendar-day.has-tasks::before {
+        .calendar-day.has-trips::before {
             content: '';
             position: absolute;
-            bottom: 0;
+            top: 0;
             right: 0;
             width: 0;
             height: 0;
             border-style: solid;
-            border-width: 0 0 18px 18px;
-            border-color: transparent transparent #4caf50 transparent;
-            border-radius: 0 0 4px 0;
+            border-width: 0 18px 18px 0;
+            border-color: transparent #2563eb transparent transparent;
+            border-radius: 0 4px 0 0;
+            z-index: 10;
         }
 
         .task-list {
@@ -1169,6 +1196,26 @@
             </div>
         </div>
 
+        <!-- Day Tasks Card - Under Calendar -->
+        <div class="card" id="dayTasksCard" style="display: none;">
+            <div class="card-header">
+                <h2 id="dayTasksTitle">📅 I Miei Task</h2>
+                <button class="btn btn-secondary btn-small" onclick="closeDayTasksCard()" style="padding: 6px 12px;" data-icon="❌"><span>Chiudi</span></button>
+            </div>
+            <div id="dayTasksList" class="task-list">
+                <div class="empty-state">
+                    <p>Nessun task per questo giorno</p>
+                </div>
+            </div>
+            
+            <!-- Day Trips Section -->
+            <div id="dayTripsSection" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #4d4d4d; display: none;">
+                <h3 style="font-size: 16px; color: #16a34a; margin-bottom: 15px;">🚚 Viaggi del Giorno</h3>
+                <div id="dayTripsList" style="display: flex; flex-direction: column; gap: 15px;">
+                </div>
+            </div>
+        </div>
+
         <!-- Main Content -->
         <div class="main-content">
 
@@ -1205,19 +1252,6 @@
             <div id="adminTasksList" class="task-list">
             </div>
         </div>
-
-        <!-- Day Tasks Card - Outside main-content for always visibility -->
-        <div class="card" id="dayTasksCard" style="display: none;">
-            <div class="card-header">
-                <h2 id="dayTasksTitle">📅 Task del Giorno</h2>
-                <button class="btn btn-secondary btn-small" onclick="closeDayTasksCard()" style="padding: 6px 12px;" data-icon="❌"><span>Chiudi</span></button>
-            </div>
-            <div id="dayTasksList" class="task-list">
-                <div class="empty-state">
-                    <p>Nessun task per questo giorno</p>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- Task Modal -->
@@ -1242,6 +1276,10 @@
         let mobileComfortMode = (localStorage.getItem('mobileComfortMode') || 'false') === 'true';
         let lastViewedDayDate = null; // Memorizza l'ultima data del giorno visualizzato
         
+        // Variabili per gestire doppio click calendario
+        let calendarClickTimer = null;
+        let lastClickedDate = null;
+        
         // Variabili per il calendario
         let calendarDisplayMonth = new Date().getMonth();
         let calendarDisplayYear = new Date().getFullYear();
@@ -1249,6 +1287,7 @@
         let weekStartDate = new Date(); // Data di inizio della settimana attuale
         weekStartDate.setDate(weekStartDate.getDate() - weekStartDate.getDay()); // Domenica
         let editingTaskId = null;
+        let selectedDate = null; // Data selezionata nel calendario
 
         // Sistema viaggi (sincronizzato con orders-planner)
         let trips = [];
@@ -1296,6 +1335,20 @@
             initDashboard();
         });
 
+        // Sincronizza dati quando cambiano da un'altra pagina (storage event listener)
+        window.addEventListener('storage', (event) => {
+            if (event.key === 'orders') {
+                console.log('📦 Sincronizzando ordini da un\'altra pagina...');
+                loadTripsFromPlanner();
+                renderTrips();
+            } else if (event.key === 'trips') {
+                console.log('🚚 Sincronizzando viaggi da un\'altra pagina...');
+                loadTripsFromPlanner();
+                renderTrips();
+                renderCalendar();
+            }
+        });
+
         function formatPriority(priority) {
             switch(priority) {
                 case 'LOW': return '🟢 Bassa';
@@ -1328,6 +1381,11 @@
             await updateStats();
             await renderCalendar();
             updateMobileComfortBtn();
+            
+            // Visualizza il giorno corrente di default
+            const today = new Date();
+            const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+            showDayTasksModal(todayStr);
         }
 
         function toggleMobileComfort() {
@@ -1427,9 +1485,9 @@
                 const totals = calculateTripTotals(trip.id);
                 
                 return `
-                    <div class="task-card" style="border-left: 4px solid #4CAF50;">
+                    <div class="task-card" style="border-left: 4px solid #2563eb;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                            <h3 style="margin: 0; color: #4CAF50; font-size: 1.1em;">${trip.name || 'Viaggio senza nome'}</h3>
+                            <h3 style="margin: 0; color: #2563eb; font-size: 1.1em;">${trip.name || 'Viaggio senza nome'}</h3>
                             <span style="color: #888; font-size: 0.9em;">${tripOrders.length} ordini</span>
                         </div>
                         
@@ -1444,13 +1502,13 @@
                             </div>
                         </div>
 
-                        <div style="background: rgba(76, 175, 80, 0.1); padding: 10px; border-radius: 4px;">
-                            <strong style="color: #4CAF50; font-size: 0.95em;">Totali Prodotti:</strong>
+                        <div style="background: rgba(37, 99, 235, 0.1); padding: 10px; border-radius: 4px;">
+                            <strong style="color: #2563eb; font-size: 0.95em;">Totali Prodotti:</strong>
                             <div style="margin-top: 8px;">
                                 ${Object.entries(totals).map(([product, quantity]) => `
                                     <div style="display: flex; justify-content: space-between; color: #ccc; font-size: 0.9em; padding: 3px 0;">
                                         <span>${product}</span>
-                                        <span style="font-weight: bold; color: #4CAF50;">${quantity}</span>
+                                        <span style="font-weight: bold; color: #2563eb;">${quantity}</span>
                                     </div>
                                 `).join('')}
                             </div>
@@ -1493,10 +1551,35 @@
             const nonRecurring = filtered.filter(t => !t.recurring || !t.recurrenceType);
             const recurring = filtered.filter(t => t.recurring && t.recurrenceType);
 
-            // Ordina i task non ricorrenti: quelli senza data all'inizio, poi per data/ora
+            // Funzione helper per ottenere data senza orario
+            const getDateOnly = (date) => {
+                const d = new Date(date);
+                return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+            };
+            
+            const today = getDateOnly(new Date());
+
+            // Ordina i task non ricorrenti: 
+            // 1. Task scaduti (scheduled nel passato, non completati/accettati) prima
+            // 2. Poi quelli senza data
+            // 3. Poi per data cronologica
             nonRecurring.sort((a, b) => {
                 const aHasDate = a.scheduledAt ? true : false;
                 const bHasDate = b.scheduledAt ? true : false;
+                
+                if (aHasDate && bHasDate) {
+                    const aDate = getDateOnly(a.scheduledAt);
+                    const bDate = getDateOnly(b.scheduledAt);
+                    const aIsOverdue = aDate < today && !a.completed && !a.acceptedAt;
+                    const bIsOverdue = bDate < today && !b.completed && !b.acceptedAt;
+                    
+                    // Task scaduti vanno prima
+                    if (aIsOverdue && !bIsOverdue) return -1;
+                    if (!aIsOverdue && bIsOverdue) return 1;
+                    
+                    // Se entrambi scaduti o non scaduti, ordina per data
+                    return aDate - bDate;
+                }
                 
                 if (!aHasDate && bHasDate) return -1;
                 if (aHasDate && !bHasDate) return 1;
@@ -1521,14 +1604,33 @@
             html += nonRecurring.map(task => {
                 const status = task.completed ? 'Completato' : (task.paused ? 'In Pausa' : (task.acceptedAt ? 'Accettato' : 'In Sospeso'));
                 const statusIcon = task.completed ? '✅' : (task.paused ? '⏸️' : (task.acceptedAt ? '👍' : '📋'));
+                
+                // Determina se il task è scaduto (scheduled nel passato, non completato/accettato)
+                let isOverdue = false;
+                let daysOverdue = 0;
+                if (task.scheduledAt && !task.completed && !task.acceptedAt) {
+                    const taskDate = getDateOnly(new Date(task.scheduledAt));
+                    if (taskDate < today) {
+                        isOverdue = true;
+                        daysOverdue = Math.floor((today - taskDate) / (1000 * 60 * 60 * 24));
+                    }
+                }
+                
+                const cardStyle = isOverdue 
+                    ? 'border-left: 4px solid #ef4444; background: #3d2626;' 
+                    : '';
+                const overdueLabel = isOverdue 
+                    ? `<span style="background: #dc2626; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-left: 8px;">⚠️ SCADUTO ${daysOverdue}${daysOverdue === 1 ? ' giorno' : ' giorni'}</span>`
+                    : '';
+                
                 return `
-                    <div class="task-card">
+                    <div class="task-card" style="${cardStyle}">
                         <div class="task-header">
                             <div class="task-title">${task.title}</div>
-                            <span class="task-status">${statusIcon} ${status}</span>
+                            <span class="task-status">${statusIcon} ${status}${overdueLabel}</span>
                         </div>
                         ${task.description ? `<div style="margin-top: 8px; color: #a0a0a0; font-size: 13px;">${task.description}</div>` : ''}
-                        ${task.scheduledAt ? `<div style="margin-top: 8px; color: #a0a0a0; font-size: 13px;">📅 ${new Date(task.scheduledAt).toLocaleString('it-IT')}</div>` : ''}
+                        ${task.scheduledAt ? `<div style="margin-top: 8px; color: ${isOverdue ? '#ef4444' : '#a0a0a0'}; font-size: 13px; ${isOverdue ? 'font-weight: bold;' : ''}">📅 ${new Date(task.scheduledAt).toLocaleString('it-IT')}</div>` : ''}
                         ${task.estimatedMinutes ? `<div style="margin-top: 4px; color: #a0a0a0; font-size: 13px;">⏱️ ${task.estimatedMinutes} min</div>` : ''}
                         ${task.assignedOperator ? `<div style="margin-top: 4px; color: #a0a0a0; font-size: 13px;">👤 ${task.assignedOperator.username}</div>` : ''}
                         ${task.priority ? `<div style="margin-top: 4px; color: #a0a0a0; font-size: 13px;">${formatPriority(task.priority)}</div>` : ''}
@@ -1669,6 +1771,28 @@
             }
         }
 
+        // Funzioni per gestire singolo e doppio click nel calendario
+        function handleCalendarDayClick(dateStr) {
+            selectedDate = dateStr; // Traccia il giorno selezionato
+            if (calendarClickTimer) {
+                clearTimeout(calendarClickTimer);
+                calendarClickTimer = null;
+                // È un doppio click
+                handleCalendarDayDoubleClick(dateStr);
+            } else {
+                // Singolo click - attendi 300ms per verificare se è doppio
+                calendarClickTimer = setTimeout(() => {
+                    showDayTasksModal(dateStr);
+                    renderCalendar(); // Re-renderizza per evidenziare il giorno selezionato
+                    calendarClickTimer = null;
+                }, 300);
+            }
+        }
+        
+        function handleCalendarDayDoubleClick(dateStr) {
+            openCreateTaskOrRecurrenceModal(dateStr);
+        }
+
         async function renderCalendar() {
             const container = document.getElementById('calendarContainer');
             
@@ -1712,7 +1836,10 @@
             const dayNames = ['Do', 'Lu', 'Ma', 'Me', 'Gi', 'Ve', 'Sa'];
             
             // Usa lo stesso stile della vista mese: grid 7 colonne con header giorni
-            let html = dayNames.map(day => `<div style="font-weight: bold; text-align: center; padding: 6px; background: #3d3d3d; border: 1px solid #4d4d4d; border-radius: 4px; font-size: 12px; color: #b0b0b0;">${day}</div>`).join('');
+            let html = dayNames.map((day, idx) => {
+                const color = idx === 0 ? '#ef4444' : '#b0b0b0'; // Domenica rossa
+                return `<div style="font-weight: bold; text-align: center; padding: 6px; background: #3d3d3d; border: 1px solid #4d4d4d; border-radius: 4px; font-size: 12px; color: ${color};">${day}</div>`;
+            }).join('');
             
             for (let i = 0; i < 7; i++) {
                 const date = new Date(startDate);
@@ -1720,6 +1847,10 @@
                 const dateStr = String(date.getFullYear()).padStart(4, '0') + '-' + 
                                String(date.getMonth() + 1).padStart(2, '0') + '-' + 
                                String(date.getDate()).padStart(2, '0');
+                
+                // Controlla se è domenica
+                const dayOfWeek = date.getDay();
+                const dayColor = dayOfWeek === 0 ? 'color: #ef4444;' : '';
                 
                 const dayTasks = tasksToDisplay.filter(task => {
                     if (!task.scheduledAt) return false;
@@ -1731,19 +1862,33 @@
                 const totalTasks = dayTasks.length;
                 const assignedTasks = totalTasks - unassignedTasks;
                 
+                // Controlla viaggi per questo giorno
+                const dayTrips = trips.filter(trip => trip.date?.startsWith(dateStr));
+                const hasTrips = dayTrips.length > 0;
+                
                 const hasTasksClass = totalTasks > 0 ? 'has-tasks' : '';
                 const hasUnassignedClass = unassignedTasks > 0 ? 'has-unassigned-tasks' : '';
+                const hasTripsClass = hasTrips ? 'has-trips' : '';
+                
+                // Controlla se è oggi o se è selezionato
+                const today = new Date().toISOString().split('T')[0];
+                const isTodayClass = dateStr === today ? 'is-today' : '';
+                const isSelectedClass = dateStr === selectedDate ? 'is-selected' : '';
                 
                 let taskCountHtml = '';
                 let unassignedCountHtml = '';
+                let tripCountHtml = '';
                 if (assignedTasks > 0) {
-                    taskCountHtml = `<div style="position: absolute; bottom: 2px; right: 2px; font-size: 14px; color: #ffffff; font-weight: bold; z-index: 10;">${assignedTasks}</div>`;
+                    taskCountHtml = `<div style="position: absolute; bottom: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #16a34a; border-radius: 3px; padding: 2px 4px;">${assignedTasks}</div>`;
                 }
                 if (unassignedTasks > 0) {
-                    unassignedCountHtml = `<div style="position: absolute; bottom: 2px; left: 2px; font-size: 14px; color: #ffffff; font-weight: bold; z-index: 10;">${unassignedTasks}</div>`;
+                    unassignedCountHtml = `<div style="position: absolute; bottom: 8px; left: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #ff9800; border-radius: 3px; padding: 2px 4px;">${unassignedTasks}</div>`;
+                }
+                if (dayTrips.length > 0) {
+                    tripCountHtml = `<div style="position: absolute; top: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #2563eb; border-radius: 3px; padding: 2px 4px;">${dayTrips.length}</div>`;
                 }
                 
-                html += `<div class="calendar-day ${hasTasksClass} ${hasUnassignedClass}" style="cursor: pointer; position: relative;" onclick="showDayTasksModal('${dateStr}')"><strong>${date.getDate()}</strong>${taskCountHtml}${unassignedCountHtml}</div>`;
+                html += `<div class="calendar-day ${hasTasksClass} ${hasUnassignedClass} ${hasTripsClass} ${isTodayClass} ${isSelectedClass}" style="cursor: pointer; position: relative; ${dayColor}" onclick="handleCalendarDayClick('${dateStr}')"><strong>${date.getDate()}</strong>${taskCountHtml}${unassignedCountHtml}${tripCountHtml}</div>`;
             }
             
             container.innerHTML = html;
@@ -1788,7 +1933,10 @@
             const startingDayOfWeek = firstDay.getDay();
             
             const dayNames = ['Do', 'Lu', 'Ma', 'Me', 'Gi', 'Ve', 'Sa'];
-            let html = dayNames.map(day => `<div style="font-weight: bold; text-align: center; padding: 6px; background: #3d3d3d; border: 1px solid #4d4d4d; border-radius: 4px; font-size: 12px; color: #b0b0b0;">${day}</div>`).join('');
+            let html = dayNames.map((day, idx) => {
+                const color = idx === 0 ? '#ef4444' : '#b0b0b0'; // Domenica rossa
+                return `<div style="font-weight: bold; text-align: center; padding: 6px; background: #3d3d3d; border: 1px solid #4d4d4d; border-radius: 4px; font-size: 12px; color: ${color};">${day}</div>`;
+            }).join('');
             
             for (let i = 0; i < startingDayOfWeek; i++) {
                 html += '<div></div>';
@@ -1858,21 +2006,36 @@
                 
                 const totalTasks = dayTasks.length + dayRecurrences.length;
                 const assignedTasks = totalTasks - unassignedTasks;
+                
+                // Controlla viaggi per questo giorno
+                const dayTrips = trips.filter(trip => trip.date?.startsWith(dateStr));
+                const hasTrips = dayTrips.length > 0;
+                
                 const hasTasksClass = totalTasks > 0 ? 'has-tasks' : '';
                 const hasUnassignedClass = unassignedTasks > 0 ? 'has-unassigned-tasks' : '';
+                const hasTripsClass = hasTrips ? 'has-trips' : '';
                 const dayColor = isHoliday ? 'color: #ef4444;' : '';
                 const dateForClick = dateStr;
                 
+                // Controlla se è oggi o se è selezionato
+                const today = new Date().toISOString().split('T')[0];
+                const isTodayClass = dateStr === today ? 'is-today' : '';
+                const isSelectedClass = dateStr === selectedDate ? 'is-selected' : '';
+                
                 let taskCountHtml = '';
                 let unassignedCountHtml = '';
+                let tripCountHtml = '';
                 if (assignedTasks > 0) {
-                    taskCountHtml = `<div style="position: absolute; bottom: 2px; right: 2px; font-size: 14px; color: #ffffff; font-weight: bold; z-index: 10;">${assignedTasks}</div>`;
+                    taskCountHtml = `<div style="position: absolute; bottom: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #16a34a; border-radius: 3px; padding: 2px 4px;">${assignedTasks}</div>`;
                 }
                 if (unassignedTasks > 0) {
-                    unassignedCountHtml = `<div style="position: absolute; bottom: 2px; left: 2px; font-size: 14px; color: #ffffff; font-weight: bold; z-index: 10;">${unassignedTasks}</div>`;
+                    unassignedCountHtml = `<div style="position: absolute; bottom: 8px; left: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #ff9800; border-radius: 3px; padding: 2px 4px;">${unassignedTasks}</div>`;
+                }
+                if (dayTrips.length > 0) {
+                    tripCountHtml = `<div style="position: absolute; top: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #2563eb; border-radius: 3px; padding: 2px 4px;">${dayTrips.length}</div>`;
                 }
                 
-                html += `<div class="calendar-day ${hasTasksClass} ${hasUnassignedClass}" style="${dayColor}; cursor: pointer; position: relative;" onclick="showDayTasksModal('${dateForClick}')"><strong>${day}</strong>${taskCountHtml}${unassignedCountHtml}</div>`;
+                html += `<div class="calendar-day ${hasTasksClass} ${hasUnassignedClass} ${hasTripsClass} ${isTodayClass} ${isSelectedClass}" style="${dayColor}; cursor: pointer; position: relative;" onclick="handleCalendarDayClick('${dateForClick}')"><strong>${day}</strong>${taskCountHtml}${unassignedCountHtml}${tripCountHtml}</div>`;
             }
             
             container.innerHTML = html;
@@ -1915,7 +2078,7 @@
             renderCalendar();
         }
 
-        function openCreateTaskOrRecurrenceModal() {
+        function openCreateTaskOrRecurrenceModal(selectedDate = null) {
             const modal = document.getElementById('taskModal');
             const content = modal.querySelector('.modal-content');
 
@@ -2091,6 +2254,16 @@
             `;
             
             modal.classList.add('active');
+            
+            // Se c'è una data selezionata dal calendario, preselezionala nel form
+            if (selectedDate) {
+                setTimeout(() => {
+                    const dateField = document.getElementById('modalTaskScheduledAt');
+                    if (dateField) {
+                        dateField.value = selectedDate + 'T12:00';
+                    }
+                }, 50);
+            }
         }
 
         function showTaskForm() {
@@ -2339,10 +2512,6 @@
             // Ottieni tutte le istanze attuali
             const tasksToDelete = allTasks.filter(t => t.title === title && t.recurring && t.recurrenceType === oldRecurrenceType);
 
-            if (!confirm(`Questo aggiornerà ${tasksToDelete.length} task. I task vecchi verranno eliminati e rigenerati. Continua?`)) {
-                return;
-            }
-
             try {
                 // Elimina tutti i vecchi task
                 for (const task of tasksToDelete) {
@@ -2388,10 +2557,6 @@
         async function handleDeleteGlobalRecurrence(key) {
             const [title, recurrenceType] = key.split('|');
             const tasksToDelete = allTasks.filter(t => t.title === title && t.recurring && t.recurrenceType === recurrenceType);
-
-            if (!confirm(`Sei sicuro di voler eliminare TUTTI i ${tasksToDelete.length} task di questa ricorrenza? Questa azione non può essere annullata.`)) {
-                return;
-            }
 
             try {
                 for (const task of tasksToDelete) {
@@ -2700,8 +2865,6 @@
         }
 
         async function handleResetTask(taskId) {
-            if (!confirm('Sei sicuro di voler ripristinare questo task da completato a in sospeso?')) return;
-
             try {
                 const response = await fetch(`${API_URL}/tasks/${taskId}/reset-suspended`, {
                     method: 'POST',
@@ -3066,8 +3229,6 @@
         }
 
         async function handleDeleteRecurrenceGroup(key) {
-            if (!confirm('Sei sicuro di voler cancellare questa ricorrenza? Verranno rimossi TUTTI i task di questo gruppo.')) return;
-            
             try {
                 const [title] = key.split('|');
                 const response = await fetch(`${API_URL}/tasks?includeRecurrences=true`, {
@@ -3123,13 +3284,72 @@
             const formatted = date.toLocaleDateString('it-IT', { year: 'numeric', month: 'long', day: 'numeric' });
             dayTasksTitle.textContent = `📅 Task di ${dayName.charAt(0).toUpperCase() + dayName.slice(1)}, ${formatted}`;
 
+            // Calcola i numeri di task, ordini ritiro e viaggi
+            const assignedTasks = dayTasks.filter(t => t.assignedOperator?.id).length;
+            const unassignedTasks = dayTasks.filter(t => !t.assignedOperator?.id).length;
+            const summaryDayTrips = trips.filter(trip => trip.date?.startsWith(dateStr));
+            
+            // Conta gli ordini di tipo "ritira" per il giorno (ordini associati ai task di ritiro assegnati)
+            const dayRitiroOrders = orders.filter(order => {
+                if (order.type !== 'ritira') return false;
+                if (!order.dateTime) return false;
+                return order.dateTime.split('T')[0] === dateStr;
+            });
+            
+            // Crea il riepilogo con triangolini e numeri
+            let summaryHtml = '';
+            if (assignedTasks > 0 || unassignedTasks > 0 || summaryDayTrips.length > 0 || dayRitiroOrders.length > 0) {
+                summaryHtml = `<div style="display: flex; gap: 20px; align-items: center; padding: 12px 0; border-top: 1px solid #4d4d4d; border-bottom: 1px solid #4d4d4d; margin-bottom: 12px;">`;
+                
+                // Task assegnati - Arancio in basso a sinistra
+                if (assignedTasks > 0) {
+                    summaryHtml += `
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="position: relative; width: 24px; height: 24px;">
+                                <div style="position: absolute; bottom: 0; left: 0; width: 0; height: 0; border-style: solid; border-width: 18px 0 0 18px; border-color: transparent transparent transparent #ff9800; border-radius: 0 0 0 4px;"></div>
+                            </div>
+                            <span style="font-weight: bold; color: #ff9800; font-size: 16px;">${assignedTasks}</span>
+                            <span style="color: #b0b0b0; font-size: 12px;">Task</span>
+                        </div>
+                    `;
+                }
+                
+                // Ordini ritiro assegnati - Verde in basso a destra
+                if (dayRitiroOrders.length > 0) {
+                    summaryHtml += `
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="position: relative; width: 24px; height: 24px;">
+                                <div style="position: absolute; bottom: 0; right: 0; width: 0; height: 0; border-style: solid; border-width: 0 0 18px 18px; border-color: transparent transparent #16a34a transparent; border-radius: 0 0 4px 0;"></div>
+                            </div>
+                            <span style="font-weight: bold; color: #16a34a; font-size: 16px;">${dayRitiroOrders.length}</span>
+                            <span style="color: #b0b0b0; font-size: 12px;">Ritiri</span>
+                        </div>
+                    `;
+                }
+                
+                // Viaggi - Blu in alto a destra
+                if (summaryDayTrips.length > 0) {
+                    summaryHtml += `
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="position: relative; width: 24px; height: 24px;">
+                                <div style="position: absolute; top: 0; right: 0; width: 0; height: 0; border-style: solid; border-width: 0 18px 18px 0; border-color: transparent #2563eb transparent transparent; border-radius: 0 4px 0 0;"></div>
+                            </div>
+                            <span style="font-weight: bold; color: #2563eb; font-size: 16px;">${summaryDayTrips.length}</span>
+                            <span style="color: #b0b0b0; font-size: 12px;">Viaggi</span>
+                        </div>
+                    `;
+                }
+                
+                summaryHtml += `</div>`;
+            }
+
             if (dayTasks.length === 0) {
                 dayTasksList.innerHTML = '<div class="empty-state"><p>Nessun task per questo giorno</p></div>';
                 dayTasksCard.style.display = 'block';
                 return;
             }
 
-            dayTasksList.innerHTML = dayTasks.map(task => {
+            dayTasksList.innerHTML = summaryHtml + dayTasks.map(task => {
                 const status = task.completed ? 'Completato' : (task.paused ? 'In Pausa' : (task.acceptedAt ? 'Accettato' : 'In Sospeso'));
                 const statusIcon = task.completed ? '✅' : (task.paused ? '⏸️' : (task.acceptedAt ? '👍' : '📋'));
                 
@@ -3152,6 +3372,42 @@
                     </div>
                 `;
             }).join('');
+
+            // Mostra i viaggi del giorno se presenti
+            const dayTrips = trips.filter(trip => trip.date?.startsWith(dateStr));
+            const dayTripsSection = document.getElementById('dayTripsSection');
+            const dayTripsList = document.getElementById('dayTripsList');
+            
+            if (dayTrips.length > 0) {
+                dayTripsList.innerHTML = dayTrips.map(trip => {
+                    const tripOrders = trip.sequence.map(orderId => orders.find(o => o.id === orderId)).filter(Boolean);
+                    const totals = {};
+                    tripOrders.forEach(order => {
+                        if (!totals[order.product]) {
+                            totals[order.product] = 0;
+                        }
+                        totals[order.product] += parseFloat(order.quantity || 0);
+                    });
+                    const totalsHtml = Object.entries(totals).map(([product, qty]) => 
+                        `<span style="background:#1e3a2a;color:#86efac;padding:4px 8px;border-radius:4px;font-size:12px;margin-right:6px;">${product}: ${qty.toFixed(1)}kg</span>`
+                    ).join('');
+
+                    return `
+                        <div class="order-card" style="border-left:4px solid #16a34a;">
+                            <div class="order-header">
+                                <div class="order-title">${trip.name}</div>
+                                <span class="order-status" style="background:#1e3a2a;color:#86efac;">${tripOrders.length} ordini</span>
+                            </div>
+                            <div class="order-details">
+                                ${totalsHtml ? `<p style="margin:8px 0;"><strong>📊 Totali:</strong><br>${totalsHtml}</p>` : ''}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                dayTripsSection.style.display = 'block';
+            } else {
+                dayTripsSection.style.display = 'none';
+            }
 
             dayTasksCard.style.display = 'block';
             

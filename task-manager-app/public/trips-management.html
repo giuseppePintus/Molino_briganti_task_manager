@@ -164,7 +164,7 @@
         .calendar-day {
             border: 1px solid #4d4d4d;
             padding: 6px;
-            min-height: 50px;
+            min-height: 85px;
             border-radius: 4px;
             background: #3d3d3d;
             cursor: pointer;
@@ -177,22 +177,32 @@
         .calendar-day:hover {
             background: #4d4d4d;
         }
+
+        .calendar-day.is-today {
+            border: 2px solid #16a34a;
+            font-weight: bold;
+        }
+
+        .calendar-day.is-selected {
+            border: 2px solid #06b6d4;
+            background: #164e63;
+        }
+
         .calendar-day.has-trips {
-            background: #1e3a2a;
-            border-color: #4caf50;
             position: relative;
         }
         .calendar-day.has-trips::before {
             content: '';
             position: absolute;
-            bottom: 0;
+            top: 0;
             right: 0;
             width: 0;
             height: 0;
             border-style: solid;
-            border-width: 0 0 18px 18px;
-            border-color: transparent transparent #4caf50 transparent;
-            border-radius: 0 0 4px 0;
+            border-width: 0 18px 18px 0;
+            border-color: transparent #2563eb transparent transparent;
+            border-radius: 0 4px 0 0;
+            z-index: 10;
         }
         @media (max-width: 768px) {
             .calendar-day {
@@ -539,8 +549,9 @@
         </div>
 
         <!-- Quick Actions -->
-        <div class="quick-actions">
+        <div class="quick-actions" style="grid-template-columns: repeat(3, 1fr);">
             <button class="btn btn-success" onclick="openCreateTripModal()">➕ Nuovo Viaggio</button>
+            <button class="btn btn-success" onclick="window.location.href='customers-management.html'">👥 Nuovo Cliente</button>
             <button class="btn btn-primary" onclick="window.location.href='orders-planner.html'">📦 Planner Ordini</button>
         </div>
 
@@ -641,6 +652,10 @@
         let calendarDisplayYear = new Date().getFullYear();
         let selectedDate = null;
         let showAllTrips = true;
+        
+        // Variabili per gestire doppio click calendario
+        let calendarClickTimer = null;
+        let lastClickedDate = null;
 
         function fmtLocalDate(d){
             const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const da=String(d.getDate()).padStart(2,'0');
@@ -809,6 +824,28 @@
             }).join('');
         }
 
+        // Funzioni per gestire singolo e doppio click nel calendario
+        function handleCalendarDayClick(ymd) {
+            selectedDate = ymd;
+            if (calendarClickTimer) {
+                clearTimeout(calendarClickTimer);
+                calendarClickTimer = null;
+                // È un doppio click
+                handleCalendarDayDoubleClick(ymd);
+            } else {
+                // Singolo click - attendi 300ms per verificare se è doppio
+                calendarClickTimer = setTimeout(() => {
+                    showDayTrips(ymd);
+                    renderCalendar();
+                    calendarClickTimer = null;
+                }, 300);
+            }
+        }
+        
+        function handleCalendarDayDoubleClick(ymd) {
+            openCreateTripModal(ymd);
+        }
+
         // Calendar rendering
         function renderCalendar() {
             console.log('renderCalendar called', {calendarViewMode, weekStartDate, trips: trips.length});
@@ -837,18 +874,31 @@
             const dayNames = ['Do', 'Lu', 'Ma', 'Me', 'Gi', 'Ve', 'Sa'];
             
             // Header giorni settimana (stile Admin)
-            let html = dayNames.map(day => `<div style="font-weight: bold; text-align: center; padding: 6px; background: #3d3d3d; border: 1px solid #4d4d4d; border-radius: 4px; font-size: 12px; color: #b0b0b0;">${day}</div>`).join('');
+            let html = dayNames.map((day, idx) => {
+                const color = idx === 0 ? '#ef4444' : '#b0b0b0'; // Domenica rossa
+                return `<div style="font-weight: bold; text-align: center; padding: 6px; background: #3d3d3d; border: 1px solid #4d4d4d; border-radius: 4px; font-size: 12px; color: ${color};">${day}</div>`;
+            }).join('');
             
             for (let i=0;i<7;i++) {
                 const d = new Date(start); d.setDate(start.getDate()+i);
                 const ymd = fmtLocalDate(d);
                 const dayTrips = trips.filter(t => (t.date||'').startsWith(ymd));
+                
+                // Controlla se è domenica
+                const dayOfWeek = d.getDay();
+                const dayColor = dayOfWeek === 0 ? 'color: #ef4444;' : '';
+                
+                // Calcola highlight per giorno corrente e selezionato
+                const today = new Date().toISOString().split('T')[0];
+                const isTodayClass = ymd === today ? 'is-today' : '';
+                const isSelectedClass = ymd === selectedDate ? 'is-selected' : '';
+                
                 let tripCountHtml = '';
                 if (dayTrips.length > 0) {
-                    tripCountHtml = `<div style="position: absolute; bottom: 2px; right: 2px; font-size: 14px; color: #ffffff; font-weight: bold; z-index: 10;">${dayTrips.length}</div>`;
+                    tripCountHtml = `<div style="position: absolute; top: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #2563eb; border-radius: 3px; padding: 2px 4px;">${dayTrips.length}</div>`;
                 }
                 const hasTripClass = dayTrips.length > 0 ? 'has-trips' : '';
-                html += `<div class="calendar-day ${hasTripClass}" style="cursor: pointer; position: relative;" onclick="showDayTrips('${ymd}')"><strong>${d.getDate()}</strong>${tripCountHtml}</div>`;
+                html += `<div class="calendar-day ${hasTripClass} ${isTodayClass} ${isSelectedClass}" style="cursor: pointer; position: relative; ${dayColor}" onclick="handleCalendarDayClick('${ymd}')"><strong>${d.getDate()}</strong>${tripCountHtml}</div>`;
             }
             container.innerHTML = html;
             
@@ -868,7 +918,10 @@
             const dayNames = ['Do', 'Lu', 'Ma', 'Me', 'Gi', 'Ve', 'Sa'];
             
             // Header giorni settimana (stile Admin)
-            let html = dayNames.map(day => `<div style="font-weight: bold; text-align: center; padding: 6px; background: #3d3d3d; border: 1px solid #4d4d4d; border-radius: 4px; font-size: 12px; color: #b0b0b0;">${day}</div>`).join('');
+            let html = dayNames.map((day, idx) => {
+                const color = idx === 0 ? '#ef4444' : '#b0b0b0'; // Domenica rossa
+                return `<div style="font-weight: bold; text-align: center; padding: 6px; background: #3d3d3d; border: 1px solid #4d4d4d; border-radius: 4px; font-size: 12px; color: ${color};">${day}</div>`;
+            }).join('');
             
             // Celle vuote prima del primo giorno
             for (let i=0;i<startDow;i++) html += '<div></div>';
@@ -877,12 +930,22 @@
                 const date = new Date(calendarDisplayYear, calendarDisplayMonth, day);
                 const ymd = fmtLocalDate(date);
                 const dayTrips = trips.filter(t => (t.date||'').startsWith(ymd));
+                
+                // Controlla se è domenica
+                const dayOfWeek = date.getDay();
+                const dayColor = dayOfWeek === 0 ? 'color: #ef4444;' : '';
+                
+                // Calcola highlight per giorno corrente e selezionato
+                const today = new Date().toISOString().split('T')[0];
+                const isTodayClass = ymd === today ? 'is-today' : '';
+                const isSelectedClass = ymd === selectedDate ? 'is-selected' : '';
+                
+                const hasTripClass = dayTrips.length > 0 ? 'has-trips' : '';
                 let tripCountHtml = '';
                 if (dayTrips.length > 0) {
-                    tripCountHtml = `<div style="position: absolute; bottom: 2px; right: 2px; font-size: 14px; color: #ffffff; font-weight: bold; z-index: 10;">${dayTrips.length}</div>`;
+                    tripCountHtml = `<div style="position: absolute; top: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #2563eb; border-radius: 3px; padding: 2px 4px;">${dayTrips.length}</div>`;
                 }
-                const hasTripClass = dayTrips.length > 0 ? 'has-trips' : '';
-                html += `<div class="calendar-day ${hasTripClass}" style="cursor: pointer; position: relative;" onclick="showDayTrips('${ymd}')"><strong>${day}</strong>${tripCountHtml}</div>`;
+                html += `<div class="calendar-day ${hasTripClass} ${isTodayClass} ${isSelectedClass}" style="cursor: pointer; position: relative; ${dayColor}" onclick="handleCalendarDayClick('${ymd}')"><strong>${day}</strong>${tripCountHtml}</div>`;
             }
             container.innerHTML = html;
             
@@ -1125,9 +1188,15 @@
         }
 
         // Modal: Create Trip
-        function openCreateTripModal() {
+        function openCreateTripModal(selectedDate = null) {
             document.getElementById('createTripForm').reset();
-            document.getElementById('tripDate').valueAsDate = new Date();
+            
+            // Se c'è una data selezionata dal calendario, usala; altrimenti usa oggi
+            if (selectedDate) {
+                document.getElementById('tripDate').value = selectedDate;
+            } else {
+                document.getElementById('tripDate').valueAsDate = new Date();
+            }
 
             document.getElementById('createTripModal').classList.add('active');
 
@@ -1327,13 +1396,11 @@
         }
 
         function confirmDeleteTrip(tripId) {
-            if (confirm('Eliminare questo viaggio? Gli ordini non verranno eliminati.')) {
-                deleteTrip(tripId);
-                updateStats();
-                renderTrips();
-                renderCalendar();
-                showAlert('✅ Viaggio eliminato', 'success');
-            }
+            deleteTrip(tripId);
+            updateStats();
+            renderTrips();
+            renderCalendar();
+            showAlert('✅ Viaggio eliminato', 'success');
         }
 
         // Utilities
@@ -1386,6 +1453,19 @@
                 console.error('Errore render calendario:', e);
             }
             console.log('Trips Management: Init completed');
+        });
+
+        // Sincronizza dati quando cambiano da un'altra pagina (storage event listener)
+        window.addEventListener('storage', (event) => {
+            if (event.key === 'orders') {
+                console.log('📦 Sincronizzando ordini da un\'altra pagina...');
+                loadOrders();
+                renderCalendar();
+            } else if (event.key === 'trips') {
+                console.log('🚚 Sincronizzando viaggi da un\'altra pagina...');
+                loadTrips();
+                renderCalendar();
+            }
         });
     </script>
 </body>
