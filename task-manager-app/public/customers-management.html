@@ -197,7 +197,7 @@
                 </div>
             </div>
             <div class="header-actions">
-                <button class="btn btn-primary" onclick="openCustomerModal()">➕ Nuovo Cliente</button>
+                <button class="btn btn-success" onclick="openCustomerModal()">➕ Nuovo Cliente</button>
                 <button class="btn btn-secondary" onclick="goBack()">← Indietro</button>
             </div>
         </div>
@@ -470,12 +470,10 @@
 
         // Elimina cliente
         function deleteCustomer(id) {
-            if (confirm('Sei sicuro di voler eliminare questo cliente?')) {
-                customers = customers.filter(c => c.id != id);
-                saveToLocalStorage();
-                renderCustomers();
-                alert('✅ Cliente eliminato!');
-            }
+            customers = customers.filter(c => c.id != id);
+            saveToLocalStorage();
+            renderCustomers();
+            alert('✅ Cliente eliminato!');
         }
 
         // Salva in localStorage
@@ -501,6 +499,15 @@
             await loadCustomers();
             loadFromLocalStorage();
             renderCustomers();
+        });
+
+        // Sincronizza dati quando cambiano da un'altra pagina (storage event listener)
+        window.addEventListener('storage', (event) => {
+            if (event.key === 'orders') {
+                console.log('📦 Sincronizzando ordini da un\'altra pagina...');
+                loadFromLocalStorage();
+                renderCustomers();
+            }
         });
     </script>
 </body>
