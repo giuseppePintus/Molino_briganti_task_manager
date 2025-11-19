@@ -678,7 +678,7 @@
                 </div>
             </div>
             <div class="header-actions">
-                <button class="btn btn-secondary" onclick="goBack()">← Indietro</button>
+                <button class="btn btn-secondary" onclick="window.location.href='admin-dashboard.html'">🏠 Home</button>
             </div>
         </div>
 
@@ -700,9 +700,9 @@
 
         <!-- Planner Actions moved below stats -->
         <div class="planner-actions">
+            <button class="btn btn-success" onclick="window.location.href='customers-management.html'">👥 Nuovo Cliente</button>
             <button class="btn btn-success" onclick="openOrderModal()">➕ Nuovo Ordine</button>
             <button class="btn btn-primary" onclick="window.location.href='trips-management.html'">🚚 Gestione Viaggi</button>
-            <button class="btn btn-success" onclick="window.location.href='customers-management.html'">👥 Nuovo Cliente</button>
         </div>
 
         <!-- Calendar -->
@@ -1582,6 +1582,8 @@
                 } else {
                     syncTripTask(tripId);
                 }
+                renderCalendar();
+                updateStats();
             }
         }
 
@@ -2064,9 +2066,9 @@
             orderTasks = orderTasks.filter(t => t.orderId !== id);
             if (orderTasks.length !== prevLen) {
                 saveOrderTasks();
-                renderOrderTasks();
             }
             renderOrders();
+            renderOrderTasks();
             updateStats();
             renderCalendar();
         }
@@ -2546,11 +2548,14 @@
             } else {
                 calendarViewMode = 'week';
                 btn.textContent = '🗓️ Settimana';
-                // Sincronizza weekStartDate con il mese corrente
-                weekStartDate = new Date(calendarDisplayYear, calendarDisplayMonth, 1);
+                // Torna alla settimana corrente quando si torna a vista settimana
+                const today = new Date();
+                weekStartDate = new Date(today);
                 weekStartDate.setDate(weekStartDate.getDate() - weekStartDate.getDay());
             }
             renderCalendar();
+            renderOrders();
+            renderOrderTasks();
         }
 
         // Mostra ordini del giorno (filtra per data selezionata)
@@ -2750,6 +2755,7 @@
             renderTripOrdersList(currentTripId);
             renderTripTotals(currentTripId);
             renderOrderTasks();
+            renderCalendar();
         }
 
         function moveOrderUp(tripId, index) {
