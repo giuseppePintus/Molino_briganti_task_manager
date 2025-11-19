@@ -454,6 +454,126 @@
             return priorityMap[priority] || priority;
         }
 
+        async function pauseTasksOutsideWorkingHours(tasks) {
+            try {
+                // Carica le impostazioni aziendali da localStorage
+                let settingsJson = localStorage.getItem('companySettings');
+                let settings = null;
+                
+                // Controlla se le impostazioni sono valide
+                try {
+                    if (settingsJson) {
+                        const parsed = JSON.parse(settingsJson);
+                        // Se non ha i campi necessari, ricreiamo
+                        if (parsed.openingDays && parsed.openMorningStart) {
+                            settings = parsed;
+                        }
+                    }
+                } catch (e) {
+                    console.log('❌ Impostazioni corrotte in localStorage');
+                }
+                
+                // Se non ci sono impostazioni valide, crea le impostazioni di default
+                if (!settings) {
+                    const defaultSettings = {
+                        businessName: 'Molino Briganti',
+                        logoUrl: 'images/logo INSEGNA.png',
+                        openingDays: [1, 2, 3, 4, 5, 6], // lun-sab (0=dom, 6=sab)
+                        openMorningStart: '08:00',
+                        openMorningEnd: '13:00',
+                        openAfternoonStart: '15:00',
+                        openAfternoonEnd: '18:00',
+                        deliveryDays: [1, 2, 3, 4, 5, 6],
+                        deliveryMorningStart: '08:00',
+                        deliveryMorningEnd: '12:00',
+                        deliveryAfternoonStart: '15:00',
+                        deliveryAfternoonEnd: '18:00',
+                        holidays: [],
+                        vehicles: 2
+                    };
+                    localStorage.setItem('companySettings', JSON.stringify(defaultSettings));
+                    settings = defaultSettings;
+                    console.log('✅ Impostazioni di default caricate');
+                }
+                
+                console.log('🔧 Impostazioni aziendali caricate:', settings);
+                
+                // openingDays è un array di indici giorni lavorativi (0=dom, 1=lun, ..., 6=sab)
+                const openDays = Array.isArray(settings.openingDays) ? settings.openingDays : [];
+                console.log('📅 Giorni lavorativi:', openDays);
+                
+                let pausedCount = 0;
+                
+                // Controlla ogni task accettato (sia da admin che da operatori)
+                for (const task of tasks) {
+                    if (!task.acceptedAt || task.paused || task.completed) continue;
+                    
+                    if (!task.scheduledAt) continue; // Salta se non ha data programmata
+                    
+                    const taskDate = new Date(task.scheduledAt);
+                    const dayOfWeek = taskDate.getDay(); // 0=domenica, 6=sabato
+                    const timeStr = task.scheduledAt.split('T')[1].substring(0, 5); // HH:MM
+                    
+                    console.log(`📋 Task ${task.id}: ${task.title}, giorno=${dayOfWeek}, orario=${timeStr}`);
+                    
+                    // Verifica se il giorno è lavorativo
+                    const isWorkingDay = openDays.includes(dayOfWeek);
+                    if (!isWorkingDay) {
+                        console.log(`  ❌ Giorno ${dayOfWeek} non lavorativo - PAUSA`);
+                        await pauseTaskAutomatically(task.id);
+                        pausedCount++;
+                        continue;
+                    }
+                    
+                    // Verifica se l'orario è entro i limiti
+                    const morningStart = settings.openMorningStart; // es. "08:00"
+                    const morningEnd = settings.openMorningEnd; // es. "13:00"
+                    const afternoonStart = settings.openAfternoonStart; // es. "15:00"
+                    const afternoonEnd = settings.openAfternoonEnd; // es. "18:00"
+                    
+                    console.log(`  Mattina: ${morningStart}-${morningEnd}, Pomeriggio: ${afternoonStart}-${afternoonEnd}`);
+                    
+                    const isInMorning = timeStr >= morningStart && timeStr <= morningEnd;
+                    const isInAfternoon = afternoonStart && afternoonEnd && timeStr >= afternoonStart && timeStr <= afternoonEnd;
+                    
+                    console.log(`  Orario ${timeStr}: mattina=${isInMorning}, pomeriggio=${isInAfternoon}`);
+                    
+                    if (!isInMorning && !isInAfternoon) {
+                        console.log(`  ❌ Orario fuori limiti - PAUSA`);
+                        await pauseTaskAutomatically(task.id);
+                        pausedCount++;
+                    } else {
+                        console.log(`  ✓ Orario ok`);
+                    }
+                }
+                
+                if (pausedCount > 0) {
+                    console.log(`✓ ${pausedCount} task messi in pausa automaticamente`);
+                }
+            } catch (error) {
+                console.error('Errore verifica orari lavorativi:', error);
+            }
+        }
+
+        async function pauseTaskAutomatically(taskId) {
+            try {
+                const response = await fetch(`${API_URL}/tasks/${taskId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ paused: true, pausedBySystem: true })
+                });
+                
+                if (response.ok) {
+                    console.log(`✓ Task ${taskId} messo in pausa (fuori orario lavorativo)`);
+                }
+            } catch (error) {
+                console.error(`Errore pausa automatica task ${taskId}:`, error);
+            }
+        }
+
         async function loadTasks() {
             try {
                 const response = await fetch(`${API_URL}/tasks`, {
@@ -462,6 +582,7 @@
                 if (!response.ok) throw new Error('Errore caricamento task');
                 
                 allTasks = await response.json();
+                await pauseTasksOutsideWorkingHours(allTasks);
                 renderTasks();
             } catch (error) {
                 showAlert('Errore: ' + error.message, 'error');
@@ -642,7 +763,7 @@
                         <div class="note">
                             <div class="note-author">${note.user.username}</div>
                             <div>${note.note}</div>
-                            <div class="note-time">${new Date(note.createdAt).toLocaleString('it-IT')}</div>
+                            <div class="note-time">${new Date(note.createdAt).toLocaleString('it-IT', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</div>
                         </div>
                     `).join('');
                 }
@@ -784,8 +905,69 @@
             }
         }
 
+        async function isTaskOutsideWorkingHours(task) {
+            // Carica le impostazioni aziendali da localStorage
+            let settingsJson = localStorage.getItem('companySettings');
+            let settings = null;
+            
+            try {
+                if (settingsJson) {
+                    const parsed = JSON.parse(settingsJson);
+                    if (parsed.openingDays && parsed.openMorningStart) {
+                        settings = parsed;
+                    }
+                }
+            } catch (e) {
+                console.log('❌ Impostazioni corrotte in localStorage');
+            }
+            
+            // Se non ci sono impostazioni valide, usa default
+            if (!settings) {
+                settings = {
+                    openingDays: [1, 2, 3, 4, 5, 6], // lun-sab
+                    openMorningStart: '08:00',
+                    openMorningEnd: '13:00',
+                    openAfternoonStart: '15:00',
+                    openAfternoonEnd: '18:00'
+                };
+            }
+            
+            if (!task.scheduledAt) return false;
+            
+            const taskDate = new Date(task.scheduledAt);
+            const dayOfWeek = taskDate.getDay(); // 0=domenica, 6=sabato
+            const timeStr = task.scheduledAt.split('T')[1].substring(0, 5); // HH:MM
+            
+            // Verifica se il giorno è lavorativo
+            const openDays = Array.isArray(settings.openingDays) ? settings.openingDays : [];
+            const isWorkingDay = openDays.includes(dayOfWeek);
+            if (!isWorkingDay) {
+                return true; // Fuori orario
+            }
+            
+            // Verifica se l'orario è entro i limiti
+            const morningStart = settings.openMorningStart;
+            const morningEnd = settings.openMorningEnd;
+            const afternoonStart = settings.openAfternoonStart;
+            const afternoonEnd = settings.openAfternoonEnd;
+            
+            const isInMorning = timeStr >= morningStart && timeStr <= morningEnd;
+            const isInAfternoon = afternoonStart && afternoonEnd && timeStr >= afternoonStart && timeStr <= afternoonEnd;
+            
+            return !isInMorning && !isInAfternoon; // Ritorna true se fuori orario
+        }
+
         async function handleResumeTask(taskId) {
             try {
+                const task = allTasks.find(t => t.id === taskId);
+                
+                // Controlla se il task è fuori orario
+                const isOutsideHours = await isTaskOutsideWorkingHours(task);
+                if (isOutsideHours) {
+                    showAlert('⏸️ Non puoi riprendere un task fuori dagli orari di lavoro. Il task rimane in pausa.', 'error');
+                    return;
+                }
+                
                 const response = await fetch(`${API_URL}/tasks/${taskId}/resume`, {
                     method: 'POST',
                     headers: {
@@ -856,7 +1038,7 @@
 
                 if (!response.ok) throw new Error('Errore nel completamento');
 
-                showAlert('Compito completato!', 'success');
+                showAlert('✅ Compito completato e riportato agli admin!', 'success');
                 closeModal();
                 await loadTasks();
                 setTimeout(() => location.reload(), 1000);

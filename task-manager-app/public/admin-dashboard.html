@@ -391,13 +391,13 @@
             content: '';
             position: absolute;
             bottom: 0;
-            right: 0;
+            left: 0;
             width: 0;
             height: 0;
             border-style: solid;
-            border-width: 0 0 18px 18px;
-            border-color: transparent transparent #16a34a transparent;
-            border-radius: 0 0 4px 0;
+            border-width: 18px 0 0 18px;
+            border-color: transparent transparent transparent #ff9800;
+            border-radius: 0 0 0 4px;
             z-index: 10;
         }
 
@@ -1214,24 +1214,6 @@
             </div>
         </div>
 
-        <!-- Main Content -->
-        <div class="main-content">
-
-            <!-- Task List with Filters -->
-            <div class="card" id="operatorTasksCard" style="display: none;">
-                <div class="card-header">
-                    <h2>📋 Task Operatori</h2>
-                </div>
-                
-                <!-- Filters Inside Card -->
-                <div class="filter-bar" style="margin-bottom: 20px; border-bottom: 1px solid #4d4d4d; padding-bottom: 15px;">
-                </div>
-                
-                <div id="tasksList" class="task-list">
-                </div>
-            </div>
-        </div>
-
         <!-- Viaggi Section -->
         <div class="card" id="tripsCard" style="border: 2px solid #16a34a;">
             <div class="card-header">
@@ -1243,7 +1225,7 @@
         </div>
 
         <!-- My Tasks (Admin Personal Tasks) - Outside main-content for full width -->
-        <div class="card" id="myTasksCard">
+        <div class="card" id="myTasksCard" style="display: none;">
             <div class="card-header">
                 <h2 id="myTasksTitle">📋 Task da Assegnare</h2>
             </div>
@@ -1370,6 +1352,13 @@
             return labels[recurrenceType] || recurrenceType;
         }
 
+        function closeModal() {
+            const modal = document.getElementById('taskModal');
+            if (modal) {
+                modal.classList.remove('active');
+            }
+        }
+
         async function initDashboard() {
             document.getElementById('userInfo').textContent = `👤 ${currentUser.username}`;
             document.getElementById('myTasksTitle').textContent = `📋 Task da Assegnare`;
@@ -1447,6 +1436,62 @@
             }
         }
 
+        // Funzione per spostare i task non completati al giorno lavorativo successivo
+        async function moveOverdueTasksToNextWorkday(tasks) {
+            try {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                
+                const tasksToMove = tasks.filter(task => {
+                    // Sposta solo i task non completati, non in pausa, programmati nel passato
+                    if (task.completed || task.paused) return false;
+                    if (!task.scheduledAt) return false;
+                    
+                    const taskDate = new Date(task.scheduledAt);
+                    taskDate.setHours(0, 0, 0, 0);
+                    
+                    return taskDate < today;
+                });
+                
+                // Per ogni task scaduto, sposta al prossimo giorno lavorativo
+                for (const task of tasksToMove) {
+                    const nextWorkday = getNextWorkday(new Date());
+                    
+                    const response = await fetch(`${API_URL}/tasks/${task.id}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            ...task,
+                            scheduledAt: nextWorkday.toISOString()
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        console.log(`✅ Task "${task.title}" spostato al ${nextWorkday.toLocaleDateString('it-IT')}`);
+                    }
+                }
+            } catch (error) {
+                console.error('Errore durante lo spostamento dei task scaduti:', error);
+            }
+        }
+        
+        // Funzione per ottenere il prossimo giorno lavorativo (esclude sabato e domenica)
+        function getNextWorkday(date) {
+            const next = new Date(date);
+            next.setDate(next.getDate() + 1);
+            next.setHours(0, 0, 0, 0);
+            
+            // Se cade nel weekend, sposta al lunedì
+            while (next.getDay() === 0 || next.getDay() === 6) {
+                next.setDate(next.getDate() + 1);
+            }
+            
+            return next;
+        }
+
         async function loadTasks() {
             try {
                 const response = await fetch(`${API_URL}/tasks`, {
@@ -1455,12 +1500,147 @@
                 if (!response.ok) throw new Error('Errore caricamento task');
                 
                 allTasks = await response.json();
+                
+                // Auto-sposta i task scaduti al prossimo giorno lavorativo
+                await moveOverdueTasksToNextWorkday(allTasks);
+                
+                // Verifica e metti in pausa i task accettati fuori orario
+                await pauseTasksOutsideWorkingHours(allTasks);
+                
+                // Ricarica i task dopo lo spostamento
+                const response2 = await fetch(`${API_URL}/tasks`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (response2.ok) {
+                    allTasks = await response2.json();
+                }
+                
                 renderTasks();
                 renderAdminTasks();
                 await renderCalendar();
                 renderTrips();
             } catch (error) {
                 showAlert('Errore: ' + error.message, 'error');
+            }
+        }
+
+        async function pauseTasksOutsideWorkingHours(tasks) {
+            try {
+                // Carica le impostazioni aziendali da localStorage
+                let settingsJson = localStorage.getItem('companySettings');
+                let settings = null;
+                
+                // Controlla se le impostazioni sono valide
+                try {
+                    if (settingsJson) {
+                        const parsed = JSON.parse(settingsJson);
+                        // Se non ha i campi necessari, ricreiamo
+                        if (parsed.openingDays && parsed.openMorningStart) {
+                            settings = parsed;
+                        }
+                    }
+                } catch (e) {
+                    console.log('❌ Impostazioni corrotte in localStorage');
+                }
+                
+                // Se non ci sono impostazioni valide, crea le impostazioni di default
+                if (!settings) {
+                    const defaultSettings = {
+                        businessName: 'Molino Briganti',
+                        logoUrl: 'images/logo INSEGNA.png',
+                        openingDays: [1, 2, 3, 4, 5, 6], // lun-sab (0=dom, 6=sab)
+                        openMorningStart: '08:00',
+                        openMorningEnd: '13:00',
+                        openAfternoonStart: '15:00',
+                        openAfternoonEnd: '18:00',
+                        deliveryDays: [1, 2, 3, 4, 5, 6],
+                        deliveryMorningStart: '08:00',
+                        deliveryMorningEnd: '12:00',
+                        deliveryAfternoonStart: '15:00',
+                        deliveryAfternoonEnd: '18:00',
+                        holidays: [],
+                        vehicles: 2
+                    };
+                    localStorage.setItem('companySettings', JSON.stringify(defaultSettings));
+                    settings = defaultSettings;
+                    console.log('✅ Impostazioni di default caricate');
+                }
+                
+                console.log('🔧 Impostazioni aziendali caricate:', settings);
+                
+                // openingDays è un array di indici giorni lavorativi (0=dom, 1=lun, ..., 6=sab)
+                const openDays = Array.isArray(settings.openingDays) ? settings.openingDays : [];
+                console.log('📅 Giorni lavorativi:', openDays);
+                
+                let pausedCount = 0;
+                
+                // Controlla ogni task accettato (sia da admin che da operatori)
+                for (const task of tasks) {
+                    if (!task.acceptedAt || task.paused || task.completed) continue;
+                    
+                    if (!task.scheduledAt) continue; // Salta se non ha data programmata
+                    
+                    const taskDate = new Date(task.scheduledAt);
+                    const dayOfWeek = taskDate.getDay(); // 0=domenica, 6=sabato
+                    const timeStr = task.scheduledAt.split('T')[1].substring(0, 5); // HH:MM
+                    
+                    console.log(`📋 Task ${task.id}: ${task.title}, giorno=${dayOfWeek}, orario=${timeStr}`);
+                    
+                    // Verifica se il giorno è lavorativo
+                    const isWorkingDay = openDays.includes(dayOfWeek);
+                    if (!isWorkingDay) {
+                        console.log(`  ❌ Giorno ${dayOfWeek} non lavorativo - PAUSA`);
+                        await pauseTaskAutomatically(task.id);
+                        pausedCount++;
+                        continue;
+                    }
+                    
+                    // Verifica se l'orario è entro i limiti
+                    const morningStart = settings.openMorningStart; // es. "08:00"
+                    const morningEnd = settings.openMorningEnd; // es. "13:00"
+                    const afternoonStart = settings.openAfternoonStart; // es. "15:00"
+                    const afternoonEnd = settings.openAfternoonEnd; // es. "18:00"
+                    
+                    console.log(`  Mattina: ${morningStart}-${morningEnd}, Pomeriggio: ${afternoonStart}-${afternoonEnd}`);
+                    
+                    const isInMorning = timeStr >= morningStart && timeStr <= morningEnd;
+                    const isInAfternoon = afternoonStart && afternoonEnd && timeStr >= afternoonStart && timeStr <= afternoonEnd;
+                    
+                    console.log(`  Orario ${timeStr}: mattina=${isInMorning}, pomeriggio=${isInAfternoon}`);
+                    
+                    if (!isInMorning && !isInAfternoon) {
+                        console.log(`  ❌ Orario fuori limiti - PAUSA`);
+                        await pauseTaskAutomatically(task.id);
+                        pausedCount++;
+                    } else {
+                        console.log(`  ✓ Orario ok`);
+                    }
+                }
+                
+                if (pausedCount > 0) {
+                    console.log(`✓ ${pausedCount} task messi in pausa automaticamente`);
+                }
+            } catch (error) {
+                console.error('Errore verifica orari lavorativi:', error);
+            }
+        }
+
+        async function pauseTaskAutomatically(taskId) {
+            try {
+                const response = await fetch(`${API_URL}/tasks/${taskId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ paused: true, pausedBySystem: true })
+                });
+                
+                if (response.ok) {
+                    console.log(`✓ Task ${taskId} messo in pausa (fuori orario lavorativo)`);
+                }
+            } catch (error) {
+                console.error(`Errore pausa automatica task ${taskId}:`, error);
             }
         }
 
@@ -1519,6 +1699,8 @@
 
         function renderTasks() {
             const container = document.getElementById('tasksList');
+            if (!container) return; // Element doesn't exist, skip rendering
+            
             const operatorFilterEl = document.getElementById('operatorFilter');
             const statusFilterEl = document.getElementById('statusFilter');
             const operatorFilter = operatorFilterEl ? operatorFilterEl.value : '';
@@ -1603,7 +1785,6 @@
             html += nonRecurring.map(task => {
                 const status = task.completed ? 'Completato' : (task.paused ? 'In Pausa' : (task.acceptedAt ? 'Accettato' : 'In Sospeso'));
                 const statusIcon = task.completed ? '✅' : (task.paused ? '⏸️' : (task.acceptedAt ? '👍' : '📋'));
-                
                 // Determina se il task è scaduto (scheduled nel passato, non completato/accettato)
                 let isOverdue = false;
                 let daysOverdue = 0;
@@ -1614,29 +1795,58 @@
                         daysOverdue = Math.floor((today - taskDate) / (1000 * 60 * 60 * 24));
                     }
                 }
-                
                 const cardStyle = isOverdue 
                     ? 'border-left: 4px solid #ef4444; background: #3d2626;' 
                     : '';
                 const overdueLabel = isOverdue 
                     ? `<span style="background: #dc2626; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-left: 8px;">⚠️ SCADUTO ${daysOverdue}${daysOverdue === 1 ? ' giorno' : ' giorni'}</span>`
                     : '';
-                
+                // NOTE: visualizza note filtrate e leggibili
+                let noteHtml = '';
+                if (task.notes && Array.isArray(task.notes) && task.notes.length > 0) {
+                    const filteredNotes = task.notes.filter(note => {
+                        if (typeof note === 'string' && note.trim() !== '') return true;
+                        if (typeof note === 'object' && note !== null && typeof note.note === 'string' && note.note.trim() !== '') return true;
+                        return false;
+                    });
+                    if (filteredNotes.length > 0) {
+                        noteHtml = `<div style=\"margin-top: 8px; padding: 6px; background: #2d2d2d; border-radius: 3px; font-size: 12px; color: #e0e0e0; max-height: 80px; overflow-y: auto;\">` +
+                            filteredNotes.map(note => {
+                                let autore = '';
+                                let testo = '';
+                                if (typeof note === 'string') {
+                                    testo = String(note).trim();
+                                } else if (typeof note === 'object' && note !== null) {
+                                    // note.note è il testo della nota
+                                    if (typeof note.note === 'string') testo = String(note.note).trim();
+                                    // note.user è l'oggetto utente con .username
+                                    if (typeof note.user === 'object' && note.user !== null && typeof note.user.username === 'string') {
+                                        autore = note.user.username;
+                                    }
+                                }
+                                if (testo.length > 0) {
+                                    const autorePart = autore ? `<strong>${autore}:</strong> ` : '';
+                                    return `<div style=\\"margin: 4px 0; font-size: 11px; color: #b0b0b0;\\\">${autorePart}${testo}</div>`;
+                                }
+                                return '';
+                            }).join('') + `</div>`;
+                    }
+                }
                 return `
-                    <div class="task-card" style="${cardStyle}">
-                        <div class="task-header">
-                            <div class="task-title">${task.title}</div>
-                            <span class="task-status">${statusIcon} ${status}${overdueLabel}</span>
+                    <div class=\"task-card\" style=\"${cardStyle}\">
+                        <div class=\"task-header\">
+                            <div class=\"task-title\">${task.title}</div>
+                            <span class=\"task-status\">${statusIcon} ${status}${overdueLabel}</span>
                         </div>
-                        ${task.description ? `<div style="margin-top: 8px; color: #a0a0a0; font-size: 13px;">${task.description}</div>` : ''}
-                        ${task.scheduledAt ? `<div style="margin-top: 8px; color: ${isOverdue ? '#ef4444' : '#a0a0a0'}; font-size: 13px; ${isOverdue ? 'font-weight: bold;' : ''}">📅 ${new Date(task.scheduledAt).toLocaleString('it-IT')}</div>` : ''}
-                        ${task.estimatedMinutes ? `<div style="margin-top: 4px; color: #a0a0a0; font-size: 13px;">⏱️ ${task.estimatedMinutes} min</div>` : ''}
-                        ${task.assignedOperator ? `<div style="margin-top: 4px; color: #a0a0a0; font-size: 13px;">👤 ${task.assignedOperator.username}</div>` : ''}
-                        ${task.priority ? `<div style="margin-top: 4px; color: #a0a0a0; font-size: 13px;">${formatPriority(task.priority)}</div>` : ''}
-                        ${task.notes && task.notes.length > 0 ? `<div style="margin-top: 8px; color: #e0e0e0; font-size: 12px;">📝 Note: ${task.notes.length}</div>` : ''}
-                        <div class="task-actions" style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
-                            <button class="btn btn-primary btn-small" onclick="openEditTaskModal(${task.id})">✏️ Modifica</button>
-                            <button class="btn btn-danger btn-small" onclick="handleDeleteTask(${task.id})">🗑️ Rimuovi</button>
+                        ${task.description ? `<div style=\"margin-top: 8px; color: #a0a0a0; font-size: 16px;\">${task.description}</div>` : ''}
+                        ${task.estimatedMinutes ? `<div style=\"margin-top: 8px; color: #fbbf24; font-size: 16px; font-weight: bold;\">⏱️ Tempo stimato: ${task.estimatedMinutes} min</div>` : ''}
+                        ${task.scheduledAt ? `<div style=\"margin-top: 8px; color: ${isOverdue ? '#ef4444' : '#a0a0a0'}; font-size: 16px; ${isOverdue ? 'font-weight: bold;' : ''}\">📅 ${new Date(task.scheduledAt).toLocaleString('it-IT', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</div>` : ''}
+                        ${task.assignedOperator ? `<div style=\"margin-top: 4px; color: #a0a0a0; font-size: 16px;\">👤 ${task.assignedOperator.username}</div>` : ''}
+                        ${task.priority ? `<div style=\"margin-top: 4px; color: #a0a0a0; font-size: 16px;\">${formatPriority(task.priority)}</div>` : ''}
+                        ${noteHtml}
+                        <div class=\"task-actions\" style=\"margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;\">
+                            <button class=\"btn btn-primary btn-small\" onclick=\"openEditTaskModal(${task.id})\">✏️ Modifica</button>
+                            <button class=\"btn btn-danger btn-small\" onclick=\"handleDeleteTask(${task.id})\">🗑️ Rimuovi</button>
                         </div>
                     </div>
                 `;
@@ -1719,16 +1929,17 @@
                             <div class="task-title">${task.title}</div>
                             <span class="task-status">${statusIcon} ${status}</span>
                         </div>
-                        ${task.scheduledAt ? `<div style="margin-top: 8px; color: #a0a0a0; font-size: 13px;">📅 ${new Date(task.scheduledAt).toLocaleString('it-IT')}</div>` : ''}
+                        ${task.scheduledAt ? `<div style="margin-top: 8px; color: #a0a0a0; font-size: 13px;">📅 ${new Date(task.scheduledAt).toLocaleString('it-IT', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</div>` : ''}
                         ${task.priority ? `<div style="margin-top: 4px; color: #a0a0a0; font-size: 13px;">${formatPriority(task.priority)}</div>` : ''}
                         ${task.recurring && task.recurrenceType ? `<div style="margin-top: 4px; color: #7dd3fc; font-size: 13px;">🔄 ${getRecurrenceLabel(task.recurrenceType)}</div>` : ''}
-                        ${task.notes && task.notes.length > 0 ? `<div style="margin-top: 8px; color: #e0e0e0; font-size: 12px;">📝 Note: ${task.notes.length}</div>` : ''}
+                        <!-- Note conteggio rimosso: visualizza solo dettagli filtrati -->
+
                         <div class="task-actions" style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
                             ${!task.assignedOperator ? `<button class="btn btn-info btn-small" onclick="openAssignTaskModal(${task.id})" style="background: #0891b2;">🔧 Assegna</button>` : ''}
                             ${!task.acceptedAt && !task.completed ? `<button class="btn btn-success btn-small" onclick="handleTaskStatusChange(${task.id}, 'accept')" style="background: #22c55e;">👍 Accetta</button>` : ''}
                             ${task.acceptedAt && !task.completed && !task.paused ? `<button class="btn btn-warning btn-small" onclick="handleTaskStatusChange(${task.id}, 'pause')" style="background: #ea580c;">⏸️ Pausa</button>` : ''}
                             ${task.paused ? `<button class="btn btn-info btn-small" onclick="handleTaskStatusChange(${task.id}, 'resume')" style="background: #3b82f6;">▶️ Riprendi</button>` : ''}
-                            ${!task.completed ? `<button class="btn btn-success btn-small" onclick="handleTaskStatusChange(${task.id}, 'complete')" style="background: #22c55e;">✅ Completa</button>` : ''}
+                            ${!task.completed ? `<button class="btn btn-success btn-small" onclick="handleTaskStatusChange(${task.id}, 'complete')" style="background: #22c55e;">✅ Completa</button>` : `<button class="btn btn-danger btn-small" onclick="handleTaskStatusChange(${task.id}, 'complete')" style="background: #dc2626;">🗑️ Elimina</button>`}
                             <button class="btn btn-primary btn-small" onclick="openEditTaskModal(${task.id})">✏️ Modifica</button>
                             <button class="btn btn-danger btn-small" onclick="handleDeleteTask(${task.id})">🗑️ Rimuovi</button>
                         </div>
@@ -1799,25 +2010,13 @@
             let tasksToDisplay = allTasks;
             
             if (currentViewMode === 'myTasks') {
-                // Mostra task dell'admin attuale + task non assegnati (da assegnare)
+                // Mostra task dell'admin attuale + task non assegnati + task completati (indipendentemente dall'assegnamento)
                 tasksToDisplay = allTasks.filter(t => 
-                    t.assignedOperator?.id === currentUser.id || !t.assignedOperator?.id
+                    t.assignedOperator?.id === currentUser.id || !t.assignedOperator?.id || t.completed
                 );
             } else if (currentViewMode === 'operatorTasks') {
-                // Mostra solo i task degli operatori (non assegnati all'admin)
-                tasksToDisplay = allTasks.filter(t => t.assignedOperator?.id !== currentUser.id && t.assignedOperator?.id);
-                
-                // Applica i filtri se presenti
-                const selectedOperator = document.getElementById('operatorFilter')?.value;
-                const selectedStatus = document.getElementById('statusFilter')?.value;
-                
-                if (selectedOperator) {
-                    tasksToDisplay = tasksToDisplay.filter(t => String(t.assignedOperator?.id) === String(selectedOperator));
-                }
-                
-                if (selectedStatus) {
-                    tasksToDisplay = tasksToDisplay.filter(t => t.status === selectedStatus);
-                }
+                // Mostra solo i task degli operatori (assegnati ad operatori, non all'admin) e non completati
+                tasksToDisplay = allTasks.filter(t => t.assignedOperator?.id !== currentUser.id && t.assignedOperator?.id && !t.completed);
             }
             
             // Usa renderCalendarWeek o renderCalendarMonth in base alla vista
@@ -1877,11 +2076,20 @@
                 let taskCountHtml = '';
                 let unassignedCountHtml = '';
                 let tripCountHtml = '';
-                if (assignedTasks > 0) {
-                    taskCountHtml = `<div style="position: absolute; bottom: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #16a34a; border-radius: 3px; padding: 2px 4px;">${assignedTasks}</div>`;
-                }
-                if (unassignedTasks > 0) {
-                    unassignedCountHtml = `<div style="position: absolute; bottom: 8px; left: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #ff9800; border-radius: 3px; padding: 2px 4px;">${unassignedTasks}</div>`;
+                
+                // In visualizzazione 'myTasks', mostra il numero totale
+                if (currentViewMode === 'myTasks') {
+                    if (totalTasks > 0) {
+                        taskCountHtml = `<div style="position: absolute; bottom: 8px; left: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #ff9800; border-radius: 3px; padding: 2px 4px;">${totalTasks}</div>`;
+                    }
+                } else {
+                    // In visualizzazione 'operatorTasks', mostra assegnati e non assegnati
+                    if (assignedTasks > 0) {
+                        taskCountHtml = `<div style="position: absolute; bottom: 8px; left: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #ff9800; border-radius: 3px; padding: 2px 4px;">${assignedTasks}</div>`;
+                    }
+                    if (unassignedTasks > 0) {
+                        unassignedCountHtml = `<div style="position: absolute; bottom: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #16a34a; border-radius: 3px; padding: 2px 4px;">${unassignedTasks}</div>`;
+                    }
                 }
                 if (dayTrips.length > 0) {
                     tripCountHtml = `<div style="position: absolute; top: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #2563eb; border-radius: 3px; padding: 2px 4px;">${dayTrips.length}</div>`;
@@ -2024,11 +2232,20 @@
                 let taskCountHtml = '';
                 let unassignedCountHtml = '';
                 let tripCountHtml = '';
-                if (assignedTasks > 0) {
-                    taskCountHtml = `<div style="position: absolute; bottom: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #16a34a; border-radius: 3px; padding: 2px 4px;">${assignedTasks}</div>`;
-                }
-                if (unassignedTasks > 0) {
-                    unassignedCountHtml = `<div style="position: absolute; bottom: 8px; left: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #ff9800; border-radius: 3px; padding: 2px 4px;">${unassignedTasks}</div>`;
+                
+                // In visualizzazione 'myTasks', mostra il numero totale
+                if (currentViewMode === 'myTasks') {
+                    if (totalTasks > 0) {
+                        taskCountHtml = `<div style="position: absolute; bottom: 8px; left: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #ff9800; border-radius: 3px; padding: 2px 4px;">${totalTasks}</div>`;
+                    }
+                } else {
+                    // In visualizzazione 'operatorTasks', mostra assegnati e non assegnati
+                    if (assignedTasks > 0) {
+                        taskCountHtml = `<div style="position: absolute; bottom: 8px; left: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #ff9800; border-radius: 3px; padding: 2px 4px;">${assignedTasks}</div>`;
+                    }
+                    if (unassignedTasks > 0) {
+                        unassignedCountHtml = `<div style="position: absolute; bottom: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #16a34a; border-radius: 3px; padding: 2px 4px;">${unassignedTasks}</div>`;
+                    }
                 }
                 if (dayTrips.length > 0) {
                     tripCountHtml = `<div style="position: absolute; top: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #2563eb; border-radius: 3px; padding: 2px 4px;">${dayTrips.length}</div>`;
@@ -2908,6 +3125,76 @@
             }
         }
 
+        async function acceptTask(taskId) {
+            await handleTaskStatusChange(taskId, 'accept');
+            // Ricarica il modal con i task aggiornati
+            const dateStr = selectedDate;
+            if (dateStr) {
+                showDayTasksModal(dateStr);
+            }
+        }
+
+        async function pauseTask(taskId) {
+            await handleTaskStatusChange(taskId, 'pause');
+            // Ricarica il modal con i task aggiornati
+            const dateStr = selectedDate;
+            if (dateStr) {
+                showDayTasksModal(dateStr);
+            }
+        }
+
+        async function isTaskOutsideWorkingHours(task) {
+            // Carica le impostazioni aziendali da localStorage
+            let settingsJson = localStorage.getItem('companySettings');
+            let settings = null;
+            
+            try {
+                if (settingsJson) {
+                    const parsed = JSON.parse(settingsJson);
+                    if (parsed.openingDays && parsed.openMorningStart) {
+                        settings = parsed;
+                    }
+                }
+            } catch (e) {
+                console.log('❌ Impostazioni corrotte in localStorage');
+            }
+            
+            // Se non ci sono impostazioni valide, usa default
+            if (!settings) {
+                settings = {
+                    openingDays: [1, 2, 3, 4, 5, 6], // lun-sab
+                    openMorningStart: '08:00',
+                    openMorningEnd: '13:00',
+                    openAfternoonStart: '15:00',
+                    openAfternoonEnd: '18:00'
+                };
+            }
+            
+            if (!task.scheduledAt) return false;
+            
+            const taskDate = new Date(task.scheduledAt);
+            const dayOfWeek = taskDate.getDay(); // 0=domenica, 6=sabato
+            const timeStr = task.scheduledAt.split('T')[1].substring(0, 5); // HH:MM
+            
+            // Verifica se il giorno è lavorativo
+            const openDays = Array.isArray(settings.openingDays) ? settings.openingDays : [];
+            const isWorkingDay = openDays.includes(dayOfWeek);
+            if (!isWorkingDay) {
+                return true; // Fuori orario
+            }
+            
+            // Verifica se l'orario è entro i limiti
+            const morningStart = settings.openMorningStart;
+            const morningEnd = settings.openMorningEnd;
+            const afternoonStart = settings.openAfternoonStart;
+            const afternoonEnd = settings.openAfternoonEnd;
+            
+            const isInMorning = timeStr >= morningStart && timeStr <= morningEnd;
+            const isInAfternoon = afternoonStart && afternoonEnd && timeStr >= afternoonStart && timeStr <= afternoonEnd;
+            
+            return !isInMorning && !isInAfternoon; // Ritorna true se fuori orario
+        }
+
         async function handleTaskStatusChange(taskId, action) {
             try {
                 // Validazione: non permettere di completare se non accettato
@@ -2915,6 +3202,47 @@
                     const task = allTasks.find(t => t.id === taskId);
                     if (!task?.acceptedAt) {
                         showAlert('❌ Devi prima accettare il task prima di completarlo!', 'error');
+                        return;
+                    }
+                    // Se il task è già stato completato da un operatore, chiedi conferma
+                    if (task?.completed) {
+                        if (!confirm('❓ Vuoi eliminare permanentemente questo task completato?')) {
+                            return;
+                        }
+                    }
+                }
+                
+                // Se l'azione è 'resume', controlla se il task è fuori orario
+                if (action === 'resume') {
+                    const task = allTasks.find(t => t.id === taskId);
+                    const isOutsideHours = await isTaskOutsideWorkingHours(task);
+                    if (isOutsideHours) {
+                        showAlert('⏸️ Non puoi riprendere un task fuori dagli orari di lavoro. Il task rimane in pausa.', 'error');
+                        return;
+                    }
+                }
+                
+                // Se l'azione è 'complete' e il task è già completato, cancellalo
+                if (action === 'complete') {
+                    const task = allTasks.find(t => t.id === taskId);
+                    if (task?.completed) {
+                        // Cancella il task
+                        const deleteResponse = await fetch(`${API_URL}/tasks/${taskId}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json'
+                            }
+                        });
+
+                        if (!deleteResponse.ok) {
+                            const error = await deleteResponse.json();
+                            throw new Error(error.message || 'Errore eliminazione');
+                        }
+
+                        showAlert('✅ Task eliminato!', 'success');
+                        await loadTasks();
+                        await updateStats();
                         return;
                     }
                 }
@@ -2933,6 +3261,8 @@
                     updateData.paused = false;
                 }
                 
+                console.log(`DEBUG handleTaskStatusChange: taskId=${taskId}, action=${action}, updateData=`, updateData);
+                
                 const response = await fetch(`${API_URL}/tasks/${taskId}`, {
                     method: 'PUT',
                     headers: {
@@ -2941,6 +3271,8 @@
                     },
                     body: JSON.stringify(updateData)
                 });
+                
+                console.log(`DEBUG handleTaskStatusChange: response status=${response.status}`);
 
                 if (!response.ok) {
                     const error = await response.json();
@@ -2957,16 +3289,103 @@
                 showAlert(actionMessages[action] || 'Task aggiornato!', 'success');
                 await loadTasks();
                 await updateStats();
+                
+                // Riaprire la modal con i dati aggiornati se una data è stata selezionata
+                if (lastViewedDayDate) {
+                    showDayTasksModal(lastViewedDayDate);
+                }
             } catch (error) {
                 showAlert('Errore: ' + error.message, 'error');
             }
         }
 
-        function closeModal() {
-            const modal = document.getElementById('taskModal');
-            if (modal) modal.classList.remove('active');
-            editingTaskId = null;
+        function openAssignModal(taskId) {
+            const task = allTasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            // Crea il modal HTML
+            const modalHTML = `
+                <div id="assignModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 2000;">
+                    <div style="background: #1a1a1a; border-radius: 8px; padding: 20px; max-width: 400px; width: 90%; max-height: 600px; overflow-y: auto; border: 1px solid #444;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h2 style="margin: 0; color: #fff;">Assegna Task</h2>
+                            <button onclick="document.getElementById('assignModal').remove()" style="background: none; border: none; color: #999; font-size: 24px; cursor: pointer;">×</button>
+                        </div>
+                        
+                        <p style="color: #bbb; margin-bottom: 15px; font-size: 14px;">Seleziona un operatore o admin:</p>
+                        
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            ${allOperators.map(op => `
+                                <button onclick="assignTaskToOperator(${taskId}, ${op.id}); document.getElementById('assignModal').remove();" 
+                                    style="
+                                        background: #2a2a2a; 
+                                        border: 1px solid #444; 
+                                        color: #fff; 
+                                        padding: 12px; 
+                                        border-radius: 4px; 
+                                        cursor: pointer; 
+                                        text-align: left;
+                                        transition: all 0.2s;
+                                    "
+                                    onmouseover="this.style.background='#3a3a3a'; this.style.borderColor='#666';"
+                                    onmouseout="this.style.background='#2a2a2a'; this.style.borderColor='#444';">
+                                    <div style="font-weight: bold; color: #fff;">${op.username}</div>
+                                    <div style="font-size: 12px; color: #999;">${op.role === 'master' ? '👤 Admin' : '🔧 Operatore'}</div>
+                                </button>
+                            `).join('')}
+                        </div>
+                        
+                        <button onclick="document.getElementById('assignModal').remove()" 
+                            style="
+                                width: 100%; 
+                                margin-top: 15px; 
+                                padding: 10px; 
+                                background: #444; 
+                                border: none; 
+                                color: #fff; 
+                                border-radius: 4px; 
+                                cursor: pointer;
+                            ">
+                            Annulla
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            // Aggiungi il modal al DOM
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
         }
+
+        async function assignTaskToOperator(taskId, operatorId) {
+            try {
+                const response = await fetch(`${API_URL}/tasks/${taskId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ assignedOperatorId: operatorId })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || 'Errore assegnazione');
+                }
+
+                showAlert('✅ Task assegnato!', 'success');
+                await loadTasks();
+                await updateStats();
+                
+                // Riaprire la modal con i dati aggiornati se una data è stata selezionata
+                if (lastViewedDayDate) {
+                    showDayTasksModal(lastViewedDayDate);
+                }
+            } catch (error) {
+                showAlert('Errore: ' + error.message, 'error');
+            }
+        }
+
+        
 
         function handleLogout() {
             localStorage.removeItem('token');
@@ -2975,31 +3394,25 @@
         }
 
         function toggleOperatorTasks() {
-            const operatorCard = document.getElementById('operatorTasksCard');
-            const myTasksCard = document.getElementById('myTasksCard');
             const btn = document.getElementById('toggleTasksBtn');
             const dayTasksCard = document.getElementById('dayTasksCard');
             
-            if (operatorCard.style.display === 'none') {
-                // Mostra Task Operatori, nascondi I Miei Task
-                operatorCard.style.display = 'block';
-                myTasksCard.style.display = 'none';
-                btn.textContent = '👁️ Task Operatori';
+            // Commuta tra visualizzazioni
+            if (currentViewMode === 'myTasks') {
+                // Passa a Task Operatori
                 currentViewMode = 'operatorTasks';
-            } else {
-                // Nascondi Task Operatori, mostra I Miei Task
-                operatorCard.style.display = 'none';
-                myTasksCard.style.display = 'block';
                 btn.textContent = '👁️ I Miei Task';
+            } else {
+                // Passa a I Miei Task
                 currentViewMode = 'myTasks';
+                btn.textContent = '👁️ Task Operatori';
             }
             
-            // Aggiorna i task e il calendario
-            renderTasks();
+            // Aggiorna il calendario con i task filtrati
             renderCalendar();
             
-            // Se c'è una card del giorno aperta, aggiornala con la nuova vista
-            if (dayTasksCard.style.display === 'block' && lastViewedDayDate) {
+            // Se c'è una card del giorno aperta, aggiornala con la nuova visualizzazione
+            if (dayTasksCard && dayTasksCard.style.display === 'block' && lastViewedDayDate) {
                 showDayTasksModal(lastViewedDayDate);
             }
         }
@@ -3267,9 +3680,13 @@
 
             // Applica i filtri di view mode
             if (currentViewMode === 'myTasks') {
-                dayTasks = dayTasks.filter(t => t.assignedOperator?.id === currentUser.id);
+                // Mostra task dell'admin attuale + task non assegnati + task completati (indipendentemente dall'assegnamento)
+                dayTasks = dayTasks.filter(t => 
+                    t.assignedOperator?.id === currentUser.id || !t.assignedOperator?.id || t.completed
+                );
             } else if (currentViewMode === 'operatorTasks') {
-                dayTasks = dayTasks.filter(t => t.assignedOperator?.id !== currentUser.id && t.assignedOperator?.id);
+                // Mostra solo i task degli operatori e non completati
+                dayTasks = dayTasks.filter(t => t.assignedOperator?.id !== currentUser.id && t.assignedOperator?.id && !t.completed);
             }
 
             // Aggiorna la card del giorno
@@ -3314,14 +3731,14 @@
                     `;
                 }
                 
-                // Ordini ritiro assegnati - Verde in basso a destra
+                // Ordini ritiro assegnati - Arancio in basso a sinistra ruotato a destra
                 if (dayRitiroOrders.length > 0) {
                     summaryHtml += `
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <div style="position: relative; width: 24px; height: 24px;">
-                                <div style="position: absolute; bottom: 0; right: 0; width: 0; height: 0; border-style: solid; border-width: 0 0 18px 18px; border-color: transparent transparent #16a34a transparent; border-radius: 0 0 4px 0;"></div>
+                                <div style="position: absolute; bottom: 8px; left: 8px; width: 0; height: 0; border-top: 8px solid transparent; border-right: 8px solid #ff9800; z-index: 20;"></div>
                             </div>
-                            <span style="font-weight: bold; color: #16a34a; font-size: 16px;">${dayRitiroOrders.length}</span>
+                            <span style="font-weight: bold; color: #ff9800; font-size: 16px;">${dayRitiroOrders.length}</span>
                             <span style="color: #b0b0b0; font-size: 12px;">Ritiri</span>
                         </div>
                     `;
@@ -3355,9 +3772,11 @@
                 const statusColor = task.completed ? '#10b981' : (task.paused ? '#f59e0b' : (task.acceptedAt ? '#3b82f6' : '#8b5cf6'));
                 
                 // Formatta le date se disponibili
-                const scheduledDate = task.scheduledAt ? new Date(task.scheduledAt).toLocaleString('it-IT') : '';
-                const acceptedTime = task.acceptedAt ? new Date(task.acceptedAt).toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'}) : '';
-                const completedTime = task.completedAt ? new Date(task.completedAt).toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'}) : '';
+                const scheduledDate = task.scheduledAt ? new Date(task.scheduledAt).toLocaleString('it-IT', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+                const acceptedDateTime = task.acceptedAt ? new Date(task.acceptedAt).toLocaleString('it-IT', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+                const completedDateTime = task.completedAt ? new Date(task.completedAt).toLocaleString('it-IT', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+                const pausedDateTime = task.pausedAt ? new Date(task.pausedAt).toLocaleString('it-IT', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+                const createdDateTime = task.createdAt ? new Date(task.createdAt).toLocaleString('it-IT', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
                 const originalScheduledDate = task.originalScheduledAt ? new Date(task.originalScheduledAt).toLocaleDateString('it-IT') : '';
                 
                 // Calcola tempo effettivo se disponibile
@@ -3371,50 +3790,137 @@
                         </div>
                         <p class="task-description">${task.description || 'Nessuna descrizione'}</p>
                         
-                        <!-- Sezione Date e Orari -->
-                        <div style="margin-top: 10px; padding: 8px; background: #2d2d2d; border-radius: 4px; border-left: 3px solid #7dd3fc;">
+                        <!-- Sezione Data Creazione -->
+                        <div style="margin-top: 10px; padding: 8px; background: #2d2d2d; border-radius: 4px; border-left: 3px solid #808080;">
                             <div style="font-size: 12px; color: #a0a0a0;">
-                                ${scheduledDate ? `<div style="margin: 4px 0;"><strong>📅 Programmato:</strong> ${scheduledDate}</div>` : ''}
+                                ${createdDateTime ? `<div style="margin: 4px 0;"><strong>📝 Creato:</strong> ${createdDateTime}</div>` : ''}
                                 ${originalScheduledDate && originalScheduledDate !== scheduledDate ? `<div style="margin: 4px 0; color: #ff9800;"><strong>📆 Data originale:</strong> ${originalScheduledDate}</div>` : ''}
+                                ${scheduledDate ? `<div style="margin: 4px 0;"><strong>📅 Programmato:</strong> ${scheduledDate}</div>` : ''}
+                                ${task.estimatedMinutes ? `<div style="margin: 4px 0; font-weight: bold; color: #fbbf24;"><strong>⏱️ Tempo stimato:</strong> ${task.estimatedMinutes} min</div>` : ''}
                             </div>
                         </div>
                         
                         <!-- Sezione Dettagli -->
-                        <div class="task-meta" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 13px; margin-top: 10px;">
-                            ${timeInfo ? `<span>⏱️ ${timeInfo}</span>` : ''}
-                            ${task.assignedOperator ? `<span>👤 ${task.assignedOperator.username}</span>` : ''}
-                            ${task.priority ? `<span>${formatPriority(task.priority)}</span>` : ''}
-                            ${task.color ? `<span>🎨 Colore: ${task.color}</span>` : ''}
+                        <div style="margin-top: 10px; padding: 10px; background: #2d2d2d; border-radius: 4px; border-left: 3px solid #7dd3fc;">
+                            <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                                ${task.assignedOperator ? `<div style="font-size:15px;font-weight:bold;color:#fff;">👤 ${task.assignedOperator.username}</div>` : ''}
+                                ${task.priority ? `<div>${formatPriority(task.priority)}</div>` : ''}
+                                ${task.color ? (() => {
+                                    let stato = '';
+                                    if (task.completed) stato = 'Completato';
+                                    else if (task.paused) stato = 'In Pausa';
+                                    else if (task.acceptedAt) stato = 'Accettato';
+                                    else stato = 'In Sospeso';
+                                    return `<div><span style="display:inline-block;width:16px;height:16px;background:${task.color};border-radius:3px;border:1px solid #888;vertical-align:middle;margin-right:4px;"></span><span style=\"font-size:12px;color:#b0b0b0;font-weight:bold;\">${stato}</span></div>`;
+                                })() : ''}
+                            </div>
                         </div>
                         
                         <!-- Sezione Stato Accettazione -->
-                        ${task.acceptedAt ? `<div style="margin-top: 8px; padding: 6px; background: #1e3a4c; border-left: 3px solid #3b82f6; border-radius: 3px; font-size: 12px; color: #a0d4ff;">
-                            <strong>✓ Accettato alle:</strong> ${acceptedTime}
+                        ${task.acceptedAt ? `<div style="margin-top: 8px; padding: 8px; background: #1e3a4c; border-left: 3px solid #3b82f6; border-radius: 3px; font-size: 12px; color: #a0d4ff;">
+                            <strong>✓ Accettato:</strong> ${acceptedDateTime}
+                            ${task.acceptedBy ? `<div style="font-size: 11px; margin-top: 2px;">da: ${task.acceptedBy.username || 'Operatore'}</div>` : ''}
                         </div>` : ''}
                         
                         <!-- Sezione Pausa -->
-                        ${task.paused ? `<div style="margin-top: 8px; padding: 6px; background: #3a2e1e; border-left: 3px solid #f59e0b; border-radius: 3px; font-size: 12px; color: #ffb366;">
-                            <strong>⏸️ In Pausa</strong>
-                            ${task.pausedAt ? `<div style="font-size: 11px; margin-top: 2px;">Dall'ora: ${new Date(task.pausedAt).toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'})}</div>` : ''}
+                        ${task.paused ? `<div style="margin-top: 8px; padding: 8px; background: #3a2e1e; border-left: 3px solid #f59e0b; border-radius: 3px; font-size: 12px; color: #ffb366;">
+                            <strong>⏸️ In Pausa${task.pausedBySystem ? ' (Orari di Lavoro)' : ''}</strong>
+                            ${pausedDateTime ? `<div style="font-size: 11px; margin-top: 2px;">Dal: ${pausedDateTime}</div>` : ''}
+                            ${task.pausedBySystem ? `<div style="font-size: 11px; margin-top: 4px; padding-top: 4px; border-top: 1px solid #f59e0b; color: #fbbf24;">🔔 Messo in pausa automaticamente perché programmato fuori dagli orari di lavoro</div>` : ''}
                         </div>` : ''}
                         
                         <!-- Sezione Completamento -->
-                        ${task.completed ? `<div style="margin-top: 8px; padding: 6px; background: #1e3a2a; border-left: 3px solid #10b981; border-radius: 3px; font-size: 12px; color: #86efac;">
-                            <strong>✅ Completato:</strong> ${completedTime}
+                        ${task.completed ? `<div style="margin-top: 8px; padding: 8px; background: #1e3a2a; border-left: 3px solid #10b981; border-radius: 3px; font-size: 12px; color: #86efac;">
+                            <strong>✅ Completato:</strong> ${completedDateTime}
+                            ${task.completedBy ? `<div style="font-size: 11px; margin-top: 2px;">da: ${task.completedBy.username || 'Operatore'}</div>` : ''}
                             ${task.actualMinutes ? `<div style="font-size: 11px; margin-top: 2px;">Tempo effettivo: ${task.actualMinutes} min</div>` : ''}
+                            <div style="font-size: 11px; margin-top: 6px; padding-top: 6px; border-top: 1px solid #10b981; color: #7ee8c8;">💡 Puoi eliminare il task o riassegnarlo ad un operatore.</div>
                         </div>` : ''}
                         
                         <!-- Sezione Note -->
-                        ${task.notes && task.notes.length > 0 ? `<div style="margin-top: 8px; padding: 6px; background: #2d2d2d; border-radius: 3px; font-size: 12px; color: #e0e0e0; max-height: 100px; overflow-y: auto;">
-                            <strong>📝 Note operatore (${task.notes.length}):</strong>
+                        ${(task.notes && task.notes.filter(note => {
+                            if (typeof note === 'string' && note.trim() !== '') return true;
+                            if (typeof note === 'object') {
+                                return (
+                                    (typeof note.note === 'string' && note.note.trim() !== '') ||
+                                    (typeof note.text === 'string' && note.text.trim() !== '') ||
+                                    (typeof note.descrizione === 'string' && note.descrizione.trim() !== '') ||
+                                    (typeof note.value === 'string' && note.value.trim() !== '')
+                                );
+                            }
+                            return false;
+                        }).length > 0) ? `<div style="margin-top: 8px; padding: 6px; background: #2d2d2d; border-radius: 3px; font-size: 12px; color: #e0e0e0; max-height: 100px; overflow-y: auto;">
+                            <strong>📝 Note operatore (${task.notes.filter(note => {
+                                if (typeof note === 'string' && note.trim() !== '') return true;
+                                if (typeof note === 'object') {
+                                    return (
+                                        (typeof note.note === 'string' && note.note.trim() !== '') ||
+                                        (typeof note.text === 'string' && note.text.trim() !== '') ||
+                                        (typeof note.descrizione === 'string' && note.descrizione.trim() !== '') ||
+                                        (typeof note.value === 'string' && note.value.trim() !== '')
+                                    );
+                                }
+                                return false;
+                            }).length}):</strong>
                             <div style="margin-top: 4px; border-left: 2px solid #808080; padding-left: 6px;">
-                                ${task.notes.map((note, i) => `<div style="margin: 4px 0; font-size: 11px; color: #b0b0b0;"><strong>${note.user}:</strong> ${note.note}</div>`).join('')}
+                                ${task.notes.filter(note => {
+                                    if (typeof note === 'string' && note.trim() !== '') return true;
+                                    if (typeof note === 'object') {
+                                        return (
+                                            (typeof note.note === 'string' && note.note.trim() !== '') ||
+                                            (typeof note.text === 'string' && note.text.trim() !== '') ||
+                                            (typeof note.descrizione === 'string' && note.descrizione.trim() !== '') ||
+                                            (typeof note.value === 'string' && note.value.trim() !== '')
+                                        );
+                                    }
+                                    return false;
+                                }).map(note => {
+                                    let autore = '';
+                                    let testo = '';
+                                    if (typeof note === 'string') {
+                                        testo = String(note);
+                                    } else if (typeof note === 'object' && note !== null) {
+                                        if (typeof note.note === 'string') testo = note.note;
+                                        if (typeof note.user === 'object' && note.user !== null && typeof note.user.username === 'string') {
+                                            autore = note.user.username;
+                                        } else if (typeof note.username === 'string') {
+                                            autore = note.username;
+                                        }
+                                    }
+                                    testo = String(testo || '').trim();
+                                    if (testo.length > 0) {
+                                        const autorePart = autore ? `<strong>${autore}:</strong> ` : '';
+                                        return `<div style=\"margin: 4px 0; font-size: 11px; color: #b0b0b0;\">${autorePart}${testo}</div>`;
+                                    }
+                                    return '';
+                                }).join('')}
                             </div>
                         </div>` : ''}
                         
                         <div class="task-actions">
-                            <button class="btn btn-primary btn-small" onclick="openEditTaskModal(${task.id})" data-icon="✏️"><span>Modifica</span></button>
-                            <button class="btn btn-secondary btn-small" onclick="handleDeleteTask(${task.id})" data-icon="🗑️"><span>Elimina</span></button>
+                            ${!task.assignedOperator && !task.acceptedAt ? `
+                                <button class="btn btn-success btn-small" onclick="handleTaskStatusChange(${task.id}, 'accept')" style="background: #22c55e;">👍 Accetta</button>
+                            ` : ''}
+                            ${!task.assignedOperator && !task.acceptedAt ? `
+                                <button class="btn btn-info btn-small" onclick="openAssignModal(${task.id})" style="background: #0ea5e9;">👤 Assegna</button>
+                            ` : ''}
+                            ${task.assignedOperator?.id === currentUser.id && !task.acceptedAt && !task.completed ? `
+                                <button class="btn btn-success btn-small" onclick="handleTaskStatusChange(${task.id}, 'accept')" style="background: #22c55e;">👍 Accetta</button>
+                            ` : ''}
+                            ${task.acceptedAt && !task.completed && !task.paused ? `
+                                <button class="btn btn-warning btn-small" onclick="handleTaskStatusChange(${task.id}, 'pause')" style="background: #ea580c;">⏸️ Pausa</button>
+                            ` : ''}
+                            ${task.acceptedAt && !task.completed ? `
+                                <button class="btn btn-success btn-small" onclick="handleTaskStatusChange(${task.id}, 'complete')" style="background: #22c55e;">✅ Completa</button>
+                            ` : ''}
+                            ${task.paused ? `
+                                <button class="btn btn-info btn-small" onclick="handleTaskStatusChange(${task.id}, 'resume')" style="background: #3b82f6;">▶️ Riprendi</button>
+                            ` : ''}
+                            ${task.completed ? `
+                                <button class="btn btn-danger btn-small" onclick="handleTaskStatusChange(${task.id}, 'complete')" style="background: #dc2626;">🗑️ Elimina</button>
+                            ` : ''}
+                            <button class="btn btn-primary btn-small" onclick="openEditTaskModal(${task.id})" style="background: #3b82f6;">✏️ Modifica</button>
+                            <button class="btn btn-secondary btn-small" onclick="handleDeleteTask(${task.id})" style="background: #6b7280;">🗑️ Elimina</button>
                         </div>
                     </div>
                 `;

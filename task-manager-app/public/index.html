@@ -1497,7 +1497,7 @@
                             </div>
                             <p style="color: #666; margin: 10px 0; font-size: 14px;">${task.description || 'Nessuna descrizione'}</p>
                             <div class="task-meta-master">
-                                ${task.scheduledAt ? `<span>📅 ${new Date(task.scheduledAt).toLocaleString('it-IT')}</span>` : ''}
+                                ${task.scheduledAt ? `<span>📅 ${new Date(task.scheduledAt).toLocaleString('it-IT', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>` : ''}
                                 ${task.estimatedMinutes ? `<span>⏱️ ${task.estimatedMinutes} min</span>` : ''}
                                 ${task.assignedOperator ? `<span>👤 ${task.assignedOperator.username}</span>` : '<span>👤 Non assegnato</span>'}
                                 ${task.actualMinutes ? `<span>✓ ${task.actualMinutes} min effettivi</span>` : ''}
@@ -1510,7 +1510,7 @@
                                             <div style="background: #f3f4f6; padding: 8px; margin: 4px 0; border-radius: 4px;">
                                                 <div style="font-weight: 600; color: #374151; font-size: 12px;">${note.user.username}</div>
                                                 <div style="margin-top: 4px;">${note.note}</div>
-                                                <div style="font-size: 11px; color: #9ca3af; margin-top: 4px;">${new Date(note.createdAt).toLocaleString('it-IT')}</div>
+                                                <div style="font-size: 11px; color: #9ca3af; margin-top: 4px;">${new Date(note.createdAt).toLocaleString('it-IT', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</div>
                                             </div>
                                         `).join('')}
                                     </div>
@@ -1546,9 +1546,9 @@
                                 </h3>
                                 <p>${currentTask.description || 'Nessuna descrizione'}</p>
                                 <div class="task-meta">
-                                    ${currentTask.scheduledAt ? `<span class="meta-tag">📅 ${new Date(currentTask.scheduledAt).toLocaleString('it-IT')}</span>` : ''}
+                                    ${currentTask.scheduledAt ? `<span class="meta-tag">📅 ${new Date(currentTask.scheduledAt).toLocaleString('it-IT', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>` : ''}
                                     ${currentTask.estimatedMinutes ? `<span class="meta-tag">⏱️ ${currentTask.estimatedMinutes} min</span>` : ''}
-                                    ${currentTask.acceptedAt ? `<span class="meta-tag">✋ Accettato: ${new Date(currentTask.acceptedAt).toLocaleString('it-IT')}</span>` : ''}
+                                    ${currentTask.acceptedAt ? `<span class="meta-tag">✋ Accettato: ${new Date(currentTask.acceptedAt).toLocaleString('it-IT', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>` : ''}
                                     ${currentTask.paused ? `<span class="meta-tag" style="background: #fed7aa; color: #92400e;">⏸️ In Pausa</span>` : ''}
                                 </div>
                                 <div class="task-actions">
@@ -1580,11 +1580,11 @@
                             </h3>
                             <p>${task.description || 'Nessuna descrizione'}</p>
                             <div class="task-meta">
-                                ${task.scheduledAt ? `<span class="meta-tag">📅 ${new Date(task.scheduledAt).toLocaleString('it-IT')}</span>` : ''}
+                                ${task.scheduledAt ? `<span class="meta-tag">📅 ${new Date(task.scheduledAt).toLocaleString('it-IT', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>` : ''}
                                 ${task.estimatedMinutes ? `<span class="meta-tag">⏱️ ${task.estimatedMinutes} min</span>` : ''}
-                                ${task.acceptedAt ? `<span class="meta-tag">✋ Accettato: ${new Date(task.acceptedAt).toLocaleString('it-IT')}</span>` : ''}
+                                ${task.acceptedAt ? `<span class="meta-tag">✋ Accettato: ${new Date(task.acceptedAt).toLocaleString('it-IT', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>` : ''}
                                 ${task.actualMinutes ? `<span class="meta-tag">✓ ${task.actualMinutes} min effettivi</span>` : ''}
-                                ${task.completedAt ? `<span class="meta-tag">🏁 Completato: ${new Date(task.completedAt).toLocaleString('it-IT')}</span>` : ''}
+                                ${task.completedAt ? `<span class="meta-tag">🏁 Completato: ${new Date(task.completedAt).toLocaleString('it-IT', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>` : ''}
                                 ${task.paused ? `<span class="meta-tag" style="background: #fed7aa; color: #92400e;">⏸️ In Pausa</span>` : ''}
                             </div>
                             <div class="task-actions">
@@ -1707,7 +1707,7 @@
                     <div style="margin-bottom: 20px;">
                         <h3>${task.title}</h3>
                         <p style="color: #6b7280;">${task.description || 'Nessuna descrizione'}</p>
-                        ${task.scheduledAt ? `<p><strong>Data:</strong> ${new Date(task.scheduledAt).toLocaleString('it-IT')}</p>` : ''}
+                        ${task.scheduledAt ? `<p><strong>Data:</strong> ${new Date(task.scheduledAt).toLocaleString('it-IT', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</p>` : ''}
                         ${task.estimatedMinutes ? `<p><strong>Tempo Stimato:</strong> ${task.estimatedMinutes} minuti</p>` : ''}
                         ${task.actualMinutes ? `<p><strong>Tempo Effettivo:</strong> ${task.actualMinutes} minuti</p>` : ''}
                         <p><strong>Stato:</strong> ${task.completed ? '✓ Completato' : 'In corso'}</p>
@@ -1722,7 +1722,7 @@
                 } else {
                     html += notes.map(note => `
                         <div style="background: white; padding: 10px; margin-bottom: 8px; border-radius: 4px; border-left: 3px solid var(--primary);">
-                            <strong>${note.user.username}</strong> <em style="color: #9ca3af; font-size: 12px;">${new Date(note.createdAt).toLocaleString('it-IT')}</em>
+                            <strong>${note.user.username}</strong> <em style="color: #9ca3af; font-size: 12px;">${new Date(note.createdAt).toLocaleString('it-IT', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</em>
                             <p style="margin-top: 5px; font-size: 13px;">${note.note}</p>
                         </div>
                     `).join('');

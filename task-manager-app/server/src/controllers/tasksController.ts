@@ -173,9 +173,11 @@ export class TasksController {
             }
 
             const { id } = req.params;
-            const { title, description, scheduledAt, assignedOperatorId, estimatedMinutes, priority, recurrenceType, recurrenceEnd } = req.body;
+            console.log(`DEBUG updateTask: Raw req.body:`, req.body);
+            
+            const { title, description, scheduledAt, assignedOperatorId, estimatedMinutes, priority, recurrenceType, recurrenceEnd, acceptedAt, paused, completed } = req.body;
 
-            console.log(`DEBUG updateTask: Updating task ${id} with data:`, { title, description, scheduledAt, assignedOperatorId, estimatedMinutes, priority, recurrenceType, recurrenceEnd });
+            console.log(`DEBUG updateTask: Updating task ${id} with data:`, { title, description, scheduledAt, assignedOperatorId, estimatedMinutes, priority, recurrenceType, recurrenceEnd, acceptedAt, paused, completed });
 
             const updateData: any = {};
             
@@ -196,6 +198,28 @@ export class TasksController {
                 updateData.recurrenceType = recurrenceType;
             }
             if (recurrenceEnd !== undefined) updateData.recurrenceEnd = recurrenceEnd ? new Date(recurrenceEnd) : null;
+            if (acceptedAt !== undefined) {
+                updateData.acceptedAt = acceptedAt ? new Date(acceptedAt) : null;
+                if (acceptedAt) updateData.acceptedById = req.user.id;
+            }
+            if (paused !== undefined) {
+                updateData.paused = paused;
+                if (paused) {
+                    updateData.pausedAt = new Date();
+                } else {
+                    updateData.pausedAt = null;
+                }
+            }
+            if (completed !== undefined) {
+                updateData.completed = completed;
+                if (completed) {
+                    updateData.completedAt = new Date();
+                    updateData.completedById = req.user.id;
+                } else {
+                    updateData.completedAt = null;
+                    updateData.completedById = null;
+                }
+            }
             
             if (priority !== undefined && ['LOW', 'MEDIUM', 'HIGH', 'URGENT'].includes(priority)) {
                 updateData.priority = priority;
@@ -268,15 +292,34 @@ export class TasksController {
 
             // Mark completed if requested
             if (markCompleted) {
-                await prisma.task.update({
-                    where: { id: parseInt(id) },
-                    data: {
-                        completed: true,
-                        completedById: req.user.id,
-                        actualMinutes: actualMinutes || null,
-                        completedAt: new Date(),
-                    },
-                });
+                // If operator marks task complete, it goes back to admin task (unassigned)
+                if (req.user.role === 'slave') {
+                    await prisma.task.update({
+                        where: { id: parseInt(id) },
+                        data: {
+                            completed: true,
+                            completedById: req.user.id,
+                            actualMinutes: actualMinutes || null,
+                            completedAt: new Date(),
+                            assignedOperatorId: null, // Unassign from operator
+                            acceptedAt: null,
+                            acceptedById: null,
+                            paused: false,
+                            pausedAt: null,
+                        },
+                    });
+                } else {
+                    // Master can mark tasks directly as completed
+                    await prisma.task.update({
+                        where: { id: parseInt(id) },
+                        data: {
+                            completed: true,
+                            completedById: req.user.id,
+                            actualMinutes: actualMinutes || null,
+                            completedAt: new Date(),
+                        },
+                    });
+                }
             }
 
             res.status(201).json(newNote);
