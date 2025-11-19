@@ -404,7 +404,7 @@
                     <h3>${op.role === 'master' ? '👨‍💼' : '👥'} ${op.username}</h3>
                     <div class="operator-info">
                         <div>📋 Tipo: ${op.role === 'master' ? 'Admin' : 'Operatore'}</div>
-                        <div>📅 Creato: ${new Date(op.createdAt).toLocaleString('it-IT')}</div>
+                        <div>📅 Creato: ${new Date(op.createdAt).toLocaleString('it-IT', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</div>
                     </div>
                     <div class="operator-actions">
                         <button class="btn btn-warning btn-small" data-icon="✏️" onclick="openEditModal(${op.id}, '${op.username}', '${op.image || ''}', '${op.role}')"><span>Modifica</span></button>
