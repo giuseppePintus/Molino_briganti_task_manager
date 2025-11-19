@@ -384,8 +384,6 @@
         }
 
         .calendar-day.has-tasks {
-            background: #2a1e1e;
-            border-color: #ea580c;
             position: relative;
         }
 
@@ -1341,6 +1339,7 @@
                 console.log('📦 Sincronizzando ordini da un\'altra pagina...');
                 loadTripsFromPlanner();
                 renderTrips();
+                renderCalendar();
             } else if (event.key === 'trips') {
                 console.log('🚚 Sincronizzando viaggi da un\'altra pagina...');
                 loadTripsFromPlanner();
@@ -3282,7 +3281,8 @@
             const date = new Date(dateStr + 'T00:00:00');
             const dayName = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'][date.getDay()];
             const formatted = date.toLocaleDateString('it-IT', { year: 'numeric', month: 'long', day: 'numeric' });
-            dayTasksTitle.textContent = `📅 Task di ${dayName.charAt(0).toUpperCase() + dayName.slice(1)}, ${formatted}`;
+            const viewModeLabel = currentViewMode === 'myTasks' ? 'I miei Task' : 'Task Operatori';
+            dayTasksTitle.textContent = `📅 ${viewModeLabel} di ${dayName.charAt(0).toUpperCase() + dayName.slice(1)}, ${formatted}`;
 
             // Calcola i numeri di task, ordini ritiro e viaggi
             const assignedTasks = dayTasks.filter(t => t.assignedOperator?.id).length;
@@ -3352,19 +3352,66 @@
             dayTasksList.innerHTML = summaryHtml + dayTasks.map(task => {
                 const status = task.completed ? 'Completato' : (task.paused ? 'In Pausa' : (task.acceptedAt ? 'Accettato' : 'In Sospeso'));
                 const statusIcon = task.completed ? '✅' : (task.paused ? '⏸️' : (task.acceptedAt ? '👍' : '📋'));
+                const statusColor = task.completed ? '#10b981' : (task.paused ? '#f59e0b' : (task.acceptedAt ? '#3b82f6' : '#8b5cf6'));
+                
+                // Formatta le date se disponibili
+                const scheduledDate = task.scheduledAt ? new Date(task.scheduledAt).toLocaleString('it-IT') : '';
+                const acceptedTime = task.acceptedAt ? new Date(task.acceptedAt).toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'}) : '';
+                const completedTime = task.completedAt ? new Date(task.completedAt).toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'}) : '';
+                const originalScheduledDate = task.originalScheduledAt ? new Date(task.originalScheduledAt).toLocaleDateString('it-IT') : '';
+                
+                // Calcola tempo effettivo se disponibile
+                const timeInfo = task.actualMinutes ? `${task.actualMinutes} min effettivi` : (task.estimatedMinutes ? `~${task.estimatedMinutes} min stimati` : '');
                 
                 return `
                     <div class="task-item">
                         <div class="task-header">
                             <h3>${task.title}</h3>
-                            <span class="task-status">${statusIcon} ${status}</span>
+                            <span class="task-status" style="background: ${statusColor}; color: white; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 600;">${statusIcon} ${status}</span>
                         </div>
                         <p class="task-description">${task.description || 'Nessuna descrizione'}</p>
-                        <div class="task-meta">
-                            ${task.estimatedMinutes ? `<span>⏱️ ${task.estimatedMinutes} min</span>` : ''}
+                        
+                        <!-- Sezione Date e Orari -->
+                        <div style="margin-top: 10px; padding: 8px; background: #2d2d2d; border-radius: 4px; border-left: 3px solid #7dd3fc;">
+                            <div style="font-size: 12px; color: #a0a0a0;">
+                                ${scheduledDate ? `<div style="margin: 4px 0;"><strong>📅 Programmato:</strong> ${scheduledDate}</div>` : ''}
+                                ${originalScheduledDate && originalScheduledDate !== scheduledDate ? `<div style="margin: 4px 0; color: #ff9800;"><strong>📆 Data originale:</strong> ${originalScheduledDate}</div>` : ''}
+                            </div>
+                        </div>
+                        
+                        <!-- Sezione Dettagli -->
+                        <div class="task-meta" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 13px; margin-top: 10px;">
+                            ${timeInfo ? `<span>⏱️ ${timeInfo}</span>` : ''}
                             ${task.assignedOperator ? `<span>👤 ${task.assignedOperator.username}</span>` : ''}
                             ${task.priority ? `<span>${formatPriority(task.priority)}</span>` : ''}
+                            ${task.color ? `<span>🎨 Colore: ${task.color}</span>` : ''}
                         </div>
+                        
+                        <!-- Sezione Stato Accettazione -->
+                        ${task.acceptedAt ? `<div style="margin-top: 8px; padding: 6px; background: #1e3a4c; border-left: 3px solid #3b82f6; border-radius: 3px; font-size: 12px; color: #a0d4ff;">
+                            <strong>✓ Accettato alle:</strong> ${acceptedTime}
+                        </div>` : ''}
+                        
+                        <!-- Sezione Pausa -->
+                        ${task.paused ? `<div style="margin-top: 8px; padding: 6px; background: #3a2e1e; border-left: 3px solid #f59e0b; border-radius: 3px; font-size: 12px; color: #ffb366;">
+                            <strong>⏸️ In Pausa</strong>
+                            ${task.pausedAt ? `<div style="font-size: 11px; margin-top: 2px;">Dall'ora: ${new Date(task.pausedAt).toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'})}</div>` : ''}
+                        </div>` : ''}
+                        
+                        <!-- Sezione Completamento -->
+                        ${task.completed ? `<div style="margin-top: 8px; padding: 6px; background: #1e3a2a; border-left: 3px solid #10b981; border-radius: 3px; font-size: 12px; color: #86efac;">
+                            <strong>✅ Completato:</strong> ${completedTime}
+                            ${task.actualMinutes ? `<div style="font-size: 11px; margin-top: 2px;">Tempo effettivo: ${task.actualMinutes} min</div>` : ''}
+                        </div>` : ''}
+                        
+                        <!-- Sezione Note -->
+                        ${task.notes && task.notes.length > 0 ? `<div style="margin-top: 8px; padding: 6px; background: #2d2d2d; border-radius: 3px; font-size: 12px; color: #e0e0e0; max-height: 100px; overflow-y: auto;">
+                            <strong>📝 Note operatore (${task.notes.length}):</strong>
+                            <div style="margin-top: 4px; border-left: 2px solid #808080; padding-left: 6px;">
+                                ${task.notes.map((note, i) => `<div style="margin: 4px 0; font-size: 11px; color: #b0b0b0;"><strong>${note.user}:</strong> ${note.note}</div>`).join('')}
+                            </div>
+                        </div>` : ''}
+                        
                         <div class="task-actions">
                             <button class="btn btn-primary btn-small" onclick="openEditTaskModal(${task.id})" data-icon="✏️"><span>Modifica</span></button>
                             <button class="btn btn-secondary btn-small" onclick="handleDeleteTask(${task.id})" data-icon="🗑️"><span>Elimina</span></button>
