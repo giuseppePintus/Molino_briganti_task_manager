@@ -456,13 +456,13 @@
             content: '';
             position: absolute;
             bottom: 0;
-            left: 0;
+            right: 0;
             width: 0;
             height: 0;
             border-style: solid;
-            border-width: 18px 0 0 18px;
-            border-color: transparent transparent transparent #ff9800;
-            border-radius: 0 0 0 4px;
+            border-width: 0 0 18px 18px;
+            border-color: transparent transparent #16a34a transparent;
+            border-radius: 4px 0 0 0;
         }
 
         .calendar-day.has-trips {
@@ -1488,23 +1488,50 @@
             });
         }
 
-        // Carica file CSV
+        // Carica dati da localStorage e file CSV
         async function loadCSVData() {
             try {
-                // Carica clienti
-                const clientiResponse = await fetch('data/clienti.csv');
-                const clientiText = await clientiResponse.text();
-                clienti = parseCSV(clientiText);
+                // Carica clienti da localStorage
+                try {
+                    const stored = localStorage.getItem('customers');
+                    if (stored) {
+                        clienti = JSON.parse(stored);
+                        console.log('Clienti caricati da localStorage:', clienti.length);
+                    } else {
+                        // Fallback a CSV se non c'è localStorage
+                        const csvResponse = await fetch('data/clienti.csv');
+                        const csvText = await csvResponse.text();
+                        clienti = parseCSV(csvText);
+                        console.log('Clienti caricati da CSV (fallback):', clienti.length);
+                    }
+                } catch (error) {
+                    console.error('Errore caricamento clienti, fallback a CSV:', error);
+                    const csvResponse = await fetch('data/clienti.csv');
+                    const csvText = await csvResponse.text();
+                    clienti = parseCSV(csvText);
+                }
 
-                // Carica articoli
-                const articoliResponse = await fetch('data/articoli.csv');
-                const articoliText = await articoliResponse.text();
-                articoli = parseCSV(articoliText);
-
-                console.log('Clienti caricati:', clienti.length);
-                console.log('Articoli caricati:', articoli.length);
+                // Carica articoli da localStorage
+                try {
+                    const stored = localStorage.getItem('products');
+                    if (stored) {
+                        articoli = JSON.parse(stored);
+                        console.log('Articoli caricati da localStorage:', articoli.length);
+                    } else {
+                        // Fallback a CSV se non c'è localStorage
+                        const csvResponse = await fetch('data/articoli.csv');
+                        const csvText = await csvResponse.text();
+                        articoli = parseCSV(csvText);
+                        console.log('Articoli caricati da CSV (fallback):', articoli.length);
+                    }
+                } catch (error) {
+                    console.error('Errore caricamento articoli, fallback a CSV:', error);
+                    const csvResponse = await fetch('data/articoli.csv');
+                    const csvText = await csvResponse.text();
+                    articoli = parseCSV(csvText);
+                }
             } catch (error) {
-                console.error('Errore caricamento CSV:', error);
+                console.error('Errore caricamento dati:', error);
             }
         }
 
@@ -1709,9 +1736,21 @@
         }
 
         // Apri modal ordine
-        function openOrderModal(selectedDate = null) {
+        async function openOrderModal(selectedDate = null) {
             document.querySelector('#orderModal h2').textContent = '📝 Nuovo Ordine';
             document.getElementById('orderForm').dataset.editingId = '';
+            
+            // Ricarica i clienti dal backend prima di popolare il dropdown
+            try {
+                const response = await fetch(`${API_URL}/customers`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (response.ok) {
+                    clienti = await response.json();
+                }
+            } catch (error) {
+                console.error('Errore caricamento clienti:', error);
+            }
             
             // Se c'è una data selezionata dal calendario, preselezionala
             if (selectedDate) {
@@ -1722,6 +1761,18 @@
             const clientSelect = document.getElementById('orderClient');
             clientSelect.innerHTML = '<option value="">-- Seleziona Cliente --</option>' +
                 clienti.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
+
+            // Ricarica gli articoli dal backend prima di popolare il dropdown
+            try {
+                const response = await fetch(`${API_URL}/products`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (response.ok) {
+                    articoli = await response.json();
+                }
+            } catch (error) {
+                console.error('Errore caricamento articoli:', error);
+            }
 
             // Popola dropdown articoli
             const productSelect = document.getElementById('orderProduct');
@@ -1801,18 +1852,42 @@
         }
 
         // Apri modal per modificare ordine esistente
-        function openEditOrderModal(orderId) {
+        async function openEditOrderModal(orderId) {
             const order = orders.find(o => o.id === orderId);
             if (!order) return;
 
             document.querySelector('#orderModal h2').textContent = '✏️ Modifica Ordine';
             document.getElementById('orderForm').dataset.editingId = orderId;
             
+            // Ricarica i clienti dal backend prima di popolare il dropdown
+            try {
+                const response = await fetch(`${API_URL}/customers`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (response.ok) {
+                    clienti = await response.json();
+                }
+            } catch (error) {
+                console.error('Errore caricamento clienti:', error);
+            }
+            
             // Popola dropdown clienti
             const clientSelect = document.getElementById('orderClient');
             clientSelect.innerHTML = '<option value="">-- Seleziona Cliente --</option>' +
                 clienti.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
             clientSelect.value = order.client;
+
+            // Ricarica gli articoli dal backend prima di popolare il dropdown
+            try {
+                const response = await fetch(`${API_URL}/products`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (response.ok) {
+                    articoli = await response.json();
+                }
+            } catch (error) {
+                console.error('Errore caricamento articoli:', error);
+            }
 
             // Popola dropdown articoli
             const productSelect = document.getElementById('orderProduct');
@@ -2399,19 +2474,17 @@
                 const dayColor = (!isAllowed || isHoliday) ? 'color: #ef4444;' : '';
                 
                 let assignedCountHtml = '';
-                let unassignedCountHtml = '';
                 let tripCountHtml = '';
-                if (assignedOrders > 0) {
-                    assignedCountHtml = `<div style="position: absolute; bottom: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #16a34a; border-radius: 3px; padding: 2px 4px;">${assignedOrders}</div>`;
-                }
-                if (unassignedOrders > 0) {
-                    unassignedCountHtml = `<div style="position: absolute; bottom: 8px; left: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #ff9800; border-radius: 3px; padding: 2px 4px;">${unassignedOrders}</div>`;
+                // Badge unico in basso a destra con totale ordini/ritiri
+                const totalOrdersCount = assignedOrders + unassignedOrders;
+                if (totalOrdersCount > 0) {
+                    assignedCountHtml = `<div style="position: absolute; bottom: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #16a34a; border-radius: 3px; padding: 2px 4px;">${totalOrdersCount}</div>`;
                 }
                 if (dayTrips.length > 0) {
                     tripCountHtml = `<div style="position: absolute; top: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #2563eb; border-radius: 3px; padding: 2px 4px;">${dayTrips.length}</div>`;
                 }
                 
-                html += `<div class="calendar-day ${hasOrdersClass} ${hasUnassignedClass} ${hasTripsClass} ${isTodayClass} ${isSelectedClass}" style="cursor: pointer; position: relative; ${dayColor}" onclick="handleCalendarDayClick('${dateStr}')"><strong>${date.getDate()}</strong>${assignedCountHtml}${unassignedCountHtml}${tripCountHtml}</div>`;
+                html += `<div class="calendar-day ${hasOrdersClass} ${hasUnassignedClass} ${hasTripsClass} ${isTodayClass} ${isSelectedClass}" style="cursor: pointer; position: relative; ${dayColor}" onclick="handleCalendarDayClick('${dateStr}')"><strong>${date.getDate()}</strong>${assignedCountHtml}${tripCountHtml}</div>`;
             }
             
             container.innerHTML = html;
@@ -2496,19 +2569,17 @@
                 const dayColor = (!isAllowed || isHoliday) ? 'color: #ef4444;' : '';
 
                 let assignedCountHtml = '';
-                let unassignedCountHtml = '';
                 let tripCountHtml = '';
-                if (assignedOrders > 0) {
-                    assignedCountHtml = `<div style="position: absolute; bottom: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #16a34a; border-radius: 3px; padding: 2px 4px;">${assignedOrders}</div>`;
-                }
-                if (unassignedOrders > 0) {
-                    unassignedCountHtml = `<div style="position: absolute; bottom: 8px; left: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #ff9800; border-radius: 3px; padding: 2px 4px;">${unassignedOrders}</div>`;
+                // Badge unico in basso a destra con totale ordini/ritiri
+                const totalOrdersCount = assignedOrders + unassignedOrders;
+                if (totalOrdersCount > 0) {
+                    assignedCountHtml = `<div style="position: absolute; bottom: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #16a34a; border-radius: 3px; padding: 2px 4px;">${totalOrdersCount}</div>`;
                 }
                 if (dayTrips.length > 0) {
                     tripCountHtml = `<div style="position: absolute; top: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #2563eb; border-radius: 3px; padding: 2px 4px;">${dayTrips.length}</div>`;
                 }
 
-                html += `<div class="calendar-day ${hasOrdersClass} ${hasUnassignedClass} ${hasTripsClass} ${isTodayClass} ${isSelectedClass}" style="${dayColor}" onclick="handleCalendarDayClick('${dateStr}')" ondblclick=""><strong>${day}</strong>${assignedCountHtml}${unassignedCountHtml}${tripCountHtml}</div>`;
+                html += `<div class="calendar-day ${hasOrdersClass} ${hasUnassignedClass} ${hasTripsClass} ${isTodayClass} ${isSelectedClass}" style="${dayColor}" onclick="handleCalendarDayClick('${dateStr}')" ondblclick=""><strong>${day}</strong>${assignedCountHtml}${tripCountHtml}</div>`;
             }
             
             container.innerHTML = html;

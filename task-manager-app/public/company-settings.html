@@ -172,23 +172,9 @@
 
     async function saveSettings() {
       const s = collectForm();
-      try {
-        const token = localStorage.getItem('token') || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-        const resp = await fetch(`${API_URL}/settings`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify(s)
-        });
-        if (resp.ok) {
-          const saved = await resp.json();
-          localStorage.setItem('companySettings', JSON.stringify(saved));
-          alert('✅ Impostazioni salvate');
-          return;
-        }
-      } catch {}
-      // Fallback local save
+      // Salva direttamente su localStorage senza cercare l'API
       localStorage.setItem('companySettings', JSON.stringify(s));
-      alert('✅ Impostazioni salvate localmente');
+      alert('✅ Impostazioni salvate');
     }
 
     function resetDefaults() {
@@ -201,6 +187,13 @@
     function collectForm() {
       const openingDays = collectDays('openingDays');
       const deliveryDays = collectDays('deliveryDays');
+      // Carica le impostazioni precedenti da localStorage per preservare i festivi
+      let currentSettings = defaultCompanySettings();
+      try {
+        const stored = localStorage.getItem('companySettings');
+        if (stored) currentSettings = JSON.parse(stored);
+      } catch {}
+      
       return {
         businessName: document.getElementById('businessName').value.trim(),
         logoUrl: document.getElementById('logoUrl').value.trim(),
@@ -214,7 +207,7 @@
         deliveryMorningEnd: document.getElementById('deliveryMorningEnd').value,
         deliveryAfternoonStart: document.getElementById('deliveryAfternoonStart').value,
         deliveryAfternoonEnd: document.getElementById('deliveryAfternoonEnd').value,
-        holidays: loadSettings().holidays || [],
+        holidays: currentSettings.holidays || [],
         vehicles: parseInt(document.getElementById('vehicles').value) || 1
       }
     }
@@ -254,10 +247,7 @@
       if (!val) return;
       const s = await loadSettingsAsync();
       s.holidays = Array.from(new Set([...(s.holidays||[]), val]));
-      try {
-        const token = localStorage.getItem('token') || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-        await fetch(`${API_URL}/settings`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(s) });
-      } catch {}
+      // Salva direttamente su localStorage
       localStorage.setItem('companySettings', JSON.stringify(s));
       input.value = '';
       renderHolidays(s.holidays);
@@ -268,10 +258,7 @@
       const s = await loadSettingsAsync();
       if (!Array.isArray(s.holidays)) s.holidays = [];
       s.holidays.splice(index, 1);
-      try {
-        const token = localStorage.getItem('token') || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-        await fetch(`${API_URL}/settings`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(s) });
-      } catch {}
+      // Salva direttamente su localStorage
       localStorage.setItem('companySettings', JSON.stringify(s));
       renderHolidays(s.holidays);
     }
