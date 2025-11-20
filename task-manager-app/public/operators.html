@@ -58,13 +58,13 @@
         /* Base button styles moved to css/common.css. Keep layout/size overrides below. */
 
         .btn-small {
-            padding: 12px 24px;
+            padding: 10px 12px;
             font-size: 14px;
-            min-height: 50px;
+            min-height: 36px;
         }
 
         .btn-small::before {
-            font-size: 28px;
+            font-size: 16px;
         }
 
         .btn-small span {
@@ -239,13 +239,46 @@
             .btn span { font-size: 14px; }
         }
 
+        .btn-operators {
+            background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%) !important;
+            color: white !important;
+            border: 2px solid rgba(255, 165, 0, 0.3) !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            box-shadow: 0 4px 12px rgba(234, 88, 12, 0.3), 
+                        inset 0 0 20px rgba(255, 255, 255, 0.05),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-operators::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s;
+        }
+        .btn-operators:hover {
+            background: linear-gradient(135deg, #c2410c 0%, #92400e 100%) !important;
+            border-color: rgba(255, 165, 0, 0.6) !important;
+            box-shadow: 0 6px 20px rgba(234, 88, 12, 0.5), 
+                        inset 0 0 20px rgba(255, 255, 255, 0.1),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+            transform: translateY(-2px) !important;
+        }
+        .btn-operators:hover::after {
+            left: 100%;
+        }
+
         @media (max-width: 480px) {
             .btn { padding: 8px 10px; min-height: 45px; font-size: 14px; gap: 6px; }
             .btn::before { font-size: 28px; }
             .btn span { font-size: 12px; }
-            .btn-small { padding: 6px 8px; min-height: 40px; font-size: 12px; }
-            .btn-small::before { font-size: 20px; }
-            .btn-small span { font-size: 11px; }
+            .btn-small { padding: 10px 12px; min-height: 36px; font-size: 14px; }
+            .btn-small::before { font-size: 16px; }
+            .btn-small span { font-size: 14px; }
             .card { padding: 10px; margin-bottom: 15px; }
             .card h2 { font-size: 16px; margin-bottom: 10px; }
             .form-group label { font-size: 13px; }
@@ -269,7 +302,7 @@
                 </div>
                 <h1>👥 Gestione Admin / Operatori</h1>
             </div>
-            <button class="btn btn-secondary" data-icon="⬅️" onclick="window.location.href='admin-dashboard.html'"><span>Task Manager</span></button>
+            <button class="btn btn-operators" data-icon="⬅️" onclick="window.location.href='admin-dashboard.html'"><span>Task Manager</span></button>
         </div>
 
         <!-- Main Content -->
