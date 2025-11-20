@@ -188,14 +188,20 @@
             margin-top: 10px;
         }
 
+        .order-actions .btn {
+            padding: 10px 12px;
+            font-size: 14px;
+            min-height: 36px;
+        }
+
         @media (max-width: 768px) {
             .order-actions {
                 gap: 6px;
             }
 
             .order-actions .btn {
-                padding: 5px 8px;
-                font-size: 11px;
+                padding: 10px 12px;
+                font-size: 14px;
             }
         }
 
@@ -206,8 +212,8 @@
             }
 
             .order-actions .btn {
-                padding: 6px 8px;
-                font-size: 11px;
+                padding: 10px 12px;
+                font-size: 14px;
                 width: 100%;
                 justify-content: center;
             }
@@ -287,9 +293,9 @@
         }
 
         .modal-actions .btn {
-            padding: 6px 10px;
-            min-height: 16px;
-            font-size: 11px;
+            padding: 10px 12px;
+            min-height: 36px;
+            font-size: 14px;
             flex: 0 1 auto;
         }
 
@@ -335,8 +341,8 @@
         
         .planner-actions .btn {
             padding: 10px 12px;
-            min-height: 40px;
-            font-size: 13px;
+            min-height: 36px;
+            font-size: 14px;
             width: 100%;
         }
         
@@ -662,6 +668,39 @@
                 justify-self: end;
             }
         }
+
+        .btn-planner {
+            background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%) !important;
+            color: white !important;
+            border: 1px solid rgba(124, 58, 237, 0.5) !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3),
+                        0 0 20px rgba(124, 58, 237, 0.2),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-planner::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s;
+        }
+        .btn-planner:hover {
+            background: linear-gradient(135deg, #6d28d9 0%, #5b21b6 100%) !important;
+            border-color: rgba(124, 58, 237, 1) !important;
+            box-shadow: 0 6px 20px rgba(124, 58, 237, 0.5),
+                        0 0 30px rgba(124, 58, 237, 0.4),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+            transform: translateY(-2px) !important;
+        }
+        .btn-planner:hover::after {
+            left: 100%;
+        }
     </style>
 </head>
 <body>
@@ -678,7 +717,7 @@
                 </div>
             </div>
             <div class="header-actions">
-                <button class="btn btn-secondary" onclick="window.location.href='admin-dashboard.html'">🏠 Home</button>
+                <button class="btn btn-planner" onclick="window.location.href='admin-dashboard.html'">🏠 Home</button>
             </div>
         </div>
 
@@ -702,7 +741,6 @@
         <div class="planner-actions">
             <button class="btn btn-success" onclick="window.location.href='customers-management.html'">👥 Nuovo Cliente</button>
             <button class="btn btn-success" onclick="openOrderModal()">➕ Nuovo Ordine</button>
-            <button class="btn btn-primary" onclick="window.location.href='trips-management.html'">🚚 Gestione Viaggi</button>
         </div>
 
         <!-- Calendar -->
@@ -1740,41 +1778,17 @@
             document.querySelector('#orderModal h2').textContent = '📝 Nuovo Ordine';
             document.getElementById('orderForm').dataset.editingId = '';
             
-            // Ricarica i clienti dal backend prima di popolare il dropdown
-            try {
-                const response = await fetch(`${API_URL}/customers`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (response.ok) {
-                    clienti = await response.json();
-                }
-            } catch (error) {
-                console.error('Errore caricamento clienti:', error);
-            }
-            
             // Se c'è una data selezionata dal calendario, preselezionala
             if (selectedDate) {
                 document.getElementById('orderDateTime').value = selectedDate + 'T12:00';
             }
             
-            // Popola dropdown clienti
+            // Popola dropdown clienti (usa dati già caricati da CSV/localStorage)
             const clientSelect = document.getElementById('orderClient');
             clientSelect.innerHTML = '<option value="">-- Seleziona Cliente --</option>' +
                 clienti.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
 
-            // Ricarica gli articoli dal backend prima di popolare il dropdown
-            try {
-                const response = await fetch(`${API_URL}/products`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (response.ok) {
-                    articoli = await response.json();
-                }
-            } catch (error) {
-                console.error('Errore caricamento articoli:', error);
-            }
-
-            // Popola dropdown articoli
+            // Popola dropdown articoli (usa dati già caricati da CSV/localStorage)
             const productSelect = document.getElementById('orderProduct');
             productSelect.innerHTML = '<option value="">-- Seleziona Articolo --</option>' +
                 articoli.map(a => `<option value="${a.nome}">${a.codice} - ${a.nome}</option>`).join('');
@@ -1859,37 +1873,13 @@
             document.querySelector('#orderModal h2').textContent = '✏️ Modifica Ordine';
             document.getElementById('orderForm').dataset.editingId = orderId;
             
-            // Ricarica i clienti dal backend prima di popolare il dropdown
-            try {
-                const response = await fetch(`${API_URL}/customers`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (response.ok) {
-                    clienti = await response.json();
-                }
-            } catch (error) {
-                console.error('Errore caricamento clienti:', error);
-            }
-            
-            // Popola dropdown clienti
+            // Popola dropdown clienti (usa dati già caricati da CSV/localStorage)
             const clientSelect = document.getElementById('orderClient');
             clientSelect.innerHTML = '<option value="">-- Seleziona Cliente --</option>' +
                 clienti.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
             clientSelect.value = order.client;
 
-            // Ricarica gli articoli dal backend prima di popolare il dropdown
-            try {
-                const response = await fetch(`${API_URL}/products`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (response.ok) {
-                    articoli = await response.json();
-                }
-            } catch (error) {
-                console.error('Errore caricamento articoli:', error);
-            }
-
-            // Popola dropdown articoli
+            // Popola dropdown articoli (usa dati già caricati da CSV/localStorage)
             const productSelect = document.getElementById('orderProduct');
             productSelect.innerHTML = '<option value="">-- Seleziona Articolo --</option>' +
                 articoli.map(a => `<option value="${a.nome}">${a.codice} - ${a.nome}</option>`).join('');

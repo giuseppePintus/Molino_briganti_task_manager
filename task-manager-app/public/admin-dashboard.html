@@ -180,6 +180,167 @@
             line-height: 1.2;
         }
 
+        /* Quick Actions Button Colors with Unique Visual Effects */
+        
+        /* SETTINGS - Blu con sfumatura e ombra */
+        .btn-settings {
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+            color: white;
+            border: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-settings::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s;
+        }
+        .btn-settings:hover {
+            background: linear-gradient(135deg, #1d4ed8 0%, #1e3a8a 100%);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        .btn-settings:hover::after {
+            left: 100%;
+        }
+
+        /* TASKS - Verde con riflessione luminosa */
+        .btn-tasks {
+            background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+            color: white;
+            border: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-tasks::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s;
+        }
+        .btn-tasks:hover {
+            background: linear-gradient(135deg, #15803d 0%, #166534 100%);
+            box-shadow: 0 6px 20px rgba(22, 163, 74, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        .btn-tasks:hover::after {
+            left: 100%;
+        }
+
+        /* OPERATORS - Arancione con riflessione luminosa */
+        .btn-operators {
+            background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
+            color: white;
+            border: 2px solid rgba(255, 165, 0, 0.3);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 12px rgba(234, 88, 12, 0.3), 
+                        inset 0 0 20px rgba(255, 255, 255, 0.05),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-operators::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s;
+        }
+        .btn-operators:hover {
+            background: linear-gradient(135deg, #c2410c 0%, #92400e 100%);
+            border-color: rgba(255, 165, 0, 0.6);
+            box-shadow: 0 6px 20px rgba(234, 88, 12, 0.5), 
+                        inset 0 0 20px rgba(255, 255, 255, 0.1),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        .btn-operators:hover::after {
+            left: 100%;
+        }
+
+        /* CUSTOMERS - Turchese con riflessione luminosa */
+        .btn-customers {
+            background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);
+            color: white;
+            border: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 12px rgba(8, 145, 178, 0.3), 
+                        0 0 20px rgba(8, 145, 178, 0.1) inset,
+                        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-customers::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s;
+        }
+        .btn-customers:hover {
+            background: linear-gradient(135deg, #0e7490 0%, #155e75 100%);
+            box-shadow: 0 6px 20px rgba(8, 145, 178, 0.5), 
+                        0 0 30px rgba(8, 145, 178, 0.2) inset,
+                        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        .btn-customers:hover::after {
+            left: 100%;
+        }
+
+        /* PLANNER - Viola con riflessione luminosa */
+        .btn-planner {
+            background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+            color: white;
+            border: 1px solid rgba(124, 58, 237, 0.5);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3),
+                        0 0 20px rgba(124, 58, 237, 0.2),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-planner::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s;
+        }
+        .btn-planner:hover {
+            background: linear-gradient(135deg, #6d28d9 0%, #5b21b6 100%);
+            border-color: rgba(124, 58, 237, 1);
+            box-shadow: 0 6px 20px rgba(124, 58, 237, 0.5),
+                        0 0 30px rgba(124, 58, 237, 0.4),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        .btn-planner:hover::after {
+            left: 100%;
+        }
+
         /* Utility: show only on mobile */
         .mobile-only { display: none; }
         @media (max-width: 480px) { .mobile-only { display: inline-flex; } }
@@ -531,7 +692,7 @@
         }
 
         .btn-small {
-            padding: 8px 14px;
+            padding: 10px 12px;
             font-size: 14px;
             min-height: auto;
             height: 36px;
@@ -716,6 +877,20 @@
             text-align: center;
             flex: 1;
             min-width: 150px;
+        }
+
+        /* dayTasksCard button styles */
+        #dayTasksCard .task-actions .btn {
+            padding: 10px 12px;
+            font-size: 14px;
+        }
+
+        #dayTasksCard .task-actions .btn::before {
+            font-size: 16px;
+        }
+
+        #dayTasksCard .task-actions .btn span {
+            font-size: 14px;
         }
 
         @media (max-width: 480px) {
@@ -1037,19 +1212,19 @@
             }
 
             #operatorTasksCard .task-actions .btn {
-                padding: 8px 12px;
-                font-size: 13px;
+                padding: 10px 12px;
+                font-size: 14px;
                 min-height: 36px;
                 flex: 1;
                 min-width: 80px;
             }
 
             #operatorTasksCard .task-actions .btn::before {
-                font-size: 14px;
+                font-size: 16px;
             }
 
             #operatorTasksCard .task-actions .btn span {
-                font-size: 13px;
+                font-size: 14px;
             }
 
             /* myTasksCard specific styles for 480px */
@@ -1081,19 +1256,19 @@
             }
 
             #myTasksCard .task-actions .btn {
-                padding: 8px 12px;
-                font-size: 13px;
+                padding: 10px 12px;
+                font-size: 14px;
                 min-height: 36px;
                 flex: 1;
                 min-width: 80px;
             }
 
             #myTasksCard .task-actions .btn::before {
-                font-size: 14px;
+                font-size: 16px;
             }
 
             #myTasksCard .task-actions .btn span {
-                font-size: 13px;
+                font-size: 14px;
             }
 
             /* Day Tasks Card - responsive styles */
@@ -1116,19 +1291,6 @@
             }
 
             #dayTasksCard .task-meta {
-                font-size: 14px;
-            }
-
-            #dayTasksCard .task-actions .btn {
-                padding: 10px 12px;
-                font-size: 14px;
-            }
-
-            #dayTasksCard .task-actions .btn::before {
-                font-size: 16px;
-            }
-
-            #dayTasksCard .task-actions .btn span {
                 font-size: 14px;
             }
 
@@ -1169,12 +1331,11 @@
 
         <!-- Quick Actions -->
         <div class="quick-actions">
-            <button class="btn btn-success" data-icon="📝🔄" onclick="openCreateTaskOrRecurrenceModal()"><span>Gestione Task / Ricorrenze</span></button>
-            <button class="btn btn-primary" data-icon="📦" onclick="window.location.href='orders-planner.html'"><span>Planner Ordini</span></button>
-            <button class="btn btn-primary" data-icon="🏢" onclick="window.location.href='company-settings.html'"><span>Impostazioni Azienda</span></button>
-            <button class="btn btn-primary" data-icon="🚚" onclick="window.location.href='trips-management.html'"><span>Gestione Viaggi</span></button>
-            <button class="btn btn-primary btn-small-mobile" data-icon="👥" onclick="window.location.href='operators.html'"><span>Gestione Admin / Operatori</span></button>
-            <button class="btn btn-primary btn-small-mobile" data-icon="👨‍💼" onclick="window.location.href='customers-management.html'"><span>Gestione Clienti</span></button>
+            <button class="btn btn-settings" data-icon="🏢" onclick="window.location.href='company-settings.html'"><span>Impostazioni Azienda</span></button>
+            <button class="btn btn-tasks" data-icon="📝🔄" onclick="openCreateTaskOrRecurrenceModal()"><span>Gestione Task / Ricorrenze</span></button>
+            <button class="btn btn-operators btn-small-mobile" data-icon="👥" onclick="window.location.href='operators.html'"><span>Gestione Admin / Operatori</span></button>
+            <button class="btn btn-customers btn-small-mobile" data-icon="👨‍💼" onclick="window.location.href='customers-management.html'"><span>Gestione Clienti</span></button>
+            <button class="btn btn-planner" data-icon="📦" onclick="window.location.href='orders-planner.html'"><span>Planner Ordini</span></button>
         </div>
 
         <!-- Calendar -->
@@ -1214,16 +1375,6 @@
             </div>
         </div>
 
-        <!-- Viaggi Section -->
-        <div class="card" id="tripsCard" style="border: 2px solid #16a34a;">
-            <div class="card-header">
-                <h2 style="color: #16a34a;">🚚 Viaggi del Giorno</h2>
-                <button class="btn btn-primary" onclick="window.location.href='orders-planner.html'" style="background: #16a34a;">Gestisci Viaggi</button>
-            </div>
-            <div id="tripsList" style="display: flex; flex-direction: column; gap: 15px;">
-            </div>
-        </div>
-
         <!-- My Tasks (Admin Personal Tasks) - Outside main-content for full width -->
         <div class="card" id="myTasksCard" style="display: none;">
             <div class="card-header">
@@ -1242,6 +1393,12 @@
             <div class="modal-actions">
                 <button class="btn btn-secondary" onclick="closeModal()">Chiudi</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Edit Orders Modal -->
+    <div id="editOrdersModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
         </div>
     </div>
 
@@ -1291,7 +1448,8 @@
         function getTripOrders(tripId) {
             const trip = trips.find(t => t.id === tripId);
             if (!trip) return [];
-            return trip.sequence.map(orderId => orders.find(o => o.id === orderId)).filter(Boolean);
+            // Normalizza gli ID nella sequenza a stringhe per il confronto
+            return trip.sequence.map(orderId => orders.find(o => String(o.id) === String(orderId))).filter(Boolean);
         }
 
         function calculateTripTotals(tripId) {
@@ -1320,12 +1478,11 @@
             if (event.key === 'orders') {
                 console.log('📦 Sincronizzando ordini da un\'altra pagina...');
                 loadTripsFromPlanner();
-                renderTrips();
+                renderCalendar();
                 renderCalendar();
             } else if (event.key === 'trips') {
                 console.log('🚚 Sincronizzando viaggi da un\'altra pagina...');
                 loadTripsFromPlanner();
-                renderTrips();
                 renderCalendar();
             }
         });
@@ -1515,7 +1672,6 @@
                 renderTasks();
                 renderAdminTasks();
                 await renderCalendar();
-                renderTrips();
             } catch (error) {
                 showAlert('Errore: ' + error.message, 'error');
             }
@@ -1529,7 +1685,16 @@
             const today = new Date().toISOString().split('T')[0];
             
             // Filter trips for today
-            const todayTrips = trips.filter(trip => trip.date === today);
+            let todayTrips = trips.filter(trip => trip.date === today);
+
+            // Se in modalità "Task Operatori", filtra solo i viaggi con ordini assegnati
+            if (currentViewMode === 'operatorTasks') {
+                todayTrips = todayTrips.filter(trip => {
+                    const tripOrders = getTripOrders(trip.id);
+                    // Mostra il viaggio solo se ha almeno un ordine con assignedOperator
+                    return tripOrders.some(order => order.assignedOperator?.id);
+                });
+            }
 
             if (todayTrips.length === 0) {
                 tripsList.innerHTML = '<div class="empty-state">Nessun viaggio programmato per oggi</div>';
@@ -1540,34 +1705,82 @@
                 const tripOrders = getTripOrders(trip.id);
                 const totals = calculateTripTotals(trip.id);
                 
+                // Carica impostazioni per il nome dell'automezzo
+                let settings = {};
+                try {
+                    settings = JSON.parse(localStorage.getItem('companySettings') || '{}');
+                } catch (e) {}
+                
+                const vehicle = settings.vehicles?.find(v => v.id == trip.vehicle);
+                const vehicleName = vehicle?.name || 'Non assegnato';
+                
+                // Conta ordini per cliente
+                const clientOrders = {};
+                tripOrders.forEach(order => {
+                    const client = order.clientName || 'Cliente sconosciuto';
+                    if (!clientOrders[client]) clientOrders[client] = [];
+                    clientOrders[client].push(order);
+                });
+                
+                // Verifica se tutti gli ordini sono assegnati
+                const allAssigned = tripOrders.every(order => order.assignedOperator?.id);
+                const statusColor = trip.acceptedAt ? '#16a34a' : '#ea580c';
+                const statusText = trip.acceptedAt ? '✅ Accettato' : '⏳ In attesa';
+                
                 return `
                     <div class="task-card" style="border-left: 4px solid #2563eb;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                            <h3 style="margin: 0; color: #2563eb; font-size: 1.1em;">${trip.name || 'Viaggio senza nome'}</h3>
-                            <span style="color: #888; font-size: 0.9em;">${tripOrders.length} ordini</span>
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                            <div style="flex: 1;">
+                                <h3 style="margin: 0; color: #2563eb; font-size: 1.1em;">${trip.name || 'Viaggio senza nome'}</h3>
+                                <div style="font-size: 0.85em; color: #999; margin-top: 3px;">🚛 ${vehicleName}</div>
+                            </div>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <span style="background: ${statusColor}; color: #fff; padding: 4px 10px; border-radius: 12px; font-size: 0.85em; font-weight: bold;">${statusText}</span>
+                                <span style="color: #999; font-size: 0.9em; font-weight: bold;">${tripOrders.length} ordini</span>
+                            </div>
                         </div>
                         
-                        <div style="margin-bottom: 10px;">
-                            <strong style="color: #ccc;">Ordini:</strong>
-                            <div style="margin-top: 5px;">
-                                ${tripOrders.map(order => `
-                                    <div style="color: #999; font-size: 0.9em; padding: 2px 0;">
-                                        • ${order.clientName || 'Cliente sconosciuto'}
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+                            <div style="background: #2d2d2d; padding: 8px; border-radius: 4px; border-left: 3px solid ${allAssigned ? '#16a34a' : '#ea580c'};">
+                                <div style="font-size: 0.85em; color: #999;">Assegnati</div>
+                                <div style="font-size: 1.1em; font-weight: bold; color: #e0e0e0;">${tripOrders.filter(o => o.assignedOperator?.id).length}/${tripOrders.length}</div>
+                            </div>
+                            <div style="background: #2d2d2d; padding: 8px; border-radius: 4px; border-left: 3px solid #3b82f6;">
+                                <div style="font-size: 0.85em; color: #999;">Clienti</div>
+                                <div style="font-size: 1.1em; font-weight: bold; color: #e0e0e0;">${Object.keys(clientOrders).length}</div>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-bottom: 12px;">
+                            <strong style="color: #ccc; font-size: 0.95em;">📍 Clienti:</strong>
+                            <div style="margin-top: 6px;">
+                                ${Object.entries(clientOrders).map(([client, orders]) => `
+                                    <div style="color: #999; font-size: 0.9em; padding: 4px 0; padding-left: 8px; border-left: 2px solid #3b82f6;">
+                                        <div style="font-weight: 500; color: #ccc;">${client}</div>
+                                        <div style="font-size: 0.85em; color: #777;">${orders.length} ordine${orders.length > 1 ? 'i' : ''}</div>
                                     </div>
                                 `).join('')}
                             </div>
                         </div>
 
-                        <div style="background: rgba(37, 99, 235, 0.1); padding: 10px; border-radius: 4px;">
-                            <strong style="color: #2563eb; font-size: 0.95em;">Totali Prodotti:</strong>
+                        <div style="background: rgba(37, 99, 235, 0.1); padding: 10px; border-radius: 4px; margin-bottom: 12px;">
+                            <strong style="color: #2563eb; font-size: 0.95em;">📊 Totali Prodotti:</strong>
                             <div style="margin-top: 8px;">
                                 ${Object.entries(totals).map(([product, quantity]) => `
                                     <div style="display: flex; justify-content: space-between; color: #ccc; font-size: 0.9em; padding: 3px 0;">
                                         <span>${product}</span>
-                                        <span style="font-weight: bold; color: #2563eb;">${quantity}</span>
+                                        <span style="font-weight: bold; color: #2563eb;">${quantity} kg</span>
                                     </div>
                                 `).join('')}
                             </div>
+                        </div>
+
+                        <div class="task-actions" style="margin-top: 12px;">
+                            <button class="btn btn-success btn-small" onclick="acceptTrip(${trip.id})" style="background: #22c55e;">✅ Accetta</button>
+                            <button class="btn btn-primary btn-small" onclick="openAssignTripModal(${trip.id})" style="background: #0ea5e9;">👤 Assegna</button>
+                            <button class="btn btn-primary btn-small" onclick="openEditTripModal(${trip.id})" style="background: #3b82f6;">✏️ Modifica Viaggio</button>
+                            <button class="btn btn-primary btn-small" onclick="openEditOrdersModal(${trip.id})" style="background: #3b82f6;">📦 Modifica Ordine</button>
+                            <button class="btn btn-secondary btn-small" onclick="if(confirm('Eliminare questo viaggio?')) { window.location.href='trips-management.html'; }" style="background: #6b7280;">🗑️ Elimina</button>
                         </div>
                     </div>
                 `;
@@ -1927,19 +2140,50 @@
                 const dayOfWeek = date.getDay();
                 const dayColor = dayOfWeek === 0 ? 'color: #ef4444;' : '';
                 
-                const dayTasks = tasksToDisplay.filter(task => {
+                let dayTasks = tasksToDisplay.filter(task => {
                     if (!task.scheduledAt) return false;
                     const taskDateStr = task.scheduledAt.split('T')[0];
                     return taskDateStr === dateStr;
                 });
                 
+                // Applica il filtro per escludere task "viaggio" duplicati (stesso filtro di showDayTasksModal)
+                if (currentViewMode === 'myTasks') {
+                    dayTasks = dayTasks.filter(t => {
+                        // Se è un task di tipo viaggio, controlla se esiste una versione "accettata" dello stesso
+                        if (t.title.toLowerCase().includes('viaggio')) {
+                            // Cerca altri task con lo stesso titolo nello stesso giorno
+                            const sameNameTasks = allTasks.filter(task => 
+                                task.title === t.title && 
+                                task.scheduledAt && 
+                                task.scheduledAt.split('T')[0] === dateStr
+                            );
+                            
+                            // Se esiste un'altra versione dello stesso task che è stata accettata/assegnata, escludi entrambe
+                            const hasActiveVersion = sameNameTasks.some(task => 
+                                (task.assignedOperator?.id && task.assignedOperator?.id !== currentUser.id) || task.acceptedAt
+                            );
+                            
+                            if (hasActiveVersion) {
+                                return false;
+                            }
+                        }
+                        // Altrimenti, mostra task dell'admin, non assegnati, o completati
+                        return t.assignedOperator?.id === currentUser.id || !t.assignedOperator?.id || t.completed;
+                    });
+                }
+                
                 const unassignedTasks = dayTasks.filter(t => !t.assignedOperator?.id).length;
                 const totalTasks = dayTasks.length;
                 const assignedTasks = totalTasks - unassignedTasks;
                 
-                // Controlla viaggi per questo giorno
-                const dayTrips = trips.filter(trip => trip.date?.startsWith(dateStr));
-                const hasTrips = dayTrips.length > 0;
+                // Controlla ordini di consegna per questo giorno (senza operatore assegnato)
+                const dayDeliveryOrders = orders.filter(order => {
+                    if (order.type !== 'consegna') return false;
+                    if (!order.dateTime) return false;
+                    if (order.dateTime.split('T')[0] !== dateStr) return false;
+                    return !order.assignedOperator?.id;
+                });
+                const hasTrips = dayDeliveryOrders.length > 0;
                 
                 const hasTasksClass = totalTasks > 0 ? 'has-tasks' : '';
                 const hasUnassignedClass = unassignedTasks > 0 ? 'has-unassigned-tasks' : '';
@@ -1968,8 +2212,8 @@
                         unassignedCountHtml = `<div style="position: absolute; bottom: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #16a34a; border-radius: 3px; padding: 2px 4px;">${unassignedTasks}</div>`;
                     }
                 }
-                if (dayTrips.length > 0) {
-                    tripCountHtml = `<div style="position: absolute; top: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #2563eb; border-radius: 3px; padding: 2px 4px;">${dayTrips.length}</div>`;
+                if (dayDeliveryOrders.length > 0) {
+                    tripCountHtml = `<div style="position: absolute; top: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #2563eb; border-radius: 3px; padding: 2px 4px;">${dayDeliveryOrders.length}</div>`;
                 }
                 
                 html += `<div class="calendar-day ${hasTasksClass} ${hasUnassignedClass} ${hasTripsClass} ${isTodayClass} ${isSelectedClass}" style="cursor: pointer; position: relative; ${dayColor}" onclick="handleCalendarDayClick('${dateStr}')"><strong>${date.getDate()}</strong>${taskCountHtml}${unassignedCountHtml}${tripCountHtml}</div>`;
@@ -2039,12 +2283,38 @@
                 const isHoliday = dayOfWeek === 0 || italianHolidays.includes(monthDay);
                 
                 // Conta task con data schedulata
-                const dayTasks = tasksToDisplay.filter(task => {
+                let dayTasks = tasksToDisplay.filter(task => {
                     if (!task.scheduledAt) return false;
                     // Estrai solo la parte della data (YYYY-MM-DD) dalla stringa ISO
                     const taskDateStr = task.scheduledAt.split('T')[0];
                     return taskDateStr === dateStr;
                 });
+                
+                // Applica il filtro per escludere task "viaggio" duplicati (stesso filtro di showDayTasksModal)
+                if (currentViewMode === 'myTasks') {
+                    dayTasks = dayTasks.filter(t => {
+                        // Se è un task di tipo viaggio, controlla se esiste una versione "accettata" dello stesso
+                        if (t.title.toLowerCase().includes('viaggio')) {
+                            // Cerca altri task con lo stesso titolo nello stesso giorno
+                            const sameNameTasks = allTasks.filter(task => 
+                                task.title === t.title && 
+                                task.scheduledAt && 
+                                task.scheduledAt.split('T')[0] === dateStr
+                            );
+                            
+                            // Se esiste un'altra versione dello stesso task che è stata accettata/assegnata, escludi entrambe
+                            const hasActiveVersion = sameNameTasks.some(task => 
+                                (task.assignedOperator?.id && task.assignedOperator?.id !== currentUser.id) || task.acceptedAt
+                            );
+                            
+                            if (hasActiveVersion) {
+                                return false;
+                            }
+                        }
+                        // Altrimenti, mostra task dell'admin, non assegnati, o completati
+                        return t.assignedOperator?.id === currentUser.id || !t.assignedOperator?.id || t.completed;
+                    });
+                }
                 
                 // Conta ricorrenze che cadono in questo giorno
                 const dayRecurrences = tasksToDisplay.filter(task => {
@@ -2091,9 +2361,14 @@
                 const totalTasks = dayTasks.length + dayRecurrences.length;
                 const assignedTasks = totalTasks - unassignedTasks;
                 
-                // Controlla viaggi per questo giorno
-                const dayTrips = trips.filter(trip => trip.date?.startsWith(dateStr));
-                const hasTrips = dayTrips.length > 0;
+                // Controlla ordini di consegna per questo giorno (senza operatore assegnato)
+                const dayDeliveryOrders = orders.filter(order => {
+                    if (order.type !== 'consegna') return false;
+                    if (!order.dateTime) return false;
+                    if (order.dateTime.split('T')[0] !== dateStr) return false;
+                    return !order.assignedOperator?.id;
+                });
+                const hasTrips = dayDeliveryOrders.length > 0;
                 
                 const hasTasksClass = totalTasks > 0 ? 'has-tasks' : '';
                 const hasUnassignedClass = unassignedTasks > 0 ? 'has-unassigned-tasks' : '';
@@ -2124,8 +2399,8 @@
                         unassignedCountHtml = `<div style="position: absolute; bottom: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #16a34a; border-radius: 3px; padding: 2px 4px;">${unassignedTasks}</div>`;
                     }
                 }
-                if (dayTrips.length > 0) {
-                    tripCountHtml = `<div style="position: absolute; top: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #2563eb; border-radius: 3px; padding: 2px 4px;">${dayTrips.length}</div>`;
+                if (dayDeliveryOrders.length > 0) {
+                    tripCountHtml = `<div style="position: absolute; top: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #2563eb; border-radius: 3px; padding: 2px 4px;">${dayDeliveryOrders.length}</div>`;
                 }
                 
                 html += `<div class="calendar-day ${hasTasksClass} ${hasUnassignedClass} ${hasTripsClass} ${isTodayClass} ${isSelectedClass}" style="${dayColor}; cursor: pointer; position: relative;" onclick="handleCalendarDayClick('${dateForClick}')"><strong>${day}</strong>${taskCountHtml}${unassignedCountHtml}${tripCountHtml}</div>`;
@@ -3547,10 +3822,31 @@
 
             // Applica i filtri di view mode
             if (currentViewMode === 'myTasks') {
-                // Mostra task dell'admin attuale + task non assegnati + task completati (indipendentemente dall'assegnamento)
-                dayTasks = dayTasks.filter(t => 
-                    t.assignedOperator?.id === currentUser.id || !t.assignedOperator?.id || t.completed
-                );
+                // Mostra task dell'admin attuale + task non assegnati + task completati
+                // MA esclude i task di tipo "viaggio" che sono stati assegnati o accettati da un operatore
+                dayTasks = dayTasks.filter(t => {
+                    // Se è un task di tipo viaggio, controlla se esiste una versione "accettata" dello stesso
+                    if (t.title.toLowerCase().includes('viaggio')) {
+                        // Cerca altri task con lo stesso titolo nello stesso giorno
+                        const sameNameTasks = allTasks.filter(task => 
+                            task.title === t.title && 
+                            task.scheduledAt && 
+                            task.scheduledAt.split('T')[0] === dateStr
+                        );
+                        
+                        // Se esiste un'altra versione dello stesso task che è stata accettata/assegnata, escludi entrambe
+                        const hasActiveVersion = sameNameTasks.some(task => 
+                            (task.assignedOperator?.id && task.assignedOperator?.id !== currentUser.id) || task.acceptedAt
+                        );
+                        
+                        if (hasActiveVersion) {
+                            console.log('ESCLUDENDO viaggio duplicato:', t.title, '(esiste versione accettata/assegnata)');
+                            return false;
+                        }
+                    }
+                    // Altrimenti, mostra task dell'admin, non assegnati, o completati
+                    return t.assignedOperator?.id === currentUser.id || !t.assignedOperator?.id || t.completed;
+                });
             } else if (currentViewMode === 'operatorTasks') {
                 // Mostra solo i task degli operatori e non completati
                 dayTasks = dayTasks.filter(t => t.assignedOperator?.id !== currentUser.id && t.assignedOperator?.id && !t.completed);
@@ -3569,9 +3865,15 @@
             dayTasksTitle.textContent = `📅 ${viewModeLabel} di ${dayName.charAt(0).toUpperCase() + dayName.slice(1)}, ${formatted}`;
 
             // Calcola i numeri di task, ordini ritiro e viaggi
+            // IMPORTANTE: usa dayTasks che è già filtrato, non allTasks
             const assignedTasks = dayTasks.filter(t => t.assignedOperator?.id).length;
             const unassignedTasks = dayTasks.filter(t => !t.assignedOperator?.id).length;
-            const summaryDayTrips = trips.filter(trip => trip.date?.startsWith(dateStr));
+            const summaryDayTrips = orders.filter(order => {
+                if (order.type !== 'consegna') return false;
+                if (!order.dateTime) return false;
+                if (order.dateTime.split('T')[0] !== dateStr) return false;
+                return !order.assignedOperator?.id;
+            });
             
             // Conta gli ordini di tipo "ritira" per il giorno (ordini associati ai task di ritiro assegnati)
             const dayRitiroOrders = orders.filter(order => {
@@ -3585,15 +3887,17 @@
             if (assignedTasks > 0 || unassignedTasks > 0 || summaryDayTrips.length > 0 || dayRitiroOrders.length > 0) {
                 summaryHtml = `<div style="display: flex; gap: 20px; align-items: center; padding: 12px 0; border-top: 1px solid #4d4d4d; border-bottom: 1px solid #4d4d4d; margin-bottom: 12px;">`;
                 
-                // Task assegnati - Arancio in basso a sinistra
-                if (assignedTasks > 0) {
+                // Task totali (assegnati + non assegnati)
+                const totalTasks = assignedTasks + unassignedTasks;
+                if (totalTasks > 0) {
                     summaryHtml += `
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <div style="position: relative; width: 24px; height: 24px;">
                                 <div style="position: absolute; bottom: 0; left: 0; width: 0; height: 0; border-style: solid; border-width: 18px 0 0 18px; border-color: transparent transparent transparent #ff9800; border-radius: 0 0 0 4px;"></div>
                             </div>
-                            <span style="font-weight: bold; color: #ff9800; font-size: 16px;">${assignedTasks}</span>
+                            <span style="font-weight: bold; color: #ff9800; font-size: 16px;">${totalTasks}</span>
                             <span style="color: #b0b0b0; font-size: 12px;">Task</span>
+                            ${unassignedTasks > 0 ? `<span style="color: #888; font-size: 11px;">(${unassignedTasks} da assegnare)</span>` : ''}
                         </div>
                     `;
                 }
@@ -3611,7 +3915,7 @@
                     `;
                 }
                 
-                // Viaggi - Blu in alto a destra
+                // Ordini di consegna - Blu in alto a destra
                 if (summaryDayTrips.length > 0) {
                     summaryHtml += `
                         <div style="display: flex; align-items: center; gap: 8px;">
@@ -3619,7 +3923,7 @@
                                 <div style="position: absolute; top: 0; right: 0; width: 0; height: 0; border-style: solid; border-width: 0 18px 18px 0; border-color: transparent #2563eb transparent transparent; border-radius: 0 4px 0 0;"></div>
                             </div>
                             <span style="font-weight: bold; color: #2563eb; font-size: 16px;">${summaryDayTrips.length}</span>
-                            <span style="color: #b0b0b0; font-size: 12px;">Viaggi</span>
+                            <span style="color: #b0b0b0; font-size: 12px;">Consegne</span>
                         </div>
                     `;
                 }
@@ -3773,17 +4077,23 @@
                             ${task.assignedOperator?.id === currentUser.id && !task.acceptedAt && !task.completed ? `
                                 <button class="btn btn-success btn-small" onclick="handleTaskStatusChange(${task.id}, 'accept')" style="background: #22c55e;">👍 Accetta</button>
                             ` : ''}
-                            ${task.acceptedAt && !task.completed && !task.paused ? `
+                            ${task.acceptedAt && !task.completed && !task.paused && currentViewMode !== 'operatorTasks' ? `
                                 <button class="btn btn-warning btn-small" onclick="handleTaskStatusChange(${task.id}, 'pause')" style="background: #ea580c;">⏸️ Pausa</button>
                             ` : ''}
-                            ${task.acceptedAt && !task.completed ? `
+                            ${task.acceptedAt && !task.completed && currentViewMode !== 'operatorTasks' ? `
                                 <button class="btn btn-success btn-small" onclick="handleTaskStatusChange(${task.id}, 'complete')" style="background: #22c55e;">✅ Completa</button>
                             ` : ''}
-                            ${task.paused ? `
+                            ${task.paused && currentViewMode !== 'operatorTasks' ? `
                                 <button class="btn btn-info btn-small" onclick="handleTaskStatusChange(${task.id}, 'resume')" style="background: #3b82f6;">▶️ Riprendi</button>
                             ` : ''}
                             ${task.completed ? `
                                 <button class="btn btn-danger btn-small" onclick="handleTaskStatusChange(${task.id}, 'complete')" style="background: #dc2626;">🗑️ Elimina</button>
+                            ` : ''}
+                            ${(task.assignedOperator && currentViewMode === 'operatorTasks' && !task.paused) ? `
+                                <button class="btn btn-warning btn-small" onclick="handleTaskStatusChange(${task.id}, 'pause')" style="background: #ea580c;">⏸️ Pausa</button>
+                            ` : ''}
+                            ${(task.assignedOperator && currentViewMode === 'operatorTasks' && !task.completed) ? `
+                                <button class="btn btn-success btn-small" onclick="handleTaskStatusChange(${task.id}, 'complete')" style="background: #22c55e;">✅ Completa</button>
                             ` : ''}
                             <button class="btn btn-primary btn-small" onclick="openEditTaskModal(${task.id})" style="background: #3b82f6;">✏️ Modifica</button>
                             <button class="btn btn-secondary btn-small" onclick="handleDeleteTask(${task.id})" style="background: #6b7280;">🗑️ Elimina</button>
@@ -3791,42 +4101,6 @@
                     </div>
                 `;
             }).join('');
-
-            // Mostra i viaggi del giorno se presenti
-            const dayTrips = trips.filter(trip => trip.date?.startsWith(dateStr));
-            const dayTripsSection = document.getElementById('dayTripsSection');
-            const dayTripsList = document.getElementById('dayTripsList');
-            
-            if (dayTrips.length > 0) {
-                dayTripsList.innerHTML = dayTrips.map(trip => {
-                    const tripOrders = trip.sequence.map(orderId => orders.find(o => o.id === orderId)).filter(Boolean);
-                    const totals = {};
-                    tripOrders.forEach(order => {
-                        if (!totals[order.product]) {
-                            totals[order.product] = 0;
-                        }
-                        totals[order.product] += parseFloat(order.quantity || 0);
-                    });
-                    const totalsHtml = Object.entries(totals).map(([product, qty]) => 
-                        `<span style="background:#1e3a2a;color:#86efac;padding:4px 8px;border-radius:4px;font-size:12px;margin-right:6px;">${product}: ${qty.toFixed(1)}kg</span>`
-                    ).join('');
-
-                    return `
-                        <div class="order-card" style="border-left:4px solid #16a34a;">
-                            <div class="order-header">
-                                <div class="order-title">${trip.name}</div>
-                                <span class="order-status" style="background:#1e3a2a;color:#86efac;">${tripOrders.length} ordini</span>
-                            </div>
-                            <div class="order-details">
-                                ${totalsHtml ? `<p style="margin:8px 0;"><strong>📊 Totali:</strong><br>${totalsHtml}</p>` : ''}
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-                dayTripsSection.style.display = 'block';
-            } else {
-                dayTripsSection.style.display = 'none';
-            }
 
             dayTasksCard.style.display = 'block';
             
@@ -3836,8 +4110,441 @@
             }, 100);
         }
 
-        function closeDayTasksCard() {
-            document.getElementById('dayTasksCard').style.display = 'none';
+        function openAssignTripModal(tripId) {
+            const trip = trips.find(t => t.id === tripId);
+            if (!trip) return;
+
+            // Crea il modal HTML (stesso stile di openAssignModal)
+            const modalHTML = `
+                <div id="assignTripModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 2000;">
+                    <div style="background: #1a1a1a; border-radius: 8px; padding: 20px; max-width: 400px; width: 90%; max-height: 600px; overflow-y: auto; border: 1px solid #444;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h2 style="margin: 0; color: #fff;">Assegna Viaggio</h2>
+                            <button onclick="document.getElementById('assignTripModal').remove()" style="background: none; border: none; color: #999; font-size: 24px; cursor: pointer;">×</button>
+                        </div>
+                        
+                        <p style="color: #bbb; margin-bottom: 10px; font-size: 14px;"><strong>${trip.name}</strong></p>
+                        
+                        <p style="color: #999; margin-bottom: 15px; font-size: 13px;">Seleziona un operatore o admin:</p>
+                        
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            ${allOperators.map(op => `
+                                <button onclick="assignTripToOperator(${tripId}, ${op.id}); document.getElementById('assignTripModal').remove();" 
+                                    style="
+                                        background: #2a2a2a; 
+                                        border: 1px solid #444; 
+                                        color: #fff; 
+                                        padding: 12px; 
+                                        border-radius: 4px; 
+                                        cursor: pointer; 
+                                        text-align: left;
+                                        transition: all 0.2s;
+                                    "
+                                    onmouseover="this.style.background='#3a3a3a'; this.style.borderColor='#666';"
+                                    onmouseout="this.style.background='#2a2a2a'; this.style.borderColor='#444';">
+                                    <div style="font-weight: bold; color: #fff;">${op.username}</div>
+                                    <div style="font-size: 12px; color: #999;">${op.role === 'master' ? 'Admin' : 'Operatore'}</div>
+                                </button>
+                            `).join('')}
+                        </div>
+                        
+                        <button onclick="document.getElementById('assignTripModal').remove()" 
+                            style="width: 100%; margin-top: 15px; padding: 10px; background: #3a3a3a; border: 1px solid #555; color: #ccc; border-radius: 4px; cursor: pointer;">
+                            Annulla
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+        }
+
+        async function assignTripToOperator(tripId, operatorId) {
+            try {
+                const trip = trips.find(t => t.id === tripId);
+                if (!trip) return;
+
+                // Assegna tutti gli ordini del viaggio all'operatore selezionato
+                const tripOrders = getTripOrders(tripId);
+                const operator = allOperators.find(op => op.id == operatorId);
+                
+                for (const order of tripOrders) {
+                    order.assignedOperator = operator;
+                }
+
+                saveOrders();
+                showAlert('Viaggio assegnato con successo!', 'success');
+            } catch (error) {
+                showAlert('Errore nell\'assegnazione: ' + error.message, 'error');
+            }
+        }
+
+        function openEditTripModal(tripId) {
+            const trip = trips.find(t => t.id === tripId);
+            if (!trip) return;
+
+            const modal = document.getElementById('taskModal');
+            const content = modal.querySelector('.modal-content');
+
+            // Carica le impostazioni aziendali per i veicoli
+            let settings = {};
+            try {
+                settings = JSON.parse(localStorage.getItem('companySettings') || '{}');
+            } catch (e) {}
+
+            const vehicles = settings.vehicles || [];
+
+            content.innerHTML = `
+                <h2>✏️ Modifica Viaggio</h2>
+                <form onsubmit="handleEditTrip(event, ${tripId})">
+                    <div class="form-group">
+                        <label>Nome Viaggio *</label>
+                        <input type="text" id="editTripName" value="${trip.name || ''}" required style="width: 100%; padding: 10px; border: 1px solid #4d4d4d; border-radius: 6px; background: #3d3d3d; color: #e0e0e0;">
+                    </div>
+                    <div class="form-group">
+                        <label>Data *</label>
+                        <input type="date" id="editTripDate" value="${trip.date || ''}" required style="width: 100%; padding: 10px; border: 1px solid #4d4d4d; border-radius: 6px; background: #3d3d3d; color: #e0e0e0;">
+                    </div>
+                    <div class="form-group">
+                        <label>Automezzo *</label>
+                        <select id="editTripVehicle" required style="width: 100%; padding: 10px; border: 1px solid #4d4d4d; border-radius: 6px; background: #3d3d3d; color: #e0e0e0;">
+                            <option value="">-- Seleziona Automezzo --</option>
+                            ${vehicles.map(v => `<option value="${v.id}" ${trip.vehicle === v.id ? 'selected' : ''}>${v.name}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div style="display: flex; gap: 10px; margin-top: 20px;">
+                        <button type="submit" class="btn btn-success" style="flex: 1;">✅ Salva</button>
+                        <button type="button" class="btn btn-danger" style="flex: 1;" onclick="closeModal();">❌ Annulla</button>
+                    </div>
+                </form>
+            `;
+            modal.classList.add('active');
+        }
+
+        async function handleEditTrip(event, tripId) {
+            event.preventDefault();
+            
+            const name = document.getElementById('editTripName').value;
+            const date = document.getElementById('editTripDate').value;
+            const vehicle = document.getElementById('editTripVehicle').value;
+
+            if (!name || !date || !vehicle) {
+                showAlert('Compila tutti i campi', 'error');
+                return;
+            }
+
+            try {
+                const trip = trips.find(t => t.id === tripId);
+                if (!trip) return;
+
+                trip.name = name;
+                trip.date = date;
+                trip.vehicle = vehicle;
+
+                saveTrips();
+                closeModal();
+                showAlert('Viaggio aggiornato con successo!', 'success');
+            } catch (error) {
+                showAlert('Errore nell\'aggiornamento: ' + error.message, 'error');
+            }
+        }
+
+        async function acceptTrip(tripId) {
+            try {
+                const trip = trips.find(t => t.id === tripId);
+                if (!trip) return;
+
+                // Marca il viaggio come accettato dall'admin
+                trip.acceptedAt = new Date().toISOString();
+                trip.acceptedBy = currentUser.id;
+
+                saveTrips();
+                showAlert('Viaggio accettato!', 'success');
+            } catch (error) {
+                showAlert('Errore nell\'accettazione: ' + error.message, 'error');
+            }
+        }
+
+        function openEditOrdersModal(tripId) {
+            const trip = trips.find(t => t.id === tripId);
+            if (!trip) return;
+
+            const tripOrders = getTripOrders(tripId);
+            console.log('DEBUG: tripOrders:', tripOrders);
+            console.log('DEBUG: trip.sequence:', trip.sequence);
+            console.log('DEBUG: orders available:', orders.length);
+            
+            const modal = document.getElementById('taskModal');
+            const content = modal.querySelector('.modal-content');
+            
+            if (!modal) return;
+
+            // Ordini già nel viaggio - filtra solo quelli trovati
+            const ordersListHtml = tripOrders.filter(o => o).map((order, index) => `
+                <div style="background: #3d3d3d; padding: 12px; border-radius: 6px; margin-bottom: 10px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                        <div class="form-group">
+                            <label style="font-size: 0.9em;">Cliente</label>
+                            <input type="text" value="${order.clientName || order.client || ''}" data-trip="${tripId}" data-index="${index}" data-field="client" style="width: 100%; padding: 8px; border: 1px solid #4d4d4d; border-radius: 4px; background: #2d2d2d; color: #e0e0e0; font-size: 0.9em;">
+                        </div>
+                        <div class="form-group">
+                            <label style="font-size: 0.9em;">Prodotto</label>
+                            <input type="text" value="${order.product || ''}" data-trip="${tripId}" data-index="${index}" data-field="product" style="width: 100%; padding: 8px; border: 1px solid #4d4d4d; border-radius: 4px; background: #2d2d2d; color: #e0e0e0; font-size: 0.9em;">
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div class="form-group">
+                            <label style="font-size: 0.9em;">Quantità (kg)</label>
+                            <input type="number" value="${order.quantity || 0}" step="0.1" data-trip="${tripId}" data-index="${index}" data-field="quantity" style="width: 100%; padding: 8px; border: 1px solid #4d4d4d; border-radius: 4px; background: #2d2d2d; color: #e0e0e0; font-size: 0.9em;">
+                        </div>
+                        <div class="form-group">
+                            <label style="font-size: 0.9em;">Note</label>
+                            <input type="text" value="${order.notes || ''}" data-trip="${tripId}" data-index="${index}" data-field="notes" style="width: 100%; padding: 8px; border: 1px solid #4d4d4d; border-radius: 4px; background: #2d2d2d; color: #e0e0e0; font-size: 0.9em;">
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-danger btn-small" onclick="removeOrderFromTrip(${tripId}, ${index})" style="margin-top: 8px; width: 100%; background: #dc2626;">🗑️ Rimuovi Ordine</button>
+                </div>
+            `).join('');
+
+            // Ordini disponibili NON ancora nel viaggio - normalizza ID per confronto
+            const availableOrders = orders.filter(o => !trip.sequence.some(seqId => String(seqId) === String(o.id)));
+            console.log('DEBUG: availableOrders:', availableOrders.length);
+            
+            const availableOrdersHtml = availableOrders.length > 0 ? availableOrders.map(order => {
+                const clientName = order.clientName || order.client || 'Cliente sconosciuto';
+                return `
+                <div style="background: #3d3d3d; padding: 10px; border-radius: 4px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; border: 1px solid #4d4d4d;">
+                    <div style="flex: 1;">
+                        <div style="color: #e0e0e0; font-weight: 500; font-size: 0.95em;">${clientName}</div>
+                        <div style="color: #999; font-size: 0.85em;">${order.product} • ${order.quantity} kg</div>
+                        ${order.notes ? `<div style="color: #777; font-size: 0.8em; margin-top: 2px;">📝 ${order.notes}</div>` : ''}
+                    </div>
+                    <button type="button" class="btn" style="background: #3b82f6; padding: 6px 12px; font-size: 0.85em; border: none; border-radius: 4px; cursor: pointer; white-space: nowrap; margin-left: 10px;" onclick="addExistingOrderToTrip('${tripId}', '${order.id}')">➕ Aggiungi</button>
+                </div>
+            `;
+            }).join('') : '<div style="color: #666; text-align: center; padding: 10px; font-size: 0.9em;">Tutti gli ordini sono già nel viaggio</div>';
+
+            content.innerHTML = `
+                <h2>📦 Modifica Ordini - ${trip.name}</h2>
+                
+                <div style="max-height: 60vh; overflow-y: auto;">
+                    <!-- Sezione Ordini nel Viaggio -->
+                    <div style="margin-bottom: 25px;">
+                        <h3 style="color: #22c55e; font-size: 1em; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #22c55e;">✅ Ordini nel Viaggio (${tripOrders.length})</h3>
+                        <div style="margin-bottom: 15px;">
+                            ${ordersListHtml || '<div style="color: #999; text-align: center; padding: 15px;">Nessun ordine nel viaggio</div>'}
+                        </div>
+                    </div>
+
+                    <!-- Sezione Ordini Disponibili -->
+                    <div style="margin-bottom: 25px;">
+                        <h3 style="color: #3b82f6; font-size: 1em; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #3b82f6;">📋 Ordini Disponibili (${availableOrders.length})</h3>
+                        <div>
+                            ${availableOrdersHtml}
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-top: 20px; padding-top: 15px; border-top: 1px solid #4d4d4d;">
+                    <button type="button" class="btn btn-success" style="flex: 1; background: #22c55e; padding: 10px 12px; font-size: 14px; border: none; border-radius: 6px; cursor: pointer;" onclick="saveEditedOrders(${tripId})">✅ Salva Modifiche</button>
+                    <button type="button" class="btn" style="flex: 1; background: #10b981; padding: 10px 12px; font-size: 14px; border: none; border-radius: 6px; cursor: pointer;" onclick="addNewOrderForm(${tripId})">➕ Nuovo Ordine</button>
+                    <button type="button" class="btn btn-danger" style="flex: 1; background: #dc2626; padding: 10px 12px; font-size: 14px; border: none; border-radius: 6px; cursor: pointer;" onclick="closeModal()">❌ Annulla</button>
+                </div>
+                <div id="newOrderFormContainer"></div>
+            `;
+            modal.classList.add('active');
+        }
+
+        function addExistingOrderToTrip(tripId, orderId) {
+            console.log('DEBUG: addExistingOrderToTrip called with tripId:', tripId, 'orderId:', orderId);
+            
+            const trip = trips.find(t => t.id == tripId);
+            if (!trip) {
+                console.error('Trip not found:', tripId);
+                showAlert('Viaggio non trovato', 'error');
+                return;
+            }
+            
+            // Normalizza orderId a stringa per il confronto
+            const normalizedOrderId = String(orderId);
+            
+            // Controlla se l'ordine è già nel viaggio (normalizzato a stringa)
+            if (trip.sequence.some(id => String(id) === normalizedOrderId)) {
+                showAlert('Ordine già presente nel viaggio', 'error');
+                console.log('Order already in trip');
+                return;
+            }
+            
+            // Aggiungi l'ordine al viaggio (come stringa)
+            trip.sequence.push(normalizedOrderId);
+            
+            // Pulisci la sequenza da duplicati (in caso ce ne fossero)
+            trip.sequence = [...new Set(trip.sequence.map(String))];
+            
+            saveTrips();
+            
+            console.log('Order added successfully. New sequence:', trip.sequence);
+            
+            // Riapri il modal con l'ordine aggiunto
+            openEditOrdersModal(tripId);
+            showAlert('Ordine aggiunto al viaggio!', 'success');
+        }
+
+        function addNewOrderForm(tripId) {
+            const container = document.getElementById('newOrderFormContainer');
+            const newOrderId = 'new-order-' + Date.now();
+            
+            container.innerHTML = `
+                <div style="background: #3d3d3d; padding: 12px; border-radius: 6px; margin-bottom: 10px; border: 2px solid #10b981;">
+                    <h3 style="color: #10b981; margin: 0 0 15px 0; font-size: 1em;">📝 Nuovo Ordine Consegna</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                        <div class="form-group">
+                            <label style="font-size: 0.9em;">Cliente *</label>
+                            <input type="text" id="newClient-${newOrderId}" placeholder="Nome cliente" style="width: 100%; padding: 8px; border: 1px solid #4d4d4d; border-radius: 4px; background: #2d2d2d; color: #e0e0e0; font-size: 0.9em;">
+                        </div>
+                        <div class="form-group">
+                            <label style="font-size: 0.9em;">Prodotto *</label>
+                            <input type="text" id="newProduct-${newOrderId}" placeholder="Nome prodotto" style="width: 100%; padding: 8px; border: 1px solid #4d4d4d; border-radius: 4px; background: #2d2d2d; color: #e0e0e0; font-size: 0.9em;">
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                        <div class="form-group">
+                            <label style="font-size: 0.9em;">Quantità (kg) *</label>
+                            <input type="number" id="newQuantity-${newOrderId}" placeholder="0" step="0.1" value="0" style="width: 100%; padding: 8px; border: 1px solid #4d4d4d; border-radius: 4px; background: #2d2d2d; color: #e0e0e0; font-size: 0.9em;">
+                        </div>
+                        <div class="form-group">
+                            <label style="font-size: 0.9em;">Note</label>
+                            <input type="text" id="newNotes-${newOrderId}" placeholder="Note opzionali" style="width: 100%; padding: 8px; border: 1px solid #4d4d4d; border-radius: 4px; background: #2d2d2d; color: #e0e0e0; font-size: 0.9em;">
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button type="button" class="btn" style="flex: 1; background: #10b981; padding: 8px 12px; font-size: 0.9em; border: none; border-radius: 4px; cursor: pointer;" onclick="saveNewOrder(${tripId}, '${newOrderId}')">✅ Aggiungi</button>
+                        <button type="button" class="btn" style="flex: 1; background: #6b7280; padding: 8px 12px; font-size: 0.9em; border: none; border-radius: 4px; cursor: pointer; color: #e0e0e0;" onclick="document.getElementById('newOrderFormContainer').innerHTML = ''">❌ Annulla</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function saveNewOrder(tripId, newOrderId) {
+            const clientInput = document.getElementById(`newClient-${newOrderId}`);
+            const productInput = document.getElementById(`newProduct-${newOrderId}`);
+            const quantityInput = document.getElementById(`newQuantity-${newOrderId}`);
+            const notesInput = document.getElementById(`newNotes-${newOrderId}`);
+            
+            const clientName = clientInput?.value?.trim();
+            const product = productInput?.value?.trim();
+            const quantity = parseFloat(quantityInput?.value || 0);
+            const notes = notesInput?.value?.trim();
+            
+            if (!clientName || !product || quantity <= 0) {
+                showAlert('Compila i campi obbligatori (Cliente, Prodotto, Quantità > 0)', 'error');
+                return;
+            }
+            
+            const trip = trips.find(t => t.id === tripId);
+            if (!trip) return;
+            
+            // Crea un nuovo ordine
+            const newOrder = {
+                id: 'order-' + Date.now(),
+                clientName: clientName,
+                product: product,
+                quantity: quantity,
+                notes: notes,
+                dateTime: new Date().toISOString(),
+                type: 'consegna'
+            };
+            
+            // Aggiungi l'ordine alla lista globale
+            orders.push(newOrder);
+            
+            // Aggiungi l'ordine al viaggio
+            trip.sequence.push(newOrder.id);
+            
+            // Salva i dati
+            saveOrders();
+            saveTrips();
+            
+            // Riapri il modal con il nuovo ordine
+            openEditOrdersModal(tripId);
+            showAlert('Ordine consegna aggiunto con successo!', 'success');
+        }
+
+        function removeOrderFromTrip(tripId, orderIndex) {
+            if (!confirm('Rimuovere questo ordine dal viaggio?')) return;
+            
+            const trip = trips.find(t => t.id === tripId);
+            if (!trip) return;
+            
+            const tripOrders = getTripOrders(tripId);
+            if (orderIndex >= 0 && orderIndex < tripOrders.length) {
+                const orderId = tripOrders[orderIndex].id;
+                trip.sequence = trip.sequence.filter(id => id !== orderId);
+                saveTrips();
+                openEditOrdersModal(tripId);
+                showAlert('Ordine rimosso dal viaggio', 'success');
+            }
+        }
+
+        function saveEditedOrders(tripId) {
+            const tripOrders = getTripOrders(tripId);
+            let hasChanges = false;
+            
+            // Recupera tutti gli input dal modal
+            const modal = document.getElementById('editOrdersModal');
+            const inputs = modal.querySelectorAll('input[data-trip]');
+            
+            // Organizza i dati per indice ordine
+            const editedData = {};
+            inputs.forEach(input => {
+                const trip = input.dataset.trip;
+                const index = input.dataset.index;
+                const field = input.dataset.field;
+                
+                if (trip == tripId) {
+                    if (!editedData[index]) editedData[index] = {};
+                    
+                    if (field === 'client') {
+                        editedData[index].clientName = input.value;
+                    } else if (field === 'product') {
+                        editedData[index].product = input.value;
+                    } else if (field === 'quantity') {
+                        editedData[index].quantity = parseFloat(input.value) || 0;
+                    } else if (field === 'notes') {
+                        editedData[index].notes = input.value;
+                    }
+                }
+            });
+            
+            // Applica i cambiamenti agli ordini
+            tripOrders.forEach((order, index) => {
+                if (editedData[index]) {
+                    const edited = editedData[index];
+                    if (order.clientName !== edited.clientName || 
+                        order.product !== edited.product || 
+                        order.quantity !== edited.quantity || 
+                        order.notes !== edited.notes) {
+                        
+                        order.clientName = edited.clientName;
+                        order.product = edited.product;
+                        order.quantity = edited.quantity;
+                        order.notes = edited.notes;
+                        hasChanges = true;
+                    }
+                }
+            });
+            
+            if (hasChanges) {
+                saveOrders();
+                closeModal();
+                showAlert('Ordini aggiornati con successo!', 'success');
+            } else {
+                closeModal();
+            }
+        }
+
+        function saveOrders() {
+            localStorage.setItem('orders', JSON.stringify(orders));
         }
     </script>
 </body>
