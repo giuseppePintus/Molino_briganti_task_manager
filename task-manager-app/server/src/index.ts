@@ -12,6 +12,7 @@ import authRoutes from './routes/auth';
 import backupRoutes from './routes/backup';
 import setupBackupMiddleware from './middleware/backupMiddleware';
 import BackupService from './services/backupService';
+import { initializeDatabaseIfEmpty } from './services/databaseInit';
 
 const app = express();
 const prisma = new PrismaClient();
@@ -42,8 +43,23 @@ app.get('*', (req, res) => {
 // Start server
 app.listen(PORT, async () => {
   try {
+    // Inizializza database schema con Prisma (crea se non esiste)
+    console.log('🗄️ Initializing database schema...');
+    try {
+      await prisma.$executeRawUnsafe(
+        `SELECT 1 FROM sqlite_master WHERE type='table' LIMIT 1`
+      );
+      console.log('✅ Database schema already exists');
+    } catch (err) {
+      console.log('📝 Database is new, running migrations...');
+      // Il database non esiste ancora, Prisma lo creerà al connect
+    }
+
     await prisma.$connect();
-    console.log('Database connected successfully');
+    console.log('✅ Database connected successfully');
+
+    // Inizializza database con utenti di default se vuoto
+    await initializeDatabaseIfEmpty(prisma);
 
     // Setup backup middleware DOPO connessione
     setupBackupMiddleware(prisma);
@@ -66,11 +82,11 @@ app.listen(PORT, async () => {
       console.warn('⚠️ Initial backup failed:', err);
     }
 
-    console.log(`Server is running on port ${PORT}`);
-    console.log(`Web UI: http://localhost:${PORT}`);
-    console.log(`Backup API: http://localhost:${PORT}/api/backup`);
+    console.log(`✅ Server is running on port ${PORT}`);
+    console.log(`🌐 Web UI: http://localhost:${PORT}`);
+    console.log(`💾 Backup API: http://localhost:${PORT}/api/backup`);
   } catch (err) {
-    console.error('Database connection error:', err);
+    console.error('❌ Database connection error:', err);
     process.exit(1);
   }
 });

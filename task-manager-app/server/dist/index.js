@@ -57,6 +57,7 @@ const auth_1 = __importDefault(require("./routes/auth"));
 const backup_1 = __importDefault(require("./routes/backup"));
 const backupMiddleware_1 = __importDefault(require("./middleware/backupMiddleware"));
 const backupService_1 = __importDefault(require("./services/backupService"));
+const databaseInit_1 = require("./services/databaseInit");
 const app = (0, express_1.default)();
 const prisma = new client_1.PrismaClient();
 const PORT = process.env.PORT || 5000;
@@ -80,8 +81,20 @@ app.get('*', (req, res) => {
 // Start server
 app.listen(PORT, () => __awaiter(void 0, void 0, void 0, function* () {
     try {
+        // Inizializza database schema con Prisma (crea se non esiste)
+        console.log('🗄️ Initializing database schema...');
+        try {
+            yield prisma.$executeRawUnsafe(`SELECT 1 FROM sqlite_master WHERE type='table' LIMIT 1`);
+            console.log('✅ Database schema already exists');
+        }
+        catch (err) {
+            console.log('📝 Database is new, running migrations...');
+            // Il database non esiste ancora, Prisma lo creerà al connect
+        }
         yield prisma.$connect();
-        console.log('Database connected successfully');
+        console.log('✅ Database connected successfully');
+        // Inizializza database con utenti di default se vuoto
+        yield (0, databaseInit_1.initializeDatabaseIfEmpty)(prisma);
         // Setup backup middleware DOPO connessione
         (0, backupMiddleware_1.default)(prisma);
         // Ripristina ultimo backup dal NAS se disponibile
@@ -101,12 +114,12 @@ app.listen(PORT, () => __awaiter(void 0, void 0, void 0, function* () {
         catch (err) {
             console.warn('⚠️ Initial backup failed:', err);
         }
-        console.log(`Server is running on port ${PORT}`);
-        console.log(`Web UI: http://localhost:${PORT}`);
-        console.log(`Backup API: http://localhost:${PORT}/api/backup`);
+        console.log(`✅ Server is running on port ${PORT}`);
+        console.log(`🌐 Web UI: http://localhost:${PORT}`);
+        console.log(`💾 Backup API: http://localhost:${PORT}/api/backup`);
     }
     catch (err) {
-        console.error('Database connection error:', err);
+        console.error('❌ Database connection error:', err);
         process.exit(1);
     }
 }));

@@ -938,16 +938,22 @@
                 console.log('🔄 Caricamento operatori e admin dall\'API pubblica...');
                 
                 // Usa gli endpoint pubblici che NON richiedono autenticazione
-                const operatorsResponse = await fetch(`${API_URL}/auth/operators/public`);
-                const adminsResponse = await fetch(`${API_URL}/auth/admins/public`);
+                const operatorsResponse = await fetch(`${API_URL}/auth/operators/public`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const adminsResponse = await fetch(`${API_URL}/auth/admins/public`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
 
-                console.log('Risposta API - Operators:', operatorsResponse.status, 'Admins:', adminsResponse.status);
+                console.log('📡 Risposta API - Operators:', operatorsResponse.status, 'Admins:', adminsResponse.status);
 
                 if (operatorsResponse.ok && adminsResponse.ok) {
                     const operators = await operatorsResponse.json();
                     const admins = await adminsResponse.json();
-                    console.log('📋 Operatori ricevuti:', operators);
-                    console.log('📋 Admin ricevuti:', admins);
+                    console.log('📋 Operatori ricevuti (', operators.length, '):', operators);
+                    console.log('📋 Admin ricevuti (', admins.length, '):', admins);
                     // Ordina admin alfabeticamente
                     const sortedAdmins = admins.sort((a, b) => a.username.localeCompare(b.username));
                     // Ordina operatori alfabeticamente
@@ -956,25 +962,22 @@
                     allOperators = [...sortedAdmins, ...sortedOperators];
                     // Salva in cache
                     localStorage.setItem('cachedOperators', JSON.stringify(allOperators));
-                    console.log('✅ Operatori e Admin caricati dall\'API pubblica:', allOperators);
+                    console.log('✅ Operatori e Admin caricati dall\'API pubblica. Totale:', allOperators.length);
                 } else {
                     console.warn('⚠️ Errore API (' + operatorsResponse.status + ', ' + adminsResponse.status + ') - usa default');
-                    allOperators = [
-                        { id: 1, username: 'Admin Mario', role: 'master' },
-                        { id: 2, username: 'Admin Lucia', role: 'master' },
-                        { id: 3, username: 'Operatore Paolo', role: 'operator' },
-                        { id: 4, username: 'Operatore Sara', role: 'operator' }
-                    ];
+                    throw new Error(`API Error: ${operatorsResponse.status}, ${adminsResponse.status}`);
                 }
             } catch (error) {
                 console.error('❌ Errore caricamento operatori:', error);
-                console.warn('Usa operatori di default');
+                console.warn('⚠️ Usa operatori di DEFAULT dal server');
+                // Fallback a operatori di default dal server (creati automaticamente all'init)
                 allOperators = [
                     { id: 1, username: 'Admin Mario', role: 'master' },
                     { id: 2, username: 'Admin Lucia', role: 'master' },
-                    { id: 3, username: 'Operatore Paolo', role: 'operator' },
-                    { id: 4, username: 'Operatore Sara', role: 'operator' }
+                    { id: 3, username: 'Operatore Paolo', role: 'slave' },
+                    { id: 4, username: 'Operatore Sara', role: 'slave' }
                 ];
+                console.log('📌 Operatori di fallback caricati:', allOperators);
             }
         }
 

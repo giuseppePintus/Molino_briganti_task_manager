@@ -35,7 +35,6 @@ COPY --from=builder /app/client/node_modules ./client/node_modules
 # Copia il codice compilato
 COPY --from=builder /app/server/dist ./server/dist
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/server/.env ./server/.env
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/server/package.json ./server/package.json
 COPY --from=builder /app/server/prisma ./server/prisma
@@ -43,11 +42,15 @@ COPY --from=builder /app/server/prisma ./server/prisma
 # Copia script di startup
 COPY --from=builder /app/server/prisma/seed.ts ./server/prisma/
 
+# Copia .env per Docker
+COPY .env.docker ./server/.env
+
 # Esponi porta
 EXPOSE 5000
 
-# Crea cartelle necessarie
-RUN mkdir -p /app/backups /mnt/nas/backups /app/server/prisma/data
+# Crea cartelle necessarie con permessi corretti
+RUN mkdir -p /app/backups /mnt/nas/backups /app/server/prisma/data && \
+    chmod -R 755 /app/backups /mnt/nas/backups /app/server/prisma/data
 
 # Volume per backups locali e NAS
 VOLUME ["/app/backups", "/mnt/nas/backups"]
