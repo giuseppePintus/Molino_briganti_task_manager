@@ -33,8 +33,18 @@ export class BackupService {
       const backupName = `db-backup-${timestamp}.sql`;
       const backupPath = path.join(this.backupDir, backupName);
 
-      // Se usi SQLite (default Prisma)
-      const dbPath = path.join(process.cwd(), 'prisma', 'dev.db');
+      // Leggi il percorso del database dal .env (DATABASE_URL)
+      const databaseUrl = process.env.DATABASE_URL || 'file:./prisma/data/tasks.db';
+      // Estrai il percorso del file da "file:./path/to/db"
+      let dbPath = databaseUrl.replace('file:', '');
+      
+      // Se il percorso è relativo, risolvi rispetto alla root del server (/app/server in Docker o server/ in locale)
+      if (!path.isAbsolute(dbPath)) {
+        // In Docker: process.cwd() = /app/server, dbPath = ./prisma/data/tasks.db → /app/server/prisma/data/tasks.db
+        // In localhost: process.cwd() = .../task-manager-app/server, dbPath relativo
+        dbPath = path.join(process.cwd(), dbPath);
+      }
+      
       if (fs.existsSync(dbPath)) {
         fs.copyFileSync(dbPath, backupPath);
         console.log(`✅ Database backed up: ${backupPath}`);
