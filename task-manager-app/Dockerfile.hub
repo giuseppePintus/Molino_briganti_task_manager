@@ -1,0 +1,29 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Clone repository
+RUN git clone https://github.com/giuseppePintus/Molino_briganti_task_manager.git . && \
+    cd task-manager-app && \
+    npm install && \
+    npm run prisma:generate && \
+    npm run build
+
+# Create persistent directories
+RUN mkdir -p /app/data /app/backups && \
+    chmod 777 /app/data /app/backups
+
+# Set environment variables for persistent storage
+ENV DATABASE_URL="file:/app/data/prisma.db"
+ENV BACKUP_DIR="/app/backups"
+ENV NODE_ENV="production"
+
+EXPOSE 5000
+
+WORKDIR /app/task-manager-app
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:5000', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
+
+CMD ["npm", "start"]

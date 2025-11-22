@@ -819,46 +819,13 @@
                     <label for="orderNotes">Note:</label>
                     <textarea id="orderNotes" rows="3" placeholder="Note aggiuntive..."></textarea>
                 </div>
-                <!-- Sezione: Assegna a Viaggio o Operatore -->
-                <div id="assignmentSection" class="section" style="border-top:1px solid #4d4d4d;margin-top:10px;padding-top:10px;">
-                    <div class="form-group">
-                        <label for="assignToTrip">📋 Assegna a Viaggio Esistente:</label>
-                        <select id="assignToTrip">
-                            <option value="">-- Nessuno (crea viaggio nuovo) --</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="assignToOperator">👤 Assegna a Operatore:</label>
-                        <select id="assignToOperator">
-                            <option value="">-- Non assegnato --</option>
-                        </select>
-                    </div>
+                <div class="form-group">
+                    <label for="assignToOperator">👤 Assegna a Operatore:</label>
+                    <select id="assignToOperator">
+                        <option value="">-- Non assegnato --</option>
+                    </select>
                 </div>
-                <!-- Opzioni per consegna: crea viaggio e assegna task -->
-                <div id="deliveryTripOptions" class="section" style="display:none;border-top:1px solid #4d4d4d;margin-top:10px;padding-top:10px;">
-                    <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-                        <input type="checkbox" id="createTripNow"> Crea subito un viaggio e il relativo task
-                    </label>
-                    <div id="tripFields" style="display:none;">
-                        <div class="form-row" style="grid-template-columns:1fr 160px;">
-                            <div class="form-group">
-                                <label for="tripNameInline">Nome Viaggio</label>
-                                <input type="text" id="tripNameInline" placeholder="Es: Consegne del ...">
-                            </div>
-                            <div class="form-group">
-                                <label for="tripDateInline">Data Viaggio</label>
-                                <input type="date" id="tripDateInline">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="tripOperatorInline">Assegna a Operatore (opzionale)</label>
-                            <select id="tripOperatorInline">
-                                <option value="">-- Non assegnato --</option>
-                            </select>
-                        </div>
-                        <div style="font-size:12px;color:#a0a0a0;">Se selezioni un operatore, il task del viaggio verrà assegnato direttamente.</div>
-                    </div>
-                </div>
+
                 <div class="modal-actions">
                     <button type="submit" class="btn btn-primary">💾 Salva</button>
                     <button type="button" class="btn btn-secondary" onclick="closeOrderModal()">❌ Annulla</button>
@@ -1799,21 +1766,11 @@
             document.getElementById('orderModal').classList.add('active');
             document.getElementById('orderForm').reset();
 
-            // Reset e nascondi sezione viaggio inline
-            const tripOpts = document.getElementById('deliveryTripOptions');
-            const tripFields = document.getElementById('tripFields');
-            const createNowCb = document.getElementById('createTripNow');
-            const tripNameInline = document.getElementById('tripNameInline');
-            const tripDateInline = document.getElementById('tripDateInline');
-            const tripOpSelect = document.getElementById('tripOperatorInline');
-            if (tripOpSelect) {
-                tripOpSelect.innerHTML = '<option value="">-- Non assegnato --</option>' +
+            // Popola dropdown operatori
+            const assignToOperator = document.getElementById('assignToOperator');
+            if (assignToOperator) {
+                assignToOperator.innerHTML = '<option value="">-- Non assegnato --</option>' +
                     allOperators.map(op => `<option value="${op.id}">${op.username}</option>`).join('');
-            }
-            if (tripOpts && tripFields && createNowCb) {
-                tripOpts.style.display = 'none';
-                tripFields.style.display = 'none';
-                createNowCb.checked = false;
             }
 
             // Aggancia validazione data/ora contro festivi e orari consegna
@@ -1830,40 +1787,6 @@
                         dt.value = newVal;
                         alert('ℹ️ Data/ora adeguata ai giorni/orari di consegna');
                     }
-                };
-            }
-
-            // Mostra opzioni viaggio se tipo = consegnato
-            const typeSel = document.getElementById('orderType');
-            if (typeSel) {
-                const toggleTripSection = () => {
-                    if (!tripOpts) return;
-                    if (typeSel.value === 'consegnato') {
-                        tripOpts.style.display = '';
-                        // Precompila nome e data viaggio in base alla data ordine
-                        const dtVal = document.getElementById('orderDateTime').value;
-                        if (dtVal && tripDateInline) {
-                            const dateOnly = dtVal.split('T')[0];
-                            tripDateInline.value = dateOnly;
-                        }
-                        if (tripNameInline) {
-                            const when = tripDateInline && tripDateInline.value ? new Date(tripDateInline.value + 'T00:00:00').toLocaleDateString('it-IT') : 'oggi';
-                            tripNameInline.value = `Consegne ${when}`;
-                        }
-                    } else {
-                        tripOpts.style.display = 'none';
-                        if (createNowCb) createNowCb.checked = false;
-                        if (tripFields) tripFields.style.display = 'none';
-                    }
-                };
-                typeSel.onchange = toggleTripSection;
-                toggleTripSection();
-            }
-
-            // Mostra/nascondi campi viaggio se spunta la checkbox
-            if (createNowCb && tripFields) {
-                createNowCb.onchange = () => {
-                    tripFields.style.display = createNowCb.checked ? '' : 'none';
                 };
             }
         }
@@ -1897,31 +1820,15 @@
             document.getElementById('orderDateTime').value = order.dateTime;
             document.getElementById('orderNotes').value = order.notes || '';
 
-            // Popola dropdown viaggio
-            const assignToTrip = document.getElementById('assignToTrip');
-            assignToTrip.innerHTML = '<option value="">-- Nessuno (crea viaggio nuovo) --</option>';
-            if (typeof trips !== 'undefined' && trips && trips.length > 0) {
-                assignToTrip.innerHTML += trips.map(t => `<option value="${t.id}">${t.name} (${t.date})</option>`).join('');
-            }
-            // Imposta il viaggio associato se esiste
-            if (typeof trips !== 'undefined' && trips) {
-                const tripForOrder = trips.find(t => t.orders && t.orders.includes(orderId));
-                if (tripForOrder) {
-                    assignToTrip.value = tripForOrder.id;
-                } else if (order.assignedTrip) {
-                    assignToTrip.value = order.assignedTrip;
-                }
-            }
-
             // Popola dropdown operatori
             const assignToOperator = document.getElementById('assignToOperator');
-            assignToOperator.innerHTML = '<option value="">-- Non assegnato --</option>';
-            if (typeof allOperators !== 'undefined' && allOperators && allOperators.length > 0) {
-                assignToOperator.innerHTML += allOperators.map(op => `<option value="${op.id}">${op.name || op.username}</option>`).join('');
-            }
-            // Imposta l'operatore associato se esiste
-            if (order.assignedOperatorId) {
-                assignToOperator.value = order.assignedOperatorId;
+            if (assignToOperator) {
+                assignToOperator.innerHTML = '<option value="">-- Non assegnato --</option>' +
+                    allOperators.map(op => `<option value="${op.id}">${op.username}</option>`).join('');
+                // Imposta l'operatore associato se esiste
+                if (order.assignedOperatorId) {
+                    assignToOperator.value = order.assignedOperatorId;
+                }
             }
 
             updateClientInfo();

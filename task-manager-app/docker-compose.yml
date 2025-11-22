@@ -14,8 +14,8 @@ services:
       - PORT=5000
       - NODE_ENV=production
       
-      # Database
-      - DATABASE_URL=file:/app/server/prisma/data/tasks.db
+      # Database - PERCORSO PERSISTENTE SUL NAS
+      - DATABASE_URL=file:/data/molino/tasks.db
       
       # JWT
       - JWT_SECRET=${JWT_SECRET:-your-secret-key-change-this}
@@ -24,28 +24,22 @@ services:
       - DEFAULT_MASTER_USER=master
       - DEFAULT_MASTER_PASS=masterpass
       
-      # Backup
-      - BACKUP_DIR=/app/backups
-      - NAS_URL=${NAS_URL:-192.168.1.100}
-      - NAS_PORT=${NAS_PORT:-5000}
-      - NAS_PATH=/mnt/nas/backups
+      # Backup - PERCORSI PERSISTENTI SUL NAS
+      - BACKUP_DIR=/data/molino/backups
+      - NAS_URL=${NAS_URL:-localhost}
+      - NAS_PORT=${NAS_PORT:-5001}
+      - NAS_PATH=/data/molino/backups
     
     volumes:
-      # Backups locali
-      - backup_data:/app/backups
+      # Database e backups su directory persistente del NAS
+      # Cambia /mnt/molino con il percorso effettivo sul tuo NAS
+      - /mnt/molino/data:/data/molino:rw
       
-      # Database persistente
-      - db_data:/app/server/prisma/data
-      
-      # Mount NAS (commentare se non disponibile)
-      # - type: volume
-      #   source: nas_backup
-      #   target: /mnt/nas/backups
-      #   volume:
-      #     nocopy: true
+      # Server Prisma schema
+      - ./server/prisma:/app/server/prisma:ro
     
     depends_on:
-      - nas-server
+      - nas-backup-server
     
     restart: unless-stopped
     
@@ -65,65 +59,101 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  # Servizio NAS locale per backup (opzionale, per testing)
-  nas-server:
+  # Servizio NAS backup - espone API per backup remoti
+  nas-backup-server:
     image: node:18-alpine
-    container_name: molino-nas-server
+    container_name: molino-nas-backup-server
     working_dir: /app
     command: >
-      sh -c "npm install express cors && 
+      sh -c "npm install express cors multer && 
              node -e \"
              const express = require('express');
              const cors = require('cors');
              const fs = require('fs');
              const path = require('path');
              const app = express();
+             
              app.use(cors());
-             app.use(express.raw({ type: 'application/octet-stream', limit: '100mb' }));
-             const backupDir = '/backups';
+             app.use(express.raw({ type: 'application/octet-stream', limit: '1gb' }));
+             
+             const backupDir = '/data/molino/backups';
              if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
              
              app.get('/api/backup/list', (req, res) => {
-               const files = fs.readdirSync(backupDir).filter(f => f.startsWith('db-backup-')).sort().reverse();
-               res.json({ files });
+               try {
+                 const files = fs.readdirSync(backupDir)
+                   .filter(f => f.startsWith('db-backup-') && f.endsWith('.sql'))
+                   .sort()
+                   .reverse()
+                   .slice(0, 20);
+                 res.json({ success: true, files });
+               } catch (err) {
+                 res.status(500).json({ error: err.message });
+               }
              });
              
              app.post('/api/backup/upload', (req, res) => {
                const name = req.headers['x-backup-name'];
-               if (!name) return res.status(400).json({ error: 'Missing name' });
-               fs.writeFileSync(path.join(backupDir, name), req.body);
-               res.json({ success: true });
+               if (!name) return res.status(400).json({ error: 'Missing X-Backup-Name header' });
+               try {
+                 fs.writeFileSync(path.join(backupDir, name), req.body);
+                 console.log('✅ Backup received:', name);
+                 res.json({ success: true, message: 'Backup uploaded successfully' });
+               } catch (err) {
+                 console.error('❌ Upload error:', err.message);
+                 res.status(500).json({ error: err.message });
+               }
              });
              
              app.get('/api/backup/download/:name', (req, res) => {
-               const file = path.join(backupDir, req.params.name);
-               if (!fs.existsSync(file)) return res.status(404).json({ error: 'Not found' });
+               const name = req.params.name;
+               // Previeni path traversal
+               if (name.includes('..') || name.includes('/')) {
+                 return res.status(400).json({ error: 'Invalid filename' });
+               }
+               const file = path.join(backupDir, name);
+               if (!fs.existsSync(file)) {
+                 return res.status(404).json({ error: 'Backup not found' });
+               }
                res.download(file);
              });
              
-             app.listen(5000, () => console.log('NAS Server on :5000'));
+             app.get('/api/backup/status', (req, res) => {
+               try {
+                 const files = fs.readdirSync(backupDir).filter(f => f.startsWith('db-backup-'));
+                 const stats = fs.statSync(backupDir);
+                 res.json({
+                   success: true,
+                   backupsCount: files.length,
+                   backupDir: backupDir,
+                   latestBackup: files.sort().reverse()[0] || null,
+                   timestamp: new Date().toISOString()
+                 });
+               } catch (err) {
+                 res.status(500).json({ error: err.message });
+               }
+             });
+             
+             app.listen(5000, () => {
+               console.log('✅ NAS Backup Server running on port 5000');
+               console.log('📁 Backup directory:', backupDir);
+             });
              \"
              "
     ports:
       - "5001:5000"
     volumes:
-      - backup_data:/backups
+      # Directory persistente del NAS - STESSO PERCORSO DEL CONTAINER PRINCIPALE
+      - /mnt/molino/data:/data/molino:rw
     networks:
       - molino-network
     restart: unless-stopped
-
-volumes:
-  backup_data:
-    driver: local
-  db_data:
-    driver: local
-  # NAS mount (uncomment e configurare per NAS reale)
-  # nas_backup:
-  #   driver: local
-  #   driver_opts:
-  #     type: nfs
-  #     o: addr=192.168.1.100,vers=4,soft,timeo=180,bg,tcp
-  #     device: ":/backups"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5000/api/backup/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
 networks:
   molino-network:
