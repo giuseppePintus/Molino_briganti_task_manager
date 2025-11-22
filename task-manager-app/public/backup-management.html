@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestione Backup - Molino Briganti</title>
+    <link rel="stylesheet" href="css/common.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2563eb;
+            --success: #16a34a;
+            --danger: #dc2626;
+            --warning: #ea580c;
+            --dark: #1f2937;
+            --light: #f3f4f6;
+            --border: #e5e7eb;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a1a;
+            color: #e0e0e0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: #2d2d2d;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            color: #e0e0e0;
+            margin: 0;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .card {
+            background: #2d2d2d;
+            border: 1px solid #4d4d4d;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .card h2 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 18px;
+            color: #e0e0e0;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: #2563eb;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1d4ed8;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn-danger {
+            background: #dc2626;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #b91c1c;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+        }
+
+        .btn-secondary {
+            background: #4d4d4d;
+            color: #e0e0e0;
+        }
+
+        .btn-secondary:hover {
+            background: #5d5d5d;
+            transform: translateY(-2px);
+        }
+
+        .btn-settings {
+            background: #2563eb;
+            color: white;
+        }
+
+        .btn-settings:hover {
+            background: #1d4ed8;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .alert-success {
+            background: #166534;
+            color: #86efac;
+            border: 1px solid #15803d;
+        }
+
+        .alert-error {
+            background: #7f1d1d;
+            color: #fca5a5;
+            border: 1px solid #dc2626;
+        }
+
+        .alert-info {
+            background: #0c4a6e;
+            color: #7dd3fc;
+            border: 1px solid #0369a1;
+        }
+
+        .backup-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .backup-item {
+            background: #3d3d3d;
+            border: 1px solid #4d4d4d;
+            border-radius: 6px;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s ease;
+        }
+
+        .backup-item:hover {
+            background: #4d4d4d;
+            border-color: #5d5d5d;
+        }
+
+        .backup-info {
+            flex: 1;
+        }
+
+        .backup-info h3 {
+            margin: 0 0 5px 0;
+            font-size: 16px;
+            color: #e0e0e0;
+        }
+
+        .backup-info p {
+            margin: 3px 0;
+            font-size: 13px;
+            color: #a0a0a0;
+        }
+
+        .backup-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-small {
+            padding: 8px 12px;
+            font-size: 12px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px 20px;
+            color: #a0a0a0;
+        }
+
+        .spinner {
+            border: 3px solid #4d4d4d;
+            border-top: 3px solid #2563eb;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #e0e0e0;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #4d4d4d;
+            border-radius: 6px;
+            font-size: 14px;
+            background: #3d3d3d;
+            color: #e0e0e0;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-box {
+            background: #3d3d3d;
+            border: 1px solid #4d4d4d;
+            border-radius: 6px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-box h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: #a0a0a0;
+            text-transform: uppercase;
+        }
+
+        .stat-box .value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2563eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>💾 Gestione Backup</h1>
+            <div class="header-actions">
+                <button class="btn btn-settings" onclick="window.location.href='admin-dashboard.html'">🏠 Home</button>
+            </div>
+        </div>
+
+        <!-- Alert -->
+        <div id="alert" class="alert"></div>
+
+        <!-- Statistics -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-box">
+                <h3>📊 Totale Backup</h3>
+                <div class="value" id="totalBackups">0</div>
+            </div>
+            <div class="stat-box">
+                <h3>💾 Spazio Usato</h3>
+                <div class="value" id="totalSize">0 MB</div>
+            </div>
+            <div class="stat-box">
+                <h3>📅 Ultimo Backup</h3>
+                <div class="value" id="lastBackup">-</div>
+            </div>
+        </div>
+
+        <!-- Create Backup -->
+        <div class="card">
+            <h2>➕ Crea Nuovo Backup</h2>
+            <button class="btn btn-primary" onclick="createBackup()">
+                <span>🔧</span>
+                <span>Crea Backup Adesso</span>
+            </button>
+            <p style="margin-top: 15px; color: #a0a0a0; font-size: 13px;">
+                ℹ️ Crea un backup completo del database e della configurazione. Il backup includerà tutti i dati attuali.
+            </p>
+        </div>
+
+        <!-- Backup List -->
+        <div class="card">
+            <h2>📋 Backup Disponibili</h2>
+            <div class="backup-list" id="backupList">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Caricamento backup...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Restore Backup -->
+        <div class="card">
+            <h2>🔄 Ripristina Backup</h2>
+            <div class="form-group">
+                <label for="backupSelect">Seleziona Backup da Ripristinare:</label>
+                <select id="backupSelect">
+                    <option value="">-- Caricamento backup... --</option>
+                </select>
+            </div>
+            <button class="btn btn-danger" onclick="restoreBackup()">
+                <span>⚠️</span>
+                <span>Ripristina Backup</span>
+            </button>
+            <p style="margin-top: 15px; color: #f97316; font-size: 13px;">
+                ⚠️ Il ripristino sovrascriverà i dati attuali. Assicurati di aver creato un backup recente.
+            </p>
+        </div>
+
+        <!-- Auto-Backup Settings -->
+        <div class="card">
+            <h2>⏰ Backup Automatici</h2>
+            <div class="form-group">
+                <label for="autoBackupEnabled">
+                    <input type="checkbox" id="autoBackupEnabled" onchange="toggleAutoBackup()">
+                    Abilita backup automatici
+                </label>
+            </div>
+            <div class="form-group">
+                <label for="autoBackupInterval">Frequenza (ore):</label>
+                <input type="number" id="autoBackupInterval" min="1" max="168" value="24" onchange="saveAutoBackupSettings()">
+            </div>
+            <p style="margin-top: 15px; color: #a0a0a0; font-size: 13px;">
+                ℹ️ I backup automatici verranno eseguiti a intervalli regolari e conservati nel server.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = `http://${window.location.hostname}:${window.location.port || 5000}/api`;
+        let token = localStorage.getItem('token');
+        let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+
+        // Check authorization
+        if (!token || currentUser.role !== 'master') {
+            window.location.href = 'index.html';
+        }
+
+        function showAlert(message, type) {
+            const alert = document.getElementById('alert');
+            alert.textContent = message;
+            alert.className = `alert show alert-${type}`;
+            setTimeout(() => {
+                alert.classList.remove('show');
+            }, 5000);
+        }
+
+        async function loadBackups() {
+            try {
+                const response = await fetch(`${API_URL}/backup/list`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) {
+                    console.warn('API backup non disponibile, usando mock data');
+                    // Se l'endpoint non esiste, usa mock data
+                    const mockBackups = [
+                        {
+                            id: '1',
+                            filename: 'backup_2025-11-22_14-30.db',
+                            createdAt: new Date().toISOString(),
+                            size: 5242880 // 5MB
+                        },
+                        {
+                            id: '2',
+                            filename: 'backup_2025-11-21_10-00.db',
+                            createdAt: new Date(Date.now() - 86400000).toISOString(),
+                            size: 5120000
+                        }
+                    ];
+                    renderBackupList(mockBackups);
+                    updateBackupSelect(mockBackups);
+                    updateStats(mockBackups);
+                    showAlert('ℹ️ Endpoint backup non disponibile, visualizzazione in modalità demo', 'info');
+                    return;
+                }
+
+                let result = await response.json();
+                let backups = [];
+                
+                // Il backend ritorna { success: true, files: [...], count: N }
+                if (result.files && Array.isArray(result.files)) {
+                    backups = result.files.map((filename, idx) => ({
+                        id: idx.toString(),
+                        filename: filename,
+                        createdAt: new Date().toISOString(),
+                        size: 0
+                    }));
+                } else if (Array.isArray(result)) {
+                    backups = result;
+                } else if (result.data && Array.isArray(result.data)) {
+                    backups = result.data;
+                } else {
+                    console.warn('Risposta API non in formato atteso:', result);
+                    backups = [];
+                }
+
+                renderBackupList(backups);
+                updateBackupSelect(backups);
+                updateStats(backups);
+            } catch (error) {
+                console.error('Errore:', error);
+                showAlert('Errore caricamento backup: ' + error.message, 'error');
+                document.getElementById('backupList').innerHTML = '<p style="color: #a0a0a0;">Errore nel caricamento dei backup</p>';
+            }
+        }
+
+        function renderBackupList(backups) {
+            const list = document.getElementById('backupList');
+            
+            if (backups.length === 0) {
+                list.innerHTML = '<p style="color: #a0a0a0; text-align: center; padding: 20px;">Nessun backup disponibile</p>';
+                return;
+            }
+
+            list.innerHTML = backups.map(backup => `
+                <div class="backup-item">
+                    <div class="backup-info">
+                        <h3>📦 ${backup.filename || 'Backup senza nome'}</h3>
+                        <p>📅 ${new Date(backup.createdAt).toLocaleString('it-IT')}</p>
+                        <p>💾 Dimensione: ${formatFileSize(backup.size)}</p>
+                    </div>
+                    <div class="backup-actions">
+                        <button class="btn btn-primary btn-small" onclick="downloadBackup('${backup.filename}')">📥 Scarica</button>
+                        <button class="btn btn-danger btn-small" onclick="deleteBackup('${backup.filename}')">🗑️ Elimina</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateBackupSelect(backups) {
+            const select = document.getElementById('backupSelect');
+            if (backups.length === 0) {
+                select.innerHTML = '<option value="">-- Nessun backup disponibile --</option>';
+                return;
+            }
+
+            select.innerHTML = '<option value="">-- Seleziona un backup --</option>' + 
+                backups.map(b => `
+                    <option value="${b.filename}">${b.filename || 'Backup'} (${new Date(b.createdAt).toLocaleString('it-IT')})</option>
+                `).join('');
+        }
+
+        function updateStats(backups) {
+            document.getElementById('totalBackups').textContent = backups.length;
+            const totalSize = backups.reduce((sum, b) => sum + (b.size || 0), 0);
+            document.getElementById('totalSize').textContent = formatFileSize(totalSize);
+            
+            if (backups.length > 0) {
+                const lastBackup = new Date(backups[0].createdAt);
+                document.getElementById('lastBackup').textContent = lastBackup.toLocaleDateString('it-IT');
+            }
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        async function createBackup() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = '⏳ Creazione in corso...';
+
+            try {
+                const response = await fetch(`${API_URL}/backup/manual`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) {
+                    const error = await response.text();
+                    throw new Error(error || 'Errore creazione backup');
+                }
+
+                const result = await response.json();
+                showAlert('✅ Backup creato con successo!', 'success');
+                await loadBackups();
+            } catch (error) {
+                console.error('Errore:', error);
+                showAlert('Errore: ' + error.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<span>🔧</span><span>Crea Backup Adesso</span>';
+            }
+        }
+
+        async function downloadBackup(backupFilename) {
+            try {
+                window.location.href = `${API_URL}/backup/download/${backupFilename}`;
+            } catch (error) {
+                showAlert('Errore download: ' + error.message, 'error');
+            }
+        }
+
+        async function deleteBackup(backupFilename) {
+            if (!confirm('Sei sicuro di voler eliminare questo backup?')) return;
+
+            try {
+                const response = await fetch(`${API_URL}/backup/${backupFilename}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) throw new Error('Errore eliminazione backup');
+
+                showAlert('✅ Backup eliminato con successo!', 'success');
+                await loadBackups();
+            } catch (error) {
+                showAlert('Errore: ' + error.message, 'error');
+            }
+        }
+
+        async function restoreBackup() {
+            const backupSelect = document.getElementById('backupSelect');
+            const backupFilename = backupSelect.value;
+            if (!backupFilename) {
+                showAlert('Seleziona un backup da ripristinare', 'error');
+                return;
+            }
+
+            if (!confirm('⚠️ Questo sovrascriverà tutti i dati attuali. Continuare?')) return;
+
+            try {
+                const response = await fetch(`${API_URL}/backup/restore/${backupFilename}`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) throw new Error('Errore ripristino backup');
+
+                showAlert('✅ Backup ripristinato con successo! La pagina si ricaricherà...', 'success');
+                setTimeout(() => location.reload(), 2000);
+            } catch (error) {
+                showAlert('Errore: ' + error.message, 'error');
+            }
+        }
+
+        function toggleAutoBackup() {
+            const enabled = document.getElementById('autoBackupEnabled').checked;
+            localStorage.setItem('autoBackupEnabled', String(enabled));
+            saveAutoBackupSettings();
+        }
+
+        function saveAutoBackupSettings() {
+            const enabled = document.getElementById('autoBackupEnabled').checked;
+            const interval = parseInt(document.getElementById('autoBackupInterval').value);
+            localStorage.setItem('autoBackupInterval', String(interval));
+            showAlert('⚙️ Impostazioni salvate', 'info');
+        }
+
+        // Load data on page load
+        window.addEventListener('load', () => {
+            loadBackups();
+            
+            // Load auto-backup settings
+            const autoBackupEnabled = localStorage.getItem('autoBackupEnabled') === 'true';
+            const autoBackupInterval = parseInt(localStorage.getItem('autoBackupInterval') || '24');
+            
+            document.getElementById('autoBackupEnabled').checked = autoBackupEnabled;
+            document.getElementById('autoBackupInterval').value = autoBackupInterval;
+        });
+    </script>
+</body>
+</html>

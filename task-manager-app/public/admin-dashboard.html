@@ -211,6 +211,29 @@
             left: 100%;
         }
 
+        /* Admin Menu Dropdown */
+        .admin-menu-dropdown {
+            background: #2d2d2d;
+            border: 1px solid #4d4d4d;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+            z-index: 1001 !important;
+        }
+
+        .admin-menu-item {
+            transition: all 0.2s ease;
+        }
+
+        .admin-menu-item:hover {
+            background: #3d3d3d !important;
+            border-left: 3px solid #2563eb;
+            padding-left: 12px !important;
+        }
+
+        .admin-menu-item:last-child:hover {
+            border-bottom: 1px solid #3d3d3d;
+        }
+
         /* TASKS - Verde con riflessione luminosa */
         .btn-tasks {
             background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
@@ -1349,9 +1372,24 @@
 
         <!-- Quick Actions -->
         <div class="quick-actions">
-            <button class="btn btn-settings" data-icon="🏢" onclick="window.location.href='company-settings.html'"><span>Impostazioni Azienda</span></button>
+            <div class="dropdown-menu-admin" style="position: relative; display: inline-block;">
+                <button class="btn btn-settings" data-icon="⚙️" onclick="toggleAdminMenu()" style="position: relative;"><span>Gestione</span></button>
+                <div id="adminMenuDropdown" class="admin-menu-dropdown" style="display: none; position: absolute; top: 100%; left: 0; background: #2d2d2d; border: 1px solid #4d4d4d; border-radius: 6px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); min-width: 220px; z-index: 1000; margin-top: 5px;">
+                    <button class="admin-menu-item" onclick="window.location.href='company-settings.html'; toggleAdminMenu();" style="display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 15px; border: none; background: transparent; color: #e0e0e0; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s; border-bottom: 1px solid #3d3d3d;">
+                        <span style="font-size: 16px;">🏢</span>
+                        <span>Impostazioni Azienda</span>
+                    </button>
+                    <button class="admin-menu-item" onclick="window.location.href='operators.html'; toggleAdminMenu();" style="display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 15px; border: none; background: transparent; color: #e0e0e0; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s; border-bottom: 1px solid #3d3d3d;">
+                        <span style="font-size: 16px;">👥</span>
+                        <span>Gestione Admin / Operatori</span>
+                    </button>
+                    <button class="admin-menu-item" onclick="window.location.href='backup-management.html'; toggleAdminMenu();" style="display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 15px; border: none; background: transparent; color: #e0e0e0; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
+                        <span style="font-size: 16px;">💾</span>
+                        <span>Gestione Backup</span>
+                    </button>
+                </div>
+            </div>
             <button class="btn btn-tasks" data-icon="📝🔄" onclick="openCreateTaskOrRecurrenceModal()"><span>Gestione Task / Ricorrenze</span></button>
-            <button class="btn btn-operators btn-small-mobile" data-icon="👥" onclick="window.location.href='operators.html'"><span>Gestione Admin / Operatori</span></button>
             <button class="btn btn-customers btn-small-mobile" data-icon="👨‍💼" onclick="window.location.href='customers-management.html'"><span>Gestione Clienti</span></button>
             <button class="btn btn-planner" data-icon="📦" onclick="window.location.href='orders-planner.html'"><span>Planner Ordini</span></button>
         </div>
@@ -1481,6 +1519,27 @@
             });
             return totals;
         }
+
+        // Toggle menu dropdown Gestione (Impostazioni Azienda + Operatori)
+        function toggleAdminMenu() {
+            const dropdown = document.getElementById('adminMenuDropdown');
+            if (!dropdown) return;
+            
+            if (dropdown.style.display === 'none') {
+                dropdown.style.display = 'block';
+            } else {
+                dropdown.style.display = 'none';
+            }
+        }
+
+        // Chiudi il menu quando si clicca fuori
+        document.addEventListener('click', (event) => {
+            const dropdown = document.getElementById('adminMenuDropdown');
+            const gestButton = event.target.closest('.dropdown-menu-admin');
+            if (dropdown && !gestButton) {
+                dropdown.style.display = 'none';
+            }
+        });
 
         // Check authorization
         window.addEventListener('load', () => {
