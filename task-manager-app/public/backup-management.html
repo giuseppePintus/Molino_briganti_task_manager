@@ -370,6 +370,56 @@
                 ℹ️ I backup automatici verranno eseguiti a intervalli regolari e conservati nel server.
             </p>
         </div>
+
+        <!-- Backup Path Settings -->
+        <div class="card">
+            <h2>📁 Percorsi Backup</h2>
+            <div class="form-group">
+                <label for="localBackupPath">Percorso Backup Locale:</label>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="localBackupPath" placeholder="es. /backups/local o C:\Backups" style="flex: 1;">
+                    <button class="btn btn-secondary" onclick="saveBackupPath('local')" style="padding: 10px 15px;">💾 Salva</button>
+                </div>
+                <p style="margin-top: 8px; color: #a0a0a0; font-size: 12px;">
+                    Percorso dove vengono salvati i backup locali sul server
+                </p>
+            </div>
+
+            <div class="form-group">
+                <label for="nasBackupPath">Percorso Backup NAS/Remoto:</label>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="nasBackupPath" placeholder="es. \\192.168.1.100\backups o /mnt/nas/backups" style="flex: 1;">
+                    <button class="btn btn-secondary" onclick="saveBackupPath('nas')" style="padding: 10px 15px;">💾 Salva</button>
+                </div>
+                <p style="margin-top: 8px; color: #a0a0a0; font-size: 12px;">
+                    Percorso del NAS o server remoto per backup aggiuntivi
+                </p>
+            </div>
+
+            <div class="form-group">
+                <label for="cloudBackupPath">Percorso Cloud/Backup Esterno:</label>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="cloudBackupPath" placeholder="es. s3://bucket/backups oppure API URL" style="flex: 1;">
+                    <button class="btn btn-secondary" onclick="saveBackupPath('cloud')" style="padding: 10px 15px;">💾 Salva</button>
+                </div>
+                <p style="margin-top: 8px; color: #a0a0a0; font-size: 12px;">
+                    Percorso cloud o URL API per backup nel cloud
+                </p>
+            </div>
+
+            <div style="margin-top: 15px; padding: 15px; background: #3d3d3d; border-radius: 6px; border-left: 3px solid #2563eb;">
+                <h4 style="margin-top: 0; color: #e0e0e0;">📍 Configurazione Attuale</h4>
+                <p style="margin: 8px 0; font-size: 13px; color: #a0a0a0;">
+                    <strong>Locale:</strong> <code id="currentLocalPath" style="background: #2d2d2d; padding: 4px 8px; border-radius: 3px; color: #7dd3fc;">./backups</code>
+                </p>
+                <p style="margin: 8px 0; font-size: 13px; color: #a0a0a0;">
+                    <strong>NAS:</strong> <code id="currentNasPath" style="background: #2d2d2d; padding: 4px 8px; border-radius: 3px; color: #7dd3fc;">Non configurato</code>
+                </p>
+                <p style="margin: 8px 0; font-size: 13px; color: #a0a0a0;">
+                    <strong>Cloud:</strong> <code id="currentCloudPath" style="background: #2d2d2d; padding: 4px 8px; border-radius: 3px; color: #7dd3fc;">Non configurato</code>
+                </p>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -598,9 +648,115 @@
             showAlert('⚙️ Impostazioni salvate', 'info');
         }
 
+        // Funzioni per gestire i percorsi dei backup
+        async function saveBackupPath(pathType) {
+            const pathMap = {
+                'local': 'localBackupPath',
+                'nas': 'nasBackupPath',
+                'cloud': 'cloudBackupPath'
+            };
+
+            const inputId = pathMap[pathType];
+            const pathValue = document.getElementById(inputId).value.trim();
+
+            if (!pathValue) {
+                showAlert('⚠️ Inserisci un percorso valido', 'error');
+                return;
+            }
+
+            try {
+                // Salva nel backend
+                const response = await fetch(`${API_URL}/backup/settings/path`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        pathType: pathType,
+                        path: pathValue
+                    })
+                });
+
+                if (!response.ok) {
+                    // Se l'endpoint non esiste, salva localmente
+                    localStorage.setItem(`backupPath_${pathType}`, pathValue);
+                    showAlert(`✅ Percorso ${pathType} salvato localmente!`, 'success');
+                    updateBackupPathDisplay();
+                    return;
+                }
+
+                const result = await response.json();
+                // Salva anche localmente come backup
+                localStorage.setItem(`backupPath_${pathType}`, pathValue);
+                showAlert(`✅ Percorso ${pathType} salvato!`, 'success');
+                updateBackupPathDisplay();
+            } catch (error) {
+                console.error('Errore:', error);
+                // Fallback: salva localmente
+                localStorage.setItem(`backupPath_${pathType}`, pathValue);
+                showAlert('✅ Percorso salvato localmente', 'success');
+                updateBackupPathDisplay();
+            }
+        }
+
+        function updateBackupPathDisplay() {
+            const localPath = localStorage.getItem('backupPath_local') || './backups';
+            const nasPath = localStorage.getItem('backupPath_nas') || 'Non configurato';
+            const cloudPath = localStorage.getItem('backupPath_cloud') || 'Non configurato';
+
+            document.getElementById('currentLocalPath').textContent = localPath;
+            document.getElementById('currentNasPath').textContent = nasPath;
+            document.getElementById('currentCloudPath').textContent = cloudPath;
+        }
+
+        function loadBackupPaths() {
+            const localPath = localStorage.getItem('backupPath_local') || './backups';
+            const nasPath = localStorage.getItem('backupPath_nas') || '';
+            const cloudPath = localStorage.getItem('backupPath_cloud') || '';
+
+            document.getElementById('localBackupPath').value = localPath;
+            document.getElementById('nasBackupPath').value = nasPath;
+            document.getElementById('cloudBackupPath').value = cloudPath;
+
+            updateBackupPathDisplay();
+        }
+
+        async function loadBackupPathsFromServer() {
+            try {
+                const response = await fetch(`${API_URL}/backup/settings/paths`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    const paths = result.paths;
+                    
+                    // Salva anche in localStorage
+                    localStorage.setItem('backupPath_local', paths.local || './backups');
+                    localStorage.setItem('backupPath_nas', paths.nas || '');
+                    localStorage.setItem('backupPath_cloud', paths.cloud || '');
+                    
+                    // Aggiorna i campi input
+                    document.getElementById('localBackupPath').value = paths.local || './backups';
+                    document.getElementById('nasBackupPath').value = paths.nas || '';
+                    document.getElementById('cloudBackupPath').value = paths.cloud || '';
+                    
+                    updateBackupPathDisplay();
+                    return;
+                }
+            } catch (error) {
+                console.warn('Endpoint server non disponibile, usando localStorage:', error);
+            }
+            
+            // Fallback: carica da localStorage
+            loadBackupPaths();
+        }
+
         // Load data on page load
         window.addEventListener('load', () => {
             loadBackups();
+            loadBackupPathsFromServer();
             
             // Load auto-backup settings
             const autoBackupEnabled = localStorage.getItem('autoBackupEnabled') === 'true';

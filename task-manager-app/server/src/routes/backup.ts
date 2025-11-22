@@ -230,4 +230,80 @@ router.get('/status', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * POST /api/backup/settings/path
+ * Salva i percorsi personalizzati per i backup
+ */
+router.post('/settings/path', async (req: Request, res: Response) => {
+  try {
+    const { pathType, path: backupPath } = req.body;
+
+    // Validazione
+    if (!pathType || !backupPath) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Missing pathType or path' 
+      });
+    }
+
+    const validPathTypes = ['local', 'nas', 'cloud'];
+    if (!validPathTypes.includes(pathType)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Invalid pathType. Must be: local, nas, or cloud' 
+      });
+    }
+
+    // Salva in environment variables o file di configurazione
+    const backupConfig = {
+      local: process.env.BACKUP_DIR_LOCAL || './backups',
+      nas: process.env.BACKUP_DIR_NAS || '',
+      cloud: process.env.BACKUP_DIR_CLOUD || ''
+    };
+
+    backupConfig[pathType as keyof typeof backupConfig] = backupPath;
+
+    // TODO: Salva in file di configurazione (config.json)
+    // Per adesso, usa le variabili di ambiente
+    if (pathType === 'local') process.env.BACKUP_DIR_LOCAL = backupPath;
+    if (pathType === 'nas') process.env.BACKUP_DIR_NAS = backupPath;
+    if (pathType === 'cloud') process.env.BACKUP_DIR_CLOUD = backupPath;
+
+    res.json({
+      success: true,
+      message: `${pathType} backup path updated successfully`,
+      config: backupConfig,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error: any) {
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+/**
+ * GET /api/backup/settings/paths
+ * Recupera i percorsi di backup configurati
+ */
+router.get('/settings/paths', async (req: Request, res: Response) => {
+  try {
+    res.json({
+      success: true,
+      paths: {
+        local: process.env.BACKUP_DIR_LOCAL || './backups',
+        nas: process.env.BACKUP_DIR_NAS || 'Not configured',
+        cloud: process.env.BACKUP_DIR_CLOUD || 'Not configured'
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error: any) {
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
 export default router;
