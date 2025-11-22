@@ -730,6 +730,21 @@
             max-height: 80vh;
             overflow-y: auto;
             box-shadow: 0 5px 50px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-content form {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .modal-content form > div:not(.modal-actions) {
+            overflow-y: auto;
+            flex: 1;
+            padding-right: 10px;
+            margin-right: -10px;
         }
 
         .form-group {
@@ -770,6 +785,9 @@
             gap: 10px;
             margin-top: 20px;
             justify-content: flex-end;
+            flex-shrink: 0;
+            border-top: 1px solid #4d4d4d;
+            padding-top: 20px;
         }
 
         .modal-actions .btn {
@@ -1350,7 +1368,7 @@
             <div id="calendarContainer" class="calendar-container">
                 <!-- Calendar will be generated here -->
             </div>
-            <div style="text-align: center; margin-top: 15px; display: flex; gap: 10px; justify-content: center; display: none;" id="toggleTasksContainer">
+            <div style="text-align: center; margin-top: 15px; gap: 10px; justify-content: center; display: none;" id="toggleTasksContainer">
                 <button class="btn btn-secondary toggle-tasks-btn" data-icon="⬅️" onclick="toggleOperatorTasks()" id="backToMyTasksBtn" style="display: none;"><span>Visualizza I Miei Task</span></button>
             </div>
         </div>
@@ -2492,100 +2510,24 @@
                     </div>
 
                     <!-- FORM TASK SINGOLO -->
-                    <div id="taskFormSection" style="display: block;">
-                        <form onsubmit="handleCreateTaskFromModal(event)">
-                            <div class="form-group">
-                                <label>Titolo *</label>
-                                <input type="text" id="modalTaskTitle" required placeholder="es. Installazione server">
-                            </div>
-                            <div class="form-group">
-                                <label>Descrizione</label>
-                                <textarea id="modalTaskDescription" placeholder="Descrizione dettagliata..." style="height: 80px;"></textarea>
-                            </div>
-                            <div class="form-group">
-                                <label>Data/Ora Esecuzione</label>
-                                <input type="datetime-local" id="modalTaskScheduledAt">
-                            </div>
-                            <div class="form-group">
-                                <label>Ricorrenza</label>
-                                <select id="modalTaskRecurrence" onchange="updateRecurrenceFields()">
-                                    <option value="">-- Nessuna (Una sola volta) --</option>
-                                    <option value="DAILY">📅 Ogni Giorno</option>
-                                    <option value="WEEKLY">📅 Ogni Settimana</option>
-                                    <option value="BIWEEKLY">📅 Ogni 2 Settimane</option>
-                                    <option value="MONTHLY">📅 Ogni Mese</option>
-                                    <option value="QUARTERLY">📅 Ogni 3 Mesi</option>
-                                    <option value="YEARLY">📅 Ogni Anno</option>
-                                </select>
-                            </div>
-                            <div class="form-group" id="recurrenceEndGroup" style="display: none;">
-                                <label>Data Fine Ricorrenza</label>
-                                <input type="date" id="modalTaskRecurrenceEnd" placeholder="Lascia vuoto per senza fine">
-                            </div>
-                            <div class="form-group">
-                                <label>Operatore/Admin</label>
-                                <select id="modalTaskOperator">
-                                    <option value="">-- Nessuno --</option>
-                                    <option value="me">👨‍💼 Per Me (Admin)</option>
-                                    ${allAssignees.map(a => `<option value="${a.id}">${(a.type === 'admin' || a.role === 'master') ? '👨‍💼' : '👥'} ${a.username}</option>`).join('')}
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Priorità</label>
-                                <select id="modalTaskPriority">
-                                    <option value="LOW">🟢 Bassa</option>
-                                    <option value="MEDIUM" selected>🟡 Media</option>
-                                    <option value="HIGH">🟠 Alta</option>
-                                    <option value="URGENT">🔴 Urgente</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Tempo Stimato (minuti)</label>
-                                <input type="number" id="modalTaskEstimatedMinutes" placeholder="es. 30">
-                            </div>
-                            <div class="modal-actions">
-                                <button type="submit" class="btn btn-success">Crea Task</button>
-                                <button type="button" class="btn btn-secondary" onclick="closeModal()">Annulla</button>
-                            </div>
-                        </form>
-                    </div>
-
-                    <!-- FORM RICORRENZA -->
-                    <div id="recurrenceFormSection" style="display: none;">
-                        <div style="background: #2d2d2d; padding: 15px; border-radius: 6px; border-left: 3px solid #3b82f6; margin-bottom: 15px;">
-                            <h3 style="margin-top: 0; color: #e0e0e0; font-size: 15px;">➕ Crea Nuova Ricorrenza</h3>
-                            <form onsubmit="handleCreateNewRecurrence(event)">
+                    <div id="taskFormSection" style="display: flex; flex-direction: column; height: 100%;">
+                        <div style="flex: 1; overflow-y: auto; padding-right: 10px; margin-right: -10px;">
+                            <form onsubmit="handleCreateTaskFromModal(event)">
                                 <div class="form-group">
-                                    <label>Titolo Task *</label>
-                                    <input type="text" id="recTitolo" required placeholder="es. Manutenzione server">
+                                    <label>Titolo *</label>
+                                    <input type="text" id="modalTaskTitle" required placeholder="es. Installazione server">
                                 </div>
                                 <div class="form-group">
                                     <label>Descrizione</label>
-                                    <textarea id="recDescrizione" placeholder="Descrizione..." style="height: 60px;"></textarea>
+                                    <textarea id="modalTaskDescription" placeholder="Descrizione dettagliata..." style="height: 80px;"></textarea>
                                 </div>
                                 <div class="form-group">
-                                    <label>Data/Ora Inizio *</label>
-                                    <input type="datetime-local" id="recStart" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>Tipo di Ricorrenza *</label>
-                                    <select id="recType" required>
-                                        <option value="">-- Seleziona --</option>
-                                        <option value="DAILY">📅 Ogni Giorno</option>
-                                        <option value="WEEKLY">📅 Ogni Settimana</option>
-                                        <option value="BIWEEKLY">📅 Ogni 2 Settimane</option>
-                                        <option value="MONTHLY">📅 Ogni Mese</option>
-                                        <option value="QUARTERLY">📅 Ogni 3 Mesi</option>
-                                        <option value="YEARLY">📅 Ogni Anno</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label>Data Fine Ricorrenza</label>
-                                    <input type="date" id="recEnd" placeholder="Lascia vuoto per senza fine">
+                                    <label>Data/Ora Esecuzione</label>
+                                    <input type="datetime-local" id="modalTaskScheduledAt">
                                 </div>
                                 <div class="form-group">
                                     <label>Operatore/Admin</label>
-                                    <select id="recOperator">
+                                    <select id="modalTaskOperator">
                                         <option value="">-- Nessuno --</option>
                                         <option value="me">👨‍💼 Per Me (Admin)</option>
                                         ${allAssignees.map(a => `<option value="${a.id}">${(a.type === 'admin' || a.role === 'master') ? '👨‍💼' : '👥'} ${a.username}</option>`).join('')}
@@ -2593,7 +2535,7 @@
                                 </div>
                                 <div class="form-group">
                                     <label>Priorità</label>
-                                    <select id="recPriority">
+                                    <select id="modalTaskPriority">
                                         <option value="LOW">🟢 Bassa</option>
                                         <option value="MEDIUM" selected>🟡 Media</option>
                                         <option value="HIGH">🟠 Alta</option>
@@ -2602,26 +2544,86 @@
                                 </div>
                                 <div class="form-group">
                                     <label>Tempo Stimato (minuti)</label>
-                                    <input type="number" id="recMinutes" placeholder="es. 30">
-                                </div>
-                                <div class="modal-actions">
-                                    <button type="submit" class="btn btn-success">Crea Ricorrenza</button>
-                                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Chiudi</button>
+                                    <input type="number" id="modalTaskEstimatedMinutes" placeholder="es. 30">
                                 </div>
                             </form>
                         </div>
+                        <div class="modal-actions" style="border-top: 1px solid #4d4d4d; padding-top: 20px;">
+                            <button type="submit" class="btn btn-success" onclick="document.querySelector('#taskFormSection form').dispatchEvent(new Event('submit'))">Crea Task</button>
+                            <button type="button" class="btn btn-secondary" onclick="closeModal()">Annulla</button>
+                        </div>
+                    </div>
 
-                        <div style="background: #1e3a4d; padding: 15px; border-radius: 6px; border: 1px solid #2a4a5d;">
-                            <h3 style="margin-top: 0; color: #7dd3fc; font-size: 15px;">📋 Ricorrenze Esistenti</h3>
-                            <div id="manageRecurrencesContent" style="max-height: 400px; overflow-y: auto;">
-                                ${recurrenceListHtml}
+                    <!-- FORM RICORRENZA -->
+                    <div id="recurrenceFormSection" style="display: none; display: flex; flex-direction: column; height: 100%;">
+                        <div style="flex: 1; overflow-y: auto; padding-right: 10px; margin-right: -10px;">
+                            <div style="background: #2d2d2d; padding: 15px; border-radius: 6px; border-left: 3px solid #3b82f6;">
+                                <h3 style="margin-top: 0; color: #e0e0e0; font-size: 15px;">➕ Crea Nuova Ricorrenza</h3>
+                                <form onsubmit="handleCreateNewRecurrence(event)">
+                                    <div class="form-group">
+                                        <label>Titolo Task *</label>
+                                        <input type="text" id="recTitolo" required placeholder="es. Manutenzione server">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Descrizione</label>
+                                        <textarea id="recDescrizione" placeholder="Descrizione..." style="height: 60px;"></textarea>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Data/Ora Inizio *</label>
+                                        <input type="datetime-local" id="recStart" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Tipo di Ricorrenza *</label>
+                                        <select id="recType" required>
+                                            <option value="">-- Seleziona --</option>
+                                            <option value="DAILY">📅 Ogni Giorno</option>
+                                            <option value="WEEKLY">📅 Ogni Settimana</option>
+                                            <option value="BIWEEKLY">📅 Ogni 2 Settimane</option>
+                                            <option value="MONTHLY">📅 Ogni Mese</option>
+                                            <option value="QUARTERLY">📅 Ogni 3 Mesi</option>
+                                            <option value="YEARLY">📅 Ogni Anno</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Data Fine Ricorrenza</label>
+                                        <input type="date" id="recEnd" placeholder="Lascia vuoto per senza fine">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Operatore/Admin</label>
+                                        <select id="recOperator">
+                                            <option value="">-- Nessuno --</option>
+                                            <option value="me">👨‍💼 Per Me (Admin)</option>
+                                            ${allAssignees.map(a => `<option value="${a.id}">${(a.type === 'admin' || a.role === 'master') ? '👨‍💼' : '👥'} ${a.username}</option>`).join('')}
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Priorità</label>
+                                        <select id="recPriority">
+                                            <option value="LOW">🟢 Bassa</option>
+                                            <option value="MEDIUM" selected>🟡 Media</option>
+                                            <option value="HIGH">🟠 Alta</option>
+                                            <option value="URGENT">🔴 Urgente</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Tempo Stimato (minuti)</label>
+                                        <input type="number" id="recMinutes" placeholder="es. 30">
+                                    </div>
+                                </form>
                             </div>
+                        </div>
+                        <div class="modal-actions" style="border-top: 1px solid #4d4d4d; padding-top: 20px;">
+                            <button type="submit" class="btn btn-success" onclick="document.querySelector('#recurrenceFormSection form').dispatchEvent(new Event('submit'))">Crea Ricorrenza</button>
+                            <button type="button" class="btn btn-secondary" onclick="closeModal()">Chiudi</button>
                         </div>
                     </div>
                 </div>
             `;
             
             modal.classList.add('active');
+            
+            // Mostra il form Task per default
+            showTaskForm();
             
             // Se c'è una data selezionata dal calendario, preselezionala nel form
             if (selectedDate) {
@@ -2728,6 +2730,10 @@
             const firstTask = tasks[0];
             const modal = document.getElementById('taskModal');
             const content = modal.querySelector('.modal-content');
+            
+            // Reset eventuali form precedenti
+            const existingForm = content.querySelector('form');
+            if (existingForm) existingForm.reset();
 
             let recEndValue = '';
             if (firstTask.recurrenceEnd) {
@@ -2951,54 +2957,64 @@
             content.innerHTML = `
                 <h2>📝 Crea Nuovo Task</h2>
                 <form onsubmit="handleCreateTaskFromModal(event)">
-                    <div class="form-group">
-                        <label>Titolo *</label>
-                        <input type="text" id="modalTaskTitle" required placeholder="es. Installazione server">
-                    </div>
-                    <div class="form-group">
-                        <label>Descrizione</label>
-                        <textarea id="modalTaskDescription" placeholder="Descrizione dettagliata..." style="height: 80px;"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>Data/Ora Esecuzione</label>
-                        <input type="datetime-local" id="modalTaskScheduledAt">
-                    </div>
-                    <div class="form-group">
-                        <label>Ricorrenza</label>
-                        <select id="modalTaskRecurrence" onchange="updateRecurrenceFields()">
-                            <option value="">-- Nessuna (Una sola volta) --</option>
-                            <option value="DAILY">📅 Ogni Giorno</option>
-                            <option value="WEEKLY">📅 Ogni Settimana</option>
-                            <option value="BIWEEKLY">📅 Ogni 2 Settimane</option>
-                            <option value="MONTHLY">📅 Ogni Mese</option>
-                            <option value="QUARTERLY">📅 Ogni 3 Mesi</option>
-                            <option value="YEARLY">📅 Ogni Anno</option>
-                        </select>
-                    </div>
-                    <div class="form-group" id="recurrenceEndGroup" style="display: none;">
-                        <label>Data Fine Ricorrenza</label>
-                        <input type="date" id="modalTaskRecurrenceEnd" placeholder="Lascia vuoto per senza fine">
-                    </div>
-                    <div class="form-group">
-                        <label>Operatore/Admin</label>
-                        <select id="modalTaskOperator">
-                            <option value="">-- Nessuno --</option>
-                            <option value="me">👤 Per Me (Admin)</option>
-                            ${allAssignees.map(a => `<option value="${a.id}">${a.type === 'admin' ? '👨‍💼' : '👥'} ${a.username}</option>`).join('')}
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Priorità</label>
-                        <select id="modalTaskPriority">
-                            <option value="LOW">🟢 Bassa</option>
-                            <option value="MEDIUM" selected>🟡 Media</option>
-                            <option value="HIGH">🟠 Alta</option>
-                            <option value="URGENT">🔴 Urgente</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Tempo Stimato (minuti)</label>
-                        <input type="number" id="modalTaskEstimatedMinutes" placeholder="es. 30">
+                    <div style="flex: 1; overflow-y: auto; padding-right: 10px; margin-right: -10px;">
+                        <div class="form-group">
+                            <label>Tipo *</label>
+                            <select id="modalTaskType" onchange="updateTaskTypeFields()">
+                                <option value="single">📌 Task Singolo (Una sola volta)</option>
+                                <option value="recurring">🔄 Task Ricorrente</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Titolo *</label>
+                            <input type="text" id="modalTaskTitle" required placeholder="es. Installazione server">
+                        </div>
+                        <div class="form-group">
+                            <label>Descrizione</label>
+                            <textarea id="modalTaskDescription" placeholder="Descrizione dettagliata..." style="height: 80px;"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Data/Ora Esecuzione</label>
+                            <input type="datetime-local" id="modalTaskScheduledAt">
+                        </div>
+                        <div id="recurrenceFields" style="display: none;">
+                            <div class="form-group">
+                                <label>Ricorrenza</label>
+                                <select id="modalTaskRecurrence" onchange="updateRecurrenceFields()">
+                                    <option value="DAILY">📅 Ogni Giorno</option>
+                                    <option value="WEEKLY">📅 Ogni Settimana</option>
+                                    <option value="BIWEEKLY">📅 Ogni 2 Settimane</option>
+                                    <option value="MONTHLY">📅 Ogni Mese</option>
+                                    <option value="QUARTERLY">📅 Ogni 3 Mesi</option>
+                                    <option value="YEARLY">📅 Ogni Anno</option>
+                                </select>
+                            </div>
+                            <div class="form-group" id="recurrenceEndGroup">
+                                <label>Data Fine Ricorrenza</label>
+                                <input type="date" id="modalTaskRecurrenceEnd" placeholder="Lascia vuoto per senza fine">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Operatore/Admin</label>
+                            <select id="modalTaskOperator">
+                                <option value="">-- Nessuno --</option>
+                                <option value="me">👤 Per Me (Admin)</option>
+                                ${allAssignees.map(a => `<option value="${a.id}">${a.type === 'admin' ? '👨‍💼' : '👥'} ${a.username}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Priorità</label>
+                            <select id="modalTaskPriority">
+                                <option value="LOW">🟢 Bassa</option>
+                                <option value="MEDIUM" selected>🟡 Media</option>
+                                <option value="HIGH">🟠 Alta</option>
+                                <option value="URGENT">🔴 Urgente</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Tempo Stimato (minuti)</label>
+                            <input type="number" id="modalTaskEstimatedMinutes" placeholder="es. 30">
+                        </div>
                     </div>
                     <div class="modal-actions">
                         <button type="submit" class="btn btn-success">Crea Task</button>
@@ -3008,6 +3024,12 @@
             `;
             
             modal.classList.add('active');
+        }
+
+        function updateTaskTypeFields() {
+            const typeSelect = document.getElementById('modalTaskType');
+            const recurrenceFields = document.getElementById('recurrenceFields');
+            recurrenceFields.style.display = typeSelect.value === 'recurring' ? 'block' : 'none';
         }
 
         function updateRecurrenceFields() {
@@ -3082,6 +3104,10 @@
             editingTaskId = taskId;
             const modal = document.getElementById('taskModal');
             const content = modal.querySelector('.modal-content');
+            
+            // Reset eventuali form precedenti
+            const existingForm = content.querySelector('form');
+            if (existingForm) existingForm.reset();
             
             let scheduledAtValue = '';
             if (task.scheduledAt) {
@@ -3169,8 +3195,6 @@
             }
             
             const priority = document.getElementById('modalTaskPriority').value;
-            const recurrenceType = document.getElementById('modalTaskRecurrence')?.value || '';
-            const recurrenceEnd = document.getElementById('modalTaskRecurrenceEnd')?.value || '';
             const estimatedMinutes = document.getElementById('modalTaskEstimatedMinutes')?.value || '';
             
             try {
@@ -3198,6 +3222,7 @@
                     
                     showAlert('Task modificato!', 'success');
                 } else {
+                    // Crea un task SINGOLO senza ricorrenza
                     const response = await fetch(`${API_URL}/tasks`, {
                         method: 'POST',
                         headers: {
@@ -3210,8 +3235,8 @@
                             scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
                             assignedOperatorId: assignedOperatorId ? parseInt(assignedOperatorId) : null,
                             priority,
-                            recurrenceType: recurrenceType || null,
-                            recurrenceEnd: recurrenceEnd ? new Date(recurrenceEnd) : null,
+                            recurrenceType: null,
+                            recurrenceEnd: null,
                             estimatedMinutes: estimatedMinutes ? parseInt(estimatedMinutes) : null
                         })
                     });
