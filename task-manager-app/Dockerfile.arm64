@@ -1,0 +1,48 @@
+# Dockerfile ARM64 - Build completo per ARM64
+
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Installa dumb-init
+RUN apk add --no-cache dumb-init
+
+# Crea directory
+RUN mkdir -p /app/server /app/client /app/public /app/backups /app/server/prisma/data
+
+# Copia package files
+COPY task-manager-app/package*.json ./
+
+# Install dependencies per ARM64 (cruciale!)
+RUN npm install
+
+# Copia il codice sorgente
+COPY task-manager-app/server/src ./server/src
+COPY task-manager-app/server/prisma ./server/prisma
+COPY task-manager-app/public ./public
+
+# Genera Prisma client per ARM64
+RUN npm run prisma:generate
+
+# Build TypeScript
+RUN npm run build
+
+# Copia .env
+COPY task-manager-app/.env.docker ./server/.env
+COPY task-manager-app/entrypoint.sh /app/entrypoint.sh
+
+# Set permissions
+RUN chmod -R 755 /app/backups /app/server/prisma/data
+RUN chmod +x /app/entrypoint.sh
+
+# Expose
+EXPOSE 5000
+
+VOLUME ["/app/backups"]
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:5000/api/health')"
+
+ENTRYPOINT ["dumb-init", "--"]
+
+CMD ["/app/entrypoint.sh"]

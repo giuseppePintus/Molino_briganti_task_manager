@@ -4,8 +4,8 @@ services:
   # Servizio principale dell'applicazione
   molino-app:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: task-manager-app/Dockerfile
     container_name: molino-briganti-task-manager
     ports:
       - "5000:5000"

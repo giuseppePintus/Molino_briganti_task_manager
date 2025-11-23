@@ -2,10 +2,11 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Clone repository
-RUN git clone https://github.com/giuseppePintus/Molino_briganti_task_manager.git . && \
-    cd task-manager-app && \
-    npm install && \
+# Copia i file del progetto locali
+COPY . .
+
+# Installa dipendenze e builda
+RUN npm install && \
     npm run prisma:generate && \
     npm run build
 
