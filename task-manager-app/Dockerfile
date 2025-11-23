@@ -4,17 +4,19 @@ FROM node:18-alpine AS builder
 WORKDIR /app
 
 # Copia package files
-COPY package*.json ./
-COPY server/package*.json ./server/
-COPY client/package*.json ./client/
+COPY task-manager-app/package*.json ./
+
+# Crea directory per la build
+RUN mkdir -p /app/server /app/client
 
 # Install dependencies
 RUN npm install
-RUN cd server && npm install
-RUN cd client && npm install
 
 # Copia il codice
-COPY . .
+COPY task-manager-app/ .
+
+# Genera Prisma client (scarica i binari per l'architettura corrente)
+RUN npm run prisma:generate
 
 # Build TypeScript
 RUN npm run build
@@ -27,40 +29,45 @@ WORKDIR /app
 # Install dumb-init per gestione corretta dei segnali
 RUN apk add --no-cache dumb-init
 
+# Crea directory per i moduli e file
+RUN mkdir -p /app/server /app/client /app/public /app/backups /app/server/prisma/data
+
 # Copia node_modules da builder
 COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/server/node_modules ./server/node_modules
-COPY --from=builder /app/client/node_modules ./client/node_modules
 
 # Copia il codice compilato
 COPY --from=builder /app/server/dist ./server/dist
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/server/package.json ./server/package.json
+
+# Copia server source per runtime
+COPY --from=builder /app/server/src ./server/src
+
+# Copia prisma schema e client
 COPY --from=builder /app/server/prisma ./server/prisma
 
-# Copia script di startup
-COPY --from=builder /app/server/prisma/seed.ts ./server/prisma/
-
 # Copia .env per Docker
-COPY .env.docker ./server/.env
+COPY task-manager-app/.env.docker ./server/.env
+
+# Set permissions
+RUN chmod -R 755 /app/backups /app/server/prisma/data
 
 # Esponi porta
 EXPOSE 5000
 
-# Crea cartelle necessarie con permessi corretti
-RUN mkdir -p /app/backups /mnt/nas/backups /app/server/prisma/data && \
-    chmod -R 755 /app/backups /mnt/nas/backups /app/server/prisma/data
-
-# Volume per backups locali e NAS
-VOLUME ["/app/backups", "/mnt/nas/backups"]
+# Volume per backups locali
+VOLUME ["/app/backups"]
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:5000/api/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
+  CMD node -e "require('http').get('http://localhost:5000/api/health')"
+
+# Copia entrypoint script
+COPY task-manager-app/entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
 # Usa dumb-init per startup
 ENTRYPOINT ["dumb-init", "--"]
 
 # Comando di startup
-CMD ["node", "server/dist/index.js"]
+CMD ["/app/entrypoint.sh"]

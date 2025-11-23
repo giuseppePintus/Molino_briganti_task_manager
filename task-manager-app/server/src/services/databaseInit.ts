@@ -2,10 +2,71 @@ import { PrismaClient } from '@prisma/client';
 import bcryptjs from 'bcryptjs';
 
 /**
+ * Crea le tabelle del database se non esistono
+ */
+export async function createTablesIfNotExist(prisma: PrismaClient) {
+  try {
+    // Esegui il SQL per creare le tabelle direttamente
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "User" (
+        "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        "username" TEXT NOT NULL UNIQUE,
+        "passwordHash" TEXT NOT NULL,
+        "role" TEXT NOT NULL DEFAULT 'slave',
+        "image" TEXT,
+        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "Task" (
+        "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        "title" TEXT NOT NULL,
+        "description" TEXT,
+        "priority" TEXT NOT NULL DEFAULT 'MEDIUM',
+        "scheduledAt" DATETIME,
+        "estimatedMinutes" INTEGER,
+        "actualMinutes" INTEGER,
+        "assignedOperatorId" INTEGER,
+        "acceptedAt" DATETIME,
+        "completed" BOOLEAN NOT NULL DEFAULT false,
+        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "Task_assignedOperatorId_fkey" FOREIGN KEY ("assignedOperatorId") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+      )
+    `);
+
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "TaskNote" (
+        "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        "content" TEXT NOT NULL,
+        "actualMinutes" INTEGER,
+        "taskId" INTEGER NOT NULL,
+        "createdBy" INTEGER,
+        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "TaskNote_taskId_fkey" FOREIGN KEY ("taskId") REFERENCES "Task" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+        CONSTRAINT "TaskNote_createdBy_fkey" FOREIGN KEY ("createdBy") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+      )
+    `);
+
+    console.log('✅ Database tables created successfully');
+  } catch (error: any) {
+    // Ignora errori se le tabelle esistono già
+    if (!error.message.includes('already exists')) {
+      console.error('⚠️  Error creating tables:', error.message);
+    }
+  }
+}
+
+/**
  * Inizializza il database con utenti di default se non esiste nessun utente
  */
 export async function initializeDatabaseIfEmpty(prisma: PrismaClient) {
   try {
+    // Prima crea le tabelle se non esistono
+    await createTablesIfNotExist(prisma);
+
     // Controlla se ci sono utenti nel database
     const userCount = await prisma.user.count();
     
