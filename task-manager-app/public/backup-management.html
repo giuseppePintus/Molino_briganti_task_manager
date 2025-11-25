@@ -474,10 +474,13 @@
                 let result = await response.json();
                 let backups = [];
                 
-                // Il backend ritorna { success: true, files: [...], count: N }
-                if (result.files && Array.isArray(result.files)) {
+                // Il backend ritorna { success: true, files: [...], backups: [{filename, size, createdAt}, ...], count: N }
+                if (result.backups && Array.isArray(result.backups)) {
+                    // Nuovo formato con metadati completi
+                    backups = result.backups;
+                } else if (result.files && Array.isArray(result.files)) {
+                    // Compatibilità con vecchio formato - estrai i metadati dal filesystem
                     backups = result.files.map((filename, idx) => ({
-                        id: idx.toString(),
                         filename: filename,
                         createdAt: new Date().toISOString(),
                         size: 0
@@ -621,7 +624,8 @@
             if (!confirm('⚠️ Questo sovrascriverà tutti i dati attuali. Continuare?')) return;
 
             try {
-                const response = await fetch(`${API_URL}/backup/restore/${backupFilename}`, {
+                const encodedFilename = encodeURIComponent(backupFilename);
+                const response = await fetch(`${API_URL}/backup/restore/${encodedFilename}`, {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${token}` }
                 });

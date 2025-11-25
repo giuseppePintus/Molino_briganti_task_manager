@@ -1,15 +1,15 @@
 # Build stage
-FROM node:18-alpine AS builder
+FROM node:18 AS builder
 
 WORKDIR /app
 
-# Copia package files
+# Copia package files per cache
 COPY task-manager-app/package*.json ./
 
 # Crea directory per la build
 RUN mkdir -p /app/server /app/client
 
-# Install dependencies
+# Install dependencies (sfrutta cache)
 RUN npm install
 
 # Copia il codice
@@ -22,15 +22,15 @@ RUN npm run prisma:generate
 RUN npm run build
 
 # Production stage
-FROM node:18-alpine
+FROM node:18
 
 WORKDIR /app
 
-# Install dumb-init per gestione corretta dei segnali
-RUN apk add --no-cache dumb-init
-
 # Crea directory per i moduli e file
 RUN mkdir -p /app/server /app/client /app/public /app/backups /app/server/prisma/data
+
+# Copia package.json PRIMA dagli stage builder
+COPY task-manager-app/package*.json ./
 
 # Copia node_modules da builder
 COPY --from=builder /app/node_modules ./node_modules
@@ -38,7 +38,6 @@ COPY --from=builder /app/node_modules ./node_modules
 # Copia il codice compilato
 COPY --from=builder /app/server/dist ./server/dist
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/package.json ./package.json
 
 # Copia server source per runtime
 COPY --from=builder /app/server/src ./server/src
@@ -62,12 +61,6 @@ VOLUME ["/app/backups"]
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD node -e "require('http').get('http://localhost:5000/api/health')"
 
-# Copia entrypoint script
-COPY task-manager-app/entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
-
-# Usa dumb-init per startup
-ENTRYPOINT ["dumb-init", "--"]
-
 # Comando di startup
-CMD ["/app/entrypoint.sh"]
+RUN echo '#!/bin/sh\nmkdir -p /data/molino && node server/dist/index.js' > /start.sh && chmod +x /start.sh
+CMD ["/start.sh"]

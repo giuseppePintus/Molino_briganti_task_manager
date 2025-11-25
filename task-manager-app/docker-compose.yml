@@ -31,9 +31,8 @@ services:
       - NAS_PATH=/data/molino/backups
     
     volumes:
-      # Database e backups su directory persistente del NAS
-      # Cambia /mnt/molino con il percorso effettivo sul tuo NAS
-      - /mnt/molino/data:/data/molino:rw
+      # Database e backups su volume Docker locale (non NAS)
+      - molino-data:/data/molino:rw
       
       # Server Prisma schema
       - ./server/prisma:/app/server/prisma:ro
@@ -143,8 +142,8 @@ services:
     ports:
       - "5001:5000"
     volumes:
-      # Directory persistente del NAS - STESSO PERCORSO DEL CONTAINER PRINCIPALE
-      - /mnt/molino/data:/data/molino:rw
+      # Directory persistente volume - STESSO PERCORSO DEL CONTAINER PRINCIPALE
+      - molino-data:/data/molino:rw
     networks:
       - molino-network
     restart: unless-stopped
@@ -158,3 +157,7 @@ services:
 networks:
   molino-network:
     driver: bridge
+
+volumes:
+  molino-data:
+    driver: local

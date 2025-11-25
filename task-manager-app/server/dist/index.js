@@ -52,12 +52,18 @@ dotenv.config({ path: path_1.default.join(__dirname, '../.env') });
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const client_1 = require("@prisma/client");
+const child_process_1 = require("child_process");
+const util_1 = require("util");
 const tasks_1 = __importDefault(require("./routes/tasks"));
 const auth_1 = __importDefault(require("./routes/auth"));
 const backup_1 = __importDefault(require("./routes/backup"));
+const settings_1 = __importDefault(require("./routes/settings"));
+const inventory_1 = __importDefault(require("./routes/inventory"));
+const codifiche_1 = __importDefault(require("./routes/codifiche"));
 const backupMiddleware_1 = __importDefault(require("./middleware/backupMiddleware"));
 const backupService_1 = __importDefault(require("./services/backupService"));
 const databaseInit_1 = require("./services/databaseInit");
+const execAsync = (0, util_1.promisify)(child_process_1.exec);
 const app = (0, express_1.default)();
 const prisma = new client_1.PrismaClient();
 const PORT = process.env.PORT || 5000;
@@ -70,6 +76,9 @@ app.use(express_1.default.static(path_1.default.join(__dirname, '../../public'))
 app.use('/api/auth', auth_1.default);
 app.use('/api/tasks', tasks_1.default);
 app.use('/api/backup', backup_1.default);
+app.use('/api/settings', settings_1.default);
+app.use('/api/inventory', inventory_1.default);
+app.use('/api/codifiche', codifiche_1.default);
 // Health check
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok' });
@@ -81,15 +90,18 @@ app.get('*', (req, res) => {
 // Start server
 app.listen(PORT, () => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        // Inizializza database schema con Prisma (crea se non esiste)
-        console.log('🗄️ Initializing database schema...');
+        // Sincronizza database schema usando prisma db push
+        console.log('📦 Synchronizing database schema...');
         try {
-            yield prisma.$executeRawUnsafe(`SELECT 1 FROM sqlite_master WHERE type='table' LIMIT 1`);
-            console.log('✅ Database schema already exists');
+            yield execAsync('npx prisma db push --skip-generate --skip-preview', {
+                cwd: path_1.default.join(__dirname, '../..'),
+                env: Object.assign({}, process.env)
+            });
+            console.log('✅ Database schema synchronized');
         }
         catch (err) {
-            console.log('📝 Database is new, running migrations...');
-            // Il database non esiste ancora, Prisma lo creerà al connect
+            console.error('❌ Database schema sync error:', err.message);
+            // Se fallisce, continua comunque - potrebbero essere warnings non critici
         }
         yield prisma.$connect();
         console.log('✅ Database connected successfully');

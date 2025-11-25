@@ -55,6 +55,7 @@ class TasksController {
                 res.json(tasks);
             }
             catch (err) {
+                console.error('❌ Error in getTasks:', err);
                 const errorMsg = err instanceof Error ? err.message : 'Internal server error';
                 res.status(500).json({ message: errorMsg });
             }
@@ -79,7 +80,6 @@ class TasksController {
                             title,
                             description: description || null,
                             scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
-                            originalScheduledAt: scheduledAt ? new Date(scheduledAt) : null,
                             assignedOperatorId: assignedOperatorId || null,
                             estimatedMinutes: estimatedMinutes || null,
                             priority: taskPriority,
@@ -137,7 +137,6 @@ class TasksController {
                             title,
                             description: description || null,
                             scheduledAt: new Date(instanceDate),
-                            originalScheduledAt: new Date(instanceDate),
                             assignedOperatorId: assignedOperatorId || null,
                             estimatedMinutes: estimatedMinutes || null,
                             priority: taskPriority,
@@ -182,11 +181,6 @@ class TasksController {
                     updateData.description = description;
                 if (scheduledAt !== undefined) {
                     updateData.scheduledAt = scheduledAt ? new Date(scheduledAt) : null;
-                    // Se scheduledAt viene impostato e originalScheduledAt non esiste, lo impostiamo
-                    const task = yield prisma.task.findUnique({ where: { id: parseInt(id) } });
-                    if (task && !task.originalScheduledAt && scheduledAt) {
-                        updateData.originalScheduledAt = new Date(scheduledAt);
-                    }
                 }
                 if (assignedOperatorId !== undefined)
                     updateData.assignedOperatorId = assignedOperatorId;
@@ -544,7 +538,6 @@ class TasksController {
                     where: { id: parseInt(id) },
                     data: {
                         scheduledAt: newDate,
-                        // Keep originalScheduledAt unchanged
                     },
                     include: {
                         assignedOperator: { select: { id: true, username: true } },

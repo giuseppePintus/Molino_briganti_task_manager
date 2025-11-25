@@ -11,6 +11,37 @@ Un'applicazione web per la gestione dei compiti con un sistema master-slave, ide
 ✅ **Note e Tracciamento** - Slave può aggiungere note e marcare completamento  
 ✅ **Database SQLite** - Persistenza locale senza dipendenze esterne  
 ✅ **API REST** - Pronta per integrazioni mobile (Jellybean+)  
+✅ **Gestione Magazzino** - Tracciamento scorte, avvisi minimo, ordini integrati  
+✅ **Backup Automatico** - Backup ogni ora con ripristino da NAS  
+✅ **Dashboard Operatori** - Interfaccia dedicata per gli operatori  
+
+## 📦 Nuovo: Gestione Magazzino
+
+È stato integrato un **sistema completo di gestione magazzino** con:
+
+- **Tracciamento Articoli**: Codice, descrizione, categoria, unità di misura
+- **Inventario Real-time**: Stock attuale, minimo, posizione scaffale
+- **Avvisi Automatici**: Notifiche quando stock scende sotto il minimo impostato
+- **Storico Movimenti**: Traccia ogni entrata/uscita con motivo e utente
+- **Integrazione Ordini**: Riduce automaticamente stock quando gli ordini vengono creati
+- **Esportazione Dati**: Export CSV per report e backup
+- **Interfaccia Web**: Dashboard dedicata per gestire tutto il magazzino
+
+### Accesso Gestione Magazzino
+
+```
+http://localhost:5000/inventory-management.html
+```
+
+### Quick Start Magazzino
+
+1. **Importa articoli**: Tab "Importa Dati" → "Importa Articoli da CSV"
+2. **Visualizza inventario**: Tab "Inventario" → Lista completa articoli
+3. **Imposta soglie minime**: Clicca "Modifica" su un articolo
+4. **Monitora avvisi**: Tab "Avvisi" → Articoli in allarme
+5. **Esporta report**: Tab "Inventario" → "Esporta CSV"
+
+**Documentazione Dettagliata**: Vedi [WAREHOUSE_MANAGEMENT_GUIDE.md](./WAREHOUSE_MANAGEMENT_GUIDE.md)
 
 ## Quickstart
 

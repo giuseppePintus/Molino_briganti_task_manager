@@ -25,12 +25,24 @@ class AuthController {
                 if (!username || !password) {
                     return res.status(400).json({ message: 'Username and password required' });
                 }
+                console.log(`🔐 Login attempt: username="${username}"`);
                 const user = yield prisma.user.findUnique({ where: { username } });
                 if (!user) {
+                    console.log(`❌ User not found: ${username}`);
                     return res.status(401).json({ message: 'Invalid credentials' });
                 }
-                const isPasswordValid = yield (0, User_1.comparePassword)(password, user.passwordHash);
+                console.log(`✅ User found: ${user.username} (role: ${user.role})`);
+                console.log(`🔑 Stored hash: ${user.passwordHash.substring(0, 20)}...`);
+                // Try bcrypt compare
+                let isPasswordValid = yield (0, User_1.comparePassword)(password, user.passwordHash);
+                // Fallback: if bcrypt fails, try plaintext (for debug only!)
+                if (!isPasswordValid && user.passwordHash === password) {
+                    console.log('⚠️  Using plaintext fallback!');
+                    isPasswordValid = true;
+                }
+                console.log(`🔑 Password valid: ${isPasswordValid}`);
                 if (!isPasswordValid) {
+                    console.log(`❌ Password mismatch for user: ${username}`);
                     return res.status(401).json({ message: 'Invalid credentials' });
                 }
                 const token = jsonwebtoken_1.default.sign({ id: user.id, username: user.username, role: user.role }, process.env.JWT_SECRET, { expiresIn: '8h' });

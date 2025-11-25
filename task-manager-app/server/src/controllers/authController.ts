@@ -14,13 +14,21 @@ export class AuthController {
                 return res.status(400).json({ message: 'Username and password required' });
             }
 
+            console.log(`🔐 Login attempt: username="${username}"`);
+            
             const user = await prisma.user.findUnique({ where: { username } });
             if (!user) {
+                console.log(`❌ User not found: ${username}`);
                 return res.status(401).json({ message: 'Invalid credentials' });
             }
 
+            console.log(`✅ User found: ${user.username} (role: ${user.role})`);
+            
+            // Compare password with hash
             const isPasswordValid = await comparePassword(password, user.passwordHash);
+            
             if (!isPasswordValid) {
+                console.log(`❌ Password mismatch for user: ${username}`);
                 return res.status(401).json({ message: 'Invalid credentials' });
             }
 

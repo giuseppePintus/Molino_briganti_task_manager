@@ -156,7 +156,7 @@
             display: flex;
             gap: 10px;
             margin-bottom: 20px;
-            flex-wrap: nowrap;
+            flex-wrap: wrap;
             flex-direction: row;
         }
 
@@ -361,6 +361,40 @@
             transform: translateY(-2px);
         }
         .btn-planner:hover::after {
+            left: 100%;
+        }
+
+        /* WAREHOUSE - Rosso con riflessione luminosa */
+        .btn-warehouse {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            color: white;
+            border: 1px solid rgba(220, 38, 38, 0.5);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3),
+                        0 0 20px rgba(220, 38, 38, 0.2),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-warehouse::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s;
+        }
+        .btn-warehouse:hover {
+            background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+            border-color: rgba(220, 38, 38, 1);
+            box-shadow: 0 6px 20px rgba(220, 38, 38, 0.5),
+                        0 0 30px rgba(220, 38, 38, 0.4),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        .btn-warehouse:hover::after {
             left: 100%;
         }
 
@@ -1392,6 +1426,7 @@
             <button class="btn btn-tasks" data-icon="📝🔄" onclick="openCreateTaskOrRecurrenceModal()"><span>Gestione Task / Ricorrenze</span></button>
             <button class="btn btn-customers btn-small-mobile" data-icon="👨‍💼" onclick="window.location.href='customers-management.html'"><span>Gestione Clienti</span></button>
             <button class="btn btn-planner" data-icon="📦" onclick="window.location.href='orders-planner.html'"><span>Planner Ordini</span></button>
+            <button class="btn btn-warehouse" data-icon="🏭" onclick="window.location.href='warehouse-management.html'"><span>Gestione Magazzino</span></button>
         </div>
 
         <!-- Calendar -->
@@ -2120,7 +2155,21 @@
                 const response = await fetch(`${API_URL}/tasks`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-                const tasks = await response.json();
+                const data = await response.json();
+                
+                // Check if response is OK and data is an array
+                if (!response.ok) {
+                    console.error('Errore caricamento tasks:', response.status, data);
+                    return;
+                }
+                
+                // If response is not an array, it's an error object
+                if (!Array.isArray(data)) {
+                    console.error('Risposta non è un array di tasks:', data);
+                    return;
+                }
+                
+                const tasks = data;
                 const completed = tasks.filter(t => t.completed).length;
                 const pending = tasks.filter(t => !t.completed).length;
                 const accepted = tasks.filter(t => t.acceptedAt && !t.completed).length;
@@ -2742,6 +2791,11 @@
                 });
                 
                 const content = document.getElementById('manageRecurrencesContent');
+                if (!content) {
+                    console.warn('⚠️ Elemento manageRecurrencesContent non trovato');
+                    return;
+                }
+                
                 let html = '';
                 
                 if (Object.keys(groupedRecurrences).length === 0) {
@@ -2771,7 +2825,11 @@
                 
                 content.innerHTML = html;
             } catch (error) {
-                document.getElementById('manageRecurrencesContent').innerHTML = '<p style="color: #ff6b6b; text-align: center; padding: 20px;">Errore: ' + error.message + '</p>';
+                const content = document.getElementById('manageRecurrencesContent');
+                if (content) {
+                    content.innerHTML = '<p style="color: #ff6b6b; text-align: center; padding: 20px;">Errore: ' + error.message + '</p>';
+                }
+                console.error('❌ Errore loadManagedRecurrencesInline:', error);
             }
         }
 

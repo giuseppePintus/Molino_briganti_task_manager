@@ -31,7 +31,6 @@ model Task {
   title             String
   description       String?
   scheduledAt       DateTime?
-  originalScheduledAt DateTime?  // Data originale del task (mantiene la data iniziale anche se spostata)
   assignedOperator  User?   @relation("AssignedTo", fields: [assignedOperatorId], references: [id])
   assignedOperatorId Int?
   estimatedMinutes  Int?
@@ -72,4 +71,78 @@ model TaskNote {
   userId    Int
   note      String
   createdAt DateTime @default(now())
+}
+
+// Modelli per gestione magazzino
+model Article {
+  id                Int       @id @default(autoincrement())
+  code              String    @unique  // es. F-0-SP35-5
+  name              String    // es. FARINA 0 SP35 da 5 kg
+  description       String?
+  category          String?   // Categoria (es. FARINE, SEMOLE, MANGIMI, ecc.)
+  unit              String    @default("kg")  // Unità di misura
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  inventory         Inventory?
+  stockAlerts       StockAlert[]
+  orderItems        OrderItem[]
+}
+
+model Inventory {
+  id                Int       @id @default(autoincrement())
+  article           Article   @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  articleId         Int       @unique
+  currentStock      Int       @default(0)  // Quantità attuale in magazzino
+  minimumStock      Int       @default(0)  // Soglia minima per avviso
+  reserved          Int       @default(0)  // Quantità prenotata (assegnata a ordini non completati)
+  shelfPosition     String?   // Posizione scaffale (es. A1.1)
+  batch             String?   // Lotto/Batch
+  expiry            String?   // Scadenza
+  lastUpdated       DateTime  @updatedAt
+  notes             String?
+  
+  movements         StockMovement[]
+  alerts            StockAlert[]
+}
+
+model StockMovement {
+  id                Int       @id @default(autoincrement())
+  inventory         Inventory @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+  inventoryId       Int
+  type              String    // IN, OUT, ADJUSTMENT
+  quantity          Int
+  reason            String?   // Motivo del movimento (es. ordine, reso, inventario)
+  orderId           Int?      // Collegamento a ordine se applicabile
+  notes             String?
+  createdAt         DateTime  @default(now())
+  createdBy         Int       // ID utente che ha fatto il movimento
+}
+
+model StockAlert {
+  id                Int       @id @default(autoincrement())
+  article           Article   @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  articleId         Int
+  inventory         Inventory @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+  inventoryId       Int
+  alertType         String    // LOW_STOCK, CRITICAL
+  currentStock      Int       // Quantità al momento dell'avviso
+  minimumStock      Int       // Soglia impostata
+  isResolved        Boolean   @default(false)
+  resolvedAt        DateTime?
+  createdAt         DateTime  @default(now())
+  
+  @@index([isResolved])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id                Int       @id @default(autoincrement())
+  orderId           Int       // ID dell'ordine (nella tabella ordini)
+  article           Article   @relation(fields: [articleId], references: [id], onDelete: Restrict)
+  articleId         Int
+  quantityOrdered   Int
+  quantityDelivered Int       @default(0)
+  unitPrice         Float?
+  createdAt         DateTime  @default(now())
 }

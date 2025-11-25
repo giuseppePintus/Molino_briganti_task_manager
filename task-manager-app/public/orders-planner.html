@@ -788,6 +788,14 @@
                         <option value="">-- Seleziona Articolo --</option>
                     </select>
                 </div>
+                <!-- Lotti disponibili -->
+                <div class="form-group" id="batchesContainer" style="display: none;">
+                    <label>Lotti Disponibili:</label>
+                    <div id="batchesList" style="max-height: 120px; overflow-y: auto; border: 1px solid #4d4d4d; border-radius: 4px; padding: 8px; background: #3d3d3d;">
+                        <!-- Batches will be listed here -->
+                    </div>
+                    <div id="batchWarning" style="margin-top: 8px; font-size: 12px; color: #fca5a5; display: none;"></div>
+                </div>
                 <div class="form-group">
                     <label for="orderLotto">Lotto:</label>
                     <input type="text" id="orderLotto" readonly placeholder="Auto-compilato">
@@ -803,6 +811,7 @@
                 <div class="form-group">
                     <label for="orderQuantity">Quantità (kg):</label>
                     <input type="number" id="orderQuantity" required min="0.1" step="0.1" placeholder="Quantità in kg">
+                    <div id="quantityWarning" style="margin-top: 8px; font-size: 12px; color: #fca5a5; display: none;"></div>
                 </div>
                 <div class="form-group">
                     <label for="orderType">Tipo Ordine:</label>
@@ -847,6 +856,11 @@
         let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
         let token = localStorage.getItem('token') || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
         const API_URL = 'http://localhost:5000/api';
+        
+        // Tracking inventario e prenotazioni
+        let currentAvailableBatches = [];
+        let orderInventoryReservations = {}; // {orderId: {productCode, quantity}}
+        
         function fmtLocalDateTime(d){
             const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const da=String(d.getDate()).padStart(2,'0');
             const hh=String(d.getHours()).padStart(2,'0'); const mm=String(d.getMinutes()).padStart(2,'0');
@@ -878,30 +892,6 @@
         // Carica operatori e admin dall'API (esattamente come in operators.html)
         async function loadOperators() {
             try {
-                // Prova prima con localStorage se disponibile
-                const cachedOperators = localStorage.getItem('cachedOperators');
-                if (cachedOperators) {
-                    try {
-                        const cached = JSON.parse(cachedOperators);
-                        // Se hanno il campo "role" (nuova cache con admin), usa la cache
-                        if (cached.length > 0 && cached[0].role) {
-                            // Riordina comunque: admin prima, operatori dopo
-                            const admins = cached.filter(op => op.role === 'master').sort((a, b) => a.username.localeCompare(b.username));
-                            const operators = cached.filter(op => op.role === 'slave').sort((a, b) => a.username.localeCompare(b.username));
-                            allOperators = [...admins, ...operators];
-                            console.log('✅ Operatori caricati da cache locale (riordinati):', allOperators);
-                            return;
-                        } else {
-                            // Cache vecchia, elimina e ricarica
-                            localStorage.removeItem('cachedOperators');
-                            console.log('⚠️ Cache vecchia eliminata, ricarica dall\'API');
-                        }
-                    } catch (e) {
-                        console.warn('Cache corrotta, ricarica dall\'API');
-                        localStorage.removeItem('cachedOperators');
-                    }
-                }
-                
                 console.log('🔄 Caricamento operatori e admin dall\'API pubblica...');
                 
                 // Usa gli endpoint pubblici che NON richiedono autenticazione
@@ -927,15 +917,31 @@
                     const sortedOperators = operators.sort((a, b) => a.username.localeCompare(b.username));
                     // Combina: admin prima, poi operatori
                     allOperators = [...sortedAdmins, ...sortedOperators];
-                    // Salva in cache
+                    // Salva in cache per offline
                     localStorage.setItem('cachedOperators', JSON.stringify(allOperators));
                     console.log('✅ Operatori e Admin caricati dall\'API pubblica. Totale:', allOperators.length);
                 } else {
-                    console.warn('⚠️ Errore API (' + operatorsResponse.status + ', ' + adminsResponse.status + ') - usa default');
+                    console.warn('⚠️ Errore API (' + operatorsResponse.status + ', ' + adminsResponse.status + ') - usa cache');
                     throw new Error(`API Error: ${operatorsResponse.status}, ${adminsResponse.status}`);
                 }
             } catch (error) {
-                console.error('❌ Errore caricamento operatori:', error);
+                console.error('❌ Errore caricamento operatori dall\'API:', error);
+                // Prova a usare la cache locale
+                const cachedOperators = localStorage.getItem('cachedOperators');
+                if (cachedOperators) {
+                    try {
+                        const cached = JSON.parse(cachedOperators);
+                        if (cached.length > 0 && cached[0].role) {
+                            allOperators = cached;
+                            console.log('⚠️ Usa operatori da cache locale:', allOperators.length, 'utenti');
+                            return;
+                        }
+                    } catch (e) {
+                        console.warn('Cache corrotta, elimina');
+                        localStorage.removeItem('cachedOperators');
+                    }
+                }
+                
                 console.warn('⚠️ Usa operatori di DEFAULT dal server');
                 // Fallback a operatori di default dal server (creati automaticamente all'init)
                 allOperators = [
@@ -1789,6 +1795,12 @@
                     }
                 };
             }
+            
+            // Aggancia validazione quantità quando cambia
+            const quantityInput = document.getElementById('orderQuantity');
+            if (quantityInput) {
+                quantityInput.oninput = validateOrderQuantity;
+            }
         }
 
         // Apri modal per modificare ordine esistente
@@ -1875,6 +1887,112 @@
         }
 
         // Aggiorna informazioni articolo (lotto, ritiro/consegna, posizione)
+        // Carica e mostra i lotti disponibili per l'articolo selezionato
+        async function loadAvailableBatches() {
+            const selectedProduct = document.getElementById('orderProduct').value;
+            const article = articoli.find(a => a.nome === selectedProduct);
+            
+            if (!article) {
+                document.getElementById('batchesContainer').style.display = 'none';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/inventory/batches?code=${article.codice}`, {
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    currentAvailableBatches = await response.json();
+                    renderAvailableBatches();
+                } else {
+                    console.warn('⚠️ Errore caricamento lotti');
+                    document.getElementById('batchesContainer').style.display = 'none';
+                }
+            } catch (error) {
+                console.error('❌ Errore caricamento lotti:', error);
+                document.getElementById('batchesContainer').style.display = 'none';
+            }
+        }
+
+        // Renderizza i lotti disponibili
+        function renderAvailableBatches() {
+            const container = document.getElementById('batchesList');
+            const batchesContainer = document.getElementById('batchesContainer');
+            const warning = document.getElementById('batchWarning');
+
+            if (!currentAvailableBatches || currentAvailableBatches.length === 0) {
+                batchesContainer.style.display = 'none';
+                return;
+            }
+
+            batchesContainer.style.display = 'block';
+            container.innerHTML = currentAvailableBatches.map((batch, idx) => `
+                <div style="padding: 8px; border-bottom: 1px solid #4d4d4d; cursor: pointer;" 
+                     onclick="selectBatch(${idx})" 
+                     style="background: ${idx === 0 ? '#2d5a3a' : '#3d3d3d'};">
+                    <div style="font-weight: 600; color: #e0e0e0;">📦 Lotto: ${batch.batch || 'N/A'}</div>
+                    <div style="font-size: 12px; color: #a0a0a0;">
+                        Scadenza: ${batch.expiry || 'N/A'} | 
+                        Disponibili: <span style="color: #86efac; font-weight: 600;">${batch.available} kg</span> / 
+                        Totale: ${batch.currentStock} kg | 
+                        Prenotati: ${batch.reserved} kg
+                    </div>
+                    <div style="font-size: 11px; color: #808080;">Posizione: ${batch.shelfPosition}</div>
+                </div>
+            `).join('');
+
+            // Mostra warning se nessun lotto disponibile
+            if (currentAvailableBatches.every(b => b.available === 0)) {
+                warning.textContent = '⚠️ Attenzione: nessun lotto disponibile in magazzino!';
+                warning.style.display = 'block';
+            } else {
+                warning.style.display = 'none';
+            }
+        }
+
+        // Seleziona un lotto specifico
+        function selectBatch(batchIndex) {
+            const batch = currentAvailableBatches[batchIndex];
+            if (!batch) return;
+
+            document.getElementById('orderLotto').value = batch.batch || '';
+            document.getElementById('orderPosizione').value = batch.shelfPosition || '';
+            
+            // Valida la quantità inserita
+            validateOrderQuantity();
+        }
+
+        // Valida la quantità rispetto al lotto selezionato
+        function validateOrderQuantity() {
+            const quantityInput = document.getElementById('orderQuantity');
+            const quantity = parseFloat(quantityInput.value) || 0;
+            const warning = document.getElementById('quantityWarning');
+            
+            if (currentAvailableBatches.length === 0) {
+                warning.style.display = 'none';
+                return;
+            }
+
+            // Calcola quantità totale disponibile
+            const totalAvailable = currentAvailableBatches.reduce((sum, b) => sum + b.available, 0);
+
+            if (quantity > totalAvailable) {
+                warning.textContent = `⚠️ Quantità richiesta (${quantity} kg) supera quella disponibile (${totalAvailable} kg)`;
+                warning.style.display = 'block';
+                quantityInput.style.borderColor = '#dc2626';
+            } else if (quantity > 0) {
+                warning.style.display = 'none';
+                quantityInput.style.borderColor = '#16a34a';
+            } else {
+                warning.style.display = 'none';
+                quantityInput.style.borderColor = '';
+            }
+        }
+
         function updateArticleInfo() {
             const selectedProduct = document.getElementById('orderProduct').value;
             const article = articoli.find(a => a.nome === selectedProduct);
@@ -1883,21 +2001,56 @@
                 document.getElementById('orderLotto').value = article.lotto || '';
                 document.getElementById('orderRitiroConsegna').value = article.ritiro_consegna || '';
                 document.getElementById('orderPosizione').value = article.posizione_scaffale || '';
+                
+                // Carica i lotti disponibili dall'inventario
+                loadAvailableBatches();
             } else {
                 document.getElementById('orderLotto').value = '';
                 document.getElementById('orderRitiroConsegna').value = '';
                 document.getElementById('orderPosizione').value = '';
+                document.getElementById('batchesContainer').style.display = 'none';
             }
         }
 
         // Salva nuovo ordine o modifica esistente
         async function saveOrder(event) {
-            event.preventDefault();
-            
-            const editingId = document.getElementById('orderForm').dataset.editingId;
-            
-            // Valida/sistema data/ora rispetto a festivi e orari di consegna
-            let rawDateTime = document.getElementById('orderDateTime').value;
+            try {
+                event.preventDefault();
+                
+                // Verifica che il modulo sia visibile
+                const orderModal = document.getElementById('orderModal');
+                if (!orderModal || !orderModal.classList.contains('active')) {
+                    console.error('❌ Modal non visibile');
+                    alert('Errore: modal non visibile');
+                    return;
+                }
+                
+                const orderForm = document.getElementById('orderForm');
+                if (!orderForm) {
+                    console.error('❌ Form non trovato');
+                    alert('Errore: form non trovato');
+                    return;
+                }
+                
+                const editingId = orderForm.dataset.editingId;
+                
+                // Verifica che tutti gli elementi del form esistano
+                const requiredElements = [
+                    'orderClient', 'orderProduct', 'orderQuantity', 'orderType', 'orderDateTime',
+                    'orderLotto', 'orderRitiroConsegna', 'orderPosizione', 'orderNotes', 'assignToOperator'
+                ];
+                
+                for (const elementId of requiredElements) {
+                    const el = document.getElementById(elementId);
+                    if (!el) {
+                        console.error(`❌ Elemento mancante nel form: ${elementId}`);
+                        alert(`Errore: elemento del form non trovato (${elementId})`);
+                        return;
+                    }
+                }
+                
+                // Valida/sistema data/ora rispetto a festivi e orari di consegna
+                let rawDateTime = document.getElementById('orderDateTime').value;
             if (window.SettingsUtils && rawDateTime) {
                 const selectedType = document.getElementById('orderType').value;
                 const dateObj = new Date(rawDateTime);
@@ -1923,7 +2076,6 @@
                 ritiro_consegna: document.getElementById('orderRitiroConsegna').value,
                 posizione: document.getElementById('orderPosizione').value,
                 notes: document.getElementById('orderNotes').value,
-                assignedTrip: document.getElementById('assignToTrip').value || null,
                 assignedOperatorId: document.getElementById('assignToOperator').value ? parseInt(document.getElementById('assignToOperator').value, 10) : null
             };
 
@@ -1931,31 +2083,6 @@
                 // Modifica ordine esistente
                 const order = orders.find(o => o.id == editingId);
                 if (order) {
-                    // Gestisci cambio assegnazione viaggio
-                    const previousTrip = typeof trips !== 'undefined' && trips ? trips.find(t => t.orders && t.orders.includes(editingId)) : null;
-                    const newTripId = orderData.assignedTrip ? parseInt(orderData.assignedTrip, 10) : null;
-                    
-                    if (previousTrip && newTripId !== previousTrip.id) {
-                        // Rimuovi da viaggio precedente
-                        previousTrip.orders = previousTrip.orders.filter(id => id !== editingId);
-                    }
-                    
-                    if (newTripId && (!previousTrip || previousTrip.id !== newTripId)) {
-                        // Aggiungi al nuovo viaggio
-                        const newTrip = typeof trips !== 'undefined' && trips ? trips.find(t => t.id === newTripId) : null;
-                        if (newTrip) {
-                            if (!newTrip.orders) newTrip.orders = [];
-                            if (!newTrip.orders.includes(editingId)) {
-                                newTrip.orders.push(editingId);
-                            }
-                            // Se assegnato a operatore, assegna anche il viaggio a quell'operatore
-                            if (orderData.assignedOperatorId) {
-                                newTrip.assignedOperatorId = orderData.assignedOperatorId;
-                            }
-                            saveTrips();
-                        }
-                    }
-                    
                     Object.assign(order, orderData);
                     
                     // Aggiorna anche il task associato
@@ -1980,43 +2107,59 @@
                         }
                         saveOrderTasks();
                     }
-                    console.log('✏️ Ordine modificato:', order.client, order.assignedTrip ? ` (Viaggio: ${order.assignedTrip})` : '', order.assignedOperatorId ? ` (Operatore: ${order.assignedOperatorId})` : '');
+                    console.log('✏️ Ordine modificato:', order.client, order.assignedOperatorId ? ` (Operatore: ${order.assignedOperatorId})` : '');
                 }
             } else {
-                // Nuovo ordine
+                // Nuovo ordine - PRENOTA L'INVENTARIO
                 const order = {
                     id: Date.now(),
                     ...orderData,
                     createdAt: new Date().toISOString()
                 };
-                orders.push(order);
-                // Genera task solo per ritiri (le consegne generano task quando aggiunte a un viaggio)
-                if (order.type === 'ritira') {
-                    generateTaskForOrder(order, []);
-                } else {
-                    // Se consegna e richiesto, crea viaggio e assegna task
-                    const createTripNow = document.getElementById('createTripNow');
-                    if (createTripNow && createTripNow.checked) {
-                        const nameEl = document.getElementById('tripNameInline');
-                        const dateEl = document.getElementById('tripDateInline');
-                        const opEl = document.getElementById('tripOperatorInline');
-                        const tripName = (nameEl && nameEl.value.trim()) || `Consegne ${new Date(order.dateTime).toLocaleDateString('it-IT')}`;
-                        const tripDate = (dateEl && dateEl.value) || order.dateTime.split('T')[0];
-                        const operatorId = opEl && opEl.value ? parseInt(opEl.value, 10) : null;
-                        const trip = createTrip(tripName, tripDate);
-                        addOrderToTrip(trip.id, order.id);
-                        if (operatorId) {
-                            const t = trips.find(t => t.id === trip.id);
-                            if (t) {
-                                t.assignedOperatorId = operatorId;
-                                saveTrips();
-                            }
+                
+                // Prenota inventario
+                const article = articoli.find(a => a.nome === orderData.product);
+                if (article) {
+                    try {
+                        const reserveResponse = await fetch(`${API_URL}/inventory/reserve`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                code: article.codice,
+                                quantity: orderData.quantity,
+                                orderId: order.id.toString()
+                            })
+                        });
+
+                        if (!reserveResponse.ok) {
+                            const errData = await reserveResponse.json();
+                            throw new Error(errData.error || 'Errore prenotazione inventario');
                         }
-                        // Crea/aggiorna task del viaggio (se admin autenticato)
-                        await syncTripTask(trip.id);
+
+                        const reserveResult = await reserveResponse.json();
+                        console.log('✅ Inventario prenotato:', reserveResult);
+                        
+                        // Salva info prenotazione
+                        orderInventoryReservations[order.id] = {
+                            productCode: article.codice,
+                            quantity: orderData.quantity
+                        };
+                    } catch (error) {
+                        console.error('❌ Errore prenotazione inventario:', error);
+                        alert(`⚠️ Attenzione: ${error.message}`);
+                        return;
                     }
                 }
-                console.log('📝 Nuovo ordine creato:', order.client, order.type === 'consegnato' ? '(task verrà creato con il viaggio)' : '(task creato)');
+                
+                orders.push(order);
+                // Genera task per ordini di ritiro
+                if (order.type === 'ritira') {
+                    generateTaskForOrder(order, []);
+                }
+                console.log('📝 Nuovo ordine creato:', order.client);
             }
 
             renderOrderTasks();
@@ -2025,15 +2168,51 @@
             updateStats();
             renderCalendar();
             closeOrderModal();
+            } catch (error) {
+                console.error('❌ Errore in saveOrder():', error);
+                alert(`Errore: ${error.message}`);
+            }
         }
 
-        // Elimina ordine
+        // Elimina ordine e LIBERA l'inventario prenotato
         async function deleteOrder(id) {
             // Elimina eventuale task collegato anche nel backend
             const task = orderTasks.find(t => t.orderId === id);
             if (task) {
                 await deleteBackendEntriesForTask(task);
             }
+            
+            // LIBERA la prenotazione di inventario (solo se non ancora completato)
+            const order = orders.find(o => o.id === id);
+            if (order && order.status !== 'completed') {
+                const reservation = orderInventoryReservations[id];
+                if (reservation) {
+                    try {
+                        const releaseResponse = await fetch(`${API_URL}/inventory/release`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                code: reservation.productCode,
+                                quantity: reservation.quantity
+                            })
+                        });
+
+                        if (!releaseResponse.ok) {
+                            const errData = await releaseResponse.json();
+                            console.error('❌ Errore rilascio inventario:', errData);
+                        } else {
+                            console.log('✅ Prenotazione liberata');
+                            delete orderInventoryReservations[id];
+                        }
+                    } catch (error) {
+                        console.error('❌ Errore durante rilascio inventario:', error);
+                    }
+                }
+            }
+            
             orders = orders.filter(o => o.id !== id);
             saveOrders();
             // Also remove generated task for this order, if any
@@ -2049,10 +2228,44 @@
         }
 
         // Aggiorna stato ordine
-        function updateOrderStatus(id, newStatus) {
+        // Aggiorna stato ordine e gestisce inventario
+        async function updateOrderStatus(id, newStatus) {
             const order = orders.find(o => o.id === id);
             if (order) {
+                const oldStatus = order.status;
                 order.status = newStatus;
+                
+                // Se marca come completato, CONSUMA l'inventario prenotato
+                if (newStatus === 'completed' && oldStatus !== 'completed') {
+                    const reservation = orderInventoryReservations[id];
+                    if (reservation) {
+                        try {
+                            const consumeResponse = await fetch(`${API_URL}/inventory/consume`, {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': `Bearer ${token}`,
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    code: reservation.productCode,
+                                    quantity: reservation.quantity
+                                })
+                            });
+
+                            if (!consumeResponse.ok) {
+                                const errData = await consumeResponse.json();
+                                console.error('❌ Errore consumo inventario:', errData);
+                            } else {
+                                const result = await consumeResponse.json();
+                                console.log('✅ Inventario consumato:', result);
+                                delete orderInventoryReservations[id];
+                            }
+                        } catch (error) {
+                            console.error('❌ Errore durante consumo inventario:', error);
+                        }
+                    }
+                }
+                
                 saveOrders();
                 renderOrders();
                 // If marking completed, sync related task status too
