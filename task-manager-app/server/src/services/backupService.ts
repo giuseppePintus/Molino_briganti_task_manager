@@ -152,9 +152,17 @@ export class BackupService {
    */
   async restoreDatabase(backupPath: string): Promise<void> {
     try {
-      const dbPath = path.join(process.cwd(), 'prisma', 'dev.db');
+      // Leggi il percorso del database dal .env (DATABASE_URL)
+      const databaseUrl = process.env.DATABASE_URL || 'file:./prisma/data/tasks.db';
+      // Estrai il percorso del file da "file:./path/to/db"
+      let dbPath = databaseUrl.replace('file:', '');
       
-      // Backup del backup corrente
+      // Se il percorso è relativo, risolvi rispetto alla root del server
+      if (!path.isAbsolute(dbPath)) {
+        dbPath = path.join(process.cwd(), dbPath);
+      }
+      
+      // Backup del database corrente
       if (fs.existsSync(dbPath)) {
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
         fs.copyFileSync(dbPath, path.join(this.backupDir, `db-pre-restore-${timestamp}.sql`));
@@ -172,10 +180,24 @@ export class BackupService {
   /**
    * Lista backup disponibili
    */
-  async listBackups(): Promise<string[]> {
+  async listBackups(): Promise<any[]> {
     try {
       const files = fs.readdirSync(this.backupDir);
-      return files.filter(f => f.startsWith('db-backup-')).sort().reverse();
+      const backupFiles = files.filter(f => f.startsWith('db-backup-'));
+      
+      // Ritorna array di oggetti con filename, size e createdAt
+      const backups = backupFiles.map(filename => {
+        const filePath = path.join(this.backupDir, filename);
+        const stats = fs.statSync(filePath);
+        return {
+          filename: filename,
+          size: stats.size,
+          createdAt: stats.mtime.toISOString()
+        };
+      });
+      
+      // Ordina per data di modifica (più recenti prima)
+      return backups.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     } catch (error) {
       console.error('❌ List backups error:', error);
       return [];
@@ -191,8 +213,9 @@ export class BackupService {
       if (backups.length > this.maxLocalBackups) {
         const toDelete = backups.slice(this.maxLocalBackups);
         for (const backup of toDelete) {
-          fs.unlinkSync(path.join(this.backupDir, backup));
-          console.log(`🗑️ Old backup deleted: ${backup}`);
+          const filename = typeof backup === 'string' ? backup : backup.filename;
+          fs.unlinkSync(path.join(this.backupDir, filename));
+          console.log(`🗑️ Old backup deleted: ${filename}`);
         }
       }
     } catch (error) {

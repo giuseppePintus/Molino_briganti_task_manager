@@ -6,16 +6,15 @@ import bcryptjs from 'bcryptjs';
  */
 export async function createTablesIfNotExist(prisma: PrismaClient) {
   try {
-    // Esegui il SQL per creare le tabelle direttamente
+    // Esegui il SQL per creare le tabelle direttamente secondo lo schema Prisma
     await prisma.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS "User" (
         "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
         "username" TEXT NOT NULL UNIQUE,
         "passwordHash" TEXT NOT NULL,
-        "role" TEXT NOT NULL DEFAULT 'slave',
+        "role" TEXT NOT NULL,
         "image" TEXT,
-        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
@@ -24,31 +23,121 @@ export async function createTablesIfNotExist(prisma: PrismaClient) {
         "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
         "title" TEXT NOT NULL,
         "description" TEXT,
-        "priority" TEXT NOT NULL DEFAULT 'MEDIUM',
         "scheduledAt" DATETIME,
-        "estimatedMinutes" INTEGER,
-        "actualMinutes" INTEGER,
+        "originalScheduledAt" DATETIME,
         "assignedOperatorId" INTEGER,
-        "acceptedAt" DATETIME,
-        "completed" BOOLEAN NOT NULL DEFAULT false,
+        "estimatedMinutes" INTEGER,
+        "priority" TEXT NOT NULL DEFAULT 'MEDIUM',
+        "color" TEXT NOT NULL DEFAULT '#FCD34D',
+        "recurring" BOOLEAN NOT NULL DEFAULT 0,
+        "recurrenceType" TEXT,
+        "recurrenceEnd" DATETIME,
+        "parentTaskId" INTEGER,
+        "createdById" INTEGER NOT NULL,
         "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT "Task_assignedOperatorId_fkey" FOREIGN KEY ("assignedOperatorId") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+        "acceptedAt" DATETIME,
+        "acceptedById" INTEGER,
+        "paused" BOOLEAN NOT NULL DEFAULT 0,
+        "pausedAt" DATETIME,
+        "completed" BOOLEAN NOT NULL DEFAULT 0,
+        "completedById" INTEGER,
+        "completedAt" DATETIME,
+        "actualMinutes" INTEGER,
+        CONSTRAINT "Task_assignedOperatorId_fkey" FOREIGN KEY ("assignedOperatorId") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
+        CONSTRAINT "Task_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+        CONSTRAINT "Task_acceptedById_fkey" FOREIGN KEY ("acceptedById") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
+        CONSTRAINT "Task_completedById_fkey" FOREIGN KEY ("completedById") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE
       )
     `);
 
     await prisma.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS "TaskNote" (
         "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-        "content" TEXT NOT NULL,
-        "actualMinutes" INTEGER,
+        "task" INTEGER NOT NULL,
         "taskId" INTEGER NOT NULL,
-        "createdBy" INTEGER,
+        "user" INTEGER NOT NULL,
+        "userId" INTEGER NOT NULL,
+        "note" TEXT NOT NULL,
         "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         CONSTRAINT "TaskNote_taskId_fkey" FOREIGN KEY ("taskId") REFERENCES "Task" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
-        CONSTRAINT "TaskNote_createdBy_fkey" FOREIGN KEY ("createdBy") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+        CONSTRAINT "TaskNote_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE
       )
     `);
+
+    // Tabelle inventory
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "Article" (
+        "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        "code" TEXT NOT NULL UNIQUE,
+        "name" TEXT NOT NULL,
+        "description" TEXT,
+        "category" TEXT,
+        "unit" TEXT NOT NULL DEFAULT 'kg',
+        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "Inventory" (
+        "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        "articleId" INTEGER NOT NULL UNIQUE,
+        "currentStock" INTEGER NOT NULL DEFAULT 0,
+        "minimumStock" INTEGER NOT NULL DEFAULT 0,
+        "shelfPosition" TEXT,
+        "lastUpdated" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "notes" TEXT,
+        CONSTRAINT "Inventory_articleId_fkey" FOREIGN KEY ("articleId") REFERENCES "Article" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+      )
+    `);
+
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "StockMovement" (
+        "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        "inventoryId" INTEGER NOT NULL,
+        "type" TEXT NOT NULL,
+        "quantity" INTEGER NOT NULL,
+        "reason" TEXT,
+        "orderId" INTEGER,
+        "notes" TEXT,
+        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "createdBy" INTEGER NOT NULL,
+        CONSTRAINT "StockMovement_inventoryId_fkey" FOREIGN KEY ("inventoryId") REFERENCES "Inventory" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+      )
+    `);
+
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "StockAlert" (
+        "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        "articleId" INTEGER NOT NULL,
+        "inventoryId" INTEGER NOT NULL,
+        "alertType" TEXT NOT NULL,
+        "currentStock" INTEGER NOT NULL,
+        "minimumStock" INTEGER NOT NULL,
+        "isResolved" BOOLEAN NOT NULL DEFAULT 0,
+        "resolvedAt" DATETIME,
+        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "StockAlert_articleId_fkey" FOREIGN KEY ("articleId") REFERENCES "Article" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+        CONSTRAINT "StockAlert_inventoryId_fkey" FOREIGN KEY ("inventoryId") REFERENCES "Inventory" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+      )
+    `);
+
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "OrderItem" (
+        "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        "orderId" INTEGER NOT NULL,
+        "articleId" INTEGER NOT NULL,
+        "quantityOrdered" INTEGER NOT NULL,
+        "quantityDelivered" INTEGER NOT NULL DEFAULT 0,
+        "unitPrice" REAL,
+        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "OrderItem_articleId_fkey" FOREIGN KEY ("articleId") REFERENCES "Article" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+      )
+    `);
+
+    // Crea indici per performance
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "StockAlert_isResolved_idx" ON "StockAlert"("isResolved")`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "StockAlert_createdAt_idx" ON "StockAlert"("createdAt")`);
 
     console.log('✅ Database tables created successfully');
   } catch (error: any) {
@@ -77,15 +166,15 @@ export async function initializeDatabaseIfEmpty(prisma: PrismaClient) {
 
     console.log('🌱 Database empty, initializing with default users...');
 
-    // Hash delle password
-    const adminPassword = await bcryptjs.hash('admin123', 10);
-    const operatorPassword = await bcryptjs.hash('operator123', 10);
-
+    // Hash delle password con bcryptjs
+    const adminPasswordHash = await bcryptjs.hash('123', 10);
+    const operatorPasswordHash = await bcryptjs.hash('operator123', 10);
+    
     // Crea admin di default
     const admin1 = await prisma.user.create({
       data: {
-        username: 'Admin Mario',
-        passwordHash: adminPassword,
+        username: 'Manuel',
+        passwordHash: adminPasswordHash,
         role: 'master',
         image: null,
       },
@@ -94,7 +183,7 @@ export async function initializeDatabaseIfEmpty(prisma: PrismaClient) {
     const admin2 = await prisma.user.create({
       data: {
         username: 'Admin Lucia',
-        passwordHash: adminPassword,
+        passwordHash: adminPasswordHash,
         role: 'master',
         image: null,
       },
@@ -104,7 +193,7 @@ export async function initializeDatabaseIfEmpty(prisma: PrismaClient) {
     const operator1 = await prisma.user.create({
       data: {
         username: 'Operatore Paolo',
-        passwordHash: operatorPassword,
+        passwordHash: operatorPasswordHash,
         role: 'slave',
         image: null,
       },
@@ -113,15 +202,15 @@ export async function initializeDatabaseIfEmpty(prisma: PrismaClient) {
     const operator2 = await prisma.user.create({
       data: {
         username: 'Operatore Sara',
-        passwordHash: operatorPassword,
+        passwordHash: operatorPasswordHash,
         role: 'slave',
         image: null,
       },
     });
 
     console.log('✅ Default users created:');
-    console.log(`   📌 ${admin1.username} (Admin) - Password: admin123`);
-    console.log(`   📌 ${admin2.username} (Admin) - Password: admin123`);
+    console.log(`   📌 ${admin1.username} (Admin) - Password: 123`);
+    console.log(`   📌 ${admin2.username} (Admin) - Password: 123`);
     console.log(`   👤 ${operator1.username} (Operator) - Password: operator123`);
     console.log(`   👤 ${operator2.username} (Operator) - Password: operator123`);
     console.log('⚠️  IMPORTANTE: Cambia le password di default in produzione!');

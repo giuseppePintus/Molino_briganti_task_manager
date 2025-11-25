@@ -7,13 +7,19 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 import express from 'express';
 import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 import tasksRoutes from './routes/tasks';
 import authRoutes from './routes/auth';
 import backupRoutes from './routes/backup';
+import settingsRoutes from './routes/settings';
+import inventoryRoutes from './routes/inventory';
+import codificheRoutes from './routes/codifiche';
 import setupBackupMiddleware from './middleware/backupMiddleware';
 import BackupService from './services/backupService';
 import { initializeDatabaseIfEmpty } from './services/databaseInit';
 
+const execAsync = promisify(exec);
 const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 5000;
@@ -29,6 +35,9 @@ app.use(express.static(path.join(__dirname, '../../public')));
 app.use('/api/auth', authRoutes);
 app.use('/api/tasks', tasksRoutes);
 app.use('/api/backup', backupRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/inventory', inventoryRoutes);
+app.use('/api/codifiche', codificheRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -43,16 +52,17 @@ app.get('*', (req, res) => {
 // Start server
 app.listen(PORT, async () => {
   try {
-    // Inizializza database schema con Prisma (crea se non esiste)
-    console.log('🗄️ Initializing database schema...');
+    // Sincronizza database schema usando prisma db push
+    console.log('📦 Synchronizing database schema...');
     try {
-      await prisma.$executeRawUnsafe(
-        `SELECT 1 FROM sqlite_master WHERE type='table' LIMIT 1`
-      );
-      console.log('✅ Database schema already exists');
-    } catch (err) {
-      console.log('📝 Database is new, running migrations...');
-      // Il database non esiste ancora, Prisma lo creerà al connect
+      await execAsync('npx prisma db push --skip-generate --skip-preview', {
+        cwd: path.join(__dirname, '../..'),
+        env: { ...process.env }
+      });
+      console.log('✅ Database schema synchronized');
+    } catch (err: any) {
+      console.error('❌ Database schema sync error:', err.message);
+      // Se fallisce, continua comunque - potrebbero essere warnings non critici
     }
 
     await prisma.$connect();

@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const router = Router();
+const BACKUP_DIR = process.env.BACKUP_DIR || './backups';
 
 /**
  * GET /api/backup/list
@@ -14,7 +15,8 @@ router.get('/list', async (req: Request, res: Response) => {
     const backups = await BackupService.listBackups();
     res.json({ 
       success: true, 
-      files: backups,
+      files: backups.map(b => b.filename),  // Per compatibilità backwards
+      backups: backups,  // Nuovo formato con metadati
       count: backups.length,
       timestamp: new Date().toISOString()
     });
@@ -58,7 +60,7 @@ router.post('/upload', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Missing X-Backup-Name header' });
     }
 
-    const backupPath = path.join('./backups', backupName);
+    const backupPath = path.join(BACKUP_DIR, backupName);
     const writeStream = fs.createWriteStream(backupPath);
 
     req.pipe(writeStream);
@@ -91,14 +93,14 @@ router.post('/upload', async (req: Request, res: Response) => {
  */
 router.get('/download/:filename', async (req: Request, res: Response) => {
   try {
-    const filename = req.params.filename;
+    const filename = decodeURIComponent(req.params.filename);
     
     // Valida nome file (previeni path traversal)
     if (filename.includes('..') || filename.includes('/')) {
       return res.status(400).json({ error: 'Invalid filename' });
     }
 
-    const backupPath = path.join('./backups', filename);
+    const backupPath = path.join(BACKUP_DIR, filename);
     
     if (!fs.existsSync(backupPath)) {
       return res.status(404).json({ error: 'Backup not found' });
@@ -119,14 +121,14 @@ router.get('/download/:filename', async (req: Request, res: Response) => {
  */
 router.post('/restore/:filename', async (req: Request, res: Response) => {
   try {
-    const filename = req.params.filename;
+    let filename = decodeURIComponent(req.params.filename);
     
     // Valida nome file
     if (filename.includes('..') || filename.includes('/')) {
       return res.status(400).json({ error: 'Invalid filename' });
     }
 
-    const backupPath = path.join('./backups', filename);
+    const backupPath = path.join(BACKUP_DIR, filename);
     
     if (!fs.existsSync(backupPath)) {
       return res.status(404).json({ error: 'Backup not found' });
@@ -174,14 +176,14 @@ router.post('/restore-latest', async (req: Request, res: Response) => {
  */
 router.delete('/:filename', async (req: Request, res: Response) => {
   try {
-    const filename = req.params.filename;
+    const filename = decodeURIComponent(req.params.filename);
     
     // Valida nome file
     if (filename.includes('..') || filename.includes('/')) {
       return res.status(400).json({ error: 'Invalid filename' });
     }
 
-    const backupPath = path.join('./backups', filename);
+    const backupPath = path.join(BACKUP_DIR, filename);
     
     if (!fs.existsSync(backupPath)) {
       return res.status(404).json({ error: 'Backup not found' });

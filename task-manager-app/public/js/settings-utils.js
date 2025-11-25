@@ -17,7 +17,9 @@
   }
   async function loadAsync(){
     try {
-      const resp = await fetch(`${API_URL}/settings`);
+      const token = localStorage.getItem('token');
+      const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+      const resp = await fetch(`${API_URL}/settings`, { headers });
       if (resp.ok) {
         const data = await resp.json();
         localStorage.setItem('companySettings', JSON.stringify(data));
