@@ -788,30 +788,36 @@
                         <option value="">-- Seleziona Articolo --</option>
                     </select>
                 </div>
-                <!-- Lotti disponibili -->
-                <div class="form-group" id="batchesContainer" style="display: none;">
-                    <label>Lotti Disponibili:</label>
-                    <div id="batchesList" style="max-height: 120px; overflow-y: auto; border: 1px solid #4d4d4d; border-radius: 4px; padding: 8px; background: #3d3d3d;">
-                        <!-- Batches will be listed here -->
-                    </div>
-                    <div id="batchWarning" style="margin-top: 8px; font-size: 12px; color: #fca5a5; display: none;"></div>
-                </div>
-                <div class="form-group">
-                    <label for="orderLotto">Lotto:</label>
-                    <input type="text" id="orderLotto" readonly placeholder="Auto-compilato">
-                </div>
-                <div class="form-group">
-                    <label for="orderRitiroConsegna">Ritiro/Consegna:</label>
-                    <input type="text" id="orderRitiroConsegna" readonly placeholder="Auto-compilato">
-                </div>
-                <div class="form-group">
-                    <label for="orderPosizione">Posizione Scaffale:</label>
-                    <input type="text" id="orderPosizione" readonly placeholder="Auto-compilato">
-                </div>
                 <div class="form-group">
                     <label for="orderQuantity">Quantità (kg):</label>
-                    <input type="number" id="orderQuantity" required min="0.1" step="0.1" placeholder="Quantità in kg">
+                    <input type="number" id="orderQuantity" min="0.1" step="0.1" placeholder="Quantità in kg">
                     <div id="quantityWarning" style="margin-top: 8px; font-size: 12px; color: #fca5a5; display: none;"></div>
+                </div>
+                <!-- Bottone per aggiungere lotto -->
+                <div class="form-group" id="addBatchContainer" style="display: none;">
+                    <button type="button" class="btn-secondary" onclick="addOrderBatch()" style="width: 100%;">
+                        ➕ Aggiungi Lotto
+                    </button>
+                </div>
+                <!-- Tabella lotti selezionati -->
+                <div class="form-group" id="orderBatchesTableContainer" style="display: none;">
+                    <label>Lotti Selezionati:</label>
+                    <table style="width: 100%; border-collapse: collapse; background: #2d2d2d; font-size: 12px;">
+                        <thead>
+                            <tr style="background: #1d1d1d; border-bottom: 2px solid #4d4d4d;">
+                                <th style="padding: 8px; text-align: left; color: #e0e0e0;">Lotto</th>
+                                <th style="padding: 8px; text-align: center; color: #e0e0e0;">Sacchi</th>
+                                <th style="padding: 8px; text-align: right; color: #e0e0e0;">Quantità (kg)</th>
+                                <th style="padding: 8px; text-align: center; color: #e0e0e0;">Azione</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orderBatchesTableBody">
+                            <!-- Rows will be added here -->
+                        </tbody>
+                    </table>
+                    <div style="margin-top: 8px; padding: 8px; background: #3d3d3d; border-radius: 4px;">
+                        <strong style="color: #86efac;">Totale: <span id="orderBatchesTotal">0</span> kg</strong>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="orderType">Tipo Ordine:</label>
@@ -1502,6 +1508,18 @@
             });
         }
 
+        // Parsifica il file codifica articoli.csv (formato: codice,descrizione senza header)
+        function parseArticoliCSV(text) {
+            const lines = text.trim().split('\n');
+            return lines.map(line => {
+                const [codice, descrizione] = line.split(',').map(v => v.trim());
+                return {
+                    codice: codice || '',
+                    descrizione: descrizione || ''
+                };
+            }).filter(item => item.codice && item.descrizione); // Filtra righe vuote
+        }
+
         // Carica dati da localStorage e file CSV
         async function loadCSVData() {
             try {
@@ -1530,19 +1548,28 @@
                     const stored = localStorage.getItem('products');
                     if (stored) {
                         articoli = JSON.parse(stored);
-                        console.log('Articoli caricati da localStorage:', articoli.length);
+                        // Controlla se hanno la vecchia struttura (con "nome") e se sì, ricarica da CSV
+                        if (articoli.length > 0 && articoli[0].nome && !articoli[0].codice) {
+                            console.log('Articoli in localStorage hanno vecchia struttura, ricarico da CSV');
+                            const csvResponse = await fetch('data/codifica articoli.csv');
+                            const csvText = await csvResponse.text();
+                            articoli = parseArticoliCSV(csvText);
+                            localStorage.removeItem('products'); // Pulisci localStorage
+                        } else {
+                            console.log('Articoli caricati da localStorage:', articoli.length);
+                        }
                     } else {
                         // Fallback a CSV se non c'è localStorage
-                        const csvResponse = await fetch('data/articoli.csv');
+                        const csvResponse = await fetch('data/codifica articoli.csv');
                         const csvText = await csvResponse.text();
-                        articoli = parseCSV(csvText);
+                        articoli = parseArticoliCSV(csvText);
                         console.log('Articoli caricati da CSV (fallback):', articoli.length);
                     }
                 } catch (error) {
                     console.error('Errore caricamento articoli, fallback a CSV:', error);
-                    const csvResponse = await fetch('data/articoli.csv');
+                    const csvResponse = await fetch('data/codifica articoli.csv');
                     const csvText = await csvResponse.text();
-                    articoli = parseCSV(csvText);
+                    articoli = parseArticoliCSV(csvText);
                 }
             } catch (error) {
                 console.error('Errore caricamento dati:', error);
@@ -1754,6 +1781,12 @@
             document.querySelector('#orderModal h2').textContent = '📝 Nuovo Ordine';
             document.getElementById('orderForm').dataset.editingId = '';
             
+            // Resetta i lotti
+            currentOrderBatches = [];
+            currentSelectedBatchIndex = -1;
+            renderOrderBatches();
+            document.getElementById('addBatchContainer').style.display = 'none';
+            
             // Se c'è una data selezionata dal calendario, preselezionala
             if (selectedDate) {
                 document.getElementById('orderDateTime').value = selectedDate + 'T12:00';
@@ -1767,10 +1800,15 @@
             // Popola dropdown articoli (usa dati già caricati da CSV/localStorage)
             const productSelect = document.getElementById('orderProduct');
             productSelect.innerHTML = '<option value="">-- Seleziona Articolo --</option>' +
-                articoli.map(a => `<option value="${a.nome}">${a.codice} - ${a.nome}</option>`).join('');
+                articoli.map(a => `<option value="${a.codice || a.nome}">${a.codice || a.nome} - ${a.descrizione || a.nome}</option>`).join('');
 
             document.getElementById('orderModal').classList.add('active');
             document.getElementById('orderForm').reset();
+            
+            // Resetta i batch selezionati
+            currentOrderBatches = [];
+            document.getElementById('orderBatchesTableContainer').style.display = 'none';
+            document.getElementById('addBatchContainer').style.display = 'none';
 
             // Popola dropdown operatori
             const assignToOperator = document.getElementById('assignToOperator');
@@ -1820,14 +1858,20 @@
             // Popola dropdown articoli (usa dati già caricati da CSV/localStorage)
             const productSelect = document.getElementById('orderProduct');
             productSelect.innerHTML = '<option value="">-- Seleziona Articolo --</option>' +
-                articoli.map(a => `<option value="${a.nome}">${a.codice} - ${a.nome}</option>`).join('');
+                articoli.map(a => `<option value="${a.codice || a.nome}">${a.codice || a.nome} - ${a.descrizione || a.nome}</option>`).join('');
             productSelect.value = order.product;
 
             // Riempi i campi
-            document.getElementById('orderLotto').value = order.lotto || '';
-            document.getElementById('orderRitiroConsegna').value = order.ritiro_consegna || '';
-            document.getElementById('orderPosizione').value = order.posizione || '';
             document.getElementById('orderQuantity').value = order.quantity;
+            
+            // Ripristina i batch selezionati dall'ordine
+            currentOrderBatches = order.batches || [];
+            if (currentOrderBatches.length > 0) {
+                document.getElementById('orderBatchesTableContainer').style.display = 'block';
+                renderOrderBatches();
+            } else {
+                document.getElementById('orderBatchesTableContainer').style.display = 'none';
+            }
             document.getElementById('orderType').value = order.type;
             document.getElementById('orderDateTime').value = order.dateTime;
             document.getElementById('orderNotes').value = order.notes || '';
@@ -1886,19 +1930,275 @@
             }
         }
 
+        // Array per tracciare i lotti aggiunti all'ordine
+        let currentOrderBatches = [];
+        let currentSelectedBatchIndex = -1;
+
+        // Aggiunge un lotto all'ordine
+        function addOrderBatch() {
+            const selectedProduct = document.getElementById('orderProduct').value;
+            const quantity = parseFloat(document.getElementById('orderQuantity').value);
+
+            if (!selectedProduct) {
+                alert('⚠️ Seleziona un articolo');
+                return;
+            }
+
+            if (!quantity || quantity <= 0) {
+                alert('⚠️ Inserisci una quantità valida');
+                return;
+            }
+
+            if (!currentAvailableBatches || currentAvailableBatches.length === 0) {
+                alert('⚠️ Nessun lotto disponibile per questo articolo');
+                return;
+            }
+
+            // Calcola quanto è già stato assegnato
+            const alreadyAssigned = currentOrderBatches.reduce((sum, b) => sum + b.quantity, 0);
+            const remainingToAssign = quantity - alreadyAssigned;
+
+            if (remainingToAssign <= 0) {
+                alert('⚠️ La quantità totale è già stata coperta dai lotti selezionati');
+                return;
+            }
+
+            // Apri il popup di selezione batch con il rimanente corretto
+            showBatchSelectionPopup(selectedProduct, remainingToAssign);
+        }
+
+        // Mostra popup per selezionare il lotto per il rimanente
+        function showBatchSelectionPopup(selectedProduct, remainingQuantity) {
+            // Calcola i lotti disponibili (escludendo quelli già completamente assegnati)
+            const availableBatchesForRemaining = currentAvailableBatches
+                .filter(batch => {
+                    const alreadyAssigned = currentOrderBatches
+                        .filter(b => b.batch === batch.batch)
+                        .reduce((sum, b) => sum + b.quantity, 0);
+                    const available = (batch.quantityKg || 0) - alreadyAssigned;
+                    return available > 0; // Deve avere disponibilità
+                });
+
+            if (availableBatchesForRemaining.length === 0) {
+                alert('⚠️ Nessun altro lotto disponibile per i rimanenti ' + remainingQuantity + ' kg');
+                renderOrderBatches();
+                return;
+            }
+
+            // Se c'è solo un lotto disponibile, lo assegna direttamente
+            if (availableBatchesForRemaining.length === 1) {
+                const onlyBatch = availableBatchesForRemaining[0];
+                const alreadyAssigned = currentOrderBatches
+                    .filter(b => b.batch === onlyBatch.batch)
+                    .reduce((sum, b) => sum + b.quantity, 0);
+                const maxAvailable = (onlyBatch.quantityKg || 0) - alreadyAssigned;
+                const quantityToAssign = Math.min(remainingQuantity, maxAvailable);
+
+                currentOrderBatches.push({
+                    batch: onlyBatch.batch,
+                    quantity: quantityToAssign,
+                    expiry: onlyBatch.expiry,
+                    shelfPosition: onlyBatch.shelfPosition,
+                    colli: onlyBatch.quantity,
+                    selectedBatchIndex: currentAvailableBatches.indexOf(onlyBatch)
+                });
+
+                if (quantityToAssign < remainingQuantity) {
+                    alert(`⚠️ Solo ${quantityToAssign} kg disponibili nel lotto rimanente. Mancano ancora ${remainingQuantity - quantityToAssign} kg.`);
+                }
+
+                renderOrderBatches();
+                return;
+            }
+
+            // Mostra popup di scelta
+            createBatchSelectionModal(availableBatchesForRemaining, remainingQuantity);
+        }
+
+        // Crea e mostra il modal di scelta lotto
+        function createBatchSelectionModal(availableBatches, remainingQuantity) {
+            const modal = document.createElement('div');
+            modal.id = 'batchSelectionModal';
+            modal.style.cssText = `
+                position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                background: rgba(0,0,0,0.7); display: flex; align-items: center;
+                justify-content: center; z-index: 10000;
+            `;
+
+            const content = document.createElement('div');
+            content.id = 'batchSelectionContent';
+            content.style.cssText = `
+                background: #2d2d2d; border: 2px solid #4d4d4d; border-radius: 8px;
+                padding: 20px; max-width: 500px; color: #e0e0e0;
+            `;
+
+            content.innerHTML = `
+                <h3 style="margin-top: 0; color: #86efac;">📦 Seleziona Lotto</h3>
+                <p style="margin-bottom: 15px;">Rimanenti da coprire: <strong style="color: #fbbf24;" id="remainingQtyLabel">${remainingQuantity}</strong> kg</p>
+                
+                <div id="batchOptionsContainer" style="max-height: 300px; overflow-y: auto; margin-bottom: 15px;">
+                    ${availableBatches.map((batch, idx) => {
+                        const alreadyAssigned = currentOrderBatches
+                            .filter(b => b.batch === batch.batch)
+                            .reduce((sum, b) => sum + b.quantity, 0);
+                        const maxAvailable = (batch.quantityKg || 0) - alreadyAssigned;
+                        const willAssign = Math.min(remainingQuantity, maxAvailable);
+                        
+                        // Trova l'indice reale in currentAvailableBatches
+                        const realIndex = currentAvailableBatches.findIndex(b => b.batch === batch.batch);
+                        
+                        return `
+                            <div onclick="selectBatchFromPopup(${realIndex}, ${remainingQuantity})"
+                                 style="padding: 12px; margin-bottom: 8px; background: #3d3d3d; border: 1px solid #4d4d4d;
+                                        border-radius: 4px; cursor: pointer; transition: all 0.2s; ${maxAvailable <= 0 ? 'opacity: 0.5; cursor: not-allowed;' : 'hover: background #4d4d4d;'}">
+                                <div style="font-weight: 600; color: #86efac;">📦 Lotto: ${batch.batch}</div>
+                                <div style="font-size: 12px; color: #a0a0a0;">
+                                    Scadenza: ${batch.expiry} | Disponibili: ${maxAvailable} kg
+                                </div>
+                                <div style="font-size: 12px; color: #fbbf24; margin-top: 4px;">
+                                    → Assegnerà: ${willAssign} kg
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+                
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="document.getElementById('batchSelectionModal').remove()"
+                            style="flex: 1; padding: 10px; background: #dc2626; color: white; border: none;
+                                   border-radius: 4px; cursor: pointer;">Annulla</button>
+                </div>
+            `;
+
+            modal.appendChild(content);
+            document.body.appendChild(modal);
+        }
+
+        // Seleziona batch dal popup
+        function selectBatchFromPopup(batchIndex, remainingQuantity) {
+            const batch = currentAvailableBatches[batchIndex];
+            const alreadyAssigned = currentOrderBatches
+                .filter(b => b.batch === batch.batch)
+                .reduce((sum, b) => sum + b.quantity, 0);
+            const maxAvailable = (batch.quantityKg || 0) - alreadyAssigned;
+            
+            if (maxAvailable <= 0) {
+                alert('⚠️ Questo lotto non ha più disponibilità');
+                return;
+            }
+            
+            const quantityToAssign = Math.min(remainingQuantity, maxAvailable);
+
+            currentOrderBatches.push({
+                batch: batch.batch,
+                quantity: quantityToAssign,
+                expiry: batch.expiry,
+                shelfPosition: batch.shelfPosition,
+                colli: batch.quantity,
+                selectedBatchIndex: batchIndex
+            });
+
+            renderOrderBatches();
+
+            const newRemaining = remainingQuantity - quantityToAssign;
+
+            if (newRemaining <= 0) {
+                // Quantità completamente coperta, chiudi il modal
+                const modal = document.getElementById('batchSelectionModal');
+                if (modal) modal.remove();
+                
+                // Disabilita il pulsante "Aggiungi Lotto"
+                const addBatchBtn = document.querySelector('#addBatchContainer button');
+                if (addBatchBtn) {
+                    addBatchBtn.disabled = true;
+                    addBatchBtn.style.opacity = '0.5';
+                    addBatchBtn.style.cursor = 'not-allowed';
+                }
+            } else {
+                // Aggiorna il modal con il nuovo remaining quantity
+                const remainingLabel = document.getElementById('remainingQtyLabel');
+                if (remainingLabel) {
+                    remainingLabel.textContent = newRemaining;
+                }
+                
+                // Ricrea il popup con i lotti aggiornati
+                const modal = document.getElementById('batchSelectionModal');
+                if (modal) modal.remove();
+                
+                // Calcola i lotti ancora disponibili
+                const stillAvailableBatches = currentAvailableBatches
+                    .filter(batch => {
+                        const assigned = currentOrderBatches
+                            .filter(b => b.batch === batch.batch)
+                            .reduce((sum, b) => sum + b.quantity, 0);
+                        const available = (batch.quantityKg || 0) - assigned;
+                        return available > 0;
+                    });
+
+                if (stillAvailableBatches.length > 0) {
+                    createBatchSelectionModal(stillAvailableBatches, newRemaining);
+                }
+            }
+        }
+
+        // Rimuove un lotto dall'ordine
+        function removeOrderBatch(index) {
+            currentOrderBatches.splice(index, 1);
+            renderOrderBatches();
+            
+            // Se ci sono ancora batch, abilita il pulsante
+            const addBatchBtn = document.querySelector('#addBatchContainer button');
+            if (addBatchBtn) {
+                addBatchBtn.disabled = false;
+                addBatchBtn.style.opacity = '1';
+                addBatchBtn.style.cursor = 'pointer';
+            }
+        }
+
+        // Renderizza la tabella dei lotti selezionati
+        function renderOrderBatches() {
+            const container = document.getElementById('orderBatchesTableBody');
+            const tableContainer = document.getElementById('orderBatchesTableContainer');
+            const totalSpan = document.getElementById('orderBatchesTotal');
+
+            if (currentOrderBatches.length === 0) {
+                tableContainer.style.display = 'none';
+                return;
+            }
+
+            tableContainer.style.display = 'block';
+
+            const totalQuantity = currentOrderBatches.reduce((sum, b) => sum + b.quantity, 0);
+            totalSpan.textContent = totalQuantity.toFixed(1);
+
+            container.innerHTML = currentOrderBatches.map((batch, idx) => `
+                <tr style="border-bottom: 1px solid #4d4d4d;">
+                    <td style="padding: 8px; color: #e0e0e0;">
+                        <div style="font-weight: 600;">${batch.batch}</div>
+                        <div style="font-size: 11px; color: #a0a0a0;">
+                            Scad: ${batch.expiry || 'N/A'} | Pos: ${batch.shelfPosition || 'N/A'}
+                        </div>
+                    </td>
+                    <td style="padding: 8px; text-align: center; color: #b0b0b0;">${batch.colli || 0} sacchi</td>
+                    <td style="padding: 8px; text-align: right; color: #86efac; font-weight: 600;">${batch.quantity.toFixed(1)} kg</td>
+                    <td style="padding: 8px; text-align: center;">
+                        <button type="button" onclick="removeOrderBatch(${idx})" style="background: #e74c3c; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">✕</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
         // Aggiorna informazioni articolo (lotto, ritiro/consegna, posizione)
         // Carica e mostra i lotti disponibili per l'articolo selezionato
         async function loadAvailableBatches() {
             const selectedProduct = document.getElementById('orderProduct').value;
-            const article = articoli.find(a => a.nome === selectedProduct);
             
-            if (!article) {
-                document.getElementById('batchesContainer').style.display = 'none';
+            if (!selectedProduct) {
                 return;
             }
 
             try {
-                const response = await fetch(`${API_URL}/inventory/batches?code=${article.codice}`, {
+                const response = await fetch(`${API_URL}/inventory/batches?code=${selectedProduct}`, {
                     headers: { 
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
@@ -1907,46 +2207,21 @@
 
                 if (response.ok) {
                     currentAvailableBatches = await response.json();
-                    renderAvailableBatches();
                 } else {
                     console.warn('⚠️ Errore caricamento lotti');
-                    document.getElementById('batchesContainer').style.display = 'none';
+                    currentAvailableBatches = [];
                 }
             } catch (error) {
                 console.error('❌ Errore caricamento lotti:', error);
-                document.getElementById('batchesContainer').style.display = 'none';
+                currentAvailableBatches = [];
             }
         }
 
-        // Renderizza i lotti disponibili
+        // Renderizza i lotti disponibili (not used anymore - batches shown in modal)
         function renderAvailableBatches() {
-            const container = document.getElementById('batchesList');
-            const batchesContainer = document.getElementById('batchesContainer');
-            const warning = document.getElementById('batchWarning');
-
-            if (!currentAvailableBatches || currentAvailableBatches.length === 0) {
-                batchesContainer.style.display = 'none';
-                return;
-            }
-
-            batchesContainer.style.display = 'block';
-            container.innerHTML = currentAvailableBatches.map((batch, idx) => `
-                <div style="padding: 8px; border-bottom: 1px solid #4d4d4d; cursor: pointer;" 
-                     onclick="selectBatch(${idx})" 
-                     style="background: ${idx === 0 ? '#2d5a3a' : '#3d3d3d'};">
-                    <div style="font-weight: 600; color: #e0e0e0;">📦 Lotto: ${batch.batch || 'N/A'}</div>
-                    <div style="font-size: 12px; color: #a0a0a0;">
-                        Scadenza: ${batch.expiry || 'N/A'} | 
-                        Disponibili: <span style="color: #86efac; font-weight: 600;">${batch.available} kg</span> / 
-                        Totale: ${batch.currentStock} kg | 
-                        Prenotati: ${batch.reserved} kg
-                    </div>
-                    <div style="font-size: 11px; color: #808080;">Posizione: ${batch.shelfPosition}</div>
-                </div>
-            `).join('');
-
-            // Mostra warning se nessun lotto disponibile
-            if (currentAvailableBatches.every(b => b.available === 0)) {
+            // Batches are now displayed only in the modal popup
+            // This function is deprecated
+            if (currentAvailableBatches.every(b => (b.quantityKg || 0) === 0)) {
                 warning.textContent = '⚠️ Attenzione: nessun lotto disponibile in magazzino!';
                 warning.style.display = 'block';
             } else {
@@ -1959,8 +2234,10 @@
             const batch = currentAvailableBatches[batchIndex];
             if (!batch) return;
 
+            currentSelectedBatchIndex = batchIndex;
             document.getElementById('orderLotto').value = batch.batch || '';
             document.getElementById('orderPosizione').value = batch.shelfPosition || '';
+            document.getElementById('addBatchContainer').style.display = 'block';
             
             // Valida la quantità inserita
             validateOrderQuantity();
@@ -1972,20 +2249,30 @@
             const quantity = parseFloat(quantityInput.value) || 0;
             const warning = document.getElementById('quantityWarning');
             
-            if (currentAvailableBatches.length === 0) {
+            if (currentSelectedBatchIndex < 0) {
                 warning.style.display = 'none';
                 return;
             }
 
-            // Calcola quantità totale disponibile
-            const totalAvailable = currentAvailableBatches.reduce((sum, b) => sum + b.available, 0);
+            const selectedBatch = currentAvailableBatches[currentSelectedBatchIndex];
+            const totalQuantityKg = selectedBatch.quantityKg || 0;
+            
+            // Calcola quanto è già stato assegnato per questo lotto
+            const lotto = document.getElementById('orderLotto').value;
+            const alreadyAssigned = currentOrderBatches
+                .filter(b => b.batch === lotto)
+                .reduce((sum, b) => sum + b.quantity, 0);
+            
+            const remainingAvailable = totalQuantityKg - alreadyAssigned;
 
-            if (quantity > totalAvailable) {
-                warning.textContent = `⚠️ Quantità richiesta (${quantity} kg) supera quella disponibile (${totalAvailable} kg)`;
+            if (quantity > remainingAvailable) {
+                warning.textContent = `⚠️ Quantità richiesta (${quantity} kg) supera il rimanente (${remainingAvailable} kg disponibili nel lotto)`;
                 warning.style.display = 'block';
                 quantityInput.style.borderColor = '#dc2626';
             } else if (quantity > 0) {
-                warning.style.display = 'none';
+                warning.textContent = `✓ Disponibili nel lotto: ${remainingAvailable} kg`;
+                warning.style.color = '#86efac';
+                warning.style.display = 'block';
                 quantityInput.style.borderColor = '#16a34a';
             } else {
                 warning.style.display = 'none';
@@ -1995,20 +2282,22 @@
 
         function updateArticleInfo() {
             const selectedProduct = document.getElementById('orderProduct').value;
-            const article = articoli.find(a => a.nome === selectedProduct);
+            const article = articoli.find(a => a.codice === selectedProduct);
             
             if (article) {
-                document.getElementById('orderLotto').value = article.lotto || '';
-                document.getElementById('orderRitiroConsegna').value = article.ritiro_consegna || '';
-                document.getElementById('orderPosizione').value = article.posizione_scaffale || '';
-                
                 // Carica i lotti disponibili dall'inventario
                 loadAvailableBatches();
+                
+                // Mostra e abilita il pulsante "Aggiungi Lotto"
+                document.getElementById('addBatchContainer').style.display = 'block';
+                const addBatchBtn = document.querySelector('#addBatchContainer button');
+                if (addBatchBtn) {
+                    addBatchBtn.disabled = false;
+                    addBatchBtn.style.opacity = '1';
+                    addBatchBtn.style.cursor = 'pointer';
+                }
             } else {
-                document.getElementById('orderLotto').value = '';
-                document.getElementById('orderRitiroConsegna').value = '';
-                document.getElementById('orderPosizione').value = '';
-                document.getElementById('batchesContainer').style.display = 'none';
+                document.getElementById('addBatchContainer').style.display = 'none';
             }
         }
 
@@ -2031,13 +2320,19 @@
                     alert('Errore: form non trovato');
                     return;
                 }
+
+                // Validazione: almeno un lotto deve essere aggiunto
+                if (currentOrderBatches.length === 0) {
+                    alert('⚠️ Aggiungi almeno un lotto all\'ordine');
+                    return;
+                }
                 
                 const editingId = orderForm.dataset.editingId;
                 
                 // Verifica che tutti gli elementi del form esistano
                 const requiredElements = [
-                    'orderClient', 'orderProduct', 'orderQuantity', 'orderType', 'orderDateTime',
-                    'orderLotto', 'orderRitiroConsegna', 'orderPosizione', 'orderNotes', 'assignToOperator'
+                    'orderClient', 'orderProduct', 'orderType', 'orderDateTime',
+                    'orderNotes', 'assignToOperator'
                 ];
                 
                 for (const elementId of requiredElements) {
@@ -2065,16 +2360,15 @@
                 }
             }
 
+            const totalQuantity = currentOrderBatches.reduce((sum, b) => sum + b.quantity, 0);
             const orderData = {
                 client: document.getElementById('orderClient').value,
                 product: document.getElementById('orderProduct').value,
-                quantity: parseFloat(document.getElementById('orderQuantity').value),
+                quantity: totalQuantity,
+                batches: currentOrderBatches,  // Array di lotti
                 type: document.getElementById('orderType').value,
                 dateTime: rawDateTime,
                 status: 'pending',  // Default status for new orders
-                lotto: document.getElementById('orderLotto').value,
-                ritiro_consegna: document.getElementById('orderRitiroConsegna').value,
-                posizione: document.getElementById('orderPosizione').value,
                 notes: document.getElementById('orderNotes').value,
                 assignedOperatorId: document.getElementById('assignToOperator').value ? parseInt(document.getElementById('assignToOperator').value, 10) : null
             };

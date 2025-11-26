@@ -404,34 +404,87 @@ export class InventoryService {
    */
   static async getBatchesForArticle(articleCode: string) {
     try {
-      const article = await prisma.article.findFirst({
-        where: { code: articleCode },
-        include: { inventory: true }
+      // Leggi da inventory_data.csv per ottenere tutti i lotti dell'articolo
+      const csvPath = path.join(process.cwd(), 'public/data/inventory_data.csv');
+      const fileContent = fs.readFileSync(csvPath, 'utf-8');
+      const lines = fileContent.trim().split('\n');
+      
+      if (lines.length === 0) {
+        throw new Error('File inventario vuoto');
+      }
+
+      // Salta header
+      const headers = lines[0].split(',').map(h => h.trim());
+      const posIdx = headers.indexOf('Posizione');
+      const nomeIdx = headers.indexOf('Nome');
+      const codiceIdx = headers.indexOf('Codice');
+      const lottoIdx = headers.indexOf('Lotto');
+      const scadenzaIdx = headers.indexOf('Scadenza');
+      const quantitaIdx = headers.indexOf('Quantita');
+      const annotazioniIdx = headers.indexOf('Annotazioni');
+
+      const batches: any[] = [];
+      const descrizioniByCode: { [key: string]: string } = {}; // Cache delle descrizioni
+
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i];
+        if (!line.trim()) continue;
+
+        const values = line.split(',').map(v => v.trim());
+        const codice = values[codiceIdx] || '';
+        
+        if (codice === articleCode) {
+          const lotto = values[lottoIdx] || '';
+          const scadenza = values[scadenzaIdx] || '';
+          const quantitaColli = parseInt(values[quantitaIdx]) || 0;
+          const posizione = values[posIdx] || '';
+          const annotazioni = values[annotazioniIdx] || '';
+          const nome = values[nomeIdx] || '';
+
+          // Cache la descrizione
+          descrizioniByCode[codice] = nome;
+
+          // Estrai peso da descrizione (es: "25kg" o "5 kg" da "FARINA 00 SFOGLIA da 25kg")
+          const pesoMatch = nome.match(/(\d+)\s*kg/i);
+          const pesoUnitario = pesoMatch ? parseInt(pesoMatch[1]) : 1;
+          const quantitaKg = quantitaColli * pesoUnitario;
+
+          // Aggiungi il lotto se non è già presente nella lista
+          if (!batches.some(b => b.batch === lotto && b.expiry === scadenza)) {
+            batches.push({
+              batch: lotto,
+              expiry: scadenza,
+              quantity: quantitaColli, // Numero di colli
+              quantityKg: quantitaKg, // Totale in kg
+              shelfPosition: posizione,
+              notes: annotazioni
+            });
+          }
+        }
+      }
+
+      // Ordina per scadenza (più vecchio primo) - lotti più vecchi come default
+      batches.sort((a, b) => {
+        const dateA = this.parseDate(a.expiry);
+        const dateB = this.parseDate(b.expiry);
+        return dateA.getTime() - dateB.getTime();
       });
 
-      if (!article) {
-        throw new Error('Articolo non trovato');
-      }
-
-      // Se l'articolo ha un inventario con batch e scadenza, restituiscilo
-      const inv = article.inventory;
-      if (inv) {
-        return [{
-          id: inv.id,
-          batch: inv.batch || '',
-          expiry: inv.expiry || '',
-          currentStock: inv.currentStock || 0,
-          reserved: inv.reserved || 0,
-          available: Math.max(0, (inv.currentStock || 0) - (inv.reserved || 0)),
-          shelfPosition: inv.shelfPosition || '',
-          notes: inv.notes || ''
-        }];
-      }
-
-      return [];
+      return batches;
     } catch (error) {
       throw new Error(`Errore lettura lotti: ${error}`);
     }
+  }
+
+  /**
+   * Utility per parsare date formato DD/MM/YYYY
+   */
+  private static parseDate(dateStr: string): Date {
+    if (!dateStr || dateStr === '0') return new Date(9999, 11, 31); // Data molto futura per batch vecchi
+    const parts = dateStr.split('/');
+    if (parts.length !== 3) return new Date(9999, 11, 31);
+    const [day, month, year] = parts.map(p => parseInt(p));
+    return new Date(year, month - 1, day);
   }
 
   /**

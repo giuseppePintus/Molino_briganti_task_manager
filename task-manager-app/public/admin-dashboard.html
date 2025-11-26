@@ -968,6 +968,96 @@
             font-size: 14px;
         }
 
+        /* Tablet specific styles (768px - 1024px) */
+        @media (min-width: 768px) and (max-width: 1024px) {
+            /* Quick actions: grid layout 2 columns */
+            .quick-actions {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr !important;
+                gap: 10px !important;
+                flex-wrap: initial !important;
+            }
+
+            .quick-actions .btn {
+                width: 100% !important;
+                padding: 12px 14px !important;
+                font-size: 13px !important;
+                min-height: 40px !important;
+                height: 40px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                gap: 8px !important;
+            }
+
+            .quick-actions .btn::before {
+                font-size: 16px !important;
+            }
+
+            .quick-actions .btn span {
+                font-size: 13px !important;
+                line-height: 1.2 !important;
+            }
+
+            /* Task actions buttons: wrap on 2 columns with uniform sizing */
+            .task-actions {
+                gap: 10px !important;
+                flex-wrap: wrap !important;
+                display: flex !important;
+                justify-content: flex-start !important;
+            }
+
+            .task-actions .btn {
+                width: calc(50% - 5px) !important;
+                padding: 12px 14px !important;
+                font-size: 13px !important;
+                min-height: 40px !important;
+                height: 40px !important;
+                flex: 0 0 auto !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                gap: 8px !important;
+            }
+
+            .task-actions .btn::before {
+                font-size: 16px !important;
+            }
+
+            .task-actions .btn span {
+                font-size: 13px !important;
+                line-height: 1.2 !important;
+            }
+
+            /* Override specific card styles to ensure consistency */
+            #dayTasksCard .task-actions .btn {
+                width: calc(50% - 5px) !important;
+                padding: 12px 14px !important;
+                font-size: 13px !important;
+                min-height: 40px !important;
+                height: 40px !important;
+                flex: 0 0 auto !important;
+            }
+
+            #operatorTasksCard .task-actions .btn {
+                width: calc(50% - 5px) !important;
+                padding: 12px 14px !important;
+                font-size: 13px !important;
+                min-height: 40px !important;
+                height: 40px !important;
+                flex: 0 0 auto !important;
+            }
+
+            #myTasksCard .task-actions .btn {
+                width: calc(50% - 5px) !important;
+                padding: 12px 14px !important;
+                font-size: 13px !important;
+                min-height: 40px !important;
+                height: 40px !important;
+                flex: 0 0 auto !important;
+            }
+        }
+
         @media (max-width: 480px) {
             /* Mobile: Subgrid approach */
             .calendar-header {
@@ -1406,7 +1496,7 @@
 
         <!-- Quick Actions -->
         <div class="quick-actions">
-            <div class="dropdown-menu-admin" style="position: relative; display: inline-block;">
+            <div class="dropdown-menu-admin" style="position: relative; display: contents;">
                 <button class="btn btn-settings" data-icon="⚙️" onclick="toggleAdminMenu()" style="position: relative;"><span>Gestione</span></button>
                 <div id="adminMenuDropdown" class="admin-menu-dropdown" style="display: none; position: absolute; top: 100%; left: 0; background: #2d2d2d; border: 1px solid #4d4d4d; border-radius: 6px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); min-width: 220px; z-index: 1000; margin-top: 5px;">
                     <button class="admin-menu-item" onclick="window.location.href='company-settings.html'; toggleAdminMenu();" style="display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 15px; border: none; background: transparent; color: #e0e0e0; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s; border-bottom: 1px solid #3d3d3d;">
