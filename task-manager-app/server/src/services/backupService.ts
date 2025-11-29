@@ -13,14 +13,20 @@ export class BackupService {
   private nasPort: number;
   private maxLocalBackups: number = 10;
 
-  constructor(backupDir: string = './backups', nasUrl: string = '192.168.1.100', nasPort: number = 5000) {
+  constructor(backupDir: string = '/share/CACHEDEV1_DATA/molino/backups', nasUrl: string = '192.168.1.100', nasPort: number = 5000) {
     this.backupDir = backupDir;
     this.nasUrl = nasUrl;
     this.nasPort = nasPort;
     
-    // Crea cartella backup se non esiste
+    // Crea cartella backup se non esiste (con fallback a ./backups se /share/CACHEDEV1_DATA non disponibile)
     if (!fs.existsSync(this.backupDir)) {
-      fs.mkdirSync(this.backupDir, { recursive: true });
+      try {
+        fs.mkdirSync(this.backupDir, { recursive: true });
+      } catch (err) {
+        console.warn(`⚠️ Cannot create ${this.backupDir}, using ./backups instead`);
+        this.backupDir = './backups';
+        fs.mkdirSync(this.backupDir, { recursive: true });
+      }
     }
   }
 
@@ -297,7 +303,7 @@ export class BackupService {
 }
 
 export default new BackupService(
-  process.env.BACKUP_DIR || './backups',
+  process.env.BACKUP_DIR || '/share/CACHEDEV1_DATA/molino/backups',
   process.env.NAS_URL || '192.168.1.100',
   parseInt(process.env.NAS_PORT || '5000')
 );
