@@ -6,6 +6,40 @@ const prisma = new PrismaClient();
 
 export class InventoryService {
   /**
+   * Parsing CSV - gestisce correttamente quote e virgole
+   */
+  private static parseCSVLine(line: string): string[] {
+    const result: string[] = [];
+    let current = '';
+    let insideQuotes = false;
+    
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      const nextChar = line[i + 1];
+      
+      if (char === '"') {
+        if (insideQuotes && nextChar === '"') {
+          // "" inside quotes = escaped quote
+          current += '"';
+          i++;
+        } else {
+          // Toggle quote mode
+          insideQuotes = !insideQuotes;
+        }
+      } else if (char === ',' && !insideQuotes) {
+        // Comma outside quotes = delimiter
+        result.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    
+    result.push(current.trim());
+    return result;
+  }
+
+  /**
    * Importa dati inventario da file CSV
    */
   static async importInventoryFromCSV(filePath: string) {
@@ -23,12 +57,14 @@ export class InventoryService {
       // Salta header
       if (lines.length === 0) return { success: false, imported: 0 };
       
-      const headers = lines[0].split(',').map(h => h.trim());
+      const headers = this.parseCSVLine(lines[0]);
       console.log('📋 Headers:', headers);
+      console.log('📈 Numero di colonne:', headers.length);
       
       let importedCount = 0;
       let updatedCount = 0;
       let skippedCount = 0;
+      let errorCount = 0;
 
       for (let i = 1; i < lines.length; i++) {
         const line = lines[i];
@@ -37,12 +73,14 @@ export class InventoryService {
           continue;
         }
 
-        const values = line.split(',').map(v => v.trim());
+        const values = this.parseCSVLine(line);
         const data: any = {};
         
         headers.forEach((header, index) => {
           data[header] = values[index] || '';
         });
+
+        console.log(`📍 Riga ${i}: Posizione=${data['Posizione']}, Codice=${data['Codice']}, Quantita=${data['Quantita']}`);
 
         // Estrai i dati
         const posizione = data['Posizione'];
@@ -87,7 +125,7 @@ export class InventoryService {
               include: { inventory: true }
             });
             importedCount++;
-            console.log(`✅ Importato articolo ${i}: ${codice} (${nome})`);
+            console.log(`✅ Importato articolo ${i}: ${codice} (${nome}) - Quantita: ${quantita}`);
           } else if (article.inventory) {
             // Se articolo esiste, aggiorna l'inventario
             await prisma.inventory.update({
@@ -101,19 +139,24 @@ export class InventoryService {
               }
             });
             updatedCount++;
-            console.log(`🔄 Aggiornato articolo ${i}: ${codice}`);
+            console.log(`🔄 Aggiornato articolo ${i}: ${codice} - Quantita aggiunta: ${quantita}`);
+          } else {
+            console.warn(`⚠️ Riga ${i} (${codice}): Articolo trovato ma senza inventory record`);
+            skippedCount++;
           }
         } catch (err) {
           console.error(`❌ Errore import riga ${i} (${codice}):`, err);
+          errorCount++;
         }
       }
 
-      console.log(`📈 Importazione completata: ${importedCount} importati, ${updatedCount} aggiornati, ${skippedCount} saltati`);
+      console.log(`📈 Importazione completata: ${importedCount} importati, ${updatedCount} aggiornati, ${skippedCount} saltati, ${errorCount} errori`);
       return { 
         success: true, 
         imported: importedCount,
         updated: updatedCount,
         skipped: skippedCount,
+        errors: errorCount,
         total: importedCount + updatedCount
       };
     } catch (error) {

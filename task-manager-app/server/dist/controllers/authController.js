@@ -32,15 +32,8 @@ class AuthController {
                     return res.status(401).json({ message: 'Invalid credentials' });
                 }
                 console.log(`✅ User found: ${user.username} (role: ${user.role})`);
-                console.log(`🔑 Stored hash: ${user.passwordHash.substring(0, 20)}...`);
-                // Try bcrypt compare
-                let isPasswordValid = yield (0, User_1.comparePassword)(password, user.passwordHash);
-                // Fallback: if bcrypt fails, try plaintext (for debug only!)
-                if (!isPasswordValid && user.passwordHash === password) {
-                    console.log('⚠️  Using plaintext fallback!');
-                    isPasswordValid = true;
-                }
-                console.log(`🔑 Password valid: ${isPasswordValid}`);
+                // Compare password with hash
+                const isPasswordValid = yield (0, User_1.comparePassword)(password, user.passwordHash);
                 if (!isPasswordValid) {
                     console.log(`❌ Password mismatch for user: ${username}`);
                     return res.status(401).json({ message: 'Invalid credentials' });

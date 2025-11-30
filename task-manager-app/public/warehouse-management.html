@@ -185,6 +185,65 @@
             background: #4d4d4d;
         }
 
+        .editable-cell {
+            cursor: pointer;
+            position: relative;
+            min-width: 60px;
+        }
+
+        .editable-cell input {
+            width: 100%;
+            background: #2d2d2d;
+            border: 2px solid #2563eb;
+            color: #e0e0e0;
+            padding: 6px 8px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        .editable-cell input:focus {
+            outline: none;
+            box-shadow: 0 0 8px rgba(37, 99, 235, 0.5);
+        }
+
+        .editable-cell.modified {
+            background: #3d5a3d;
+        }
+
+        .btn-small {
+            padding: 6px 10px;
+            font-size: 12px;
+            min-height: auto;
+            height: auto;
+        }
+
+        .btn-save {
+            background: #16a34a;
+            color: white;
+        }
+
+        .btn-save:hover {
+            background: #15803d;
+        }
+
+        .btn-cancel {
+            background: #6b7280;
+            color: white;
+        }
+
+        .btn-cancel:hover {
+            background: #4b5563;
+        }
+
+        .btn-edit {
+            background: #2563eb;
+            color: white;
+        }
+
+        .btn-edit:hover {
+            background: #1d4ed8;
+        }
+
         .empty-state {
             text-align: center;
             padding: 40px 20px;
@@ -336,9 +395,12 @@
             <strong>ℹ️ Informazione:</strong> Sistema di gestione magazzino per Molino Briganti
         </div>
 
+        <!-- Hidden file input -->
+        <input type="file" id="csvFileInput" accept=".csv" style="display: none;" onchange="handleFileSelect(event)">
+        
         <!-- Action Bar -->
         <div class="action-bar">
-            <button class="btn btn-import" onclick="importInventoryData()" id="importBtn" data-icon="📥">
+            <button class="btn btn-import" onclick="openFileSelector()" id="importBtn" data-icon="📥">
                 <span>Importa da CSV</span>
             </button>
             <button class="btn btn-primary" onclick="refreshInventoryData()" id="refreshBtn" data-icon="🔄">
@@ -408,6 +470,25 @@
             </div>
         </div>
 
+        <!-- Warehouse Status Card -->
+        <div class="card">
+            <h2>📊 Stato Magazzino</h2>
+            <p style="color: #a0a0a0; margin-bottom: 15px;">Visualizza e modifica le giacenze in tempo reale</p>
+            
+            <div style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center;">
+                <input type="text" id="searchWarehouse" placeholder="🔍 Cerca per nome, codice o posizione..." 
+                       style="flex: 1; padding: 10px; background: #3d3d3d; border: 1px solid #4d4d4d; color: #e0e0e0; border-radius: 4px;"
+                       onkeyup="filterWarehouseTable()">
+                <button class="btn btn-primary" onclick="exportWarehouseData()" style="min-width: 150px;">
+                    <span>📥 Esporta CSV</span>
+                </button>
+            </div>
+            
+            <div class="table-container" id="warehouseTable" style="max-height: 600px; overflow-y: auto;">
+                <div class="empty-state">Caricamento stato magazzino...</div>
+            </div>
+        </div>
+
         <!-- Info Card -->
         <div class="card">
             <h2>ℹ️ Informazioni</h2>
@@ -452,7 +533,21 @@
             }
         }
 
-        async function importInventoryData() {
+        function openFileSelector() {
+            document.getElementById('csvFileInput').click();
+        }
+
+        async function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            await importInventoryData(file);
+            
+            // Reset l'input
+            event.target.value = '';
+        }
+
+        async function importInventoryData(file) {
             try {
                 const importBtn = document.getElementById('importBtn');
                 if (!importBtn) return;
@@ -461,22 +556,46 @@
                 const originalText = importBtn.innerHTML;
                 importBtn.innerHTML = '<span class="loading-spinner"></span><span>Importando...</span>';
 
-                const response = await fetch(`${API_URL}/inventory/import/articles`, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
+                let response;
+                
+                if (file) {
+                    // Se è stato selezionato un file, invialo
+                    console.log('📤 Invio file:', file.name);
+                    const formData = new FormData();
+                    formData.append('file', file);
+
+                    response = await fetch(`${API_URL}/inventory/import/articles`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}` },
+                        body: formData
+                    });
+                } else {
+                    // Se non è stato selezionato un file, usa il file di default
+                    console.log('📥 Importazione da file di default (no file selected)');
+                    response = await fetch(`${API_URL}/inventory/import/articles`, {
+                        method: 'POST',
+                        headers: { 
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ useDefault: true })
+                    });
+                }
 
                 if (!response.ok) {
-                    throw new Error('Errore nell\'importazione');
+                    const errorText = await response.text();
+                    console.error('Errore response:', response.status, errorText);
+                    throw new Error(`Errore: ${response.status} ${errorText}`);
                 }
 
                 const result = await response.json();
+                console.log('✅ Importazione result:', result);
                 showAlert(`✅ Importazione completata! Articoli: ${result.imported}, Aggiornati: ${result.updated}`, 'success');
                 
                 // Ricarica i dati
                 await loadInventoryData();
             } catch (error) {
-                console.error('Errore import:', error);
+                console.error('❌ Errore import:', error);
                 showAlert(`❌ Errore: ${error.message}`, 'error');
             } finally {
                 const importBtn = document.getElementById('importBtn');
@@ -600,6 +719,236 @@
             `;
 
             container.innerHTML = html;
+            
+            // Dopo il rendering della tabella, carica lo stato magazzino
+            loadWarehouseStatus();
+        }
+
+        // Store articles globally for warehouse table
+        let allArticles = [];
+
+        async function loadWarehouseStatus() {
+            try {
+                const response = await fetch(`${API_URL}/inventory/articles`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Errore nel caricamento dello stato magazzino');
+                }
+
+                allArticles = await response.json();
+                renderWarehouseStatus(allArticles);
+            } catch (error) {
+                console.error('Errore caricamento stato magazzino:', error);
+                document.getElementById('warehouseTable').innerHTML = `
+                    <div class="empty-state">
+                        <p>⚠️ Errore nel caricamento dello stato magazzino</p>
+                    </div>
+                `;
+            }
+        }
+
+        function renderWarehouseStatus(articles) {
+            const container = document.getElementById('warehouseTable');
+
+            if (!articles || articles.length === 0) {
+                container.innerHTML = '<div class="empty-state">Nessun articolo in magazzino</div>';
+                return;
+            }
+
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Posizione</th>
+                            <th>Codice</th>
+                            <th>Nome</th>
+                            <th>Quantità (kg)</th>
+                            <th>Lotto</th>
+                            <th>Scadenza</th>
+                            <th>Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            articles.forEach((article, idx) => {
+                const posizione = article.inventory?.shelfPosition || article.posizione || '-';
+                const codice = article.code || article.codice || '-';
+                const nome = article.name || article.nome || '-';
+                const quantita = article.inventory?.currentStock || article.quantita || 0;
+                const lotto = article.inventory?.batch || article.lotto || '-';
+                const scadenza = article.inventory?.expiry || article.scadenza || '-';
+
+                html += `
+                    <tr data-article-id="${article.id || idx}">
+                        <td>${posizione}</td>
+                        <td><strong>${codice}</strong></td>
+                        <td>${nome}</td>
+                        <td class="editable-cell" onclick="editCell(this, 'quantity', ${article.id})" data-value="${quantita}">
+                            <span class="cell-value">${quantita}</span>
+                            <input type="number" class="cell-input" style="display: none;" value="${quantita}" min="0" step="0.5">
+                        </td>
+                        <td>${lotto}</td>
+                        <td>${scadenza}</td>
+                        <td>
+                            <button class="btn btn-small btn-edit" onclick="editQuantity(this, ${article.id})">✏️</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                    </tbody>
+                </table>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        function editQuantity(btn, articleId) {
+            const row = btn.closest('tr');
+            const cell = row.querySelector('.editable-cell');
+            const input = cell.querySelector('.cell-input');
+            const valueSpan = cell.querySelector('.cell-value');
+
+            if (input.style.display === 'none') {
+                // Attiva modalità edit
+                valueSpan.style.display = 'none';
+                input.style.display = 'block';
+                input.focus();
+                btn.textContent = '💾';
+                btn.classList.remove('btn-edit');
+                btn.classList.add('btn-save');
+
+                input.onkeyup = (e) => {
+                    if (e.key === 'Enter') {
+                        saveQuantity(btn, articleId, cell);
+                    } else if (e.key === 'Escape') {
+                        cancelEdit(btn, cell);
+                    }
+                };
+            } else {
+                // Salva modifiche
+                saveQuantity(btn, articleId, cell);
+            }
+        }
+
+        async function saveQuantity(btn, articleId, cell) {
+            const input = cell.querySelector('.cell-input');
+            const newQuantity = parseFloat(input.value);
+
+            if (isNaN(newQuantity)) {
+                showAlert('❌ Quantità non valida', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/inventory/stock/update`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        articleId: articleId,
+                        newQuantity: newQuantity,
+                        reason: 'MODIFICA MANUALE MAGAZZINO'
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Errore nel salvataggio');
+                }
+
+                showAlert(`✅ Quantità aggiornata: ${newQuantity} kg`, 'success');
+                
+                // Ripristina visualizzazione
+                const valueSpan = cell.querySelector('.cell-value');
+                valueSpan.textContent = newQuantity;
+                valueSpan.style.display = 'inline';
+                input.style.display = 'none';
+                btn.textContent = '✏️';
+                btn.classList.remove('btn-save');
+                btn.classList.add('btn-edit');
+                
+                // Aggiorna statistiche
+                const article = allArticles.find(a => a.id === articleId);
+                if (article) {
+                    article.inventory.currentStock = newQuantity;
+                    updateStatistics(allArticles);
+                }
+            } catch (error) {
+                console.error('Errore salvataggio:', error);
+                showAlert(`❌ Errore: ${error.message}`, 'error');
+                cancelEdit(btn, cell);
+            }
+        }
+
+        function cancelEdit(btn, cell) {
+            const input = cell.querySelector('.cell-input');
+            const valueSpan = cell.querySelector('.cell-value');
+
+            valueSpan.style.display = 'inline';
+            input.style.display = 'none';
+            btn.textContent = '✏️';
+            btn.classList.remove('btn-save');
+            btn.classList.add('btn-edit');
+        }
+
+        function editCell(cell, type, articleId) {
+            // Placeholder per future implementazioni
+        }
+
+        function filterWarehouseTable() {
+            const searchTerm = document.getElementById('searchWarehouse').value.toLowerCase();
+            const rows = document.querySelectorAll('#warehouseTable tbody tr');
+
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(searchTerm) ? '' : 'none';
+            });
+        }
+
+        async function exportWarehouseData() {
+            if (!allArticles || allArticles.length === 0) {
+                showAlert('❌ Nessun dato da esportare', 'error');
+                return;
+            }
+
+            try {
+                // Crea CSV
+                let csv = 'Posizione,Codice,Nome,Quantità (kg),Lotto,Scadenza,Data Esportazione\n';
+                
+                allArticles.forEach(article => {
+                    const posizione = article.inventory?.shelfPosition || '-';
+                    const codice = (article.code || '-').replace(/,/g, '');
+                    const nome = (article.name || '-').replace(/,/g, '');
+                    const quantita = article.inventory?.currentStock || 0;
+                    const lotto = (article.inventory?.batch || '-').replace(/,/g, '');
+                    const scadenza = (article.inventory?.expiry || '-').replace(/,/g, '');
+                    const dataEsportazione = new Date().toLocaleString('it-IT');
+
+                    csv += `"${posizione}","${codice}","${nome}",${quantita},"${lotto}","${scadenza}","${dataEsportazione}"\n`;
+                });
+
+                // Scarica file
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                const url = URL.createObjectURL(blob);
+                link.setAttribute('href', url);
+                link.setAttribute('download', `magazzino-${new Date().getTime()}.csv`);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                showAlert('✅ File esportato con successo!', 'success');
+            } catch (error) {
+                console.error('Errore esportazione:', error);
+                showAlert(`❌ Errore: ${error.message}`, 'error');
+            }
         }
     </script>
 </body>

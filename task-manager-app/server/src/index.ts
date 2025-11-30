@@ -9,6 +9,7 @@ import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import * as fs from 'fs';
 import tasksRoutes from './routes/tasks';
 import authRoutes from './routes/auth';
 import backupRoutes from './routes/backup';
@@ -23,6 +24,13 @@ const execAsync = promisify(exec);
 const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 5000;
+
+// Crea cartella uploads se non esiste
+const uploadsDir = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+  console.log('📁 Cartella uploads creata');
+}
 
 // Middleware
 app.use(cors());

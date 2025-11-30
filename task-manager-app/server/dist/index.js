@@ -54,6 +54,7 @@ const cors_1 = __importDefault(require("cors"));
 const client_1 = require("@prisma/client");
 const child_process_1 = require("child_process");
 const util_1 = require("util");
+const fs = __importStar(require("fs"));
 const tasks_1 = __importDefault(require("./routes/tasks"));
 const auth_1 = __importDefault(require("./routes/auth"));
 const backup_1 = __importDefault(require("./routes/backup"));
@@ -67,6 +68,12 @@ const execAsync = (0, util_1.promisify)(child_process_1.exec);
 const app = (0, express_1.default)();
 const prisma = new client_1.PrismaClient();
 const PORT = process.env.PORT || 5000;
+// Crea cartella uploads se non esiste
+const uploadsDir = path_1.default.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+    console.log('📁 Cartella uploads creata');
+}
 // Middleware
 app.use((0, cors_1.default)());
 app.use(express_1.default.json());

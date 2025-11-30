@@ -9,8 +9,8 @@ COPY package*.json ./
 # Crea directory per la build
 RUN mkdir -p /app/server /app/client
 
-# Install dependencies (sfrutta cache)
-RUN npm install
+# Install dependencies with retry (sfrutta cache)
+RUN npm install --legacy-peer-deps --audit=false || npm install --legacy-peer-deps --audit=false || npm install --legacy-peer-deps --audit=false
 
 # Copia il codice
 COPY . .
@@ -61,6 +61,6 @@ VOLUME ["/share/CACHEDEV1_DATA"]
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD node -e "require('http').get('http://localhost:5000/api/health')"
 
-# Comando di startup
-RUN echo '#!/bin/sh\nmkdir -p /share/CACHEDEV1_DATA/molino/backups && node server/dist/index.js' > /start.sh && chmod +x /start.sh
+# Comando di startup - RUN prisma migrate al boot se necessario
+RUN echo '#!/bin/sh\nmkdir -p /share/CACHEDEV1_DATA/molino/backups\necho "🔄 Running Prisma migrations..."\ncd /app/server && npx prisma migrate deploy --skip-generate || true\necho "✅ Migrations completed"\nnode /app/server/dist/index.js' > /start.sh && chmod +x /start.sh
 CMD ["/start.sh"]

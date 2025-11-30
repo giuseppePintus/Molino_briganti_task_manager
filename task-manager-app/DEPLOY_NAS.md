@@ -1,4 +1,4 @@
-# Molino Task Manager - Deploy su NAS
+Copia-incolla l'errore esatto# Molino Task Manager - Deploy su NAS
 
 ## ⚠️ IMPORTANTE: Il NAS DEVE fare il BUILD locale, non il PULL
 
