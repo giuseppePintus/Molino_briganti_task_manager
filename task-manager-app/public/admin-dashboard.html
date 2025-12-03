@@ -1666,6 +1666,43 @@
             return trip.sequence.map(orderId => orders.find(o => String(o.id) === String(orderId))).filter(Boolean);
         }
 
+        // Helper per ottenere informazioni complete ordine con operatore e viaggio
+        function getOrderFullInfo(orderId) {
+            const order = orders.find(o => String(o.id) === String(orderId));
+            if (!order) return null;
+
+            // Normalizza i dati dell'ordine (compatibile con entrambi i formati)
+            const normalized = {
+                id: order.id,
+                client: order.client || order.clientName || 'Cliente sconosciuto',
+                product: order.product || (order.products?.[0]?.product) || 'Prodotto',
+                quantity: order.quantity || (order.products?.reduce((sum, p) => sum + (p.quantity || 0), 0)) || 0,
+                notes: order.notes || '',
+                type: order.type || 'consegna',
+                dateTime: order.dateTime || new Date().toISOString(),
+                status: order.status || 'pending',
+                tripId: order.tripId || null,
+                assignedOperatorId: order.assignedOperatorId || null,
+                products: order.products || (order.product ? [{product: order.product, quantity: order.quantity || 0}] : [])
+            };
+
+            // Aggiungi info viaggio
+            normalized.trip = null;
+            if (normalized.tripId) {
+                normalized.trip = trips.find(t => t.id === normalized.tripId);
+            }
+
+            // Aggiungi info operatore
+            normalized.operator = null;
+            if (normalized.assignedOperatorId) {
+                normalized.operator = allOperators.find(op => op.id === normalized.assignedOperatorId);
+            } else if (normalized.trip?.assignedOperatorId) {
+                normalized.operator = allOperators.find(op => op.id === normalized.trip.assignedOperatorId);
+            }
+
+            return normalized;
+        }
+
         function calculateTripTotals(tripId) {
             const tripOrders = getTripOrders(tripId);
             const totals = {};
@@ -1676,6 +1713,235 @@
                 totals[order.product] += parseFloat(order.quantity || 0);
             });
             return totals;
+        }
+
+        // ===== NUOVE FUNZIONI LOGICA ORDINI CONSEGNA =====
+
+        // Ordini sospesi (consegnati senza viaggio associato)
+        function getPendingDeliveryOrders(dateStr) {
+            return orders.filter(order => {
+                if (order.type !== 'consegnato') return false;
+                if (!order.dateTime) return false;
+                if (order.dateTime.split('T')[0] !== dateStr) return false;
+                return !order.tripId; // Senza viaggio = sospesi
+            });
+        }
+
+        // Viaggi senza operatore assegnato per una data
+        function getUnassignedTripsForDate(dateStr) {
+            return trips.filter(trip => {
+                if (trip.assignedOperatorId) return false; // Skip se già assegnato
+                // Controlla se contiene almeno un ordine della data
+                const tripOrders = getTripOrders(trip.id);
+                return tripOrders.some(o => o.dateTime && o.dateTime.split('T')[0] === dateStr);
+            });
+        }
+
+        // Crea un nuovo viaggio
+        function createNewTrip(name, orderIds = []) {
+            const trip = {
+                id: Date.now(),
+                name: name || `Consegne ${new Date().toLocaleDateString('it-IT')}`,
+                sequence: orderIds || [],
+                assignedOperatorId: null,
+                createdAt: new Date().toISOString(),
+                status: 'pending'
+            };
+            trips.push(trip);
+            saveTrips();
+            return trip;
+        }
+
+        // Assegna viaggio a operatore
+        function assignTripToOperator(tripId, operatorId) {
+            const trip = trips.find(t => t.id === tripId);
+            if (!trip) return;
+            trip.assignedOperatorId = operatorId;
+            saveTrips();
+            renderCalendar();
+        }
+
+        // Apri modal per modifica ordine
+        function openEditDeliveryOrderModal(orderId) {
+            const order = orders.find(o => o.id === orderId);
+            if (!order) {
+                showAlert('Ordine non trovato', 'error');
+                return;
+            }
+
+            // UI per modificare l'ordine
+            const modalHTML = `
+                <div id="editOrderModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 3000;">
+                    <div style="background: #1a1a1a; border-radius: 8px; padding: 30px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; border: 1px solid #444;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h2 style="margin: 0; color: #fff;">✏️ Modifica Ordine</h2>
+                            <button onclick="document.getElementById('editOrderModal').remove();" style="background: none; border: none; color: #999; font-size: 24px; cursor: pointer; padding: 0; width: 30px; height: 30px;" title="Chiudi">×</button>
+                        </div>
+
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; color: #bbb; margin-bottom: 5px; font-size: 12px;"><strong>Cliente:</strong></label>
+                            <input type="text" id="editOrderClient" value="${order.client || ''}" style="width: 100%; padding: 10px; background: #2a2a2a; border: 1px solid #444; border-radius: 4px; color: #fff;">
+                        </div>
+
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; color: #bbb; margin-bottom: 5px; font-size: 12px;"><strong>Prodotto:</strong></label>
+                            <input type="text" id="editOrderProduct" value="${order.product || ''}" style="width: 100%; padding: 10px; background: #2a2a2a; border: 1px solid #444; border-radius: 4px; color: #fff;">
+                        </div>
+
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; color: #bbb; margin-bottom: 5px; font-size: 12px;"><strong>Quantità:</strong></label>
+                            <input type="number" id="editOrderQuantity" value="${order.quantity || ''}" style="width: 100%; padding: 10px; background: #2a2a2a; border: 1px solid #444; border-radius: 4px; color: #fff;">
+                        </div>
+
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; color: #bbb; margin-bottom: 5px; font-size: 12px;"><strong>Data/Ora:</strong></label>
+                            <input type="datetime-local" id="editOrderDateTime" value="${order.dateTime ? order.dateTime.replace('Z', '') : ''}" style="width: 100%; padding: 10px; background: #2a2a2a; border: 1px solid #444; border-radius: 4px; color: #fff;">
+                        </div>
+
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; color: #bbb; margin-bottom: 5px; font-size: 12px;"><strong>Note:</strong></label>
+                            <textarea id="editOrderNotes" style="width: 100%; padding: 10px; background: #2a2a2a; border: 1px solid #444; border-radius: 4px; color: #fff; min-height: 80px;">${order.notes || ''}</textarea>
+                        </div>
+
+                        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                            <button onclick="document.getElementById('editOrderModal').remove();" style="background: #6b7280; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">Annulla</button>
+                            <button onclick="saveEditedOrder(${orderId})" style="background: #22c55e; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">💾 Salva</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+        }
+
+        // Salva ordine modificato
+        function saveEditedOrder(orderId) {
+            const order = orders.find(o => o.id === orderId);
+            if (!order) return;
+
+            order.client = document.getElementById('editOrderClient').value;
+            order.product = document.getElementById('editOrderProduct').value;
+            order.quantity = parseFloat(document.getElementById('editOrderQuantity').value) || 0;
+            order.dateTime = document.getElementById('editOrderDateTime').value;
+            order.notes = document.getElementById('editOrderNotes').value;
+
+            saveOrders();
+            document.getElementById('editOrderModal').remove();
+            showAlert('Ordine salvato!', 'success');
+            renderCalendar();
+        }
+
+        // Apri modal per modifica viaggio
+        function openEditTripModal(tripId) {
+            const trip = trips.find(t => t.id === tripId);
+            if (!trip) {
+                showAlert('Viaggio non trovato', 'error');
+                return;
+            }
+
+            const tripOrders = getTripOrders(tripId);
+            const modalHTML = `
+                <div id="editTripModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 3000;">
+                    <div style="background: #1a1a1a; border-radius: 8px; padding: 30px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; border: 1px solid #444;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h2 style="margin: 0; color: #fff;">✏️ Modifica Viaggio</h2>
+                            <button onclick="document.getElementById('editTripModal').remove();" style="background: none; border: none; color: #999; font-size: 24px; cursor: pointer; padding: 0; width: 30px; height: 30px;" title="Chiudi">×</button>
+                        </div>
+
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; color: #bbb; margin-bottom: 5px; font-size: 12px;"><strong>Nome Viaggio:</strong></label>
+                            <input type="text" id="editTripName" value="${trip.name || ''}" style="width: 100%; padding: 10px; background: #2a2a2a; border: 1px solid #444; border-radius: 4px; color: #fff;">
+                        </div>
+
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; color: #bbb; margin-bottom: 5px; font-size: 12px;"><strong>Ordini nel viaggio (${tripOrders.length}):</strong></label>
+                            <div style="background: #2a2a2a; border: 1px solid #444; border-radius: 4px; padding: 10px; max-height: 200px; overflow-y: auto;">
+                                ${tripOrders.length > 0 ? tripOrders.map((order, idx) => `
+                                    <div style="padding: 8px; border-bottom: 1px solid #444; color: #a0a0a0; font-size: 13px;">
+                                        <strong>${order.client}</strong> - ${order.product} (qty: ${order.quantity})
+                                        <button onclick="removeOrderFromTrip(${tripId}, ${order.id})" style="float: right; background: #dc2626; color: white; border: none; padding: 2px 8px; border-radius: 2px; font-size: 11px; cursor: pointer;" title="Rimuovi ordine">✕ Rimuovi</button>
+                                    </div>
+                                `).join('') : '<div style="color: #888; padding: 10px;">Nessun ordine nel viaggio</div>'}
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                            <button onclick="document.getElementById('editTripModal').remove();" style="background: #6b7280; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">Annulla</button>
+                            <button onclick="saveEditedTrip(${tripId})" style="background: #22c55e; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">💾 Salva</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+        }
+
+        // Salva viaggio modificato
+        function saveEditedTrip(tripId) {
+            const trip = trips.find(t => t.id === tripId);
+            if (!trip) return;
+
+            trip.name = document.getElementById('editTripName').value;
+            saveTrips();
+            document.getElementById('editTripModal').remove();
+            showAlert('Viaggio salvato!', 'success');
+            renderCalendar();
+        }
+
+        // Rimuovi ordine da viaggio
+        function removeOrderFromTrip(tripId, orderId) {
+            const trip = trips.find(t => t.id === tripId);
+            if (!trip) return;
+            trip.sequence = trip.sequence.filter(id => id !== orderId);
+            
+            // Aggiorna l'ordine per rimuovere tripId
+            const order = orders.find(o => o.id === orderId);
+            if (order) {
+                order.tripId = null;
+            }
+            
+            saveTrips();
+            saveOrders();
+            showAlert('Ordine rimosso dal viaggio', 'success');
+            // Riapri il modal di modifica
+            openEditTripModal(tripId);
+            renderCalendar();
+        }
+
+        // Crea nuovo viaggio e associa un ordine
+        function createNewTripWithOrder(orderId) {
+            const order = orders.find(o => o.id === orderId);
+            if (!order) return;
+
+            const tripName = `Consegne ${new Date(order.dateTime).toLocaleDateString('it-IT')}`;
+            const trip = createNewTrip(tripName, [orderId]);
+            
+            // Associa l'ordine al viaggio
+            order.tripId = trip.id;
+            saveOrders();
+            
+            showAlert('Viaggio creato e ordine aggiunto!', 'success');
+            renderCalendar();
+        }
+
+        // Elimina viaggio (e rimuove associazione da ordini)
+        function handleDeleteTrip(tripId) {
+            if (!confirm('Sei sicuro di voler eliminare questo viaggio? Gli ordini verranno sospesi.')) return;
+
+            const trip = trips.find(t => t.id === tripId);
+            if (!trip) return;
+
+            // Rimuovi tripId da tutti gli ordini del viaggio
+            const tripOrders = getTripOrders(tripId);
+            tripOrders.forEach(order => {
+                order.tripId = null;
+            });
+
+            // Elimina il viaggio
+            trips = trips.filter(t => t.id !== tripId);
+            
+            saveTrips();
+            saveOrders();
+            showAlert('Viaggio eliminato', 'success');
+            renderCalendar();
         }
 
         // Toggle menu dropdown Gestione (Impostazioni Azienda + Operatori)
@@ -2427,16 +2693,26 @@
                 
                 // Controlla ordini di consegna per questo giorno (senza operatore assegnato)
                 const dayDeliveryOrders = orders.filter(order => {
-                    if (order.type !== 'consegna') return false;
+                    if (order.type !== 'consegnato') return false;
                     if (!order.dateTime) return false;
                     if (order.dateTime.split('T')[0] !== dateStr) return false;
-                    return !order.assignedOperator?.id;
+                    return !order.assignedOperatorId;
                 });
                 const hasTrips = dayDeliveryOrders.length > 0;
+                
+                // Controlla ordini di ritiro NON assegnati per questo giorno
+                const dayUnassignedPickupOrders = orders.filter(order => {
+                    if (order.type !== 'ritira') return false;
+                    if (!order.dateTime) return false;
+                    if (order.dateTime.split('T')[0] !== dateStr) return false;
+                    return !order.assignedOperatorId;
+                });
+                const hasUnassignedPickups = dayUnassignedPickupOrders.length > 0;
                 
                 const hasTasksClass = totalTasks > 0 ? 'has-tasks' : '';
                 const hasUnassignedClass = unassignedTasks > 0 ? 'has-unassigned-tasks' : '';
                 const hasTripsClass = hasTrips ? 'has-trips' : '';
+                const hasUnassignedPickupsClass = hasUnassignedPickups ? 'has-unassigned-pickups' : '';
                 
                 // Controlla se è oggi o se è selezionato
                 const today = new Date().toISOString().split('T')[0];
@@ -2446,6 +2722,7 @@
                 let taskCountHtml = '';
                 let unassignedCountHtml = '';
                 let tripCountHtml = '';
+                let unassignedPickupHtml = '';
                 
                 // In visualizzazione 'myTasks', mostra il numero totale
                 if (currentViewMode === 'myTasks') {
@@ -2464,8 +2741,11 @@
                 if (dayDeliveryOrders.length > 0) {
                     tripCountHtml = `<div style="position: absolute; top: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #2563eb; border-radius: 3px; padding: 2px 4px;">${dayDeliveryOrders.length}</div>`;
                 }
+                if (dayUnassignedPickupOrders.length > 0) {
+                    unassignedPickupHtml = `<div style="position: absolute; bottom: 0; right: 0; width: 0; height: 0; border-style: solid; border-width: 0 0 22px 22px; border-color: transparent transparent #16a34a transparent; border-radius: 0 0 4px 0; z-index: 25;"><span style="position: absolute; bottom: 4px; right: -14px; font-size: 10px; font-weight: bold; color: white; z-index: 26;">${dayUnassignedPickupOrders.length}</span></div>`;
+                }
                 
-                html += `<div class="calendar-day ${hasTasksClass} ${hasUnassignedClass} ${hasTripsClass} ${isTodayClass} ${isSelectedClass}" style="cursor: pointer; position: relative; ${dayColor}" onclick="handleCalendarDayClick('${dateStr}')"><strong>${date.getDate()}</strong>${taskCountHtml}${unassignedCountHtml}${tripCountHtml}</div>`;
+                html += `<div class="calendar-day ${hasTasksClass} ${hasUnassignedClass} ${hasTripsClass} ${hasUnassignedPickupsClass} ${isTodayClass} ${isSelectedClass}" style="cursor: pointer; position: relative; ${dayColor}" onclick="handleCalendarDayClick('${dateStr}')"><strong>${date.getDate()}</strong>${taskCountHtml}${unassignedCountHtml}${tripCountHtml}${unassignedPickupHtml}</div>`;
             }
             
             container.innerHTML = html;
@@ -2612,10 +2892,10 @@
                 
                 // Controlla ordini di consegna per questo giorno (senza operatore assegnato)
                 const dayDeliveryOrders = orders.filter(order => {
-                    if (order.type !== 'consegna') return false;
+                    if (order.type !== 'consegnato') return false;
                     if (!order.dateTime) return false;
                     if (order.dateTime.split('T')[0] !== dateStr) return false;
-                    return !order.assignedOperator?.id;
+                    return !order.assignedOperatorId;
                 });
                 const hasTrips = dayDeliveryOrders.length > 0;
                 
@@ -2652,7 +2932,19 @@
                     tripCountHtml = `<div style="position: absolute; top: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #2563eb; border-radius: 3px; padding: 2px 4px;">${dayDeliveryOrders.length}</div>`;
                 }
                 
-                html += `<div class="calendar-day ${hasTasksClass} ${hasUnassignedClass} ${hasTripsClass} ${isTodayClass} ${isSelectedClass}" style="${dayColor}; cursor: pointer; position: relative;" onclick="handleCalendarDayClick('${dateForClick}')"><strong>${day}</strong>${taskCountHtml}${unassignedCountHtml}${tripCountHtml}</div>`;
+                // Controlla ordini di ritiro NON assegnati per questo giorno
+                const dayUnassignedPickupOrders = orders.filter(order => {
+                    if (order.type !== 'ritira') return false;
+                    if (!order.dateTime) return false;
+                    if (order.dateTime.split('T')[0] !== dateStr) return false;
+                    return !order.assignedOperatorId;
+                });
+                let unassignedPickupHtml = '';
+                if (dayUnassignedPickupOrders.length > 0) {
+                    unassignedPickupHtml = `<div style="position: absolute; bottom: 0; right: 0; width: 0; height: 0; border-style: solid; border-width: 0 0 22px 22px; border-color: transparent transparent #16a34a transparent; border-radius: 0 0 4px 0; z-index: 25;"><span style="position: absolute; bottom: 4px; right: -14px; font-size: 10px; font-weight: bold; color: white; z-index: 26;">${dayUnassignedPickupOrders.length}</span></div>`;
+                }
+                
+                html += `<div class="calendar-day ${hasTasksClass} ${hasUnassignedClass} ${hasTripsClass} ${isTodayClass} ${isSelectedClass}" style="${dayColor}; cursor: pointer; position: relative;" onclick="handleCalendarDayClick('${dateForClick}')"><strong>${day}</strong>${taskCountHtml}${unassignedCountHtml}${tripCountHtml}${unassignedPickupHtml}</div>`;
             }
             
             container.innerHTML = html;
@@ -3524,6 +3816,18 @@
 
         async function handleDeleteTask(taskId) {
             try {
+                // Controlla se è un ordine da orders-planner (ID molto grande = timestamp)
+                const order = orders.find(o => o.id === taskId);
+                if (order) {
+                    // È un ordine, eliminalo da localStorage
+                    orders = orders.filter(o => o.id !== taskId);
+                    saveOrders();
+                    showAlert('Ordine eliminato!', 'success');
+                    await renderCalendar();
+                    return;
+                }
+                
+                // Altrimenti è un task del database
                 const response = await fetch(`${API_URL}/tasks/${taskId}`, {
                     method: 'DELETE',
                     headers: { 'Authorization': `Bearer ${token}` }
@@ -3716,7 +4020,7 @@
                     <div style="background: #1a1a1a; border-radius: 8px; padding: 20px; max-width: 400px; width: 90%; max-height: 600px; overflow-y: auto; border: 1px solid #444;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                             <h2 style="margin: 0; color: #fff;">Assegna Task</h2>
-                            <button onclick="document.getElementById('assignModal').remove()" style="background: none; border: none; color: #999; font-size: 24px; cursor: pointer;">×</button>
+                            <button onclick="document.getElementById('assignModal').remove()" style="background: none; border: none; color: #999; font-size: 24px; cursor: pointer; padding: 0; width: 30px; height: 30px;" title="Chiudi">×</button>
                         </div>
                         
                         <p style="color: #bbb; margin-bottom: 15px; font-size: 14px;">Seleziona un operatore o admin:</p>
@@ -4134,10 +4438,10 @@
             const assignedTasks = dayTasks.filter(t => t.assignedOperator?.id).length;
             const unassignedTasks = dayTasks.filter(t => !t.assignedOperator?.id).length;
             const summaryDayTrips = orders.filter(order => {
-                if (order.type !== 'consegna') return false;
+                if (order.type !== 'consegnato') return false;
                 if (!order.dateTime) return false;
                 if (order.dateTime.split('T')[0] !== dateStr) return false;
-                return !order.assignedOperator?.id;
+                return !order.assignedOperatorId;
             });
             
             // Conta gli ordini di tipo "ritira" per il giorno (ordini associati ai task di ritiro assegnati)
@@ -4147,9 +4451,17 @@
                 return order.dateTime.split('T')[0] === dateStr;
             });
             
+            // Conta gli ordini di tipo "ritira" NON assegnati per il giorno (da assegnare)
+            const dayUnassignedPickupOrders = orders.filter(order => {
+                if (order.type !== 'ritira') return false;
+                if (!order.dateTime) return false;
+                if (order.dateTime.split('T')[0] !== dateStr) return false;
+                return !order.assignedOperatorId;
+            });
+            
             // Crea il riepilogo con triangolini e numeri
             let summaryHtml = '';
-            if (assignedTasks > 0 || unassignedTasks > 0 || summaryDayTrips.length > 0 || dayRitiroOrders.length > 0) {
+            if (assignedTasks > 0 || unassignedTasks > 0 || summaryDayTrips.length > 0 || dayRitiroOrders.length > 0 || dayUnassignedPickupOrders.length > 0) {
                 summaryHtml = `<div style="display: flex; gap: 20px; align-items: center; padding: 12px 0; border-top: 1px solid #4d4d4d; border-bottom: 1px solid #4d4d4d; margin-bottom: 12px;">`;
                 
                 // Task totali (assegnati + non assegnati)
@@ -4180,6 +4492,19 @@
                     `;
                 }
                 
+                // Ordini ritiro NON assegnati - Verde in basso a destra
+                if (dayUnassignedPickupOrders.length > 0) {
+                    summaryHtml += `
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="position: relative; width: 24px; height: 24px;">
+                                <div style="position: absolute; bottom: 0; right: 0; width: 0; height: 0; border-style: solid; border-width: 0 0 18px 18px; border-color: transparent transparent #16a34a transparent; border-radius: 0 0 4px 0;"></div>
+                            </div>
+                            <span style="font-weight: bold; color: #16a34a; font-size: 16px;">${dayUnassignedPickupOrders.length}</span>
+                            <span style="color: #b0b0b0; font-size: 12px;">Ritiri da assegnare</span>
+                        </div>
+                    `;
+                }
+                
                 // Ordini di consegna - Blu in alto a destra
                 if (summaryDayTrips.length > 0) {
                     summaryHtml += `
@@ -4196,176 +4521,209 @@
                 summaryHtml += `</div>`;
             }
 
-            if (dayTasks.length === 0) {
-                dayTasksList.innerHTML = '<div class="empty-state"><p>Nessun task per questo giorno</p></div>';
+            if (dayTasks.length === 0 && summaryDayTrips.length === 0 && dayRitiroOrders.length === 0 && dayUnassignedPickupOrders.length === 0) {
+                dayTasksList.innerHTML = '<div class="empty-state"><p>Nessun task o ordine per questo giorno</p></div>';
                 dayTasksCard.style.display = 'block';
                 return;
             }
 
-            dayTasksList.innerHTML = summaryHtml + dayTasks.map(task => {
-                const status = task.completed ? 'Completato' : (task.paused ? 'In Pausa' : (task.acceptedAt ? 'Accettato' : 'In Sospeso'));
-                const statusIcon = task.completed ? '✅' : (task.paused ? '⏸️' : (task.acceptedAt ? '👍' : '📋'));
-                const statusColor = task.completed ? '#10b981' : (task.paused ? '#f59e0b' : (task.acceptedAt ? '#3b82f6' : '#8b5cf6'));
-                
-                // Formatta le date se disponibili
-                const scheduledDate = task.scheduledAt ? new Date(task.scheduledAt).toLocaleString('it-IT', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
-                const acceptedDateTime = task.acceptedAt ? new Date(task.acceptedAt).toLocaleString('it-IT', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
-                const completedDateTime = task.completedAt ? new Date(task.completedAt).toLocaleString('it-IT', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
-                const pausedDateTime = task.pausedAt ? new Date(task.pausedAt).toLocaleString('it-IT', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
-                const createdDateTime = task.createdAt ? new Date(task.createdAt).toLocaleString('it-IT', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
-                const originalScheduledDate = task.originalScheduledAt ? new Date(task.originalScheduledAt).toLocaleDateString('it-IT') : '';
-                
-                // Calcola tempo effettivo se disponibile
-                const timeInfo = task.actualMinutes ? `${task.actualMinutes} min effettivi` : (task.estimatedMinutes ? `~${task.estimatedMinutes} min stimati` : '');
-                
-                return `
-                    <div class="task-item">
-                        <div class="task-header">
-                            <h3>${task.title}</h3>
-                            <span class="task-status" style="background: ${statusColor}; color: white; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 600;">${statusIcon} ${status}</span>
+            // Crea 3 card separate: Task, Consegne, Ritiri
+            let contentHtml = '';
+            
+            // ============ CARD TASK ============
+            if (dayTasks.length > 0) {
+                contentHtml += `
+                    <div style="background: #2a2a2a; border: 1px solid #444; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <h3 style="margin: 0; color: #fff; font-size: 16px;">📋 Task (${dayTasks.length})</h3>
+                            <button onclick="this.closest('[data-section=tasks]').style.display='none';" data-section="tasks" style="background: none; border: none; color: #999; font-size: 20px; cursor: pointer; padding: 0;">×</button>
                         </div>
-                        <p class="task-description">${task.description || 'Nessuna descrizione'}</p>
-                        
-                        <!-- Sezione Data Creazione -->
-                        <div style="margin-top: 10px; padding: 8px; background: #2d2d2d; border-radius: 4px; border-left: 3px solid #808080;">
-                            <div style="font-size: 12px; color: #a0a0a0;">
-                                ${createdDateTime ? `<div style="margin: 4px 0;"><strong>📝 Creato:</strong> ${createdDateTime}</div>` : ''}
-                                ${originalScheduledDate && originalScheduledDate !== scheduledDate ? `<div style="margin: 4px 0; color: #ff9800;"><strong>📆 Data originale:</strong> ${originalScheduledDate}</div>` : ''}
-                                ${scheduledDate ? `<div style="margin: 4px 0;"><strong>📅 Programmato:</strong> ${scheduledDate}</div>` : ''}
-                                ${task.estimatedMinutes ? `<div style="margin: 4px 0; font-weight: bold; color: #fbbf24;"><strong>⏱️ Tempo stimato:</strong> ${task.estimatedMinutes} min</div>` : ''}
-                            </div>
-                        </div>
-                        
-                        <!-- Sezione Dettagli -->
-                        <div style="margin-top: 10px; padding: 10px; background: #2d2d2d; border-radius: 4px; border-left: 3px solid #7dd3fc;">
-                            <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
-                                ${task.assignedOperator ? `<div style="font-size:15px;font-weight:bold;color:#fff;">👤 ${task.assignedOperator.username}</div>` : ''}
-                                ${task.priority ? `<div>${formatPriority(task.priority)}</div>` : ''}
-                                ${task.color ? (() => {
-                                    let stato = '';
-                                    if (task.completed) stato = 'Completato';
-                                    else if (task.paused) stato = 'In Pausa';
-                                    else if (task.acceptedAt) stato = 'Accettato';
-                                    else stato = 'In Sospeso';
-                                    return `<div><span style="display:inline-block;width:16px;height:16px;background:${task.color};border-radius:3px;border:1px solid #888;vertical-align:middle;margin-right:4px;"></span><span style=\"font-size:12px;color:#b0b0b0;font-weight:bold;\">${stato}</span></div>`;
-                                })() : ''}
-                            </div>
-                        </div>
-                        
-                        <!-- Sezione Stato Accettazione -->
-                        ${task.acceptedAt ? `<div style="margin-top: 8px; padding: 8px; background: #1e3a4c; border-left: 3px solid #3b82f6; border-radius: 3px; font-size: 12px; color: #a0d4ff;">
-                            <strong>✓ Accettato:</strong> ${acceptedDateTime}
-                            ${task.acceptedBy ? `<div style="font-size: 11px; margin-top: 2px;">da: ${task.acceptedBy.username || 'Operatore'}</div>` : ''}
-                        </div>` : ''}
-                        
-                        <!-- Sezione Pausa -->
-                        ${task.paused ? `<div style="margin-top: 8px; padding: 8px; background: #3a2e1e; border-left: 3px solid #f59e0b; border-radius: 3px; font-size: 12px; color: #ffb366;">
-                            <strong>⏸️ In Pausa</strong>
-                            ${pausedDateTime ? `<div style="font-size: 11px; margin-top: 2px;">Dal: ${pausedDateTime}</div>` : ''}
-                        </div>` : ''}
-                        
-                        <!-- Sezione Completamento -->
-                        ${task.completed ? `<div style="margin-top: 8px; padding: 8px; background: #1e3a2a; border-left: 3px solid #10b981; border-radius: 3px; font-size: 12px; color: #86efac;">
-                            <strong>✅ Completato:</strong> ${completedDateTime}
-                            ${task.completedBy ? `<div style="font-size: 11px; margin-top: 2px;">da: ${task.completedBy.username || 'Operatore'}</div>` : ''}
-                            ${task.actualMinutes ? `<div style="font-size: 11px; margin-top: 2px;">Tempo effettivo: ${task.actualMinutes} min</div>` : ''}
-                            <div style="font-size: 11px; margin-top: 6px; padding-top: 6px; border-top: 1px solid #10b981; color: #7ee8c8;">💡 Puoi eliminare il task o riassegnarlo ad un operatore.</div>
-                        </div>` : ''}
-                        
-                        <!-- Sezione Note -->
-                        ${(task.notes && task.notes.filter(note => {
-                            if (typeof note === 'string' && note.trim() !== '') return true;
-                            if (typeof note === 'object') {
-                                return (
-                                    (typeof note.note === 'string' && note.note.trim() !== '') ||
-                                    (typeof note.text === 'string' && note.text.trim() !== '') ||
-                                    (typeof note.descrizione === 'string' && note.descrizione.trim() !== '') ||
-                                    (typeof note.value === 'string' && note.value.trim() !== '')
-                                );
-                            }
-                            return false;
-                        }).length > 0) ? `<div style="margin-top: 8px; padding: 6px; background: #2d2d2d; border-radius: 3px; font-size: 12px; color: #e0e0e0; max-height: 100px; overflow-y: auto;">
-                            <strong>📝 Note operatore (${task.notes.filter(note => {
-                                if (typeof note === 'string' && note.trim() !== '') return true;
-                                if (typeof note === 'object') {
-                                    return (
-                                        (typeof note.note === 'string' && note.note.trim() !== '') ||
-                                        (typeof note.text === 'string' && note.text.trim() !== '') ||
-                                        (typeof note.descrizione === 'string' && note.descrizione.trim() !== '') ||
-                                        (typeof note.value === 'string' && note.value.trim() !== '')
-                                    );
-                                }
-                                return false;
-                            }).length}):</strong>
-                            <div style="margin-top: 4px; border-left: 2px solid #808080; padding-left: 6px;">
-                                ${task.notes.filter(note => {
-                                    if (typeof note === 'string' && note.trim() !== '') return true;
-                                    if (typeof note === 'object') {
-                                        return (
-                                            (typeof note.note === 'string' && note.note.trim() !== '') ||
-                                            (typeof note.text === 'string' && note.text.trim() !== '') ||
-                                            (typeof note.descrizione === 'string' && note.descrizione.trim() !== '') ||
-                                            (typeof note.value === 'string' && note.value.trim() !== '')
-                                        );
-                                    }
-                                    return false;
-                                }).map(note => {
-                                    let autore = '';
-                                    let testo = '';
-                                    if (typeof note === 'string') {
-                                        testo = String(note);
-                                    } else if (typeof note === 'object' && note !== null) {
-                                        if (typeof note.note === 'string') testo = note.note;
-                                        if (typeof note.user === 'object' && note.user !== null && typeof note.user.username === 'string') {
-                                            autore = note.user.username;
-                                        } else if (typeof note.username === 'string') {
-                                            autore = note.username;
-                                        }
-                                    }
-                                    testo = String(testo || '').trim();
-                                    if (testo.length > 0) {
-                                        const autorePart = autore ? `<strong>${autore}:</strong> ` : '';
-                                        return `<div style=\"margin: 4px 0; font-size: 11px; color: #b0b0b0;\">${autorePart}${testo}</div>`;
-                                    }
-                                    return '';
-                                }).join('')}
-                            </div>
-                        </div>` : ''}
-                        
-                        <div class="task-actions">
-                            ${!task.assignedOperator && !task.acceptedAt ? `
-                                <button class="btn btn-success btn-small" onclick="handleTaskStatusChange(${task.id}, 'accept')" style="background: #22c55e;">👍 Accetta</button>
-                            ` : ''}
-                            ${!task.assignedOperator && !task.acceptedAt ? `
-                                <button class="btn btn-info btn-small" onclick="openAssignModal(${task.id})" style="background: #0ea5e9;">👤 Assegna</button>
-                            ` : ''}
-                            ${task.assignedOperator?.id === currentUser.id && !task.acceptedAt && !task.completed ? `
-                                <button class="btn btn-success btn-small" onclick="handleTaskStatusChange(${task.id}, 'accept')" style="background: #22c55e;">👍 Accetta</button>
-                            ` : ''}
-                            ${task.acceptedAt && !task.completed && !task.paused && currentViewMode !== 'operatorTasks' ? `
-                                <button class="btn btn-warning btn-small" onclick="handleTaskStatusChange(${task.id}, 'pause')" style="background: #ea580c;">⏸️ Pausa</button>
-                            ` : ''}
-                            ${task.acceptedAt && !task.completed && currentViewMode !== 'operatorTasks' ? `
-                                <button class="btn btn-success btn-small" onclick="handleTaskStatusChange(${task.id}, 'complete')" style="background: #22c55e;">✅ Completa</button>
-                            ` : ''}
-                            ${task.paused && currentViewMode !== 'operatorTasks' ? `
-                                <button class="btn btn-info btn-small" onclick="handleTaskStatusChange(${task.id}, 'resume')" style="background: #3b82f6;">▶️ Riprendi</button>
-                            ` : ''}
-                            ${task.completed ? `
-                                <button class="btn btn-danger btn-small" onclick="handleTaskStatusChange(${task.id}, 'complete')" style="background: #dc2626;">🗑️ Elimina</button>
-                            ` : ''}
-                            ${(task.assignedOperator && currentViewMode === 'operatorTasks' && !task.paused) ? `
-                                <button class="btn btn-warning btn-small" onclick="handleTaskStatusChange(${task.id}, 'pause')" style="background: #ea580c;">⏸️ Pausa</button>
-                            ` : ''}
-                            ${(task.assignedOperator && currentViewMode === 'operatorTasks' && !task.completed) ? `
-                                <button class="btn btn-success btn-small" onclick="handleTaskStatusChange(${task.id}, 'complete')" style="background: #22c55e;">✅ Completa</button>
-                            ` : ''}
-                            <button class="btn btn-primary btn-small" onclick="openEditTaskModal(${task.id})" style="background: #3b82f6;">✏️ Modifica</button>
-                            <button class="btn btn-secondary btn-small" onclick="handleDeleteTask(${task.id})" style="background: #6b7280;">🗑️ Elimina</button>
-                        </div>
+                        ${summaryHtml}
+                        ${dayTasks.map(task => {
+                            const status = task.completed ? 'Completato' : (task.paused ? 'In Pausa' : (task.acceptedAt ? 'Accettato' : 'In Sospeso'));
+                            const statusIcon = task.completed ? '✅' : (task.paused ? '⏸️' : (task.acceptedAt ? '👍' : '📋'));
+                            const statusColor = task.completed ? '#10b981' : (task.paused ? '#f59e0b' : (task.acceptedAt ? '#3b82f6' : '#8b5cf6'));
+                            return `
+                                <div style="background: #1a1a1a; border-left: 3px solid ${statusColor}; padding: 12px; margin: 8px 0; border-radius: 4px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                                        <div style="flex: 1;">
+                                            <h4 style="margin: 0 0 4px 0; color: #fff;">${task.title}</h4>
+                                            <span style="background: ${statusColor}; color: white; padding: 2px 8px; border-radius: 3px; font-size: 11px;">${statusIcon} ${status}</span>
+                                            ${task.description ? `<p style="margin: 4px 0; color: #a0a0a0; font-size: 13px;">${task.description}</p>` : ''}
+                                        </div>
+                                    </div>
+                                    <div style="margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap;">
+                                        ${!task.assignedOperator && !task.acceptedAt ? `<button class="btn btn-success btn-small" onclick="handleTaskStatusChange(${task.id}, 'accept')" style="background: #22c55e; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">👍 Accetta</button>` : ''}
+                                        ${task.acceptedAt && !task.completed && !task.paused ? `<button class="btn btn-success btn-small" onclick="handleTaskStatusChange(${task.id}, 'complete')" style="background: #22c55e; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">✅ Completa</button>` : ''}
+                                        <button class="btn btn-secondary btn-small" onclick="handleDeleteTask(${task.id})" style="background: #6b7280; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">🗑️ Rimuovi</button>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
                     </div>
                 `;
-            }).join('');
+            }
+            
+            // ============ CARD CONSEGNE (CON VIAGGIO) ============
+            const tripsWithOrdersInDay = new Set();
+            orders.forEach(order => {
+                if (order.type === 'consegnato' && order.tripId && order.dateTime?.split('T')[0] === dateStr) {
+                    tripsWithOrdersInDay.add(order.tripId);
+                }
+            });
+
+            if (tripsWithOrdersInDay.size > 0) {
+                contentHtml += `
+                    <div style="background: #1a2332; border: 1px solid #2563eb; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <h3 style="margin: 0; color: #2563eb; font-size: 16px;">🚚 Consegne in Viaggio (${Array.from(tripsWithOrdersInDay).length})</h3>
+                            <button onclick="this.closest('[data-section=consegne-viaggio]').style.display='none';" data-section="consegne-viaggio" style="background: none; border: none; color: #2563eb; font-size: 20px; cursor: pointer; padding: 0;">×</button>
+                        </div>
+                        ${Array.from(tripsWithOrdersInDay).map(tripId => {
+                            const trip = trips.find(t => t.id === tripId);
+                            const tripOrders = getTripOrders(tripId).filter(o => o.dateTime?.split('T')[0] === dateStr);
+                            return `
+                                <div style="background: #0f1621; border-left: 4px solid #2563eb; padding: 12px; margin: 8px 0; border-radius: 4px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                        <h4 style="margin: 0; color: #2563eb; font-size: 14px;">📍 ${trip?.name || 'Viaggio'}</h4>
+                                        <div style="display: flex; gap: 4px;">
+                                            <button onclick="openEditTripModal(${tripId})" style="background: #3b82f6; color: white; border: none; padding: 2px 6px; border-radius: 2px; font-size: 11px; cursor: pointer;">✏️</button>
+                                            ${trip?.assignedOperatorId ? `<span style="background: #10b981; color: white; padding: 2px 6px; border-radius: 2px; font-size: 11px;">👤 Assegnato</span>` : `<button onclick="openAssignTripModal(${tripId})" style="background: #0ea5e9; color: white; border: none; padding: 2px 6px; border-radius: 2px; font-size: 11px; cursor: pointer;">👤 Assegna</button>`}
+                                        </div>
+                                    </div>
+                                    ${tripOrders.map(order => {
+                                        const fullInfo = getOrderFullInfo(order.id);
+                                        const operatorName = fullInfo?.operator?.name || 'Non assegnato';
+                                        return `
+                                        <div style="background: #081116; padding: 8px; margin: 6px 0; border-radius: 3px; border-left: 2px solid #0ea5e9;">
+                                            <p style="margin: 0 0 2px 0; color: #a0d4ff; font-size: 12px;"><strong>${fullInfo?.client || 'Cliente'}</strong></p>
+                                            <p style="margin: 0 0 2px 0; color: #7dd3fc; font-size: 11px;">📦 ${fullInfo?.products?.map(p => `${p.product} (${p.quantity}kg)`).join(' + ') || fullInfo?.product} </p>
+                                            ${fullInfo?.operator ? `<p style="margin: 0 0 2px 0; color: #7dd3fc; font-size: 11px;">👤 ${operatorName}</p>` : ''}
+                                            <p style="margin: 0 0 2px 0; color: #7dd3fc; font-size: 11px;">📅 ${order.dateTime ? new Date(order.dateTime).toLocaleString('it-IT') : 'N/D'}</p>
+                                            ${fullInfo?.notes ? `<p style="margin: 0 0 2px 0; color: #7dd3fc; font-size: 10px;">📝 ${fullInfo.notes}</p>` : ''}
+                                            <div style="margin-top: 4px; display: flex; gap: 4px; flex-wrap: wrap;">
+                                                <button onclick="openEditDeliveryOrderModal(${order.id})" style="background: #3b82f6; color: white; border: none; padding: 2px 6px; border-radius: 2px; font-size: 11px; cursor: pointer;" title="Modifica">✏️ Modifica</button>
+                                                <button onclick="handleDeleteTask(${order.id})" style="background: #6b7280; color: white; border: none; padding: 2px 6px; border-radius: 2px; font-size: 11px; cursor: pointer;" title="Rimuovi">🗑️ Rimuovi</button>
+                                            </div>
+                                        </div>
+                                    `;
+                                    }).join('')}
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+            }
+
+            // ============ CARD CONSEGNE SOSPESE (SENZA VIAGGIO) ============
+            const pendingOrders = getPendingDeliveryOrders(dateStr);
+            if (pendingOrders.length > 0) {
+                contentHtml += `
+                    <div style="background: #2d2213; border: 1px solid #f59e0b; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <h3 style="margin: 0; color: #fbbf24; font-size: 16px;">⏳ Consegne Sospese (${pendingOrders.length})</h3>
+                            <button onclick="this.closest('[data-section=consegne-sospese]').style.display='none';" data-section="consegne-sospese" style="background: none; border: none; color: #fbbf24; font-size: 20px; cursor: pointer; padding: 0;">×</button>
+                        </div>
+                        <p style="margin: 0 0 12px 0; color: #d4a574; font-size: 12px;">📝 Da aggiungere a un viaggio:</p>
+                        ${pendingOrders.map(order => {
+                            const fullInfo = getOrderFullInfo(order.id);
+                            return `
+                            <div style="background: #1a1410; border-left: 3px solid #f59e0b; padding: 12px; margin: 8px 0; border-radius: 4px;">
+                                <h4 style="margin: 0 0 4px 0; color: #fff;">${fullInfo?.client || 'Cliente'}</h4>
+                                <p style="margin: 4px 0; color: #fbbf24; font-size: 13px;"><strong>📦 ${fullInfo?.products?.map(p => `${p.product} (${p.quantity}kg)`).join(' + ') || fullInfo?.product}</strong></p>
+                                <p style="margin: 4px 0; color: #fbbf24; font-size: 12px;">📅 ${order.dateTime ? new Date(order.dateTime).toLocaleString('it-IT') : 'N/D'}</p>
+                                ${fullInfo?.notes ? `<p style="margin: 4px 0; color: #fbbf24; font-size: 11px;">📝 ${fullInfo.notes}</p>` : ''}
+                                <div style="margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap;">
+                                    <button class="btn btn-warning btn-small" onclick="createNewTripWithOrder(${order.id})" style="background: #ea580c; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">🆕 Nuovo viaggio</button>
+                                    <button class="btn btn-primary btn-small" onclick="openEditDeliveryOrderModal(${order.id})" style="background: #3b82f6; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">✏️ Modifica</button>
+                                    <button class="btn btn-secondary btn-small" onclick="handleDeleteTask(${order.id})" style="background: #6b7280; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">🗑️ Rimuovi</button>
+                                </div>
+                            </div>
+                        `;
+                        }).join('')}
+                    </div>
+                `;
+            }
+
+            // ============ CARD VIAGGI SENZA OPERATORE ============
+            const unassignedTrips = getUnassignedTripsForDate(dateStr);
+            if (unassignedTrips.length > 0) {
+                contentHtml += `
+                    <div style="background: #1a2d32; border: 1px solid #06b6d4; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <h3 style="margin: 0; color: #06b6d4; font-size: 16px;">🚗 Viaggi da Assegnare (${unassignedTrips.length})</h3>
+                            <button onclick="this.closest('[data-section=viaggi]').style.display='none';" data-section="viaggi" style="background: none; border: none; color: #06b6d4; font-size: 20px; cursor: pointer; padding: 0;">×</button>
+                        </div>
+                        ${unassignedTrips.map(trip => {
+                            const tripOrders = getTripOrders(trip.id);
+                            return `
+                                <div style="background: #0f1a1f; border-left: 3px solid #06b6d4; padding: 12px; margin: 8px 0; border-radius: 4px;">
+                                    <h4 style="margin: 0 0 4px 0; color: #fff;">${trip.name}</h4>
+                                    <p style="margin: 4px 0; color: #7dd3fc; font-size: 12px;"><strong>📦 Ordini:</strong> ${tripOrders.length}</p>
+                                    <div style="background: #081116; padding: 8px; margin: 6px 0; border-radius: 3px; max-height: 80px; overflow-y: auto;">
+                                        ${tripOrders.map(o => `<div style="color: #7dd3fc; font-size: 11px; padding: 2px 0;">• ${o.client} - ${o.product} (${o.quantity})</div>`).join('')}
+                                    </div>
+                                    <div style="margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap;">
+                                        <button class="btn btn-info btn-small" onclick="openAssignTripModal(${trip.id})" style="background: #0ea5e9; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">👤 Assegna</button>
+                                        <button class="btn btn-primary btn-small" onclick="openEditTripModal(${trip.id})" style="background: #3b82f6; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">✏️ Modifica</button>
+                                        <button class="btn btn-secondary btn-small" onclick="handleDeleteTrip(${trip.id})" style="background: #6b7280; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">🗑️</button>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+            }
+            
+            // ============ CARD RITIRI ============
+            if (dayUnassignedPickupOrders.length > 0 || dayRitiroOrders.length > 0) {
+                contentHtml += `
+                    <div style="background: #1a2d1f; border: 1px solid #16a34a; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <h3 style="margin: 0; color: #16a34a; font-size: 16px;">🚗 Ritiri (${dayUnassignedPickupOrders.length + dayRitiroOrders.length})</h3>
+                            <button onclick="this.closest('[data-section=ritiri]').style.display='none';" data-section="ritiri" style="background: none; border: none; color: #16a34a; font-size: 20px; cursor: pointer; padding: 0;">×</button>
+                        </div>
+                        ${dayUnassignedPickupOrders.length > 0 ? `<div style="color: #86efac; font-size: 12px; margin-bottom: 8px; font-weight: bold;">📍 Da Assegnare:</div>` : ''}
+                        ${dayUnassignedPickupOrders.map(order => {
+                            const fullInfo = getOrderFullInfo(order.id);
+                            const operatorName = fullInfo?.operator?.name || 'Non assegnato';
+                            return `
+                            <div style="background: #0f1f15; border-left: 3px solid #16a34a; padding: 12px; margin: 8px 0; border-radius: 4px;">
+                                <h4 style="margin: 0 0 4px 0; color: #fff;">${fullInfo?.client || 'Cliente'}</h4>
+                                <p style="margin: 4px 0; color: #86efac; font-size: 13px;"><strong>📦 ${fullInfo?.products?.map(p => `${p.product} (${p.quantity}kg)`).join(' + ') || fullInfo?.product}</strong></p>
+                                <p style="margin: 4px 0; color: #86efac; font-size: 12px;">📅 ${order.dateTime ? new Date(order.dateTime).toLocaleString('it-IT') : 'N/D'}</p>
+                                ${fullInfo?.notes ? `<p style="margin: 4px 0; color: #86efac; font-size: 11px;">📝 ${fullInfo.notes}</p>` : ''}
+                                <div style="margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap;">
+                                    <button class="btn btn-info btn-small" onclick="openAssignOrderModal(${order.id})" style="background: #0ea5e9; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">👤 Assegna</button>
+                                    <button class="btn btn-primary btn-small" onclick="openEditOrderModal(${order.id})" style="background: #3b82f6; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">✏️ Modifica</button>
+                                    <button class="btn btn-secondary btn-small" onclick="handleDeleteTask(${order.id})" style="background: #6b7280; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">🗑️ Rimuovi</button>
+                                </div>
+                            </div>
+                        `;
+                        }).join('')}
+                        ${dayRitiroOrders.length > 0 ? `<div style="color: #fbbf24; font-size: 12px; margin: 12px 0 8px 0; font-weight: bold;">✓ Assegnati:</div>` : ''}
+                        ${dayRitiroOrders.map(order => {
+                            const fullInfo = getOrderFullInfo(order.id);
+                            const operatorName = fullInfo?.operator?.name || 'Non assegnato';
+                            return `
+                            <div style="background: #1a1410; border-left: 3px solid #f59e0b; padding: 12px; margin: 8px 0; border-radius: 4px;">
+                                <h4 style="margin: 0 0 4px 0; color: #fff;">${fullInfo?.client || 'Cliente'}</h4>
+                                <p style="margin: 4px 0; color: #fbbf24; font-size: 13px;"><strong>📦 ${fullInfo?.products?.map(p => `${p.product} (${p.quantity}kg)`).join(' + ') || fullInfo?.product}</strong></p>
+                                ${fullInfo?.operator ? `<p style="margin: 4px 0; color: #fbbf24; font-size: 11px;">👤 ${operatorName}</p>` : ''}
+                                <p style="margin: 4px 0; color: #fbbf24; font-size: 12px;">📅 ${order.dateTime ? new Date(order.dateTime).toLocaleString('it-IT') : 'N/D'}</p>
+                                ${fullInfo?.notes ? `<p style="margin: 4px 0; color: #fbbf24; font-size: 11px;">📝 ${fullInfo.notes}</p>` : ''}
+                                <div style="margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap;">
+                                    <button class="btn btn-primary btn-small" onclick="openEditOrderModal(${order.id})" style="background: #3b82f6; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">✏️ Modifica</button>
+                                    <button class="btn btn-secondary btn-small" onclick="handleDeleteTask(${order.id})" style="background: #6b7280; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">🗑️ Rimuovi</button>
+                                </div>
+                            </div>
+                        `;
+                        }).join('')}
+                    </div>
+                `;
+            }
+            
+            dayTasksList.innerHTML = contentHtml;
 
             dayTasksCard.style.display = 'block';
             
@@ -4385,7 +4743,7 @@
                     <div style="background: #1a1a1a; border-radius: 8px; padding: 20px; max-width: 400px; width: 90%; max-height: 600px; overflow-y: auto; border: 1px solid #444;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                             <h2 style="margin: 0; color: #fff;">Assegna Viaggio</h2>
-                            <button onclick="document.getElementById('assignTripModal').remove()" style="background: none; border: none; color: #999; font-size: 24px; cursor: pointer;">×</button>
+                            <button onclick="document.getElementById('assignTripModal').remove()" style="background: none; border: none; color: #999; font-size: 24px; cursor: pointer; padding: 0; width: 30px; height: 30px;" title="Chiudi">×</button>
                         </div>
                         
                         <p style="color: #bbb; margin-bottom: 10px; font-size: 14px;"><strong>${trip.name}</strong></p>
@@ -4814,6 +5172,6 @@
     </script>
     
     <!-- Version Badge -->
-    <div class="version-badge">v11</div>
+    <div class="version-badge">v1.0.1</div>
 </body>
 </html>

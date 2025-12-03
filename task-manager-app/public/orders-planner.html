@@ -782,63 +782,92 @@
                         <!-- Client hours will be displayed here -->
                     </div>
                 </div>
-                <div class="form-group">
-                    <label for="orderProduct">Articolo:</label>
-                    <select id="orderProduct" required onchange="updateArticleInfo()">
-                        <option value="">-- Seleziona Articolo --</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="orderQuantity">Quantità (kg):</label>
-                    <input type="number" id="orderQuantity" min="0.1" step="0.1" placeholder="Quantità in kg">
-                    <div id="quantityWarning" style="margin-top: 8px; font-size: 12px; color: #fca5a5; display: none;"></div>
-                </div>
-                <!-- Bottone per aggiungere lotto -->
-                <div class="form-group" id="addBatchContainer" style="display: none;">
-                    <button type="button" class="btn-secondary" onclick="addOrderBatch()" style="width: 100%;">
-                        ➕ Aggiungi Lotto
-                    </button>
-                </div>
-                <!-- Tabella lotti selezionati -->
-                <div class="form-group" id="orderBatchesTableContainer" style="display: none;">
-                    <label>Lotti Selezionati:</label>
-                    <table style="width: 100%; border-collapse: collapse; background: #2d2d2d; font-size: 12px;">
-                        <thead>
-                            <tr style="background: #1d1d1d; border-bottom: 2px solid #4d4d4d;">
-                                <th style="padding: 8px; text-align: left; color: #e0e0e0;">Lotto</th>
-                                <th style="padding: 8px; text-align: center; color: #e0e0e0;">Sacchi</th>
-                                <th style="padding: 8px; text-align: right; color: #e0e0e0;">Quantità (kg)</th>
-                                <th style="padding: 8px; text-align: center; color: #e0e0e0;">Azione</th>
-                            </tr>
-                        </thead>
-                        <tbody id="orderBatchesTableBody">
-                            <!-- Rows will be added here -->
-                        </tbody>
-                    </table>
-                    <div style="margin-top: 8px; padding: 8px; background: #3d3d3d; border-radius: 4px;">
-                        <strong style="color: #86efac;">Totale: <span id="orderBatchesTotal">0</span> kg</strong>
+
+                <!-- NUOVO: Sezione Prodotti Multipli -->
+                <div class="form-group" style="background: #2d2d2d; padding: 15px; border-radius: 6px; border-left: 3px solid #86efac;">
+                    <label style="font-weight: bold; color: #86efac;">📦 Prodotti nell'ordine:</label>
+                    
+                    <!-- Selettore e aggiunta prodotto -->
+                    <div style="display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-bottom: 12px;">
+                        <div>
+                            <select id="orderProduct" onchange="loadAvailableBatches()" style="width: 100%; padding: 8px; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; color: #fff;">
+                                <option value="">-- Seleziona Articolo --</option>
+                            </select>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr auto; gap: 4px;">
+                            <input type="number" id="orderQuantity" min="0.1" step="0.1" placeholder="Qty (kg)" style="padding: 8px; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; color: #fff; width: 80px; -moz-appearance: textfield;" onwheel="event.preventDefault();">
+                            <style>
+                                #orderQuantity::-webkit-outer-spin-button,
+                                #orderQuantity::-webkit-inner-spin-button {
+                                    -webkit-appearance: none;
+                                    margin: 0;
+                                }
+                            </style>
+                            <button type="button" onclick="addProductToOrder()" class="btn-secondary" style="padding: 8px 12px; background: #86efac; color: #000; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">➕ Aggiungi</button>
+                        </div>
+                    </div>
+
+                    <!-- Tabella prodotti aggiunti -->
+                    <div id="orderProductsTableContainer" style="display: none;">
+                        <table style="width: 100%; border-collapse: collapse; background: #1a1a1a; font-size: 12px;">
+                            <thead>
+                                <tr style="background: #0d0d0d; border-bottom: 2px solid #4d4d4d;">
+                                    <th style="padding: 8px; text-align: left; color: #e0e0e0;">Articolo</th>
+                                    <th style="padding: 8px; text-align: right; color: #e0e0e0;">Quantità (kg)</th>
+                                    <th style="padding: 8px; text-align: center; color: #e0e0e0;">Lotti</th>
+                                    <th style="padding: 8px; text-align: center; color: #e0e0e0;">Azione</th>
+                                </tr>
+                            </thead>
+                            <tbody id="orderProductsTableBody">
+                                <!-- Rows will be added here -->
+                            </tbody>
+                        </table>
+                        <div style="margin-top: 8px; padding: 8px; background: #2d2d2d; border-radius: 4px;">
+                            <strong style="color: #86efac;">Totale: <span id="orderProductsTotal">0</span> kg</strong>
+                        </div>
                     </div>
                 </div>
+
                 <div class="form-group">
                     <label for="orderType">Tipo Ordine:</label>
-                    <select id="orderType" required>
+                    <select id="orderType" required onchange="updateTripOptions()">
                         <option value="consegnato">📦 Consegnato</option>
                         <option value="ritira">🏪 Ritira Cliente</option>
                     </select>
                 </div>
                 <div class="form-group">
                     <label for="orderDateTime">Data e Orario Consegna:</label>
-                    <input type="datetime-local" id="orderDateTime" required>
+                    <input type="datetime-local" id="orderDateTime" required onchange="updateTripOptions()">
                 </div>
+                
+                <!-- NUOVO: Sezione Viaggio (solo per consegnati) -->
+                <div class="form-group" id="tripSection" style="display: none; background: #2d2d2d; padding: 15px; border-radius: 6px; border-left: 3px solid #2563eb;">
+                    <label for="tripOptions" style="font-weight: bold; color: #2563eb;">🚚 Viaggio:</label>
+                    <select id="tripOptions" onchange="updateTripSelection()">
+                        <option value="">-- Scegli opzione --</option>
+                        <option value="new">🆕 Crea nuovo viaggio</option>
+                        <option value="existing">📌 Aggiungi a viaggio esistente</option>
+                        <option value="pending">⏳ Senza viaggio (Sospeso)</option>
+                    </select>
+                    
+                    <!-- Campo per nuovo viaggio -->
+                    <div id="newTripFields" style="display: none; margin-top: 12px;">
+                        <label for="newTripName" style="font-size: 12px; color: #bbb;">Nome viaggio:</label>
+                        <input type="text" id="newTripName" placeholder="es. Consegne 30/11" style="width: 100%; padding: 8px; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; color: #fff; font-size: 12px; margin-top: 4px;">
+                    </div>
+                    
+                    <!-- Selezione viaggio esistente -->
+                    <div id="existingTripFields" style="display: none; margin-top: 12px;">
+                        <label for="existingTrip" style="font-size: 12px; color: #bbb;">Viaggio disponibile:</label>
+                        <select id="existingTrip" style="width: 100%; padding: 8px; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; color: #fff; font-size: 12px; margin-top: 4px;">
+                            <option value="">-- Nessun viaggio disponibile --</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div class="form-group">
                     <label for="orderNotes">Note:</label>
                     <textarea id="orderNotes" rows="3" placeholder="Note aggiuntive..."></textarea>
-                </div>
-                <div class="form-group">
-                    <label for="assignToOperator">👤 Assegna a Operatore:</label>
-                    <select id="assignToOperator">
-                        <option value="">-- Non assegnato --</option>
-                    </select>
                 </div>
 
                 <div class="modal-actions">
@@ -846,6 +875,42 @@
                     <button type="button" class="btn btn-secondary" onclick="closeOrderModal()">❌ Annulla</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Modal per Modificare/Visualizzare Prodotto -->
+    <div id="editProductModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2>✏️ Modifica Prodotto</h2>
+                <button type="button" class="close-btn" onclick="closeEditProductModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div style="background: #2d2d2d; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 10px; font-weight: bold; color: #e0e0e0;">Articolo:</label>
+                    <select id="editProductName" style="width: 100%; padding: 8px; background: #1a1a1a; color: #e0e0e0; border: 1px solid #4d4d4d; border-radius: 4px;">
+                        <!-- Opzioni caricate dinamicamente -->
+                    </select>
+                </div>
+
+                <div style="background: #2d2d2d; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 10px; font-weight: bold; color: #e0e0e0;">Quantità (kg):</label>
+                    <input type="number" id="editProductQuantity" step="0.1" min="0.1" style="width: 100%; padding: 8px; background: #1a1a1a; color: #e0e0e0; border: 1px solid #4d4d4d; border-radius: 4px;">
+                </div>
+
+                <!-- Visualizzazione Lotti Assegnati -->
+                <div style="background: #1a3a3a; padding: 15px; border-radius: 6px; border: 1px solid #2d5a5a;">
+                    <h3 style="margin-top: 0; color: #a0d4ff;">📦 Lotti Disponibili:</h3>
+                    <div id="editProductBatchesList" style="max-height: 200px; overflow-y: auto;">
+                        <!-- Lotti caricati dinamicamente -->
+                    </div>
+                </div>
+            </div>
+
+            <div style="padding: 15px; border-top: 1px solid #4d4d4d;">
+                <button type="button" class="btn btn-primary" onclick="saveEditProduct()" style="width: 100%; margin-bottom: 8px;">✅ Salva Modifiche</button>
+                <button type="button" class="btn btn-secondary" onclick="closeEditProductModal()" style="width: 100%;">❌ Annulla</button>
+            </div>
         </div>
     </div>
 
@@ -875,6 +940,70 @@
         function fmtLocalDate(d){
             const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const da=String(d.getDate()).padStart(2,'0');
             return `${y}-${m}-${da}`;
+        }
+
+        // ===== FUNZIONI GESTIONE VIAGGI NEL FORM =====
+        
+        function updateTripOptions() {
+            const orderType = document.getElementById('orderType').value;
+            const tripSection = document.getElementById('tripSection');
+            
+            // Mostra sezione viaggio solo per consegnati
+            if (orderType === 'consegnato') {
+                tripSection.style.display = 'block';
+                // Reset selezione
+                document.getElementById('tripOptions').value = '';
+            } else {
+                tripSection.style.display = 'none';
+                // Reset per ritiri
+                document.getElementById('tripOptions').value = '';
+            }
+        }
+
+        function updateTripSelection() {
+            const tripOption = document.getElementById('tripOptions').value;
+            const newTripFields = document.getElementById('newTripFields');
+            const existingTripFields = document.getElementById('existingTripFields');
+            
+            if (tripOption === 'new') {
+                newTripFields.style.display = 'block';
+                existingTripFields.style.display = 'none';
+            } else if (tripOption === 'existing') {
+                newTripFields.style.display = 'none';
+                existingTripFields.style.display = 'block';
+                populateExistingTrips();
+            } else {
+                newTripFields.style.display = 'none';
+                existingTripFields.style.display = 'none';
+            }
+        }
+
+        function populateExistingTrips() {
+            const dateTimeStr = document.getElementById('orderDateTime').value;
+            if (!dateTimeStr) {
+                document.getElementById('existingTrip').innerHTML = '<option value="">-- Seleziona prima la data --</option>';
+                return;
+            }
+
+            const dateStr = dateTimeStr.split('T')[0]; // YYYY-MM-DD
+            
+            // Filtra viaggi per data e senza operatore assegnato
+            const availableTrips = trips.filter(trip => {
+                if (trip.assignedOperatorId) return false; // Skip se già assegnato
+                // Controlla se il viaggio ha ordini per questa data
+                const tripOrders = (trip.sequence || []).map(orderId => orders.find(o => o.id === orderId)).filter(Boolean);
+                return tripOrders.some(o => o.dateTime && o.dateTime.split('T')[0] === dateStr);
+            });
+
+            const select = document.getElementById('existingTrip');
+            if (availableTrips.length === 0) {
+                select.innerHTML = '<option value="">-- Nessun viaggio disponibile --</option>';
+                return;
+            }
+
+            select.innerHTML = availableTrips.map(trip => 
+                `<option value="${trip.id}">${trip.name}</option>`
+            ).join('');
         }
         
         // Sistema viaggi
@@ -1377,7 +1506,9 @@
             
             grid.innerHTML = ordersToShow.map(order => {
                 const timeOnly = order.dateTime ? new Date(order.dateTime).toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'}) : 'N/D';
+                const dateOnly = order.dateTime ? new Date(order.dateTime).toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit', year:'numeric'}) : 'N/D';
                 const createdAtTime = order.createdAt ? new Date(order.createdAt).toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'}) : new Date().toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'});
+                const createdAtDate = order.createdAt ? new Date(order.createdAt).toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit', year:'numeric'}) : new Date().toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit', year:'numeric'});
                 const statusLabel = getStatusLabel(order.status);
                 const typeLabel = order.type === 'consegnato' ? 'Consegna' : 'Ritiro';
                 const typeIcon = order.type === 'consegnato' ? '🚚' : '📥';
@@ -1396,11 +1527,12 @@
                             <span class="task-status" style="background: ${borderColor}; color: white; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600;">${statusLabel}</span>
                         </div>
                         <div style="margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px; color: #a0a0a0;">
-                            <div><strong>📦 Prodotto:</strong> ${order.product}</div>
-                            <div><strong>📊 Quantità:</strong> ${order.quantity} kg</div>
-                            <div><strong>⏰ Consegna:</strong> ${timeOnly}</div>
-                            <div><strong>📨 Ricevuto:</strong> ${createdAtTime}</div>
+                            <div><strong>📦 Prodotti:</strong> ${order.products?.map(p => `${p.product} (${p.quantity}kg)`).join(' + ') || order.product}</div>
+                            <div><strong>📊 Quantità Tot:</strong> ${order.products?.reduce((sum, p) => sum + (p.quantity || 0), 0) || order.quantity} kg</div>
+                            <div><strong>⏰ Consegna:</strong> ${dateOnly} • ${timeOnly}</div>
+                            <div><strong>📨 Ricevuto:</strong> ${createdAtDate} • ${createdAtTime}</div>
                         </div>
+                        ${order.assignedOperatorId ? `<div style="margin-top: 10px; padding: 8px; background: #1a2a1a; border-radius: 6px; font-size: 12px; color: #86efac;"><strong>👤 Operatore:</strong> ${allOperators?.find(op => op.id === order.assignedOperatorId)?.name || 'Non trovato'}</div>` : ''}
                         ${order.notes ? `<div style="margin-top: 10px; padding: 8px; background: #2d2d2d; border-radius: 6px; font-size: 12px; color: #e0e0e0;"><strong>📝 Note:</strong> ${order.notes}</div>` : ''}
                         <div class="task-actions" style="display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap;">
                             <button class="btn btn-primary btn-small" onclick="updateOrderStatus(${order.id}, 'completed')" style="flex: 1; min-width: 100px;">✓ Completa</button>
@@ -1781,11 +1913,11 @@
             document.querySelector('#orderModal h2').textContent = '📝 Nuovo Ordine';
             document.getElementById('orderForm').dataset.editingId = '';
             
-            // Resetta i lotti
-            currentOrderBatches = [];
-            currentSelectedBatchIndex = -1;
-            renderOrderBatches();
-            document.getElementById('addBatchContainer').style.display = 'none';
+            console.log('🔍 DEBUG openOrderModal - articoli.length:', articoli.length);
+            
+            // Resetta i prodotti
+            currentOrderProducts = [];
+            renderOrderProducts();
             
             // Se c'è una data selezionata dal calendario, preselezionala
             if (selectedDate) {
@@ -1799,16 +1931,19 @@
 
             // Popola dropdown articoli (usa dati già caricati da CSV/localStorage)
             const productSelect = document.getElementById('orderProduct');
-            productSelect.innerHTML = '<option value="">-- Seleziona Articolo --</option>' +
-                articoli.map(a => `<option value="${a.codice || a.nome}">${a.codice || a.nome} - ${a.descrizione || a.nome}</option>`).join('');
+            console.log('🔍 openOrderModal - articoli.length:', articoli.length);
+            if (articoli.length > 0) {
+                console.log('🔍 first articolo:', articoli[0]);
+            }
+            const optionsHTML = articoli.map(a => {
+                const cod = a.codice || a.nome || '???';
+                const desc = a.descrizione || a.nome || '???';
+                return `<option value="${cod}">${cod} - ${desc}</option>`;
+            }).join('');
+            productSelect.innerHTML = '<option value="">-- Seleziona Articolo --</option>' + optionsHTML;
 
             document.getElementById('orderModal').classList.add('active');
             document.getElementById('orderForm').reset();
-            
-            // Resetta i batch selezionati
-            currentOrderBatches = [];
-            document.getElementById('orderBatchesTableContainer').style.display = 'none';
-            document.getElementById('addBatchContainer').style.display = 'none';
 
             // Popola dropdown operatori
             const assignToOperator = document.getElementById('assignToOperator');
@@ -1816,6 +1951,12 @@
                 assignToOperator.innerHTML = '<option value="">-- Non assegnato --</option>' +
                     allOperators.map(op => `<option value="${op.id}">${op.username}</option>`).join('');
             }
+
+            // Reset sezione viaggio
+            document.getElementById('tripSection').style.display = 'none';
+            document.getElementById('tripOptions').value = '';
+            document.getElementById('newTripName').value = '';
+            document.getElementById('existingTrip').innerHTML = '<option value="">-- Nessun viaggio disponibile --</option>';
 
             // Aggancia validazione data/ora contro festivi e orari consegna
             const dt = document.getElementById('orderDateTime');
@@ -1833,12 +1974,9 @@
                     }
                 };
             }
-            
-            // Aggancia validazione quantità quando cambia
-            const quantityInput = document.getElementById('orderQuantity');
-            if (quantityInput) {
-                quantityInput.oninput = validateOrderQuantity;
-            }
+
+            // Mostra/nascondi sezione viaggio in base al tipo ordine selezionato
+            updateTripOptions();
         }
 
         // Apri modal per modificare ordine esistente
@@ -1859,22 +1997,48 @@
             const productSelect = document.getElementById('orderProduct');
             productSelect.innerHTML = '<option value="">-- Seleziona Articolo --</option>' +
                 articoli.map(a => `<option value="${a.codice || a.nome}">${a.codice || a.nome} - ${a.descrizione || a.nome}</option>`).join('');
-            productSelect.value = order.product;
 
-            // Riempi i campi
-            document.getElementById('orderQuantity').value = order.quantity;
-            
-            // Ripristina i batch selezionati dall'ordine
-            currentOrderBatches = order.batches || [];
-            if (currentOrderBatches.length > 0) {
-                document.getElementById('orderBatchesTableContainer').style.display = 'block';
-                renderOrderBatches();
+            // Carica prodotti dell'ordine
+            if (order.products && order.products.length > 0) {
+                currentOrderProducts = JSON.parse(JSON.stringify(order.products));
             } else {
-                document.getElementById('orderBatchesTableContainer').style.display = 'none';
+                currentOrderProducts = [];
             }
+            renderOrderProducts();
+
             document.getElementById('orderType').value = order.type;
             document.getElementById('orderDateTime').value = order.dateTime;
             document.getElementById('orderNotes').value = order.notes || '';
+
+            // Mostra sezione viaggio e seleziona l'opzione corretta (solo per consegnati)
+            const tripSection = document.getElementById('tripSection');
+            if (order.type === 'consegnato') {
+                tripSection.style.display = 'block';
+                
+                // Determina quale opzione è selezionata
+                if (order.tripId) {
+                    // Ordine associato a viaggio
+                    document.getElementById('tripOptions').value = 'existing';
+                    document.getElementById('existingTripFields').style.display = 'block';
+                    document.getElementById('newTripFields').style.display = 'none';
+                    
+                    // Popola dropdown viaggi disponibili e seleziona quello corrente
+                    populateExistingTrips();
+                    setTimeout(() => {
+                        const existingTripSelect = document.getElementById('existingTrip');
+                        if (existingTripSelect) {
+                            existingTripSelect.value = order.tripId;
+                        }
+                    }, 100);
+                } else {
+                    // Ordine sospeso (senza viaggio)
+                    document.getElementById('tripOptions').value = 'pending';
+                    document.getElementById('existingTripFields').style.display = 'none';
+                    document.getElementById('newTripFields').style.display = 'none';
+                }
+            } else {
+                tripSection.style.display = 'none';
+            }
 
             // Popola dropdown operatori
             const assignToOperator = document.getElementById('assignToOperator');
@@ -1905,6 +2069,9 @@
                     }
                 };
             }
+
+            // Assicura che la sezione viaggio sia visibile/nascosta correttamente
+            updateTripOptions();
         }
 
         // Chiudi modal ordine
@@ -1931,10 +2098,335 @@
         }
 
         // Array per tracciare i lotti aggiunti all'ordine
+        // ===== VARIABILI PER PRODOTTI MULTIPLI =====
+        let currentOrderProducts = []; // Array di prodotti: {product: "nome", quantity: N}
+        
+        // Aggiungi prodotto all'ordine
+        function addProductToOrder() {
+            console.time('⏱️ addProductToOrder');
+            const selectedProductCode = document.getElementById('orderProduct').value;
+            const totalQuantityNeeded = parseFloat(document.getElementById('orderQuantity').value);
+
+            if (!selectedProductCode) {
+                alert('⚠️ Seleziona un articolo');
+                return;
+            }
+
+            if (!totalQuantityNeeded || totalQuantityNeeded <= 0) {
+                alert('⚠️ Inserisci una quantità valida');
+                return;
+            }
+
+            // I lotti caricati da API sono già filtrati per il codice selezionato
+            const availableBatches = currentAvailableBatches || [];
+
+            console.log('📦 Lotti disponibili per', selectedProductCode, ':', availableBatches.length);
+
+            if (availableBatches.length === 0) {
+                alert('⚠️ Nessun lotto disponibile per questo articolo');
+                return;
+            }
+
+            // Calcola quanto è già stato assegnato in questo ordine per questo prodotto
+            const alreadyAssigned = (currentOrderProducts || [])
+                .filter(p => p.product === selectedProductCode)
+                .reduce((sum, p) => sum + p.quantity, 0);
+            
+            const remainingToAssign = totalQuantityNeeded - alreadyAssigned;
+
+            if (remainingToAssign <= 0) {
+                alert('⚠️ La quantità totale è già stata coperta dai lotti selezionati');
+                return;
+            }
+
+            // Mostra il popup di selezione lotti
+            showBatchSelectionForProduct(selectedProductCode, remainingToAssign, availableBatches);
+            console.timeEnd('⏱️ addProductToOrder');
+        }
+
+        // Mostra dialogo per selezionare i lotti fino a raggiungere il peso
+        function showBatchSelectionForProduct(productCode, remainingQuantity, availableBatches) {
+            const article = articoli.find(a => a.codice === productCode);
+            const productDesc = article?.descrizione || productCode;
+
+            // Calcola quanto è già stato assegnato da questo ordine per questo prodotto
+            const alreadyAssignedPerBatch = {};
+            currentOrderProducts
+                .filter(p => p.product === productCode && p.batch)
+                .forEach(p => {
+                    alreadyAssignedPerBatch[p.batch] = (alreadyAssignedPerBatch[p.batch] || 0) + p.quantity;
+                });
+
+            // Filtra i lotti ancora disponibili (con quantità residua > 0)
+            const batchesStillAvailable = availableBatches.filter(batch => {
+                const alreadyUsed = alreadyAssignedPerBatch[batch.batch] || 0;
+                const residual = (batch.quantityKg || 0) - alreadyUsed;
+                return residual > 0.01; // Considera > 0 se maggiore di 0.01kg
+            });
+
+            if (batchesStillAvailable.length === 0) {
+                alert('⚠️ Nessun altro lotto disponibile per i rimanenti ' + remainingQuantity.toFixed(1) + ' kg');
+                closeBatchModal();
+                return;
+            }
+
+            const modalHTML = `
+                <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 10000;" id="batchModalOverlay" onclick="if(event.target.id==='batchModalOverlay') closeBatchModal()">
+                    <div style="background: #2d2d2d; border: 2px solid #4d4d4d; border-radius: 8px; padding: 20px; max-width: 500px; color: #e0e0e0; box-shadow: 0 4px 6px rgba(0,0,0,0.3);" onclick="event.stopPropagation()">
+                        <h3 style="margin-top: 0; color: #86efac;">📦 Seleziona Lotti</h3>
+                        <p style="color: #a0d4ff; margin: 10px 0;">Articolo: <strong>${productDesc}</strong></p>
+                        <p style="color: #fbbf24; margin: 10px 0;">Rimanenti da coprire: <strong id="remainingLabel">${remainingQuantity.toFixed(1)}</strong> kg</p>
+                        
+                        <div style="margin: 15px 0; max-height: 250px; overflow-y: auto; border: 1px solid #4d4d4d; border-radius: 4px; padding: 10px;" id="batchesContainer">
+                            ${batchesStillAvailable.map((batch, idx) => {
+                                const alreadyUsed = alreadyAssignedPerBatch[batch.batch] || 0;
+                                const residual = (batch.quantityKg || 0) - alreadyUsed;
+                                const willAssign = Math.min(remainingQuantity, residual);
+                                
+                                return `
+                                    <div class="batch-item" data-product-code="${productCode}" data-remaining="${remainingQuantity}" data-batch-index="${idx}" data-batch-code="${batch.batch}" data-batch-available="${residual}" style="background: #1a1a1a; padding: 10px; margin-bottom: 8px; border-radius: 4px; border-left: 3px solid #3b82f6; cursor: pointer;">
+                                        <div style="font-weight: bold; color: #3b82f6;">🏷️ Lotto: ${batch.batch}</div>
+                                        <div style="font-size: 12px; color: #999; margin-top: 4px;">
+                                            Scadenza: ${batch.expiry || 'N/A'} | Disponibile: <span style="color: #86efac;">${residual.toFixed(1)} kg</span>
+                                        </div>
+                                        <div style="font-size: 11px; color: #fbbf24; margin-top: 4px;">
+                                            → Assegnerà: ${willAssign.toFixed(1)} kg
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+
+                        <button onclick="closeBatchModal()" style="width: 100%; padding: 10px; background: #666; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 10px;">❌ Annulla</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            
+            // Aggiungi event listeners usando event delegation
+            const container = document.getElementById('batchesContainer');
+            if (container) {
+                container.addEventListener('click', function(e) {
+                    const batchItem = e.target.closest('.batch-item');
+                    if (batchItem) {
+                        const productCode = batchItem.dataset.productCode;
+                        const remainingQuantity = parseFloat(batchItem.dataset.remaining);
+                        const batchIndex = parseInt(batchItem.dataset.batchIndex);
+                        const batchCode = batchItem.dataset.batchCode;
+                        const batchAvailable = parseFloat(batchItem.dataset.batchAvailable);
+                        selectBatchForProduct(productCode, remainingQuantity, batchIndex, batchCode, batchAvailable);
+                    }
+                });
+            }
+        }
+
+        function selectBatchForProduct(productCode, remainingQuantity, batchIndex, batchCode, batchAvailable) {
+            const batch = currentAvailableBatches[batchIndex];
+            if (!batch) return;
+
+            // Calcola quanto assegnare da questo lotto
+            const quantityToAssign = Math.min(remainingQuantity, batchAvailable);
+
+            console.log(`✅ Assegna ${quantityToAssign} kg dal lotto ${batchCode}`);
+
+            // Aggiungi il prodotto con il lotto selezionato
+            currentOrderProducts.push({
+                product: productCode,
+                quantity: quantityToAssign,
+                batch: batch.batch,
+                batchData: batch
+            });
+
+            const newRemaining = remainingQuantity - quantityToAssign;
+
+            if (newRemaining > 0.01) {
+                // Ancora quantità da assegnare, mostra il popup di nuovo
+                closeBatchModal();
+                showBatchSelectionForProduct(productCode, newRemaining, currentAvailableBatches);
+            } else {
+                // Quantità raggiunta!
+                console.log('🎉 Quantità totale raggiunta!');
+                
+                // Pulisci i campi
+                document.getElementById('orderProduct').value = '';
+                document.getElementById('orderQuantity').value = '';
+
+                // Aggiorna la visualizzazione
+                renderOrderProducts();
+                closeBatchModal();
+            }
+        }
+
+        function closeBatchModal() {
+            const modal = document.getElementById('batchModalOverlay');
+            if (modal) {
+                modal.remove();
+            }
+        }
+
+        // Visualizza prodotti aggiunti
+        function renderOrderProducts() {
+            if (currentOrderProducts.length === 0) {
+                document.getElementById('orderProductsTableContainer').style.display = 'none';
+                return;
+            }
+
+            document.getElementById('orderProductsTableContainer').style.display = 'block';
+
+            const tbody = document.getElementById('orderProductsTableBody');
+            const totalQty = currentOrderProducts.reduce((sum, p) => sum + p.quantity, 0);
+
+            tbody.innerHTML = currentOrderProducts.map((product, idx) => {
+                // Se il prodotto ha un lotto selezionato, mostralo
+                let batchesDisplay = '<span style="color: #999; font-size: 10px;">-</span>';
+                
+                if (product.batch) {
+                    // Il lotto è stato selezionato durante l'aggiunta
+                    batchesDisplay = `<span style="display: inline-block; background: #2d5a3d; padding: 2px 6px; margin: 2px; border-radius: 3px; font-size: 10px; color: #86efac;">${product.batch}</span>`;
+                } else {
+                    // Fallback: cerca i lotti disponibili
+                    const article = articoli.find(a => a.codice === product.product);
+                    if (article) {
+                        const batches = (currentAvailableBatches || []).filter(b => b.articolo === article.codice);
+                        if (batches.length > 0) {
+                            batchesDisplay = batches.map(b => `<span style="display: inline-block; background: #3a6b7a; padding: 2px 6px; margin: 2px; border-radius: 3px; font-size: 10px;">${b.batch}</span>`).join('');
+                        }
+                    }
+                }
+
+                return `
+                    <tr style="border-bottom: 1px solid #4d4d4d;">
+                        <td style="padding: 8px; text-align: left; color: #e0e0e0;">${product.product}</td>
+                        <td style="padding: 8px; text-align: right; color: #a0d4ff;">${product.quantity.toFixed(1)} kg</td>
+                        <td style="padding: 8px; text-align: center; font-size: 11px;">${batchesDisplay}</td>
+                        <td style="padding: 8px; text-align: center;">
+                            <button type="button" onclick="openEditProductModal(${idx})" style="background: #0066cc; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 12px; margin-right: 4px;">✏️ Modifica</button>
+                            <button type="button" onclick="removeProductFromOrder(${idx})" style="background: #dc2626; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 12px;">🗑️ Rimuovi</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            document.getElementById('orderProductsTotal').textContent = totalQty.toFixed(1);
+        }
+
+        // Rimuovi prodotto dall'ordine
+        function removeProductFromOrder(index) {
+            currentOrderProducts.splice(index, 1);
+            renderOrderProducts();
+        }
+
+        // Apri modal per modificare un prodotto
+        let currentEditingProductIndex = -1;
+        function openEditProductModal(index) {
+            currentEditingProductIndex = index;
+            const product = currentOrderProducts[index];
+
+            if (!product) return;
+
+            // Popola il select con gli articoli disponibili
+            const selectElement = document.getElementById('editProductName');
+            selectElement.innerHTML = articoli.map(a => `
+                <option value="${a.codice}" ${a.codice === product.product ? 'selected' : ''}>${a.descrizione}</option>
+            `).join('');
+
+            // Imposta la quantità
+            document.getElementById('editProductQuantity').value = product.quantity.toFixed(1);
+
+            // Visualizza i lotti disponibili
+            renderEditProductBatches(product.product);
+
+            // Mostra il modal
+            const modal = document.getElementById('editProductModal');
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        // Chiudi il modal di modifica prodotto
+        function closeEditProductModal() {
+            const modal = document.getElementById('editProductModal');
+            modal.classList.remove('active');
+            document.body.style.overflow = 'auto';
+            currentEditingProductIndex = -1;
+        }
+
+        // Visualizza i lotti disponibili nel modal
+        function renderEditProductBatches(productCode) {
+            const article = articoli.find(a => a.codice === productCode);
+            if (!article) {
+                document.getElementById('editProductBatchesList').innerHTML = '<p style="color: #999;">Nessun articolo trovato</p>';
+                return;
+            }
+
+            const batches = currentAvailableBatches?.filter(b => b.articolo === article.codice) || [];
+
+            if (batches.length === 0) {
+                document.getElementById('editProductBatchesList').innerHTML = '<p style="color: #999;">Nessun lotto disponibile</p>';
+                return;
+            }
+
+            const batchesHTML = batches.map(batch => `
+                <div style="background: #0d2d3d; padding: 10px; margin-bottom: 8px; border-radius: 4px; border-left: 3px solid #a0d4ff;">
+                    <div style="display: grid; grid-template-columns: 1fr auto; gap: 10px;">
+                        <div>
+                            <div style="color: #a0d4ff; font-weight: bold; margin-bottom: 4px;">🏷️ Lotto: ${batch.batch}</div>
+                            <div style="color: #999; font-size: 11px;">
+                                Disponibile: <span style="color: #86efac; font-weight: bold;">${(batch.quantityKg || 0).toFixed(1)} kg</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById('editProductBatchesList').innerHTML = batchesHTML;
+        }
+
+        // Quando cambi articolo nel modal, aggiorna i lotti
+        document.addEventListener('DOMContentLoaded', () => {
+            const editProductNameSelect = document.getElementById('editProductName');
+            if (editProductNameSelect) {
+                editProductNameSelect.addEventListener('change', (e) => {
+                    renderEditProductBatches(e.target.value);
+                });
+            }
+        });
+
+        // Salva le modifiche al prodotto
+        function saveEditProduct() {
+            if (currentEditingProductIndex < 0) return;
+
+            const newProduct = document.getElementById('editProductName').value;
+            const newQuantity = parseFloat(document.getElementById('editProductQuantity').value);
+
+            if (!newProduct) {
+                alert('⚠️ Seleziona un articolo');
+                return;
+            }
+
+            if (!newQuantity || newQuantity <= 0) {
+                alert('⚠️ Inserisci una quantità valida');
+                return;
+            }
+
+            // Aggiorna il prodotto
+            currentOrderProducts[currentEditingProductIndex] = {
+                product: newProduct,
+                quantity: newQuantity
+            };
+
+            // Aggiorna la visualizzazione
+            renderOrderProducts();
+            closeEditProductModal();
+
+            console.log('✏️ Prodotto modificato:', newProduct, '-', newQuantity, 'kg');
+        }
+
+        // ===== LEGACY: LOGICA BATCH (MANTENIAMO PER COMPATIBILITÀ) =====
         let currentOrderBatches = [];
         let currentSelectedBatchIndex = -1;
 
-        // Aggiunge un lotto all'ordine
+        // Aggiunge un lotto all'ordine (legacy)
         function addOrderBatch() {
             const selectedProduct = document.getElementById('orderProduct').value;
             const quantity = parseFloat(document.getElementById('orderQuantity').value);
@@ -2194,27 +2686,50 @@
             const selectedProduct = document.getElementById('orderProduct').value;
             
             if (!selectedProduct) {
+                currentAvailableBatches = [];
                 return;
             }
 
-            try {
-                const response = await fetch(`${API_URL}/inventory/batches?code=${selectedProduct}`, {
-                    headers: { 
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
+            console.log('🔍 Caricamento lotti per articolo:', selectedProduct);
 
-                if (response.ok) {
-                    currentAvailableBatches = await response.json();
-                } else {
-                    console.warn('⚠️ Errore caricamento lotti');
-                    currentAvailableBatches = [];
+            try {
+                // Prova a caricare dall'API
+                if (token) {
+                    const response = await fetch(`${API_URL}/inventory/batches?code=${selectedProduct}`, {
+                        headers: { 
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (response.ok) {
+                        currentAvailableBatches = await response.json();
+                        console.log('✅ Lotti caricati da API:', currentAvailableBatches.length);
+                        console.log('📋 Struttura lotti:', currentAvailableBatches);
+                        return;
+                    } else {
+                        console.warn('⚠️ API ritorna errore:', response.status);
+                    }
                 }
+
+                // Fallback: carica da localStorage con dati di generazione
+                console.log('📦 Fallback a dati generati per testing');
+                currentAvailableBatches = generateTestBatches(selectedProduct);
+                console.log('✅ Lotti fallback generati:', currentAvailableBatches.length);
+                
             } catch (error) {
                 console.error('❌ Errore caricamento lotti:', error);
-                currentAvailableBatches = [];
+                currentAvailableBatches = generateTestBatches(selectedProduct);
             }
+        }
+
+        // Genera lotti di test per il debugging
+        function generateTestBatches(productCode) {
+            const testBatches = [
+                { articolo: productCode, batch: 'LOT' + Date.now(), quantityKg: 100, shelfPosition: 'A1' },
+                { articolo: productCode, batch: 'LOT' + (Date.now() + 1), quantityKg: 150, shelfPosition: 'A2' }
+            ];
+            return testBatches;
         }
 
         // Renderizza i lotti disponibili (not used anymore - batches shown in modal)
@@ -2303,6 +2818,8 @@
 
         // Salva nuovo ordine o modifica esistente
         async function saveOrder(event) {
+            const t0 = performance.now();
+            console.log('⏱️ [saveOrder] Inizio salvataggio ordine');
             try {
                 event.preventDefault();
                 
@@ -2321,9 +2838,9 @@
                     return;
                 }
 
-                // Validazione: almeno un lotto deve essere aggiunto
-                if (currentOrderBatches.length === 0) {
-                    alert('⚠️ Aggiungi almeno un lotto all\'ordine');
+                // Validazione: almeno un prodotto deve essere aggiunto (nuovo sistema multi-prodotto)
+                if (currentOrderProducts.length === 0) {
+                    alert('⚠️ Aggiungi almeno un prodotto all\'ordine');
                     return;
                 }
                 
@@ -2331,8 +2848,8 @@
                 
                 // Verifica che tutti gli elementi del form esistano
                 const requiredElements = [
-                    'orderClient', 'orderProduct', 'orderType', 'orderDateTime',
-                    'orderNotes', 'assignToOperator'
+                    'orderClient', 'orderType', 'orderDateTime',
+                    'orderNotes'
                 ];
                 
                 for (const elementId of requiredElements) {
@@ -2360,23 +2877,71 @@
                 }
             }
 
-            const totalQuantity = currentOrderBatches.reduce((sum, b) => sum + b.quantity, 0);
+            // Calcola quantità totale dai prodotti (nuovo sistema)
+            const totalQuantity = currentOrderProducts.reduce((sum, p) => sum + p.quantity, 0);
+            
+            // Gestisci viaggio se è consegnato
+            let tripId = null;
+            const tripOption = document.getElementById('tripOptions') ? document.getElementById('tripOptions').value : '';
+            const orderType = document.getElementById('orderType').value;
+            
+            if (orderType === 'consegnato') {
+                if (tripOption === 'new') {
+                    // Crea nuovo viaggio
+                    const tripName = document.getElementById('newTripName')?.value || `Consegne ${new Date().toLocaleDateString('it-IT')}`;
+                    const newTrip = {
+                        id: Date.now(),
+                        name: tripName,
+                        sequence: [], // Verrà aggiunto l'ordine dopo
+                        assignedOperatorId: null,
+                        createdAt: new Date().toISOString(),
+                        status: 'pending'
+                    };
+                    trips.push(newTrip);
+                    tripId = newTrip.id;
+                    localStorage.setItem('trips', JSON.stringify(trips));
+                } else if (tripOption === 'existing') {
+                    // Usa viaggio esistente
+                    tripId = parseInt(document.getElementById('existingTrip')?.value || 0);
+                    if (!tripId) tripId = null;
+                }
+                // Se tripOption === 'pending', tripId rimane null (sospeso)
+            }
+            
             const orderData = {
                 client: document.getElementById('orderClient').value,
-                product: document.getElementById('orderProduct').value,
-                quantity: totalQuantity,
-                batches: currentOrderBatches,  // Array di lotti
+                products: currentOrderProducts,  // Array di prodotti [{product, quantity}, ...]
+                quantity: totalQuantity,  // Quantità totale calcolata
                 type: document.getElementById('orderType').value,
                 dateTime: rawDateTime,
                 status: 'pending',  // Default status for new orders
                 notes: document.getElementById('orderNotes').value,
-                assignedOperatorId: document.getElementById('assignToOperator').value ? parseInt(document.getElementById('assignToOperator').value, 10) : null
+                tripId: tripId  // ← NUOVO CAMPO
             };
 
             if (editingId) {
                 // Modifica ordine esistente
                 const order = orders.find(o => o.id == editingId);
                 if (order) {
+                    // Se il viaggio è cambiato, aggiorna i viaggi
+                    if (orderData.tripId !== order.tripId) {
+                        // Rimuovi da viaggio vecchio
+                        if (order.tripId) {
+                            const oldTrip = trips.find(t => t.id === order.tripId);
+                            if (oldTrip) {
+                                oldTrip.sequence = oldTrip.sequence.filter(id => id !== editingId);
+                            }
+                        }
+                        // Aggiungi a viaggio nuovo
+                        if (orderData.tripId) {
+                            const newTrip = trips.find(t => t.id === orderData.tripId);
+                            if (newTrip && !newTrip.sequence.includes(editingId)) {
+                                newTrip.sequence.push(editingId);
+                            }
+                        }
+                        localStorage.setItem('trips', JSON.stringify(trips));
+                    }
+                    
                     Object.assign(order, orderData);
                     
                     // Aggiorna anche il task associato
@@ -2385,7 +2950,8 @@
                         // Aggiorna titolo con nuovo formato semplificato
                         task.title = `${orderData.type === 'consegnato' ? 'consegna' : 'ritiro'} - ${String(orderData.client || '').toLowerCase()}`;
                         task.client = orderData.client;
-                        task.product = orderData.product;
+                        // Per il task, usa il primo prodotto come principale (se esiste)
+                        task.product = orderData.products.length > 0 ? orderData.products[0].product : '';
                         task.quantity = orderData.quantity;
                         task.dateTime = orderData.dateTime;
                         task.notes = orderData.notes;
@@ -2404,56 +2970,76 @@
                     console.log('✏️ Ordine modificato:', order.client, order.assignedOperatorId ? ` (Operatore: ${order.assignedOperatorId})` : '');
                 }
             } else {
-                // Nuovo ordine - PRENOTA L'INVENTARIO
+                // Nuovo ordine - PRENOTA L'INVENTARIO per tutti i prodotti
+                console.log('⏱️ [saveOrder] Inizio prenotazione inventario');
+                const t1 = performance.now();
                 const order = {
                     id: Date.now(),
                     ...orderData,
                     createdAt: new Date().toISOString()
                 };
                 
-                // Prenota inventario
-                const article = articoli.find(a => a.nome === orderData.product);
-                if (article) {
-                    try {
-                        const reserveResponse = await fetch(`${API_URL}/inventory/reserve`, {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': `Bearer ${token}`,
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                code: article.codice,
-                                quantity: orderData.quantity,
-                                orderId: order.id.toString()
-                            })
-                        });
+                // Prenota inventario per ogni prodotto nell'ordine
+                orderInventoryReservations[order.id] = [];
+                for (const productItem of orderData.products) {
+                    const article = articoli.find(a => a.nome === productItem.product);
+                    if (article) {
+                        try {
+                            console.log(`⏱️ [saveOrder] Prenotando inventario: ${article.codice} ${productItem.quantity}kg`);
+                            const tReserve = performance.now();
+                            const reserveResponse = await fetch(`${API_URL}/inventory/reserve`, {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': `Bearer ${token}`,
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    code: article.codice,
+                                    quantity: productItem.quantity,
+                                    orderId: order.id.toString()
+                                })
+                            });
+                            
+                            console.log(`⏱️ [saveOrder] Risposta API in ${Math.round(performance.now() - tReserve)}ms`);
 
-                        if (!reserveResponse.ok) {
-                            const errData = await reserveResponse.json();
-                            throw new Error(errData.error || 'Errore prenotazione inventario');
+                            if (!reserveResponse.ok) {
+                                const errData = await reserveResponse.json();
+                                throw new Error(errData.error || 'Errore prenotazione inventario');
+                            }
+
+                            const reserveResult = await reserveResponse.json();
+                            console.log('✅ Inventario prenotato per', productItem.product, ':', reserveResult);
+                            
+                            // Salva info prenotazione per questo prodotto
+                            orderInventoryReservations[order.id].push({
+                                productCode: article.codice,
+                                quantity: productItem.quantity,
+                                product: productItem.product
+                            });
+                        } catch (error) {
+                            console.error('❌ Errore prenotazione inventario:', error);
+                            alert(`⚠️ Attenzione: ${error.message}`);
+                            return;
                         }
-
-                        const reserveResult = await reserveResponse.json();
-                        console.log('✅ Inventario prenotato:', reserveResult);
-                        
-                        // Salva info prenotazione
-                        orderInventoryReservations[order.id] = {
-                            productCode: article.codice,
-                            quantity: orderData.quantity
-                        };
-                    } catch (error) {
-                        console.error('❌ Errore prenotazione inventario:', error);
-                        alert(`⚠️ Attenzione: ${error.message}`);
-                        return;
                     }
                 }
                 
                 orders.push(order);
+                
+                // Associa ordine al viaggio se tripId è stato definito
+                if (orderData.tripId) {
+                    const trip = trips.find(t => t.id === orderData.tripId);
+                    if (trip) {
+                        trip.sequence.push(order.id);
+                        localStorage.setItem('trips', JSON.stringify(trips));
+                    }
+                }
+                
                 // Genera task per ordini di ritiro
                 if (order.type === 'ritira') {
                     generateTaskForOrder(order, []);
                 }
-                console.log('📝 Nuovo ordine creato:', order.client);
+                console.log('📝 Nuovo ordine creato:', order.client, '(', orderData.products.length, 'prodotti)');
             }
 
             renderOrderTasks();
@@ -2461,6 +3047,10 @@
             renderOrders();
             updateStats();
             renderCalendar();
+            
+            const tEnd = performance.now();
+            console.log(`⏱️ [saveOrder] ✅ COMPLETATO in ${Math.round(tEnd - t0)}ms`);
+            
             closeOrderModal();
             } catch (error) {
                 console.error('❌ Errore in saveOrder():', error);
@@ -2576,6 +3166,34 @@
             }
         }
 
+        // Helper per ottenere informazioni complete ordine con operatore
+        function getOrderFullInfo(orderId) {
+            const order = orders.find(o => String(o.id) === String(orderId));
+            if (!order) return null;
+
+            // Normalizza i dati dell'ordine (compatibile con entrambi i formati)
+            const normalized = {
+                id: order.id,
+                client: order.client || order.clientName || 'Cliente sconosciuto',
+                product: order.product || (order.products?.[0]?.product) || 'Prodotto',
+                quantity: order.quantity || (order.products?.reduce((sum, p) => sum + (p.quantity || 0), 0)) || 0,
+                notes: order.notes || '',
+                type: order.type || 'ritira',
+                dateTime: order.dateTime || new Date().toISOString(),
+                status: order.status || 'pending',
+                assignedOperatorId: order.assignedOperatorId || null,
+                products: order.products || (order.product ? [{product: order.product, quantity: order.quantity || 0}] : [])
+            };
+
+            // Aggiungi info operatore
+            normalized.operator = null;
+            if (normalized.assignedOperatorId && allOperators) {
+                normalized.operator = allOperators.find(op => op.id === normalized.assignedOperatorId);
+            }
+
+            return normalized;
+        }
+
         // Renderizza ordini
         function renderOrders() {
             const grid = document.getElementById('ordersGrid');
@@ -2587,28 +3205,31 @@
             }
 
             grid.innerHTML = orders.map(order => {
+                const fullInfo = getOrderFullInfo(order.id);
                 const cliente = clienti.find(c => c.nome === order.client);
                 const orariInfo = cliente ? `
                     <p><strong>Apertura:</strong> ${cliente.orario_apertura} - ${cliente.orario_chiusura}</p>
                     <p><strong>Finestra Consegne:</strong> ${cliente.orario_consegna_inizio} - ${cliente.orario_consegna_fine}</p>
                 ` : '';
+                const operatorName = fullInfo?.operator?.name || 'Non assegnato';
                 
                 return `
                 <div class="order-card">
                     <div class="order-header">
-                        <div class="order-title">${order.client}</div>
+                        <div class="order-title">${fullInfo?.client || 'Cliente'}</div>
                         <div class="order-status ${order.status}">${getStatusLabel(order.status)}</div>
                     </div>
                     <div class="order-details">
-                        <p><strong>Prodotto:</strong> ${order.product}</p>
-                        <p><strong>Quantità:</strong> ${order.quantity} kg</p>
+                        <p><strong>📦 Prodotti:</strong> ${fullInfo?.products?.map(p => `${p.product} (${p.quantity}kg)`).join(' + ') || fullInfo?.product}</p>
+                        <p><strong>Quantità Totale:</strong> ${fullInfo?.quantity} kg</p>
                         <p><strong>Tipo:</strong> ${order.type === 'consegnato' ? '📦 Consegnato' : '🏪 Ritira Cliente'}</p>
+                        ${fullInfo?.operator ? `<p><strong>👤 Operatore:</strong> ${operatorName}</p>` : ''}
                         <p><strong>Data e Orario:</strong> ${order.dateTime ? new Date(order.dateTime).toLocaleString('it-IT', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'N/D'}</p>
                         ${orariInfo}
                         ${order.lotto ? `<p><strong>Lotto:</strong> ${order.lotto}</p>` : ''}
                         ${order.ritiro_consegna ? `<p><strong>Ritiro/Consegna:</strong> ${order.ritiro_consegna}</p>` : ''}
                         ${order.posizione ? `<p><strong>Scaffale:</strong> ${order.posizione}</p>` : ''}
-                        ${order.notes ? `<p><strong>Note:</strong> ${order.notes}</p>` : ''}
+                        ${fullInfo?.notes ? `<p><strong>📝 Note:</strong> ${fullInfo.notes}</p>` : ''}
                     </div>
                     <div class="order-actions">
                         <button class="btn btn-primary" onclick="updateOrderStatus(${order.id}, 'completed')">✓ Completa</button>

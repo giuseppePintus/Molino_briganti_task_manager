@@ -3,64 +3,61 @@ FROM --platform=linux/arm64/v8 node:18 AS builder
 
 WORKDIR /app
 
-# Copia package files per cache
+# Copia SOLO package files PRIMA per sfruttare la cache layer npm install
 COPY package*.json ./
+
+# Install dependencies with retry (layer stabile per cache)
+RUN npm install --legacy-peer-deps --audit=false || npm install --legacy-peer-deps --audit=false || npm install --legacy-peer-deps --audit=false
 
 # Crea directory per la build
 RUN mkdir -p /app/server /app/client
 
-# Install dependencies with retry (sfrutta cache)
-RUN npm install --legacy-peer-deps --audit=false || npm install --legacy-peer-deps --audit=false || npm install --legacy-peer-deps --audit=false
-
-# Copia il codice
+# Copia il resto del codice (layer instabile - cambia spesso)
 COPY . .
 
 # Genera Prisma client (scarica i binari per l'architettura ARM64)
 RUN npm run prisma:generate
 
-# Build TypeScript
+# Build TypeScript (layer finale - recompila solo se codice cambia)
 RUN npm run build
 
-# Production stage
+# Production stage - slimmed down
 FROM --platform=linux/arm64/v8 node:18
 
 WORKDIR /app
 
-# Crea directory per i moduli e file
-RUN mkdir -p /app/server /app/client /app/public /app/backups /app/server/prisma/data
+# Crea directory per runtime (singolo RUN = singolo layer)
+RUN mkdir -p /app/server /app/client /app/public /app/backups /app/server/prisma/data && \
+    chmod -R 755 /app/backups /app/server/prisma/data
 
-# Copia package.json PRIMA dagli stage builder
+# Copia package.json per riferimento
 COPY package*.json ./
 
-# Copia node_modules da builder
+# Copia node_modules da builder (layer reusabile se package.json non cambia)
 COPY --from=builder /app/node_modules ./node_modules
 
-# Copia il codice compilato
+# Copia artefatti compilati da builder in singolo COPY (riduce layer)
 COPY --from=builder /app/server/dist ./server/dist
-COPY --from=builder /app/public ./public
-
-# Copia server source per runtime
 COPY --from=builder /app/server/src ./server/src
-
-# Copia prisma schema e client
 COPY --from=builder /app/server/prisma ./server/prisma
+COPY --from=builder /app/public ./public
 
 # Copia .env per Docker
 COPY .env.docker ./server/.env
 
-# Set permissions
-RUN chmod -R 755 /app/backups /app/server/prisma/data
-
 # Esponi porta
 EXPOSE 5000
 
-# Volume per accesso diretto al NAS - backup salvati qui
+# Volume per backup persistenti
 VOLUME ["/share/CACHEDEV1_DATA"]
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD node -e "require('http').get('http://localhost:5000/api/health')"
 
-# Comando di startup - RUN prisma migrate al boot se necessario
-RUN echo '#!/bin/sh\nmkdir -p /share/CACHEDEV1_DATA/molino/backups\necho "🔄 Running Prisma migrations..."\ncd /app/server && npx prisma migrate deploy --skip-generate || true\necho "✅ Migrations completed"\nnode /app/server/dist/index.js' > /start.sh && chmod +x /start.sh
+# Copia script di startup
+COPY docker-start.sh /start.sh
+RUN chmod +x /start.sh
+
+# Comando di startup
 CMD ["/start.sh"]

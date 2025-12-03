@@ -362,16 +362,44 @@ function closeEditModal() {
 async function importArticles() {
     try {
         const token = getToken();
-        const res = await fetch(`${API_BASE}/inventory/import/articles`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const result = await res.json();
-
-        showMessage(`Importati ${result.imported} articoli con successo!`, 'success');
-        loadAllArticles();
-        loadDashboard();
-
+        
+        // Crea un input file temporaneo
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = '.csv';
+        
+        fileInput.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            try {
+                console.log('📤 Invio file:', file.name);
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                const res = await fetch(`${API_BASE}/inventory/import/articles`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData
+                });
+                
+                if (!res.ok) throw new Error('Errore nel caricamento');
+                
+                const result = await res.json();
+                console.log('✅ Importazione result:', result);
+                
+                showMessage(`✅ Importati ${result.imported} articoli, Aggiornati ${result.updated}!`, 'success');
+                loadAllArticles();
+                loadDashboard();
+                
+            } catch (error) {
+                console.error('Errore importazione:', error);
+                showMessage(`❌ Errore: ${error.message}`, 'danger');
+            }
+        };
+        
+        fileInput.click();
+        
     } catch (error) {
         console.error('Errore importazione:', error);
         showMessage(`Errore: ${error.message}`, 'danger');

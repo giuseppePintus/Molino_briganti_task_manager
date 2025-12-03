@@ -1,16 +1,71 @@
+# Node modules & npm cache
 node_modules
 npm-debug.log
-.git
-.env
-.env.local
-backups
-data
+npm-error.log
+yarn-error.log
+pnpm-debug.log
+.npm
+.yarn/cache
+
+# Build artifacts
 dist
 build
-*.log
-.DS_Store
+*.tsbuildinfo
+out
+
+# Git & VCS
+.git
+.gitignore
+.gitattributes
+.github
+.gitlab-ci.yml
+
+# IDE & editor
 .vscode
 .idea
-.next
-out
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Backup & data directories
+backups/
+build-nas-*/
+*.backup
+*.tmp
+
+# Documentation
+*.md
+README.md
+DEPLOYMENT_MEMORY.md
+docs/
+
+# Docker config
+docker-compose.yml
+Dockerfile*
+
+# Tests
+__tests__
+test
+*.test.js
+*.spec.js
 coverage
+
+# Prisma
+prisma/migrations/
+
+# Public data
+public/data/
+public/images/
+
+# Temp
+.eslintcache
+lerna-debug.log

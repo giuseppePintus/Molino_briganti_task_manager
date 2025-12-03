@@ -83,13 +83,13 @@ export class InventoryService {
         console.log(`📍 Riga ${i}: Posizione=${data['Posizione']}, Codice=${data['Codice']}, Quantita=${data['Quantita']}`);
 
         // Estrai i dati
-        const posizione = data['Posizione'];
-        const nome = data['Nome'];
-        const codice = data['Codice'];
-        const lotto = data['Lotto'];
-        const scadenza = data['Scadenza'];
-        const quantita = parseInt(data['Quantita']) || 0;
-        const annotazioni = data['Annotazioni'];
+        const posizione = data['Posizione'] ? String(data['Posizione']).trim() : '';
+        const nome = data['Nome'] ? String(data['Nome']).trim() : '';
+        const codice = data['Codice'] ? String(data['Codice']).trim() : '';
+        const lotto = data['Lotto'] ? String(data['Lotto']).trim() : '';
+        const scadenza = data['Scadenza'] ? String(data['Scadenza']).trim() : '';
+        const quantita = parseInt(String(data['Quantita']).trim()) || 0;
+        const annotazioni = data['Annotazioni'] ? String(data['Annotazioni']).trim() : '';
 
         if (!codice || codice === '') {
           skippedCount++;
@@ -105,33 +105,38 @@ export class InventoryService {
 
           if (!article) {
             // Se articolo non esiste, crealo
-            article = await prisma.article.create({
-              data: {
-                code: codice,
-                name: nome || 'Sconosciuto',
-                category: this.getCategoryFromCode(codice),
-                unit: 'kg',
-                inventory: {
-                  create: {
-                    currentStock: quantita,
-                    minimumStock: 5,
-                    shelfPosition: posizione,
-                    batch: lotto,
-                    expiry: scadenza,
-                    notes: annotazioni
-                  }
+            const createData = {
+              code: codice,
+              name: nome || 'Sconosciuto',
+              category: this.getCategoryFromCode(codice),
+              unit: 'kg',
+              inventory: {
+                create: {
+                  currentStock: quantita,
+                  minimumStock: 5,
+                  reserved: 0,
+                  shelfPosition: posizione,
+                  batch: lotto,
+                  expiry: scadenza,
+                  notes: annotazioni
                 }
-              },
+              }
+            };
+            console.log(`📦 Data creazione articolo ${i}:`, JSON.stringify(createData));
+            article = await prisma.article.create({
+              data: createData,
               include: { inventory: true }
             });
             importedCount++;
             console.log(`✅ Importato articolo ${i}: ${codice} (${nome}) - Quantita: ${quantita}`);
           } else if (article.inventory) {
             // Se articolo esiste, aggiorna l'inventario
+            const newStock = (article.inventory.currentStock || 0) + quantita;
+            console.log(`📦 Update inventario ${i}: currentStock=${article.inventory.currentStock}, adding=${quantita}, newStock=${newStock}`);
             await prisma.inventory.update({
               where: { id: article.inventory.id },
               data: {
-                currentStock: article.inventory.currentStock + quantita,
+                currentStock: newStock,
                 shelfPosition: posizione,
                 batch: lotto,
                 expiry: scadenza,
@@ -144,8 +149,11 @@ export class InventoryService {
             console.warn(`⚠️ Riga ${i} (${codice}): Articolo trovato ma senza inventory record`);
             skippedCount++;
           }
-        } catch (err) {
-          console.error(`❌ Errore import riga ${i} (${codice}):`, err);
+        } catch (err: any) {
+          console.error(`❌ Errore import riga ${i} (${codice}):`, err.message || err);
+          console.error(`   Stack:`, err.stack);
+          if (err.code) console.error(`   Code:`, err.code);
+          if (err.meta) console.error(`   Meta:`, JSON.stringify(err.meta));
           errorCount++;
         }
       }

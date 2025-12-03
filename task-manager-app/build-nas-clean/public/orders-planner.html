@@ -1,0 +1,3953 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planner Ordini - Molino Briganti</title>
+    <link rel="stylesheet" href="css/common.css">
+    <script src="js/settings-utils.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2563eb;
+            --success: #16a34a;
+            --danger: #dc2626;
+            --warning: #ea580c;
+            --dark: #1f2937;
+            --light: #f3f4f6;
+            --border: #e5e7eb;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a1a;
+            color: #e0e0e0;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header styles unified via css/common.css */
+
+        /* Base button styles moved to css/common.css. Page keeps only contextual overrides. */
+
+        .card {
+            background: #2d2d2d;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .card {
+                padding: 15px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .card {
+                padding: 12px;
+                border-radius: 6px;
+            }
+        }
+
+        .card h2 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #e0e0e0;
+        }
+
+        @media (max-width: 768px) {
+            .card h2 {
+                font-size: 16px;
+                margin-bottom: 12px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .card h2 {
+                font-size: 14px;
+                margin-bottom: 10px;
+            }
+        }
+
+        .orders-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .order-card {
+            background: #3d3d3d;
+            border-left: 4px solid var(--primary);
+            padding: 15px;
+            border-radius: 6px;
+            border: 2px solid #4d4d4d;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+            margin-bottom: 15px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .order-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 12px rgba(0, 0, 0, 0.5);
+            border-color: #5d5d5d;
+        }
+
+        @media (max-width: 768px) {
+            .order-card {
+                padding: 12px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .order-card {
+                padding: 10px;
+            }
+        }
+
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 10px;
+        }
+
+        .order-title {
+            font-weight: 600;
+            color: #e0e0e0;
+              font-size: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .order-title {
+                 font-size: 18px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .order-title {
+                 font-size: 16px;
+            }
+        }
+
+        .order-status {
+            font-size: 15px;
+            padding: 6px 10px;
+            border-radius: 4px;
+            background: #1e3a4d;
+            color: #7dd3fc;
+        }
+
+        .order-status.pending {
+            background: #4a3a1e;
+            color: #fcd34d;
+        }
+
+        .order-status.completed {
+            background: #1e3a2a;
+            color: #86efac;
+        }
+
+        .order-details {
+            font-size: 16px;
+            color: #a0a0a0;
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+
+        @media (max-width: 768px) {
+            .order-details {
+                 font-size: 15px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .order-details {
+                 font-size: 15px;
+            }
+        }
+
+        .order-details p {
+            margin: 5px 0;
+        }
+
+        .order-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .order-actions .btn {
+            padding: 10px 12px;
+            font-size: 14px;
+            min-height: 36px;
+        }
+
+        @media (max-width: 768px) {
+            .order-actions {
+                gap: 6px;
+            }
+
+            .order-actions .btn {
+                padding: 10px 12px;
+                font-size: 14px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .order-actions {
+                flex-direction: column;
+                gap: 6px;
+            }
+
+            .order-actions .btn {
+                padding: 10px 12px;
+                font-size: 14px;
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            font-size: 14px;
+            color: #e0e0e0;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #4d4d4d;
+            border-radius: 6px;
+            font-size: 14px;
+            background: #3d3d3d;
+            color: #e0e0e0;
+            font-family: inherit;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #2d2d2d;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 5px 50px rgba(0,0,0,0.5);
+        }
+
+        .modal-content h2 {
+            margin-bottom: 20px;
+            color: #e0e0e0;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: flex-end;
+        }
+
+        .modal-actions .btn {
+            padding: 10px 12px;
+            min-height: 36px;
+            font-size: 14px;
+            flex: 0 1 auto;
+        }
+
+        .stats-overview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: #2d2d2d;
+            padding: 3px 4px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            border-left: 4px solid var(--primary);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 20px;
+        }
+
+        .stat-number {
+            font-size: 12px;
+            font-weight: bold;
+            color: #e0e0e0;
+            margin-bottom: 0px;
+        }
+
+        .stat-label {
+            font-size: 8px;
+            color: #a0a0a0;
+        }
+
+        /* Planner Actions (below stats) - aligned to Trips Management */
+        .planner-actions {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .planner-actions .btn {
+            padding: 10px 12px;
+            min-height: 36px;
+            font-size: 14px;
+            width: 100%;
+        }
+        
+        @media (max-width: 768px) {
+            .planner-actions {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+            }
+            .planner-actions .btn {
+                padding: 10px 12px;
+                font-size: 13px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .planner-actions {
+                grid-template-columns: 1fr;
+            }
+        }
+        @media (max-width: 768px) {
+            .stats-overview {
+                grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+                gap: 12px;
+            }
+
+            .stat-card {
+                min-height: 18px;
+                padding: 2px 3px;
+            }
+
+            .stat-number {
+                font-size: 11px;
+            }
+
+            .stat-label {
+                font-size: 7px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .stats-overview {
+                grid-template-columns: repeat(auto-fit, minmax(50px, 1fr));
+                gap: 10px;
+            }
+
+            .stat-card {
+                min-height: 16px;
+                padding: 2px 3px;
+            }
+
+            .stat-number {
+                font-size: 10px;
+            }
+
+            .stat-label {
+                font-size: 6px;
+            }
+        }
+
+        .calendar-container {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+            padding: 10px 0;
+        }
+
+        .calendar-header-day {
+            font-weight: 700;
+            text-align: center;
+            padding: 6px;
+            background: #3d3d3d;
+            border: 1px solid #4d4d4d;
+            border-radius: 4px;
+            font-size: 12px; /* match admin dashboard */
+            color: #b0b0b0;
+        }
+
+        .calendar-day {
+            border: 1px solid #4d4d4d;
+            padding: 6px;
+            min-height: 85px;
+            border-radius: 4px;
+            background: #3d3d3d;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 18px;
+            color: #b0b0b0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .calendar-day:hover {
+            background: #4d4d4d;
+        }
+
+        .calendar-day.is-today {
+            border: 2px solid #16a34a;
+            font-weight: bold;
+        }
+
+        .calendar-day.is-selected {
+            border: 2px solid #06b6d4;
+            background: #164e63;
+        }
+
+        .calendar-day.has-orders {
+            background: #1e2a1e;
+            border-color: #16a34a;
+            position: relative;
+        }
+
+        .calendar-day.has-unassigned-orders {
+            position: relative;
+        }
+
+        .calendar-day.has-unassigned-orders::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 0;
+            height: 0;
+            border-style: solid;
+            border-width: 0 0 18px 18px;
+            border-color: transparent transparent #16a34a transparent;
+            border-radius: 4px 0 0 0;
+        }
+
+        .calendar-day.has-trips {
+            position: relative;
+        }
+
+        .calendar-day.has-trips::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 0;
+            height: 0;
+            border-style: solid;
+            border-width: 0 18px 18px 0;
+            border-color: transparent #2563eb transparent transparent;
+            border-radius: 0 4px 0 0;
+            z-index: 10;
+        }
+
+        .calendar-day.has-orders::before {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 0;
+            height: 0;
+            border-style: solid;
+            border-width: 0 0 18px 18px;
+            border-color: transparent transparent #16a34a transparent;
+            border-radius: 0 0 4px 0;
+        }
+
+        
+
+        @media (max-width: 768px) {
+            .calendar-day {
+                min-height: 40px;
+                padding: 6px;
+                font-size: 16px;
+            }
+            
+        }
+
+        @media (max-width: 480px) {
+            .calendar-day {
+                min-height: 35px;
+                padding: 3px;
+                font-size: 9px;
+            }
+            
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 20px;
+            color: #808080;
+            font-size: 12px;
+        }
+
+        /* Desktop calendar header */
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .calendar-btn-dummy, .calendar-btn-toggle {
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+
+        /* Tablet and up: equalize header button widths */
+        @media (min-width: 768px) {
+            .calendar-btn-dummy, .calendar-btn-toggle {
+                width: 160px;
+                text-align: center;
+            }
+        }
+
+        .calendar-btn-prev, .calendar-btn-next {
+            padding: 8px 12px;
+            font-size: 16px;
+            min-width: 40px;
+            width: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .calendar-title {
+            margin: 0;
+            color: #e0e0e0;
+            font-size: 16px;
+            text-align: center;
+            flex: 1;
+            min-width: 150px;
+        }
+
+        @media (max-width: 768px) {
+            /* Tablet: stack toggle button below */
+            .calendar-header {
+                display: grid !important;
+                grid-template-columns: 40px 1fr 40px;
+                grid-template-rows: auto auto;
+                gap: 8px;
+                margin-bottom: 15px;
+            }
+
+            .calendar-btn-prev {
+                grid-column: 1;
+                grid-row: 1;
+            }
+
+            .calendar-title {
+                grid-column: 2;
+                grid-row: 1;
+            }
+
+            .calendar-btn-next {
+                grid-column: 3;
+                grid-row: 1;
+            }
+
+            .calendar-btn-toggle {
+                grid-column: 1 / -1;
+                grid-row: 2;
+                width: 100%;
+                font-size: 13px;
+                padding: 8px 12px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            /* Mobile: 2 buttons on row 1, navigation on row 2 */
+            .calendar-header {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr;
+                grid-template-rows: auto auto;
+                gap: 8px;
+                margin-bottom: 15px;
+            }
+
+            /* First row: 2 buttons */
+            .calendar-btn-dummy {
+                grid-column: 1;
+                grid-row: 1;
+                padding: 10px 12px;
+                font-size: 13px;
+            }
+
+            .calendar-btn-toggle {
+                grid-column: 2;
+                grid-row: 1;
+                padding: 10px 12px;
+                font-size: 13px;
+            }
+
+            /* Second row: navigation controls */
+            .calendar-btn-prev {
+                grid-column: 1 / -1;
+                grid-row: 2;
+                width: 40px !important;
+                height: 40px;
+                padding: 0 !important;
+                font-size: 18px !important;
+                min-width: 40px !important;
+                max-width: 40px !important;
+                justify-self: start;
+            }
+
+            .calendar-title {
+                grid-column: 1 / -1;
+                grid-row: 2;
+                font-size: 13px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                min-width: 0;
+                margin: 0 50px;
+            }
+
+            .calendar-btn-next {
+                grid-column: 1 / -1;
+                grid-row: 2;
+                width: 40px !important;
+                height: 40px;
+                padding: 0 !important;
+                font-size: 18px !important;
+                min-width: 40px !important;
+                max-width: 40px !important;
+                justify-self: end;
+            }
+        }
+
+        .btn-planner {
+            background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%) !important;
+            color: white !important;
+            border: 1px solid rgba(124, 58, 237, 0.5) !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3),
+                        0 0 20px rgba(124, 58, 237, 0.2),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-planner::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s;
+        }
+        .btn-planner:hover {
+            background: linear-gradient(135deg, #6d28d9 0%, #5b21b6 100%) !important;
+            border-color: rgba(124, 58, 237, 1) !important;
+            box-shadow: 0 6px 20px rgba(124, 58, 237, 0.5),
+                        0 0 30px rgba(124, 58, 237, 0.4),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+            transform: translateY(-2px) !important;
+        }
+        .btn-planner:hover::after {
+            left: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-left">
+                <div class="header-logo">
+                    <img src="images/logo INSEGNA.png" alt="Molino Briganti Logo">
+                </div>
+                <div class="header-title">
+                    <h1>📦 Planner Ordini</h1>
+                    <div class="user-info" id="userInfo"></div>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-planner" onclick="window.location.href='admin-dashboard.html'">🏠 Home</button>
+            </div>
+        </div>
+
+        <!-- Stats Overview -->
+        <div class="stats-overview">
+            <div class="stat-card">
+                <div class="stat-number" id="totalOrders">0</div>
+                <div class="stat-label">Ordini Totali</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="pendingOrders">0</div>
+                <div class="stat-label">In Sospeso</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="completedOrders">0</div>
+                <div class="stat-label">Completati</div>
+            </div>
+        </div>
+
+        <!-- Planner Actions moved below stats -->
+        <div class="planner-actions">
+            <button class="btn btn-success" onclick="window.location.href='customers-management.html'">👥 Nuovo Cliente</button>
+            <button class="btn btn-success" onclick="openOrderModal()">➕ Nuovo Ordine</button>
+        </div>
+
+        <!-- Calendar -->
+        <div class="card" style="padding: 12px;">
+            <div class="calendar-header">
+                <button class="btn btn-secondary calendar-btn-dummy" onclick="toggleShowAllOrders()" id="toggleShowAllBtn2">👁️ Visualizza Tutti</button>
+                <button class="btn btn-primary calendar-btn-prev" onclick="previousPeriod()">◀</button>
+                <h4 id="calendarMonthYear" class="calendar-title"></h4>
+                <button class="btn btn-primary calendar-btn-next" onclick="nextPeriod()">▶</button>
+                <button class="btn btn-secondary calendar-btn-toggle" onclick="toggleCalendarView()" id="toggleCalendarBtn">🗓️ Settimana</button>
+            </div>
+            <div id="calendarContainer" class="calendar-container">
+                <!-- Calendar will be generated here -->
+            </div>
+        </div>
+
+        <!-- Unified Orders Section -->
+        <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;flex-wrap:wrap;gap:10px;">
+                <h2 style="display:flex;align-items:center;gap:6px;margin:0;">📋 Ordini <span id="tasksCount" style="font-size:11px;color:#a0a0a0;font-weight:400;"></span></h2>
+            </div>
+            <div class="orders-grid" id="orderTasksGrid">
+                <!-- Orders will appear here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Order Modal -->
+    <div id="orderModal" class="modal">
+        <div class="modal-content">
+            <h2>📝 Nuovo Ordine</h2>
+            <form id="orderForm" onsubmit="saveOrder(event)">
+                <div class="form-group">
+                    <label for="orderClient">Cliente:</label>
+                    <select id="orderClient" required onchange="updateClientInfo()">
+                        <option value="">-- Seleziona Cliente --</option>
+                    </select>
+                    <div id="clientHoursInfo" style="margin-top: 8px; font-size: 12px; color: #86efac; display: none;">
+                        <!-- Client hours will be displayed here -->
+                    </div>
+                </div>
+
+                <!-- NUOVO: Sezione Prodotti Multipli -->
+                <div class="form-group" style="background: #2d2d2d; padding: 15px; border-radius: 6px; border-left: 3px solid #86efac;">
+                    <label style="font-weight: bold; color: #86efac;">📦 Prodotti nell'ordine:</label>
+                    
+                    <!-- Selettore e aggiunta prodotto -->
+                    <div style="display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-bottom: 12px;">
+                        <div>
+                            <select id="orderProduct" onchange="loadAvailableBatches()" style="width: 100%; padding: 8px; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; color: #fff;">
+                                <option value="">-- Seleziona Articolo --</option>
+                            </select>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr auto; gap: 4px;">
+                            <input type="number" id="orderQuantity" min="0.1" step="0.1" placeholder="Qty (kg)" style="padding: 8px; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; color: #fff; width: 80px; -moz-appearance: textfield;" onwheel="event.preventDefault();">
+                            <style>
+                                #orderQuantity::-webkit-outer-spin-button,
+                                #orderQuantity::-webkit-inner-spin-button {
+                                    -webkit-appearance: none;
+                                    margin: 0;
+                                }
+                            </style>
+                            <button type="button" onclick="addProductToOrder()" class="btn-secondary" style="padding: 8px 12px; background: #86efac; color: #000; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">➕ Aggiungi</button>
+                        </div>
+                    </div>
+
+                    <!-- Tabella prodotti aggiunti -->
+                    <div id="orderProductsTableContainer" style="display: none;">
+                        <table style="width: 100%; border-collapse: collapse; background: #1a1a1a; font-size: 12px;">
+                            <thead>
+                                <tr style="background: #0d0d0d; border-bottom: 2px solid #4d4d4d;">
+                                    <th style="padding: 8px; text-align: left; color: #e0e0e0;">Articolo</th>
+                                    <th style="padding: 8px; text-align: right; color: #e0e0e0;">Quantità (kg)</th>
+                                    <th style="padding: 8px; text-align: center; color: #e0e0e0;">Lotti</th>
+                                    <th style="padding: 8px; text-align: center; color: #e0e0e0;">Azione</th>
+                                </tr>
+                            </thead>
+                            <tbody id="orderProductsTableBody">
+                                <!-- Rows will be added here -->
+                            </tbody>
+                        </table>
+                        <div style="margin-top: 8px; padding: 8px; background: #2d2d2d; border-radius: 4px;">
+                            <strong style="color: #86efac;">Totale: <span id="orderProductsTotal">0</span> kg</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="orderType">Tipo Ordine:</label>
+                    <select id="orderType" required onchange="updateTripOptions()">
+                        <option value="consegnato">📦 Consegnato</option>
+                        <option value="ritira">🏪 Ritira Cliente</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="orderDateTime">Data e Orario Consegna:</label>
+                    <input type="datetime-local" id="orderDateTime" required onchange="updateTripOptions()">
+                </div>
+                
+                <!-- NUOVO: Sezione Viaggio (solo per consegnati) -->
+                <div class="form-group" id="tripSection" style="display: none; background: #2d2d2d; padding: 15px; border-radius: 6px; border-left: 3px solid #2563eb;">
+                    <label for="tripOptions" style="font-weight: bold; color: #2563eb;">🚚 Viaggio:</label>
+                    <select id="tripOptions" onchange="updateTripSelection()">
+                        <option value="">-- Scegli opzione --</option>
+                        <option value="new">🆕 Crea nuovo viaggio</option>
+                        <option value="existing">📌 Aggiungi a viaggio esistente</option>
+                        <option value="pending">⏳ Senza viaggio (Sospeso)</option>
+                    </select>
+                    
+                    <!-- Campo per nuovo viaggio -->
+                    <div id="newTripFields" style="display: none; margin-top: 12px;">
+                        <label for="newTripName" style="font-size: 12px; color: #bbb;">Nome viaggio:</label>
+                        <input type="text" id="newTripName" placeholder="es. Consegne 30/11" style="width: 100%; padding: 8px; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; color: #fff; font-size: 12px; margin-top: 4px;">
+                    </div>
+                    
+                    <!-- Selezione viaggio esistente -->
+                    <div id="existingTripFields" style="display: none; margin-top: 12px;">
+                        <label for="existingTrip" style="font-size: 12px; color: #bbb;">Viaggio disponibile:</label>
+                        <select id="existingTrip" style="width: 100%; padding: 8px; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; color: #fff; font-size: 12px; margin-top: 4px;">
+                            <option value="">-- Nessun viaggio disponibile --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="orderNotes">Note:</label>
+                    <textarea id="orderNotes" rows="3" placeholder="Note aggiuntive..."></textarea>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary">💾 Salva</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeOrderModal()">❌ Annulla</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal per Modificare/Visualizzare Prodotto -->
+    <div id="editProductModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2>✏️ Modifica Prodotto</h2>
+                <button type="button" class="close-btn" onclick="closeEditProductModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div style="background: #2d2d2d; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 10px; font-weight: bold; color: #e0e0e0;">Articolo:</label>
+                    <select id="editProductName" style="width: 100%; padding: 8px; background: #1a1a1a; color: #e0e0e0; border: 1px solid #4d4d4d; border-radius: 4px;">
+                        <!-- Opzioni caricate dinamicamente -->
+                    </select>
+                </div>
+
+                <div style="background: #2d2d2d; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 10px; font-weight: bold; color: #e0e0e0;">Quantità (kg):</label>
+                    <input type="number" id="editProductQuantity" step="0.1" min="0.1" style="width: 100%; padding: 8px; background: #1a1a1a; color: #e0e0e0; border: 1px solid #4d4d4d; border-radius: 4px;">
+                </div>
+
+                <!-- Visualizzazione Lotti Assegnati -->
+                <div style="background: #1a3a3a; padding: 15px; border-radius: 6px; border: 1px solid #2d5a5a;">
+                    <h3 style="margin-top: 0; color: #a0d4ff;">📦 Lotti Disponibili:</h3>
+                    <div id="editProductBatchesList" style="max-height: 200px; overflow-y: auto;">
+                        <!-- Lotti caricati dinamicamente -->
+                    </div>
+                </div>
+            </div>
+
+            <div style="padding: 15px; border-top: 1px solid #4d4d4d;">
+                <button type="button" class="btn btn-primary" onclick="saveEditProduct()" style="width: 100%; margin-bottom: 8px;">✅ Salva Modifiche</button>
+                <button type="button" class="btn btn-secondary" onclick="closeEditProductModal()" style="width: 100%;">❌ Annulla</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let orders = [];
+        let clienti = [];
+        let articoli = [];
+        let calendarDisplayMonth = new Date().getMonth();
+        let calendarDisplayYear = new Date().getFullYear();
+        // Tasks generati dagli ordini
+        let orderTasks = [];
+        // Operatori / Admin disponibili - caricati dall'API (come in admin-dashboard)
+        let allOperators = [];
+        let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        let token = localStorage.getItem('token') || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+        const API_URL = 'http://localhost:5000/api';
+        
+        // Tracking inventario e prenotazioni
+        let currentAvailableBatches = [];
+        let orderInventoryReservations = {}; // {orderId: {productCode, quantity}}
+        
+        function fmtLocalDateTime(d){
+            const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const da=String(d.getDate()).padStart(2,'0');
+            const hh=String(d.getHours()).padStart(2,'0'); const mm=String(d.getMinutes()).padStart(2,'0');
+            return `${y}-${m}-${da}T${hh}:${mm}`;
+        }
+        function fmtLocalDate(d){
+            const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const da=String(d.getDate()).padStart(2,'0');
+            return `${y}-${m}-${da}`;
+        }
+
+        // ===== FUNZIONI GESTIONE VIAGGI NEL FORM =====
+        
+        function updateTripOptions() {
+            const orderType = document.getElementById('orderType').value;
+            const tripSection = document.getElementById('tripSection');
+            
+            // Mostra sezione viaggio solo per consegnati
+            if (orderType === 'consegnato') {
+                tripSection.style.display = 'block';
+                // Reset selezione
+                document.getElementById('tripOptions').value = '';
+            } else {
+                tripSection.style.display = 'none';
+                // Reset per ritiri
+                document.getElementById('tripOptions').value = '';
+            }
+        }
+
+        function updateTripSelection() {
+            const tripOption = document.getElementById('tripOptions').value;
+            const newTripFields = document.getElementById('newTripFields');
+            const existingTripFields = document.getElementById('existingTripFields');
+            
+            if (tripOption === 'new') {
+                newTripFields.style.display = 'block';
+                existingTripFields.style.display = 'none';
+            } else if (tripOption === 'existing') {
+                newTripFields.style.display = 'none';
+                existingTripFields.style.display = 'block';
+                populateExistingTrips();
+            } else {
+                newTripFields.style.display = 'none';
+                existingTripFields.style.display = 'none';
+            }
+        }
+
+        function populateExistingTrips() {
+            const dateTimeStr = document.getElementById('orderDateTime').value;
+            if (!dateTimeStr) {
+                document.getElementById('existingTrip').innerHTML = '<option value="">-- Seleziona prima la data --</option>';
+                return;
+            }
+
+            const dateStr = dateTimeStr.split('T')[0]; // YYYY-MM-DD
+            
+            // Filtra viaggi per data e senza operatore assegnato
+            const availableTrips = trips.filter(trip => {
+                if (trip.assignedOperatorId) return false; // Skip se già assegnato
+                // Controlla se il viaggio ha ordini per questa data
+                const tripOrders = (trip.sequence || []).map(orderId => orders.find(o => o.id === orderId)).filter(Boolean);
+                return tripOrders.some(o => o.dateTime && o.dateTime.split('T')[0] === dateStr);
+            });
+
+            const select = document.getElementById('existingTrip');
+            if (availableTrips.length === 0) {
+                select.innerHTML = '<option value="">-- Nessun viaggio disponibile --</option>';
+                return;
+            }
+
+            select.innerHTML = availableTrips.map(trip => 
+                `<option value="${trip.id}">${trip.name}</option>`
+            ).join('');
+        }
+        
+        // Sistema viaggi
+        let trips = []; // Array di viaggi: {id, name, date, orderIds: [], sequence: []}
+        
+        // Calendario
+        let calendarClickTimer = null;
+        let lastClickedDate = null;
+        let calendarViewMode = 'week'; // 'week' o 'month'
+        let weekStartDate = new Date();
+        weekStartDate.setDate(weekStartDate.getDate() - weekStartDate.getDay()); // Domenica
+        
+        // Filtro ordini
+        let showAllOrders = false; // false = solo oggi, true = tutti
+        let selectedDate = null; // Data specifica selezionata dal calendario (null = oggi)
+        
+        // Log currentUser al caricamento
+        console.log('📋 currentUser caricato:', currentUser);
+        console.log('🔑 Token:', token ? 'presente' : 'assente');
+
+        // Carica operatori e admin dall'API (esattamente come in operators.html)
+        async function loadOperators() {
+            try {
+                console.log('🔄 Caricamento operatori e admin dall\'API pubblica...');
+                
+                // Usa gli endpoint pubblici che NON richiedono autenticazione
+                const operatorsResponse = await fetch(`${API_URL}/auth/operators/public`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const adminsResponse = await fetch(`${API_URL}/auth/admins/public`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                console.log('📡 Risposta API - Operators:', operatorsResponse.status, 'Admins:', adminsResponse.status);
+
+                if (operatorsResponse.ok && adminsResponse.ok) {
+                    const operators = await operatorsResponse.json();
+                    const admins = await adminsResponse.json();
+                    console.log('📋 Operatori ricevuti (', operators.length, '):', operators);
+                    console.log('📋 Admin ricevuti (', admins.length, '):', admins);
+                    // Ordina admin alfabeticamente
+                    const sortedAdmins = admins.sort((a, b) => a.username.localeCompare(b.username));
+                    // Ordina operatori alfabeticamente
+                    const sortedOperators = operators.sort((a, b) => a.username.localeCompare(b.username));
+                    // Combina: admin prima, poi operatori
+                    allOperators = [...sortedAdmins, ...sortedOperators];
+                    // Salva in cache per offline
+                    localStorage.setItem('cachedOperators', JSON.stringify(allOperators));
+                    console.log('✅ Operatori e Admin caricati dall\'API pubblica. Totale:', allOperators.length);
+                } else {
+                    console.warn('⚠️ Errore API (' + operatorsResponse.status + ', ' + adminsResponse.status + ') - usa cache');
+                    throw new Error(`API Error: ${operatorsResponse.status}, ${adminsResponse.status}`);
+                }
+            } catch (error) {
+                console.error('❌ Errore caricamento operatori dall\'API:', error);
+                // Prova a usare la cache locale
+                const cachedOperators = localStorage.getItem('cachedOperators');
+                if (cachedOperators) {
+                    try {
+                        const cached = JSON.parse(cachedOperators);
+                        if (cached.length > 0 && cached[0].role) {
+                            allOperators = cached;
+                            console.log('⚠️ Usa operatori da cache locale:', allOperators.length, 'utenti');
+                            return;
+                        }
+                    } catch (e) {
+                        console.warn('Cache corrotta, elimina');
+                        localStorage.removeItem('cachedOperators');
+                    }
+                }
+                
+                console.warn('⚠️ Usa operatori di DEFAULT dal server');
+                // Fallback a operatori di default dal server (creati automaticamente all'init)
+                allOperators = [
+                    { id: 1, username: 'Admin Mario', role: 'master' },
+                    { id: 2, username: 'Admin Lucia', role: 'master' },
+                    { id: 3, username: 'Operatore Paolo', role: 'slave' },
+                    { id: 4, username: 'Operatore Sara', role: 'slave' }
+                ];
+                console.log('📌 Operatori di fallback caricati:', allOperators);
+            }
+        }
+
+        // Helper per ottenere array di nomi operatori
+        function getOperatorNames() {
+            return allOperators.map(op => op.username);
+        }
+
+        function getOperatorWithIcon(username) {
+            const op = allOperators.find(o => o.username === username);
+            if (!op) return username;
+            const icon = op.role === 'master' ? '👨‍💼' : '👷';
+            const suffix = (currentUser.id === op.id) ? ' (per me)' : '';
+            return icon + ' ' + username + suffix;
+        }
+
+        // Salvataggio / caricamento tasks
+        function loadOrderTasks() {
+            const stored = localStorage.getItem('orderTasks');
+            orderTasks = stored ? JSON.parse(stored) : [];
+
+            // Migrazioni: titoli e struttura ID DB
+            try {
+                let changed = false;
+                // 1) Normalizza titoli a "consegna/ritiro - cliente"
+                orderTasks.forEach(t => {
+                    const relatedOrder = Array.isArray(orders) ? orders.find(o => o.id === t.orderId) : null;
+                    let typeWord = 'consegna';
+                    if (relatedOrder && relatedOrder.type) {
+                        typeWord = relatedOrder.type === 'consegnato' ? 'consegna' : 'ritiro';
+                    } else if (t.title && /ritiro/i.test(t.title)) {
+                        typeWord = 'ritiro';
+                    }
+                    const clientLower = String((relatedOrder && relatedOrder.client) || t.client || '').toLowerCase();
+                    const normalized = `${typeWord} - ${clientLower}`;
+                    if (t.title !== normalized) {
+                        t.title = normalized;
+                        changed = true;
+                    }
+                });
+                // 2) Normalizza tracking ID DB (evita duplicati)
+                orderTasks.forEach(t => {
+                    if (!t.dbIdsByOperator || typeof t.dbIdsByOperator !== 'object') {
+                        t.dbIdsByOperator = {};
+                        changed = true;
+                    }
+                    if (t.dbId && Array.isArray(t.assignedTo)) {
+                        if (t.assignedTo.length === 0) {
+                            if (!t.dbIdUnassigned) {
+                                t.dbIdUnassigned = t.dbId;
+                            }
+                            delete t.dbId;
+                            changed = true;
+                        } else {
+                            const first = t.assignedTo[0];
+                            if (!t.dbIdsByOperator[first]) {
+                                t.dbIdsByOperator[first] = t.dbId;
+                            }
+                            delete t.dbId;
+                            changed = true;
+                        }
+                    }
+                });
+                if (changed) {
+                    saveOrderTasks();
+                }
+            } catch (e) {
+                console.warn('Migrazione task fallita:', e);
+            }
+        }
+        function saveOrderTasks() {
+            localStorage.setItem('orderTasks', JSON.stringify(orderTasks));
+        }
+
+        function generateTaskForOrder(order, assignedOperators = []) {
+            // Le CONSEGNE non generano task individuali - solo i VIAGGI generano task
+            if (order.type === 'consegnato') {
+                console.log('📦 Consegna: il task verrà creato quando aggiungi l\'ordine a un viaggio');
+                return;
+            }
+            
+            // Solo per RITIRI: genera task individuale
+            // Evita duplicati se già presente
+            if (orderTasks.some(t => t.orderId === order.id)) return;
+            const cliente = clienti.find(c => c.nome === order.client);
+            const title = `ritiro - ${String(order.client || '').toLowerCase()}`;
+            
+            // Crea task in memoria
+            const newTask = {
+                id: 'task-' + order.id,
+                orderId: order.id,
+                title,
+                client: order.client,
+                product: order.product,
+                quantity: order.quantity,
+                dateTime: order.dateTime,
+                status: 'unassigned',
+                assignedTo: [],
+                autogenerated: true,
+                notes: order.notes || '',
+                clienteOrari: cliente ? {
+                    apertura: cliente.orario_apertura,
+                    chiusura: cliente.orario_chiusura,
+                    consegna_inizio: cliente.orario_consegna_inizio,
+                    consegna_fine: cliente.orario_consegna_fine
+                } : null,
+                createdAt: new Date().toISOString(),
+                dbIdsByOperator: {},
+                dbIdUnassigned: null
+            };
+            
+            orderTasks.push(newTask);
+            saveOrderTasks();
+            
+            // Salva nel DB solo per ritiri (non assegnato - l'admin lo assegnerà)
+            if (currentUser?.id && currentUser?.role === 'master') {
+                saveTaskToDatabase(newTask, []);
+            } else {
+                console.warn('⚠️ Non loggato come admin - task solo locale');
+            }
+        }
+
+        async function saveTaskToDatabase(task, assignedOperators) {
+            try {
+                const currentToken = localStorage.getItem('token') || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+                console.log('🔐 Token in saveTaskToDatabase:', currentToken ? 'presente (' + currentToken.substring(0, 20) + '...)' : 'NULLO');
+                if (!currentToken) {
+                    console.warn('⚠️ Non loggato - task salvato solo localmente');
+                    return;
+                }
+                
+                // NON assegnare subito - lascialo come "da assegnare" per l'admin
+                // Gli operatori suggeriti vanno nella descrizione
+                const suggestedOps = assignedOperators.length > 0 ? `\nOperatori suggeriti: ${assignedOperators.join(', ')}` : '';
+                
+                const response = await fetch(`${API_URL}/tasks`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentToken}`
+                    },
+                    body: JSON.stringify({
+                        title: task.title,
+                        description: `Cliente: ${task.client}\nProdotto: ${task.product}\nQuantità: ${task.quantity} kg\nNote: ${task.notes}${suggestedOps}`,
+                        scheduledAt: task.dateTime,
+                        assignedOperatorId: null,  // SEMPRE null - l'admin assegnerà dopo
+                        estimatedMinutes: 60,
+                        priority: 'MEDIUM'
+                    })
+                });
+                
+                if (response.ok) {
+                    const savedTask = await response.json();
+                    console.log('✅ Task salvato nel database:', savedTask);
+                    // Aggiorna l'id locale con quello del database
+                    task.dbId = savedTask.id;
+                } else {
+                    console.warn('⚠️ Errore salvataggio task nel DB:', response.status);
+                }
+            } catch (error) {
+                console.error('❌ Errore:', error);
+            }
+        }
+
+        // Helpers to sync 'ritiro' tasks to operators in backend so they appear in operator dashboards
+        function getOperatorIdByUsername(username) {
+            const op = allOperators.find(o => o.username === username);
+            return op ? op.id : null;
+        }
+
+        async function updateDbTaskAssignedOperator(taskDbId, operatorId) {
+            try {
+                const currentToken = localStorage.getItem('token') || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+                if (!currentToken || !taskDbId || !operatorId) return;
+                await fetch(`${API_URL}/tasks/${taskDbId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentToken}`
+                    },
+                    body: JSON.stringify({ assignedOperatorId: operatorId })
+                });
+            } catch (e) {
+                console.warn('Errore aggiornamento assegnazione task DB:', e);
+            }
+        }
+
+        async function createDbTaskForOperator(task, operatorId) {
+            try {
+                const currentToken = localStorage.getItem('token') || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+                if (!currentToken) return null;
+                const resp = await fetch(`${API_URL}/tasks`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentToken}`
+                    },
+                    body: JSON.stringify({
+                        title: task.title,
+                        description: `Cliente: ${task.client}\nProdotto: ${task.product}\nQuantità: ${task.quantity} kg\nNote: ${task.notes || ''}`,
+                        scheduledAt: task.dateTime,
+                        assignedOperatorId: operatorId || null,
+                        estimatedMinutes: 60,
+                        priority: 'MEDIUM'
+                    })
+                });
+                if (resp.ok) {
+                    const saved = await resp.json();
+                    return saved;
+                }
+            } catch (e) {
+                console.warn('Errore creazione task DB per operatore:', e);
+            }
+            return null;
+        }
+
+        async function deleteDbTask(taskDbId) {
+            try {
+                const currentToken = localStorage.getItem('token') || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+                if (!currentToken || !taskDbId) return;
+                await fetch(`${API_URL}/tasks/${taskDbId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${currentToken}`
+                    }
+                });
+            } catch (e) {
+                console.warn('Errore cancellazione task DB:', e);
+            }
+        }
+
+        async function deleteBackendEntriesForTask(task) {
+            try {
+                // Elimina placeholder non assegnato
+                if (task.dbIdUnassigned) {
+                    await deleteDbTask(task.dbIdUnassigned);
+                    task.dbIdUnassigned = null;
+                }
+                // Elimina mappature per operatore
+                if (task.dbIdsByOperator && typeof task.dbIdsByOperator === 'object') {
+                    for (const [username, id] of Object.entries(task.dbIdsByOperator)) {
+                        if (id) await deleteDbTask(id);
+                    }
+                    task.dbIdsByOperator = {};
+                }
+                // Compat: elimina vecchio dbId singolo se presente
+                if (task.dbId) {
+                    await deleteDbTask(task.dbId);
+                    delete task.dbId;
+                }
+            } catch (e) {
+                console.warn('Errore cleanup backend task per ordine:', e);
+            }
+        }
+
+        async function upsertRitiroTasksForOperators(task, selectedUsernames) {
+            try {
+                const relatedOrder = orders.find(o => o.id === task.orderId);
+                if (!relatedOrder || relatedOrder.type !== 'ritira') return; // solo per ritiro
+                const currentToken = localStorage.getItem('token') || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+                if (!currentToken) return; // serve login admin per scrivere nel DB
+
+                // Normalizza struttura di tracking
+                if (!task.dbIdsByOperator || typeof task.dbIdsByOperator !== 'object') {
+                    task.dbIdsByOperator = {};
+                }
+                const selected = Array.isArray(selectedUsernames) ? Array.from(new Set(selectedUsernames)) : [];
+                const existingUsernames = Object.keys(task.dbIdsByOperator);
+
+                const toId = (username) => getOperatorIdByUsername(username);
+
+                if (selected.length === 0) {
+                    // Nessun operatore selezionato: elimina task per-operator e crea/garantisci placeholder non assegnato
+                    for (const u of existingUsernames) {
+                        const id = task.dbIdsByOperator[u];
+                        if (id) await deleteDbTask(id);
+                    }
+                    task.dbIdsByOperator = {};
+
+                    // migra eventuale vecchio dbId
+                    if (task.dbId && !task.dbIdUnassigned) {
+                        task.dbIdUnassigned = task.dbId;
+                        delete task.dbId;
+                    }
+
+                    if (!task.dbIdUnassigned) {
+                        const created = await createDbTaskForOperator(task, null);
+                        if (created?.id) task.dbIdUnassigned = created.id;
+                    }
+                    saveOrderTasks();
+                    return;
+                }
+
+                // Almeno un operatore selezionato
+                const firstUsername = selected[0];
+                const firstOpId = toId(firstUsername);
+
+                if (!task.dbIdsByOperator[firstUsername]) {
+                    if (task.dbIdUnassigned) {
+                        await updateDbTaskAssignedOperator(task.dbIdUnassigned, firstOpId);
+                        task.dbIdsByOperator[firstUsername] = task.dbIdUnassigned;
+                        task.dbIdUnassigned = null;
+                    } else if (task.dbId) {
+                        await updateDbTaskAssignedOperator(task.dbId, firstOpId);
+                        task.dbIdsByOperator[firstUsername] = task.dbId;
+                        delete task.dbId;
+                    } else {
+                        const created = await createDbTaskForOperator(task, firstOpId);
+                        if (created?.id) task.dbIdsByOperator[firstUsername] = created.id;
+                    }
+                }
+
+                // Garantisci task per gli altri operatori
+                for (let i = 1; i < selected.length; i++) {
+                    const u = selected[i];
+                    if (task.dbIdsByOperator[u]) continue;
+                    const opId = toId(u);
+                    if (!opId) continue;
+                    const created = await createDbTaskForOperator(task, opId);
+                    if (created?.id) task.dbIdsByOperator[u] = created.id;
+                }
+
+                // Rimuovi task per operatori deselezionati
+                for (const u of existingUsernames) {
+                    if (!selected.includes(u)) {
+                        const id = task.dbIdsByOperator[u];
+                        if (id) await deleteDbTask(id);
+                        delete task.dbIdsByOperator[u];
+                    }
+                }
+
+                // Elimina eventuale placeholder residuo
+                if (task.dbIdUnassigned) {
+                    await deleteDbTask(task.dbIdUnassigned);
+                    task.dbIdUnassigned = null;
+                }
+
+                saveOrderTasks();
+            } catch (e) {
+                console.warn('Errore upsert ritiro tasks per operatori:', e);
+            }
+        }
+
+        // Admin-only background sync to ensure 'ritira' orders are visible to admins in backend
+        async function syncRitiroOrdersToDb() {
+            try {
+                if (!currentUser?.id || currentUser?.role !== 'master') return;
+                const currentToken = localStorage.getItem('token') || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+                if (!currentToken) return;
+
+                // Assicura task locali per tutti gli ordini "ritira"
+                orders.filter(o => o.type === 'ritira').forEach(o => {
+                    const existing = orderTasks.find(t => t.orderId === o.id);
+                    if (!existing) {
+                        generateTaskForOrder(o, []);
+                    }
+                });
+
+                // Allinea ogni task "ritira" nel backend in base all'assegnazione corrente
+                for (const t of orderTasks) {
+                    const ord = orders.find(o => o.id === t.orderId);
+                    if (!ord) continue;
+                    if (ord.type === 'ritira') {
+                        await upsertRitiroTasksForOperators(t, Array.isArray(t.assignedTo) ? t.assignedTo : []);
+                    }
+                }
+            } catch (e) {
+                console.warn('Errore syncRitiroOrdersToDb:', e);
+            }
+        }
+
+        function renderOrderTasks() {
+            const grid = document.getElementById('orderTasksGrid');
+            const countSpan = document.getElementById('tasksCount');
+            if (!grid) return;
+            
+            // Filtra ordini in base a showAllOrders o selectedDate
+            let ordersToShow = orders;
+            if (!showAllOrders) {
+                // Usa selectedDate se disponibile, altrimenti oggi
+                const filterDate = selectedDate || new Date().toISOString().split('T')[0];
+                ordersToShow = orders.filter(order => {
+                    if (!order.dateTime) return false;
+                    return order.dateTime.startsWith(filterDate);
+                });
+            }
+            
+            // Aggiorna contatore
+            if (countSpan) {
+                if (showAllOrders) {
+                    countSpan.textContent = `(${ordersToShow.length} totali)`;
+                } else if (selectedDate) {
+                    // Formatta la data selezionata
+                    const date = new Date(selectedDate + 'T00:00:00');
+                    const formatted = date.toLocaleDateString('it-IT', { 
+                        weekday: 'short', 
+                        day: 'numeric', 
+                        month: 'short'
+                    });
+                    countSpan.textContent = `(${ordersToShow.length} - ${formatted})`;
+                } else {
+                    countSpan.textContent = `(${ordersToShow.length} oggi)`;
+                }
+            }
+            
+            if (ordersToShow.length === 0) {
+                grid.innerHTML = '<p style="color:#808080;grid-column:1/-1;text-align:center;padding:20px;">Nessun ordine ' + (showAllOrders ? '' : 'per oggi') + '</p>';
+                return;
+            }
+            
+            // Sort orders by dateTime
+            ordersToShow.sort((a, b) => {
+                if (!a.dateTime && !b.dateTime) return 0;
+                if (!a.dateTime) return 1;
+                if (!b.dateTime) return -1;
+                return new Date(a.dateTime) - new Date(b.dateTime);
+            });
+            
+            grid.innerHTML = ordersToShow.map(order => {
+                const timeOnly = order.dateTime ? new Date(order.dateTime).toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'}) : 'N/D';
+                const dateOnly = order.dateTime ? new Date(order.dateTime).toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit', year:'numeric'}) : 'N/D';
+                const createdAtTime = order.createdAt ? new Date(order.createdAt).toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'}) : new Date().toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'});
+                const createdAtDate = order.createdAt ? new Date(order.createdAt).toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit', year:'numeric'}) : new Date().toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit', year:'numeric'});
+                const statusLabel = getStatusLabel(order.status);
+                const typeLabel = order.type === 'consegnato' ? 'Consegna' : 'Ritiro';
+                const typeIcon = order.type === 'consegnato' ? '🚚' : '📥';
+                const borderColor = order.type === 'consegnato' ? '#3b82f6' : '#f97316';
+                const statusColor = order.type === 'consegnato' ? '#60a5fa' : '#fb923c';
+                return `
+                    <div class="task-card" style="border-left: 4px solid ${borderColor};">
+                        <div class="task-header">
+                            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                                <span style="font-size: 32px;">${typeIcon}</span>
+                                <div>
+                                    <div style="font-size: 18px; font-weight: 700; color: #e0e0e0;">${typeLabel}</div>
+                                    <div style="font-size: 14px; color: #a0a0a0; margin-top: 2px;">Cliente: <strong style="color: #e0e0e0;">${order.client}</strong></div>
+                                </div>
+                            </div>
+                            <span class="task-status" style="background: ${borderColor}; color: white; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600;">${statusLabel}</span>
+                        </div>
+                        <div style="margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px; color: #a0a0a0;">
+                            <div><strong>📦 Prodotto:</strong> ${order.product}</div>
+                            <div><strong>📊 Quantità:</strong> ${order.quantity} kg</div>
+                            <div><strong>⏰ Consegna:</strong> ${dateOnly} • ${timeOnly}</div>
+                            <div><strong>📨 Ricevuto:</strong> ${createdAtDate} • ${createdAtTime}</div>
+                        </div>
+                        ${order.notes ? `<div style="margin-top: 10px; padding: 8px; background: #2d2d2d; border-radius: 6px; font-size: 12px; color: #e0e0e0;"><strong>📝 Note:</strong> ${order.notes}</div>` : ''}
+                        <div class="task-actions" style="display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap;">
+                            <button class="btn btn-primary btn-small" onclick="updateOrderStatus(${order.id}, 'completed')" style="flex: 1; min-width: 100px;">✓ Completa</button>
+                            <button class="btn btn-secondary btn-small" onclick="openEditOrderModal(${order.id})" style="flex: 1; min-width: 100px;">✏️ Modifica</button>
+                            <button class="btn btn-danger btn-small" onclick="deleteOrder(${order.id})" style="flex: 1; min-width: 100px;">🗑️ Elimina</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function toggleShowAllOrders() {
+            showAllOrders = !showAllOrders;
+            selectedDate = null; // Reset data selezionata
+            const btn = document.getElementById('toggleShowAllBtn2');
+            if (showAllOrders) {
+                btn.textContent = '📅 Solo Oggi';
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-secondary');
+            } else {
+                btn.textContent = '👁️ Visualizza Tutti';
+                btn.classList.remove('btn-secondary');
+                btn.classList.add('btn-primary');
+            }
+            renderOrderTasks();
+        }
+
+        function openAssignTaskModal(taskId) {
+            const modal = document.getElementById('assignTaskModal');
+            const list = document.getElementById('operatorsChecklist');
+            document.getElementById('assignTaskId').value = taskId;
+            list.innerHTML = allOperators.map(op => {
+                const task = orderTasks.find(t => t.id === taskId);
+                const checked = task && task.assignedTo.includes(op.username) ? 'checked' : '';
+                const icon = op.role === 'master' ? '👨‍💼' : '👷';
+                const suffix = (currentUser.id === op.id) ? ' (per me)' : '';
+                return `<label style=\"display:flex;align-items:center;gap:6px;font-size:12px;margin:4px 0;\"><input type=\"checkbox\" value=\"${op.username}\" ${checked}> <span>${icon} ${op.username}${suffix}</span></label>`;
+            }).join('');
+            modal.classList.add('active');
+        }
+        function closeAssignTaskModal() {
+            document.getElementById('assignTaskModal').classList.remove('active');
+        }
+        function assignTaskToOperators(e) {
+            e.preventDefault();
+            const taskId = document.getElementById('assignTaskId').value;
+            const checkboxes = Array.from(document.querySelectorAll('#operatorsChecklist input[type=checkbox]'));
+            const selected = checkboxes.filter(cb => cb.checked).map(cb => cb.value);
+            const task = orderTasks.find(t => t.id === taskId);
+            if (task) {
+                task.assignedTo = selected;
+                task.status = selected.length > 0 ? 'assigned' : 'unassigned';
+                saveOrderTasks();
+                renderOrderTasks();
+                // Se ritiro, sincronizza nel DB i task assegnati agli operatori
+                upsertRitiroTasksForOperators(task, selected);
+            }
+            closeAssignTaskModal();
+        }
+        function markTaskCompleted(taskId) {
+            const task = orderTasks.find(t => t.id === taskId);
+            if (task) {
+                task.status = 'completed';
+                saveOrderTasks();
+                // Sync also the related order status
+                const order = orders.find(o => ('task-' + o.id) === taskId || o.id === task.orderId);
+                if (order) {
+                    order.status = 'completed';
+                    saveOrders();
+                }
+                renderOrderTasks();
+                updateStats();
+                renderCalendar();
+            }
+        }
+
+        async function deleteOrderTask(taskId) {
+            const task = orderTasks.find(t => t.id === taskId);
+            if (task) {
+                await deleteBackendEntriesForTask(task);
+            }
+            orderTasks = orderTasks.filter(t => t.id !== taskId);
+            saveOrderTasks();
+            // Also delete underlying order if present
+            if (task && task.orderId) {
+                orders = orders.filter(o => o.id !== task.orderId);
+                saveOrders();
+            }
+            renderOrderTasks();
+            updateStats();
+            renderCalendar();
+        }
+
+        // Analizza CSV
+        function parseCSV(text) {
+            const lines = text.trim().split('\n');
+            const headers = lines[0].split(',');
+            return lines.slice(1).map(line => {
+                const values = line.split(',');
+                const obj = {};
+                headers.forEach((header, index) => {
+                    obj[header.trim()] = values[index]?.trim() || '';
+                });
+                return obj;
+            });
+        }
+
+        // Parsifica il file codifica articoli.csv (formato: codice,descrizione senza header)
+        function parseArticoliCSV(text) {
+            const lines = text.trim().split('\n');
+            return lines.map(line => {
+                const [codice, descrizione] = line.split(',').map(v => v.trim());
+                return {
+                    codice: codice || '',
+                    descrizione: descrizione || ''
+                };
+            }).filter(item => item.codice && item.descrizione); // Filtra righe vuote
+        }
+
+        // Carica dati da localStorage e file CSV
+        async function loadCSVData() {
+            try {
+                // Carica clienti da localStorage
+                try {
+                    const stored = localStorage.getItem('customers');
+                    if (stored) {
+                        clienti = JSON.parse(stored);
+                        console.log('Clienti caricati da localStorage:', clienti.length);
+                    } else {
+                        // Fallback a CSV se non c'è localStorage
+                        const csvResponse = await fetch('data/clienti.csv');
+                        const csvText = await csvResponse.text();
+                        clienti = parseCSV(csvText);
+                        console.log('Clienti caricati da CSV (fallback):', clienti.length);
+                    }
+                } catch (error) {
+                    console.error('Errore caricamento clienti, fallback a CSV:', error);
+                    const csvResponse = await fetch('data/clienti.csv');
+                    const csvText = await csvResponse.text();
+                    clienti = parseCSV(csvText);
+                }
+
+                // Carica articoli da localStorage
+                try {
+                    const stored = localStorage.getItem('products');
+                    if (stored) {
+                        articoli = JSON.parse(stored);
+                        // Controlla se hanno la vecchia struttura (con "nome") e se sì, ricarica da CSV
+                        if (articoli.length > 0 && articoli[0].nome && !articoli[0].codice) {
+                            console.log('Articoli in localStorage hanno vecchia struttura, ricarico da CSV');
+                            const csvResponse = await fetch('data/codifica articoli.csv');
+                            const csvText = await csvResponse.text();
+                            articoli = parseArticoliCSV(csvText);
+                            localStorage.removeItem('products'); // Pulisci localStorage
+                        } else {
+                            console.log('Articoli caricati da localStorage:', articoli.length);
+                        }
+                    } else {
+                        // Fallback a CSV se non c'è localStorage
+                        const csvResponse = await fetch('data/codifica articoli.csv');
+                        const csvText = await csvResponse.text();
+                        articoli = parseArticoliCSV(csvText);
+                        console.log('Articoli caricati da CSV (fallback):', articoli.length);
+                    }
+                } catch (error) {
+                    console.error('Errore caricamento articoli, fallback a CSV:', error);
+                    const csvResponse = await fetch('data/codifica articoli.csv');
+                    const csvText = await csvResponse.text();
+                    articoli = parseArticoliCSV(csvText);
+                }
+            } catch (error) {
+                console.error('Errore caricamento dati:', error);
+            }
+        }
+
+        // Carica ordini da localStorage
+        function loadOrders() {
+            const stored = localStorage.getItem('orders');
+            orders = stored ? JSON.parse(stored) : [];
+            renderOrders();
+            updateStats();
+            renderCalendar();
+        }
+
+        // Salva ordini in localStorage
+        function saveOrders() {
+            localStorage.setItem('orders', JSON.stringify(orders));
+        }
+
+        // === GESTIONE VIAGGI ===
+        function loadTrips() {
+            const stored = localStorage.getItem('trips');
+            trips = stored ? JSON.parse(stored) : [];
+        }
+
+        function saveTrips() {
+            localStorage.setItem('trips', JSON.stringify(trips));
+        }
+
+        function createTrip(name, date) {
+            const trip = {
+                id: Date.now(),
+                name: name,
+                date: date,
+                orderIds: [],
+                sequence: [],
+                createdAt: new Date().toISOString(),
+                assignedOperatorId: null,
+                tripTaskId: null
+            };
+            trips.push(trip);
+            saveTrips();
+            return trip;
+        }
+
+        function addOrderToTrip(tripId, orderId) {
+            const trip = trips.find(t => t.id === tripId);
+            if (trip && !trip.orderIds.includes(orderId)) {
+                trip.orderIds.push(orderId);
+                trip.sequence.push(orderId);
+                saveTrips();
+                const order = orders.find(o => o.id === orderId);
+                if (order) {
+                    order.tripId = tripId;
+                    saveOrders();
+                }
+                // Sync trip task with backend
+                syncTripTask(tripId);
+            }
+        }
+
+        function removeOrderFromTrip(tripId, orderId) {
+            const trip = trips.find(t => t.id === tripId);
+            if (trip) {
+                trip.orderIds = trip.orderIds.filter(id => id !== orderId);
+                trip.sequence = trip.sequence.filter(id => id !== orderId);
+                saveTrips();
+                const order = orders.find(o => o.id === orderId);
+                if (order) {
+                    delete order.tripId;
+                    saveOrders();
+                }
+                // If no more orders, delete trip task, else update it
+                const remaining = trip.orderIds.length;
+                if (remaining === 0) {
+                    deleteTripTask(tripId);
+                } else {
+                    syncTripTask(tripId);
+                }
+                renderCalendar();
+                updateStats();
+            }
+        }
+
+        function deleteTrip(tripId) {
+            trips = trips.filter(t => t.id !== tripId);
+            saveTrips();
+            orders.forEach(o => {
+                if (o.tripId === tripId) {
+                    delete o.tripId;
+                }
+            });
+            saveOrders();
+            // Remove backend task too
+            deleteTripTask(tripId);
+        }
+
+        function reorderTripSequence(tripId, newSequence) {
+            const trip = trips.find(t => t.id === tripId);
+            if (trip) {
+                trip.sequence = newSequence;
+                saveTrips();
+                // Re-sequencing changes description; update backend task if exists
+                syncTripTask(tripId);
+            }
+        }
+
+        function getTripOrders(tripId) {
+            const trip = trips.find(t => t.id === tripId);
+            if (!trip) return [];
+            return trip.sequence.map(orderId => orders.find(o => o.id === orderId)).filter(Boolean);
+        }
+
+        function calculateTripTotals(tripId) {
+            const tripOrders = getTripOrders(tripId);
+            const totals = {};
+            tripOrders.forEach(order => {
+                if (!totals[order.product]) {
+                    totals[order.product] = 0;
+                }
+                totals[order.product] += parseFloat(order.quantity || 0);
+            });
+            return totals;
+        }
+
+        // === Task Viaggio (un task per viaggio) ===
+        function buildTripTaskTitle(trip) {
+            const d = trip.date ? new Date(trip.date) : null;
+            const dateStr = d ? d.toLocaleDateString('it-IT') : '';
+            return `🚚 Viaggio: ${trip.name}${dateStr ? ' • ' + dateStr : ''}`;
+        }
+
+        function buildTripTaskDescription(trip) {
+            const tripOrders = getTripOrders(trip.id);
+            const totals = calculateTripTotals(trip.id);
+            const ordersList = tripOrders.map((o, idx) => `#${idx + 1} ${o.client} • ${o.product} ${o.quantity}kg`).join('\n');
+            const totalsList = Object.entries(totals).map(([p, q]) => `${p}: ${q.toFixed(1)}kg`).join(', ');
+            return `Ordini nel viaggio: ${tripOrders.length}\n\nSequenza:\n${ordersList || '-'}\n\nTotali prodotti: ${totalsList || '-'}`;
+        }
+
+        async function syncTripTask(tripId) {
+            try {
+                const trip = trips.find(t => t.id === tripId);
+                if (!trip) return;
+                if (!currentUser?.id || currentUser?.role !== 'master') return; // solo admin crea/aggiorna
+                const auth = localStorage.getItem('token') || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+                if (!auth) return;
+                // Crea/aggiorna solo se ci sono ordini
+                if (!trip.orderIds || trip.orderIds.length === 0) return;
+
+                const payload = {
+                    title: buildTripTaskTitle(trip),
+                    description: buildTripTaskDescription(trip),
+                    scheduledAt: trip.date || null,
+                    assignedOperatorId: trip.assignedOperatorId || null,  // assegna se presente
+                    estimatedMinutes: Math.max(60, getTripOrders(trip.id).length * 15),
+                    priority: 'HIGH'
+                };
+
+                if (trip.tripTaskId) {
+                    const resp = await fetch(`${API_URL}/tasks/${trip.tripTaskId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${auth}` },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!resp.ok) console.warn('Aggiornamento task viaggio fallito', resp.status);
+                } else {
+                    const resp = await fetch(`${API_URL}/tasks`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${auth}` },
+                        body: JSON.stringify(payload)
+                    });
+                    if (resp.ok) {
+                        const saved = await resp.json();
+                        trip.tripTaskId = saved.id;
+                        saveTrips();
+                    } else {
+                        console.warn('Creazione task viaggio fallita', resp.status);
+                    }
+                }
+            } catch (e) {
+                console.error('Errore syncTripTask:', e);
+            }
+        }
+
+        async function deleteTripTask(tripId) {
+            try {
+                const trip = trips.find(t => t.id === tripId);
+                if (!trip || !trip.tripTaskId) return;
+                if (!currentUser?.id || currentUser?.role !== 'master') return;
+                const auth = localStorage.getItem('token') || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+                if (!auth) return;
+                const resp = await fetch(`${API_URL}/tasks/${trip.tripTaskId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${auth}` }
+                });
+                if (resp.status === 204 || resp.ok) {
+                    trip.tripTaskId = null;
+                    saveTrips();
+                }
+            } catch (e) {
+                console.error('Errore deleteTripTask:', e);
+            }
+        }
+
+        // Apri modal ordine
+        async function openOrderModal(selectedDate = null) {
+            document.querySelector('#orderModal h2').textContent = '📝 Nuovo Ordine';
+            document.getElementById('orderForm').dataset.editingId = '';
+            
+            // Resetta i prodotti
+            currentOrderProducts = [];
+            renderOrderProducts();
+            
+            // Se c'è una data selezionata dal calendario, preselezionala
+            if (selectedDate) {
+                document.getElementById('orderDateTime').value = selectedDate + 'T12:00';
+            }
+            
+            // Popola dropdown clienti (usa dati già caricati da CSV/localStorage)
+            const clientSelect = document.getElementById('orderClient');
+            clientSelect.innerHTML = '<option value="">-- Seleziona Cliente --</option>' +
+                clienti.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
+
+            // Popola dropdown articoli (usa dati già caricati da CSV/localStorage)
+            const productSelect = document.getElementById('orderProduct');
+            productSelect.innerHTML = '<option value="">-- Seleziona Articolo --</option>' +
+                articoli.map(a => `<option value="${a.codice || a.nome}">${a.codice || a.nome} - ${a.descrizione || a.nome}</option>`).join('');
+
+            document.getElementById('orderModal').classList.add('active');
+            document.getElementById('orderForm').reset();
+
+            // Popola dropdown operatori
+            const assignToOperator = document.getElementById('assignToOperator');
+            if (assignToOperator) {
+                assignToOperator.innerHTML = '<option value="">-- Non assegnato --</option>' +
+                    allOperators.map(op => `<option value="${op.id}">${op.username}</option>`).join('');
+            }
+
+            // Reset sezione viaggio
+            document.getElementById('tripSection').style.display = 'none';
+            document.getElementById('tripOptions').value = '';
+            document.getElementById('newTripName').value = '';
+            document.getElementById('existingTrip').innerHTML = '<option value="">-- Nessun viaggio disponibile --</option>';
+
+            // Aggancia validazione data/ora contro festivi e orari consegna
+            const dt = document.getElementById('orderDateTime');
+            if (dt) {
+                dt.onchange = function(){
+                    if (!window.SettingsUtils) return;
+                    const val = dt.value;
+                    if (!val) return;
+                    const d = new Date(val);
+                    const clamped = window.SettingsUtils.clampToDeliveryWindows(d);
+                    const newVal = fmtLocalDateTime(clamped);
+                    if (newVal !== val) {
+                        dt.value = newVal;
+                        alert('ℹ️ Data/ora adeguata ai giorni/orari di consegna');
+                    }
+                };
+            }
+
+            // Mostra/nascondi sezione viaggio in base al tipo ordine selezionato
+            updateTripOptions();
+        }
+
+        // Apri modal per modificare ordine esistente
+        async function openEditOrderModal(orderId) {
+            const order = orders.find(o => o.id === orderId);
+            if (!order) return;
+
+            document.querySelector('#orderModal h2').textContent = '✏️ Modifica Ordine';
+            document.getElementById('orderForm').dataset.editingId = orderId;
+            
+            // Popola dropdown clienti (usa dati già caricati da CSV/localStorage)
+            const clientSelect = document.getElementById('orderClient');
+            clientSelect.innerHTML = '<option value="">-- Seleziona Cliente --</option>' +
+                clienti.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
+            clientSelect.value = order.client;
+
+            // Popola dropdown articoli (usa dati già caricati da CSV/localStorage)
+            const productSelect = document.getElementById('orderProduct');
+            productSelect.innerHTML = '<option value="">-- Seleziona Articolo --</option>' +
+                articoli.map(a => `<option value="${a.codice || a.nome}">${a.codice || a.nome} - ${a.descrizione || a.nome}</option>`).join('');
+
+            // Carica prodotti dell'ordine
+            if (order.products && order.products.length > 0) {
+                currentOrderProducts = JSON.parse(JSON.stringify(order.products));
+            } else {
+                currentOrderProducts = [];
+            }
+            renderOrderProducts();
+
+            document.getElementById('orderType').value = order.type;
+            document.getElementById('orderDateTime').value = order.dateTime;
+            document.getElementById('orderNotes').value = order.notes || '';
+
+            // Mostra sezione viaggio e seleziona l'opzione corretta (solo per consegnati)
+            const tripSection = document.getElementById('tripSection');
+            if (order.type === 'consegnato') {
+                tripSection.style.display = 'block';
+                
+                // Determina quale opzione è selezionata
+                if (order.tripId) {
+                    // Ordine associato a viaggio
+                    document.getElementById('tripOptions').value = 'existing';
+                    document.getElementById('existingTripFields').style.display = 'block';
+                    document.getElementById('newTripFields').style.display = 'none';
+                    
+                    // Popola dropdown viaggi disponibili e seleziona quello corrente
+                    populateExistingTrips();
+                    setTimeout(() => {
+                        const existingTripSelect = document.getElementById('existingTrip');
+                        if (existingTripSelect) {
+                            existingTripSelect.value = order.tripId;
+                        }
+                    }, 100);
+                } else {
+                    // Ordine sospeso (senza viaggio)
+                    document.getElementById('tripOptions').value = 'pending';
+                    document.getElementById('existingTripFields').style.display = 'none';
+                    document.getElementById('newTripFields').style.display = 'none';
+                }
+            } else {
+                tripSection.style.display = 'none';
+            }
+
+            // Popola dropdown operatori
+            const assignToOperator = document.getElementById('assignToOperator');
+            if (assignToOperator) {
+                assignToOperator.innerHTML = '<option value="">-- Non assegnato --</option>' +
+                    allOperators.map(op => `<option value="${op.id}">${op.username}</option>`).join('');
+                // Imposta l'operatore associato se esiste
+                if (order.assignedOperatorId) {
+                    assignToOperator.value = order.assignedOperatorId;
+                }
+            }
+
+            updateClientInfo();
+            document.getElementById('orderModal').classList.add('active');
+
+            const dt = document.getElementById('orderDateTime');
+            if (dt) {
+                dt.onchange = function(){
+                    if (!window.SettingsUtils) return;
+                    const val = dt.value;
+                    if (!val) return;
+                    const d = new Date(val);
+                    const clamped = window.SettingsUtils.clampToDeliveryWindows(d);
+                    const newVal = fmtLocalDateTime(clamped);
+                    if (newVal !== val) {
+                        dt.value = newVal;
+                        alert('ℹ️ Data/ora adeguata ai giorni/orari di consegna');
+                    }
+                };
+            }
+
+            // Assicura che la sezione viaggio sia visibile/nascosta correttamente
+            updateTripOptions();
+        }
+
+        // Chiudi modal ordine
+        function closeOrderModal() {
+            document.getElementById('orderModal').classList.remove('active');
+        }
+
+        // Aggiorna informazioni cliente (orari)
+        function updateClientInfo() {
+            const selectedClient = document.getElementById('orderClient').value;
+            const cliente = clienti.find(c => c.nome === selectedClient);
+            const infoDiv = document.getElementById('clientHoursInfo');
+            
+            if (cliente && cliente.orario_apertura) {
+                infoDiv.innerHTML = `
+                    <strong>⏰ Orari Cliente:</strong><br>
+                    Apertura: ${cliente.orario_apertura} - ${cliente.orario_chiusura}<br>
+                    Finestra Consegne: ${cliente.orario_consegna_inizio} - ${cliente.orario_consegna_fine}
+                `;
+                infoDiv.style.display = 'block';
+            } else {
+                infoDiv.style.display = 'none';
+            }
+        }
+
+        // Array per tracciare i lotti aggiunti all'ordine
+        // ===== VARIABILI PER PRODOTTI MULTIPLI =====
+        let currentOrderProducts = []; // Array di prodotti: {product: "nome", quantity: N}
+        
+        // Aggiungi prodotto all'ordine
+        function addProductToOrder() {
+            console.time('⏱️ addProductToOrder');
+            const selectedProductCode = document.getElementById('orderProduct').value;
+            const totalQuantityNeeded = parseFloat(document.getElementById('orderQuantity').value);
+
+            if (!selectedProductCode) {
+                alert('⚠️ Seleziona un articolo');
+                return;
+            }
+
+            if (!totalQuantityNeeded || totalQuantityNeeded <= 0) {
+                alert('⚠️ Inserisci una quantità valida');
+                return;
+            }
+
+            // I lotti caricati da API sono già filtrati per il codice selezionato
+            const availableBatches = currentAvailableBatches || [];
+
+            console.log('📦 Lotti disponibili per', selectedProductCode, ':', availableBatches.length);
+
+            if (availableBatches.length === 0) {
+                alert('⚠️ Nessun lotto disponibile per questo articolo');
+                return;
+            }
+
+            // Calcola quanto è già stato assegnato in questo ordine per questo prodotto
+            const alreadyAssigned = (currentOrderProducts || [])
+                .filter(p => p.product === selectedProductCode)
+                .reduce((sum, p) => sum + p.quantity, 0);
+            
+            const remainingToAssign = totalQuantityNeeded - alreadyAssigned;
+
+            if (remainingToAssign <= 0) {
+                alert('⚠️ La quantità totale è già stata coperta dai lotti selezionati');
+                return;
+            }
+
+            // Mostra il popup di selezione lotti
+            showBatchSelectionForProduct(selectedProductCode, remainingToAssign, availableBatches);
+            console.timeEnd('⏱️ addProductToOrder');
+        }
+
+        // Mostra dialogo per selezionare i lotti fino a raggiungere il peso
+        function showBatchSelectionForProduct(productCode, remainingQuantity, availableBatches) {
+            const article = articoli.find(a => a.codice === productCode);
+            const productDesc = article?.descrizione || productCode;
+
+            // Calcola quanto è già stato assegnato da questo ordine per questo prodotto
+            const alreadyAssignedPerBatch = {};
+            currentOrderProducts
+                .filter(p => p.product === productCode && p.batch)
+                .forEach(p => {
+                    alreadyAssignedPerBatch[p.batch] = (alreadyAssignedPerBatch[p.batch] || 0) + p.quantity;
+                });
+
+            // Filtra i lotti ancora disponibili (con quantità residua > 0)
+            const batchesStillAvailable = availableBatches.filter(batch => {
+                const alreadyUsed = alreadyAssignedPerBatch[batch.batch] || 0;
+                const residual = (batch.quantityKg || 0) - alreadyUsed;
+                return residual > 0.01; // Considera > 0 se maggiore di 0.01kg
+            });
+
+            if (batchesStillAvailable.length === 0) {
+                alert('⚠️ Nessun altro lotto disponibile per i rimanenti ' + remainingQuantity.toFixed(1) + ' kg');
+                closeBatchModal();
+                return;
+            }
+
+            const modalHTML = `
+                <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 10000;" id="batchModalOverlay" onclick="closeBatchModal()">
+                    <div style="background: #2d2d2d; border: 2px solid #4d4d4d; border-radius: 8px; padding: 20px; max-width: 500px; color: #e0e0e0; box-shadow: 0 4px 6px rgba(0,0,0,0.3);" onclick="event.stopPropagation()">
+                        <h3 style="margin-top: 0; color: #86efac;">📦 Seleziona Lotti</h3>
+                        <p style="color: #a0d4ff; margin: 10px 0;">Articolo: <strong>${productDesc}</strong></p>
+                        <p style="color: #fbbf24; margin: 10px 0;">Rimanenti da coprire: <strong id="remainingLabel">${remainingQuantity.toFixed(1)}</strong> kg</p>
+                        
+                        <div style="margin: 15px 0; max-height: 250px; overflow-y: auto; border: 1px solid #4d4d4d; border-radius: 4px; padding: 10px;">
+                            ${batchesStillAvailable.map((batch, idx) => {
+                                const alreadyUsed = alreadyAssignedPerBatch[batch.batch] || 0;
+                                const residual = (batch.quantityKg || 0) - alreadyUsed;
+                                const willAssign = Math.min(remainingQuantity, residual);
+                                
+                                return `
+                                    <div style="background: #1a1a1a; padding: 10px; margin-bottom: 8px; border-radius: 4px; border-left: 3px solid #3b82f6; cursor: pointer;" 
+                                         onclick="selectBatchForProduct('${productCode}', ${remainingQuantity}, ${idx}, '${batch.batch}', ${residual})">
+                                        <div style="font-weight: bold; color: #3b82f6;">🏷️ Lotto: ${batch.batch}</div>
+                                        <div style="font-size: 12px; color: #999; margin-top: 4px;">
+                                            Scadenza: ${batch.expiry || 'N/A'} | Disponibile: <span style="color: #86efac;">${residual.toFixed(1)} kg</span>
+                                        </div>
+                                        <div style="font-size: 11px; color: #fbbf24; margin-top: 4px;">
+                                            → Assegnerà: ${willAssign.toFixed(1)} kg
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+
+                        <button onclick="closeBatchModal()" style="width: 100%; padding: 10px; background: #666; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 10px;">❌ Annulla</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+        }
+
+        function selectBatchForProduct(productCode, remainingQuantity, batchIndex, batchCode, batchAvailable) {
+            const batch = currentAvailableBatches[batchIndex];
+            if (!batch) return;
+
+            // Calcola quanto assegnare da questo lotto
+            const quantityToAssign = Math.min(remainingQuantity, batchAvailable);
+
+            console.log(`✅ Assegna ${quantityToAssign} kg dal lotto ${batchCode}`);
+
+            // Aggiungi il prodotto con il lotto selezionato
+            currentOrderProducts.push({
+                product: productCode,
+                quantity: quantityToAssign,
+                batch: batch.batch,
+                batchData: batch
+            });
+
+            const newRemaining = remainingQuantity - quantityToAssign;
+
+            if (newRemaining > 0.01) {
+                // Ancora quantità da assegnare, mostra il popup di nuovo
+                closeBatchModal();
+                showBatchSelectionForProduct(productCode, newRemaining, currentAvailableBatches);
+            } else {
+                // Quantità raggiunta!
+                console.log('🎉 Quantità totale raggiunta!');
+                
+                // Pulisci i campi
+                document.getElementById('orderProduct').value = '';
+                document.getElementById('orderQuantity').value = '';
+
+                // Aggiorna la visualizzazione
+                renderOrderProducts();
+                closeBatchModal();
+            }
+        }
+
+        function closeBatchModal() {
+            const modal = document.getElementById('batchModalOverlay');
+            if (modal) {
+                modal.remove();
+            }
+        }
+
+        // Visualizza prodotti aggiunti
+        function renderOrderProducts() {
+            if (currentOrderProducts.length === 0) {
+                document.getElementById('orderProductsTableContainer').style.display = 'none';
+                return;
+            }
+
+            document.getElementById('orderProductsTableContainer').style.display = 'block';
+
+            const tbody = document.getElementById('orderProductsTableBody');
+            const totalQty = currentOrderProducts.reduce((sum, p) => sum + p.quantity, 0);
+
+            tbody.innerHTML = currentOrderProducts.map((product, idx) => {
+                // Se il prodotto ha un lotto selezionato, mostralo
+                let batchesDisplay = '<span style="color: #999; font-size: 10px;">-</span>';
+                
+                if (product.batch) {
+                    // Il lotto è stato selezionato durante l'aggiunta
+                    batchesDisplay = `<span style="display: inline-block; background: #2d5a3d; padding: 2px 6px; margin: 2px; border-radius: 3px; font-size: 10px; color: #86efac;">${product.batch}</span>`;
+                } else {
+                    // Fallback: cerca i lotti disponibili
+                    const article = articoli.find(a => a.codice === product.product);
+                    if (article) {
+                        const batches = (currentAvailableBatches || []).filter(b => b.articolo === article.codice);
+                        if (batches.length > 0) {
+                            batchesDisplay = batches.map(b => `<span style="display: inline-block; background: #3a6b7a; padding: 2px 6px; margin: 2px; border-radius: 3px; font-size: 10px;">${b.batch}</span>`).join('');
+                        }
+                    }
+                }
+
+                return `
+                    <tr style="border-bottom: 1px solid #4d4d4d;">
+                        <td style="padding: 8px; text-align: left; color: #e0e0e0;">${product.product}</td>
+                        <td style="padding: 8px; text-align: right; color: #a0d4ff;">${product.quantity.toFixed(1)} kg</td>
+                        <td style="padding: 8px; text-align: center; font-size: 11px;">${batchesDisplay}</td>
+                        <td style="padding: 8px; text-align: center;">
+                            <button type="button" onclick="openEditProductModal(${idx})" style="background: #0066cc; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 12px; margin-right: 4px;">✏️ Modifica</button>
+                            <button type="button" onclick="removeProductFromOrder(${idx})" style="background: #dc2626; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 12px;">🗑️ Rimuovi</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            document.getElementById('orderProductsTotal').textContent = totalQty.toFixed(1);
+        }
+
+        // Rimuovi prodotto dall'ordine
+        function removeProductFromOrder(index) {
+            currentOrderProducts.splice(index, 1);
+            renderOrderProducts();
+        }
+
+        // Apri modal per modificare un prodotto
+        let currentEditingProductIndex = -1;
+        function openEditProductModal(index) {
+            currentEditingProductIndex = index;
+            const product = currentOrderProducts[index];
+
+            if (!product) return;
+
+            // Popola il select con gli articoli disponibili
+            const selectElement = document.getElementById('editProductName');
+            selectElement.innerHTML = articoli.map(a => `
+                <option value="${a.codice}" ${a.codice === product.product ? 'selected' : ''}>${a.descrizione}</option>
+            `).join('');
+
+            // Imposta la quantità
+            document.getElementById('editProductQuantity').value = product.quantity.toFixed(1);
+
+            // Visualizza i lotti disponibili
+            renderEditProductBatches(product.product);
+
+            // Mostra il modal
+            const modal = document.getElementById('editProductModal');
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        // Chiudi il modal di modifica prodotto
+        function closeEditProductModal() {
+            const modal = document.getElementById('editProductModal');
+            modal.classList.remove('active');
+            document.body.style.overflow = 'auto';
+            currentEditingProductIndex = -1;
+        }
+
+        // Visualizza i lotti disponibili nel modal
+        function renderEditProductBatches(productCode) {
+            const article = articoli.find(a => a.codice === productCode);
+            if (!article) {
+                document.getElementById('editProductBatchesList').innerHTML = '<p style="color: #999;">Nessun articolo trovato</p>';
+                return;
+            }
+
+            const batches = currentAvailableBatches?.filter(b => b.articolo === article.codice) || [];
+
+            if (batches.length === 0) {
+                document.getElementById('editProductBatchesList').innerHTML = '<p style="color: #999;">Nessun lotto disponibile</p>';
+                return;
+            }
+
+            const batchesHTML = batches.map(batch => `
+                <div style="background: #0d2d3d; padding: 10px; margin-bottom: 8px; border-radius: 4px; border-left: 3px solid #a0d4ff;">
+                    <div style="display: grid; grid-template-columns: 1fr auto; gap: 10px;">
+                        <div>
+                            <div style="color: #a0d4ff; font-weight: bold; margin-bottom: 4px;">🏷️ Lotto: ${batch.batch}</div>
+                            <div style="color: #999; font-size: 11px;">
+                                Disponibile: <span style="color: #86efac; font-weight: bold;">${(batch.quantityKg || 0).toFixed(1)} kg</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById('editProductBatchesList').innerHTML = batchesHTML;
+        }
+
+        // Quando cambi articolo nel modal, aggiorna i lotti
+        document.addEventListener('DOMContentLoaded', () => {
+            const editProductNameSelect = document.getElementById('editProductName');
+            if (editProductNameSelect) {
+                editProductNameSelect.addEventListener('change', (e) => {
+                    renderEditProductBatches(e.target.value);
+                });
+            }
+        });
+
+        // Salva le modifiche al prodotto
+        function saveEditProduct() {
+            if (currentEditingProductIndex < 0) return;
+
+            const newProduct = document.getElementById('editProductName').value;
+            const newQuantity = parseFloat(document.getElementById('editProductQuantity').value);
+
+            if (!newProduct) {
+                alert('⚠️ Seleziona un articolo');
+                return;
+            }
+
+            if (!newQuantity || newQuantity <= 0) {
+                alert('⚠️ Inserisci una quantità valida');
+                return;
+            }
+
+            // Aggiorna il prodotto
+            currentOrderProducts[currentEditingProductIndex] = {
+                product: newProduct,
+                quantity: newQuantity
+            };
+
+            // Aggiorna la visualizzazione
+            renderOrderProducts();
+            closeEditProductModal();
+
+            console.log('✏️ Prodotto modificato:', newProduct, '-', newQuantity, 'kg');
+        }
+
+        // ===== LEGACY: LOGICA BATCH (MANTENIAMO PER COMPATIBILITÀ) =====
+        let currentOrderBatches = [];
+        let currentSelectedBatchIndex = -1;
+
+        // Aggiunge un lotto all'ordine (legacy)
+        function addOrderBatch() {
+            const selectedProduct = document.getElementById('orderProduct').value;
+            const quantity = parseFloat(document.getElementById('orderQuantity').value);
+
+            if (!selectedProduct) {
+                alert('⚠️ Seleziona un articolo');
+                return;
+            }
+
+            if (!quantity || quantity <= 0) {
+                alert('⚠️ Inserisci una quantità valida');
+                return;
+            }
+
+            if (!currentAvailableBatches || currentAvailableBatches.length === 0) {
+                alert('⚠️ Nessun lotto disponibile per questo articolo');
+                return;
+            }
+
+            // Calcola quanto è già stato assegnato
+            const alreadyAssigned = currentOrderBatches.reduce((sum, b) => sum + b.quantity, 0);
+            const remainingToAssign = quantity - alreadyAssigned;
+
+            if (remainingToAssign <= 0) {
+                alert('⚠️ La quantità totale è già stata coperta dai lotti selezionati');
+                return;
+            }
+
+            // Apri il popup di selezione batch con il rimanente corretto
+            showBatchSelectionPopup(selectedProduct, remainingToAssign);
+        }
+
+        // Mostra popup per selezionare il lotto per il rimanente
+        function showBatchSelectionPopup(selectedProduct, remainingQuantity) {
+            // Calcola i lotti disponibili (escludendo quelli già completamente assegnati)
+            const availableBatchesForRemaining = currentAvailableBatches
+                .filter(batch => {
+                    const alreadyAssigned = currentOrderBatches
+                        .filter(b => b.batch === batch.batch)
+                        .reduce((sum, b) => sum + b.quantity, 0);
+                    const available = (batch.quantityKg || 0) - alreadyAssigned;
+                    return available > 0; // Deve avere disponibilità
+                });
+
+            if (availableBatchesForRemaining.length === 0) {
+                alert('⚠️ Nessun altro lotto disponibile per i rimanenti ' + remainingQuantity + ' kg');
+                renderOrderBatches();
+                return;
+            }
+
+            // Se c'è solo un lotto disponibile, lo assegna direttamente
+            if (availableBatchesForRemaining.length === 1) {
+                const onlyBatch = availableBatchesForRemaining[0];
+                const alreadyAssigned = currentOrderBatches
+                    .filter(b => b.batch === onlyBatch.batch)
+                    .reduce((sum, b) => sum + b.quantity, 0);
+                const maxAvailable = (onlyBatch.quantityKg || 0) - alreadyAssigned;
+                const quantityToAssign = Math.min(remainingQuantity, maxAvailable);
+
+                currentOrderBatches.push({
+                    batch: onlyBatch.batch,
+                    quantity: quantityToAssign,
+                    expiry: onlyBatch.expiry,
+                    shelfPosition: onlyBatch.shelfPosition,
+                    colli: onlyBatch.quantity,
+                    selectedBatchIndex: currentAvailableBatches.indexOf(onlyBatch)
+                });
+
+                if (quantityToAssign < remainingQuantity) {
+                    alert(`⚠️ Solo ${quantityToAssign} kg disponibili nel lotto rimanente. Mancano ancora ${remainingQuantity - quantityToAssign} kg.`);
+                }
+
+                renderOrderBatches();
+                return;
+            }
+
+            // Mostra popup di scelta
+            createBatchSelectionModal(availableBatchesForRemaining, remainingQuantity);
+        }
+
+        // Crea e mostra il modal di scelta lotto
+        function createBatchSelectionModal(availableBatches, remainingQuantity) {
+            const modal = document.createElement('div');
+            modal.id = 'batchSelectionModal';
+            modal.style.cssText = `
+                position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                background: rgba(0,0,0,0.7); display: flex; align-items: center;
+                justify-content: center; z-index: 10000;
+            `;
+
+            const content = document.createElement('div');
+            content.id = 'batchSelectionContent';
+            content.style.cssText = `
+                background: #2d2d2d; border: 2px solid #4d4d4d; border-radius: 8px;
+                padding: 20px; max-width: 500px; color: #e0e0e0;
+            `;
+
+            content.innerHTML = `
+                <h3 style="margin-top: 0; color: #86efac;">📦 Seleziona Lotto</h3>
+                <p style="margin-bottom: 15px;">Rimanenti da coprire: <strong style="color: #fbbf24;" id="remainingQtyLabel">${remainingQuantity}</strong> kg</p>
+                
+                <div id="batchOptionsContainer" style="max-height: 300px; overflow-y: auto; margin-bottom: 15px;">
+                    ${availableBatches.map((batch, idx) => {
+                        const alreadyAssigned = currentOrderBatches
+                            .filter(b => b.batch === batch.batch)
+                            .reduce((sum, b) => sum + b.quantity, 0);
+                        const maxAvailable = (batch.quantityKg || 0) - alreadyAssigned;
+                        const willAssign = Math.min(remainingQuantity, maxAvailable);
+                        
+                        // Trova l'indice reale in currentAvailableBatches
+                        const realIndex = currentAvailableBatches.findIndex(b => b.batch === batch.batch);
+                        
+                        return `
+                            <div onclick="selectBatchFromPopup(${realIndex}, ${remainingQuantity})"
+                                 style="padding: 12px; margin-bottom: 8px; background: #3d3d3d; border: 1px solid #4d4d4d;
+                                        border-radius: 4px; cursor: pointer; transition: all 0.2s; ${maxAvailable <= 0 ? 'opacity: 0.5; cursor: not-allowed;' : 'hover: background #4d4d4d;'}">
+                                <div style="font-weight: 600; color: #86efac;">📦 Lotto: ${batch.batch}</div>
+                                <div style="font-size: 12px; color: #a0a0a0;">
+                                    Scadenza: ${batch.expiry} | Disponibili: ${maxAvailable} kg
+                                </div>
+                                <div style="font-size: 12px; color: #fbbf24; margin-top: 4px;">
+                                    → Assegnerà: ${willAssign} kg
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+                
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="document.getElementById('batchSelectionModal').remove()"
+                            style="flex: 1; padding: 10px; background: #dc2626; color: white; border: none;
+                                   border-radius: 4px; cursor: pointer;">Annulla</button>
+                </div>
+            `;
+
+            modal.appendChild(content);
+            document.body.appendChild(modal);
+        }
+
+        // Seleziona batch dal popup
+        function selectBatchFromPopup(batchIndex, remainingQuantity) {
+            const batch = currentAvailableBatches[batchIndex];
+            const alreadyAssigned = currentOrderBatches
+                .filter(b => b.batch === batch.batch)
+                .reduce((sum, b) => sum + b.quantity, 0);
+            const maxAvailable = (batch.quantityKg || 0) - alreadyAssigned;
+            
+            if (maxAvailable <= 0) {
+                alert('⚠️ Questo lotto non ha più disponibilità');
+                return;
+            }
+            
+            const quantityToAssign = Math.min(remainingQuantity, maxAvailable);
+
+            currentOrderBatches.push({
+                batch: batch.batch,
+                quantity: quantityToAssign,
+                expiry: batch.expiry,
+                shelfPosition: batch.shelfPosition,
+                colli: batch.quantity,
+                selectedBatchIndex: batchIndex
+            });
+
+            renderOrderBatches();
+
+            const newRemaining = remainingQuantity - quantityToAssign;
+
+            if (newRemaining <= 0) {
+                // Quantità completamente coperta, chiudi il modal
+                const modal = document.getElementById('batchSelectionModal');
+                if (modal) modal.remove();
+                
+                // Disabilita il pulsante "Aggiungi Lotto"
+                const addBatchBtn = document.querySelector('#addBatchContainer button');
+                if (addBatchBtn) {
+                    addBatchBtn.disabled = true;
+                    addBatchBtn.style.opacity = '0.5';
+                    addBatchBtn.style.cursor = 'not-allowed';
+                }
+            } else {
+                // Aggiorna il modal con il nuovo remaining quantity
+                const remainingLabel = document.getElementById('remainingQtyLabel');
+                if (remainingLabel) {
+                    remainingLabel.textContent = newRemaining;
+                }
+                
+                // Ricrea il popup con i lotti aggiornati
+                const modal = document.getElementById('batchSelectionModal');
+                if (modal) modal.remove();
+                
+                // Calcola i lotti ancora disponibili
+                const stillAvailableBatches = currentAvailableBatches
+                    .filter(batch => {
+                        const assigned = currentOrderBatches
+                            .filter(b => b.batch === batch.batch)
+                            .reduce((sum, b) => sum + b.quantity, 0);
+                        const available = (batch.quantityKg || 0) - assigned;
+                        return available > 0;
+                    });
+
+                if (stillAvailableBatches.length > 0) {
+                    createBatchSelectionModal(stillAvailableBatches, newRemaining);
+                }
+            }
+        }
+
+        // Rimuove un lotto dall'ordine
+        function removeOrderBatch(index) {
+            currentOrderBatches.splice(index, 1);
+            renderOrderBatches();
+            
+            // Se ci sono ancora batch, abilita il pulsante
+            const addBatchBtn = document.querySelector('#addBatchContainer button');
+            if (addBatchBtn) {
+                addBatchBtn.disabled = false;
+                addBatchBtn.style.opacity = '1';
+                addBatchBtn.style.cursor = 'pointer';
+            }
+        }
+
+        // Renderizza la tabella dei lotti selezionati
+        function renderOrderBatches() {
+            const container = document.getElementById('orderBatchesTableBody');
+            const tableContainer = document.getElementById('orderBatchesTableContainer');
+            const totalSpan = document.getElementById('orderBatchesTotal');
+
+            if (currentOrderBatches.length === 0) {
+                tableContainer.style.display = 'none';
+                return;
+            }
+
+            tableContainer.style.display = 'block';
+
+            const totalQuantity = currentOrderBatches.reduce((sum, b) => sum + b.quantity, 0);
+            totalSpan.textContent = totalQuantity.toFixed(1);
+
+            container.innerHTML = currentOrderBatches.map((batch, idx) => `
+                <tr style="border-bottom: 1px solid #4d4d4d;">
+                    <td style="padding: 8px; color: #e0e0e0;">
+                        <div style="font-weight: 600;">${batch.batch}</div>
+                        <div style="font-size: 11px; color: #a0a0a0;">
+                            Scad: ${batch.expiry || 'N/A'} | Pos: ${batch.shelfPosition || 'N/A'}
+                        </div>
+                    </td>
+                    <td style="padding: 8px; text-align: center; color: #b0b0b0;">${batch.colli || 0} sacchi</td>
+                    <td style="padding: 8px; text-align: right; color: #86efac; font-weight: 600;">${batch.quantity.toFixed(1)} kg</td>
+                    <td style="padding: 8px; text-align: center;">
+                        <button type="button" onclick="removeOrderBatch(${idx})" style="background: #e74c3c; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">✕</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Aggiorna informazioni articolo (lotto, ritiro/consegna, posizione)
+        // Carica e mostra i lotti disponibili per l'articolo selezionato
+        async function loadAvailableBatches() {
+            const selectedProduct = document.getElementById('orderProduct').value;
+            
+            if (!selectedProduct) {
+                currentAvailableBatches = [];
+                return;
+            }
+
+            console.log('🔍 Caricamento lotti per articolo:', selectedProduct);
+
+            try {
+                // Prova a caricare dall'API
+                if (token) {
+                    const response = await fetch(`${API_URL}/inventory/batches?code=${selectedProduct}`, {
+                        headers: { 
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (response.ok) {
+                        currentAvailableBatches = await response.json();
+                        console.log('✅ Lotti caricati da API:', currentAvailableBatches.length);
+                        console.log('📋 Struttura lotti:', currentAvailableBatches);
+                        return;
+                    } else {
+                        console.warn('⚠️ API ritorna errore:', response.status);
+                    }
+                }
+
+                // Fallback: carica da localStorage con dati di generazione
+                console.log('📦 Fallback a dati generati per testing');
+                currentAvailableBatches = generateTestBatches(selectedProduct);
+                console.log('✅ Lotti fallback generati:', currentAvailableBatches.length);
+                
+            } catch (error) {
+                console.error('❌ Errore caricamento lotti:', error);
+                currentAvailableBatches = generateTestBatches(selectedProduct);
+            }
+        }
+
+        // Genera lotti di test per il debugging
+        function generateTestBatches(productCode) {
+            const testBatches = [
+                { articolo: productCode, batch: 'LOT' + Date.now(), quantityKg: 100, shelfPosition: 'A1' },
+                { articolo: productCode, batch: 'LOT' + (Date.now() + 1), quantityKg: 150, shelfPosition: 'A2' }
+            ];
+            return testBatches;
+        }
+
+        // Renderizza i lotti disponibili (not used anymore - batches shown in modal)
+        function renderAvailableBatches() {
+            // Batches are now displayed only in the modal popup
+            // This function is deprecated
+            if (currentAvailableBatches.every(b => (b.quantityKg || 0) === 0)) {
+                warning.textContent = '⚠️ Attenzione: nessun lotto disponibile in magazzino!';
+                warning.style.display = 'block';
+            } else {
+                warning.style.display = 'none';
+            }
+        }
+
+        // Seleziona un lotto specifico
+        function selectBatch(batchIndex) {
+            const batch = currentAvailableBatches[batchIndex];
+            if (!batch) return;
+
+            currentSelectedBatchIndex = batchIndex;
+            document.getElementById('orderLotto').value = batch.batch || '';
+            document.getElementById('orderPosizione').value = batch.shelfPosition || '';
+            document.getElementById('addBatchContainer').style.display = 'block';
+            
+            // Valida la quantità inserita
+            validateOrderQuantity();
+        }
+
+        // Valida la quantità rispetto al lotto selezionato
+        function validateOrderQuantity() {
+            const quantityInput = document.getElementById('orderQuantity');
+            const quantity = parseFloat(quantityInput.value) || 0;
+            const warning = document.getElementById('quantityWarning');
+            
+            if (currentSelectedBatchIndex < 0) {
+                warning.style.display = 'none';
+                return;
+            }
+
+            const selectedBatch = currentAvailableBatches[currentSelectedBatchIndex];
+            const totalQuantityKg = selectedBatch.quantityKg || 0;
+            
+            // Calcola quanto è già stato assegnato per questo lotto
+            const lotto = document.getElementById('orderLotto').value;
+            const alreadyAssigned = currentOrderBatches
+                .filter(b => b.batch === lotto)
+                .reduce((sum, b) => sum + b.quantity, 0);
+            
+            const remainingAvailable = totalQuantityKg - alreadyAssigned;
+
+            if (quantity > remainingAvailable) {
+                warning.textContent = `⚠️ Quantità richiesta (${quantity} kg) supera il rimanente (${remainingAvailable} kg disponibili nel lotto)`;
+                warning.style.display = 'block';
+                quantityInput.style.borderColor = '#dc2626';
+            } else if (quantity > 0) {
+                warning.textContent = `✓ Disponibili nel lotto: ${remainingAvailable} kg`;
+                warning.style.color = '#86efac';
+                warning.style.display = 'block';
+                quantityInput.style.borderColor = '#16a34a';
+            } else {
+                warning.style.display = 'none';
+                quantityInput.style.borderColor = '';
+            }
+        }
+
+        function updateArticleInfo() {
+            const selectedProduct = document.getElementById('orderProduct').value;
+            const article = articoli.find(a => a.codice === selectedProduct);
+            
+            if (article) {
+                // Carica i lotti disponibili dall'inventario
+                loadAvailableBatches();
+                
+                // Mostra e abilita il pulsante "Aggiungi Lotto"
+                document.getElementById('addBatchContainer').style.display = 'block';
+                const addBatchBtn = document.querySelector('#addBatchContainer button');
+                if (addBatchBtn) {
+                    addBatchBtn.disabled = false;
+                    addBatchBtn.style.opacity = '1';
+                    addBatchBtn.style.cursor = 'pointer';
+                }
+            } else {
+                document.getElementById('addBatchContainer').style.display = 'none';
+            }
+        }
+
+        // Salva nuovo ordine o modifica esistente
+        async function saveOrder(event) {
+            const t0 = performance.now();
+            console.log('⏱️ [saveOrder] Inizio salvataggio ordine');
+            try {
+                event.preventDefault();
+                
+                // Verifica che il modulo sia visibile
+                const orderModal = document.getElementById('orderModal');
+                if (!orderModal || !orderModal.classList.contains('active')) {
+                    console.error('❌ Modal non visibile');
+                    alert('Errore: modal non visibile');
+                    return;
+                }
+                
+                const orderForm = document.getElementById('orderForm');
+                if (!orderForm) {
+                    console.error('❌ Form non trovato');
+                    alert('Errore: form non trovato');
+                    return;
+                }
+
+                // Validazione: almeno un prodotto deve essere aggiunto (nuovo sistema multi-prodotto)
+                if (currentOrderProducts.length === 0) {
+                    alert('⚠️ Aggiungi almeno un prodotto all\'ordine');
+                    return;
+                }
+                
+                const editingId = orderForm.dataset.editingId;
+                
+                // Verifica che tutti gli elementi del form esistano
+                const requiredElements = [
+                    'orderClient', 'orderType', 'orderDateTime',
+                    'orderNotes'
+                ];
+                
+                for (const elementId of requiredElements) {
+                    const el = document.getElementById(elementId);
+                    if (!el) {
+                        console.error(`❌ Elemento mancante nel form: ${elementId}`);
+                        alert(`Errore: elemento del form non trovato (${elementId})`);
+                        return;
+                    }
+                }
+                
+                // Valida/sistema data/ora rispetto a festivi e orari di consegna
+                let rawDateTime = document.getElementById('orderDateTime').value;
+            if (window.SettingsUtils && rawDateTime) {
+                const selectedType = document.getElementById('orderType').value;
+                const dateObj = new Date(rawDateTime);
+                const clamped = (selectedType === 'ritira')
+                    ? window.SettingsUtils.clampToOpeningWindows(dateObj)
+                    : window.SettingsUtils.clampToDeliveryWindows(dateObj);
+                const fmt = fmtLocalDateTime(clamped);
+                if (fmt !== rawDateTime) {
+                    rawDateTime = fmt;
+                    document.getElementById('orderDateTime').value = fmt;
+                    alert('ℹ️ Data/ora adeguata ai giorni/orari aziendali');
+                }
+            }
+
+            // Calcola quantità totale dai prodotti (nuovo sistema)
+            const totalQuantity = currentOrderProducts.reduce((sum, p) => sum + p.quantity, 0);
+            
+            // Gestisci viaggio se è consegnato
+            let tripId = null;
+            const tripOption = document.getElementById('tripOptions') ? document.getElementById('tripOptions').value : '';
+            const orderType = document.getElementById('orderType').value;
+            
+            if (orderType === 'consegnato') {
+                if (tripOption === 'new') {
+                    // Crea nuovo viaggio
+                    const tripName = document.getElementById('newTripName')?.value || `Consegne ${new Date().toLocaleDateString('it-IT')}`;
+                    const newTrip = {
+                        id: Date.now(),
+                        name: tripName,
+                        sequence: [], // Verrà aggiunto l'ordine dopo
+                        assignedOperatorId: null,
+                        createdAt: new Date().toISOString(),
+                        status: 'pending'
+                    };
+                    trips.push(newTrip);
+                    tripId = newTrip.id;
+                    localStorage.setItem('trips', JSON.stringify(trips));
+                } else if (tripOption === 'existing') {
+                    // Usa viaggio esistente
+                    tripId = parseInt(document.getElementById('existingTrip')?.value || 0);
+                    if (!tripId) tripId = null;
+                }
+                // Se tripOption === 'pending', tripId rimane null (sospeso)
+            }
+            
+            const orderData = {
+                client: document.getElementById('orderClient').value,
+                products: currentOrderProducts,  // Array di prodotti [{product, quantity}, ...]
+                quantity: totalQuantity,  // Quantità totale calcolata
+                type: document.getElementById('orderType').value,
+                dateTime: rawDateTime,
+                status: 'pending',  // Default status for new orders
+                notes: document.getElementById('orderNotes').value,
+                tripId: tripId  // ← NUOVO CAMPO
+            };
+
+            if (editingId) {
+                // Modifica ordine esistente
+                const order = orders.find(o => o.id == editingId);
+                if (order) {
+                    // Se il viaggio è cambiato, aggiorna i viaggi
+                    if (orderData.tripId !== order.tripId) {
+                        // Rimuovi da viaggio vecchio
+                        if (order.tripId) {
+                            const oldTrip = trips.find(t => t.id === order.tripId);
+                            if (oldTrip) {
+                                oldTrip.sequence = oldTrip.sequence.filter(id => id !== editingId);
+                            }
+                        }
+                        // Aggiungi a viaggio nuovo
+                        if (orderData.tripId) {
+                            const newTrip = trips.find(t => t.id === orderData.tripId);
+                            if (newTrip && !newTrip.sequence.includes(editingId)) {
+                                newTrip.sequence.push(editingId);
+                            }
+                        }
+                        localStorage.setItem('trips', JSON.stringify(trips));
+                    }
+                    
+                    Object.assign(order, orderData);
+                    
+                    // Aggiorna anche il task associato
+                    const task = orderTasks.find(t => t.orderId == editingId);
+                    if (task) {
+                        // Aggiorna titolo con nuovo formato semplificato
+                        task.title = `${orderData.type === 'consegnato' ? 'consegna' : 'ritiro'} - ${String(orderData.client || '').toLowerCase()}`;
+                        task.client = orderData.client;
+                        // Per il task, usa il primo prodotto come principale (se esiste)
+                        task.product = orderData.products.length > 0 ? orderData.products[0].product : '';
+                        task.quantity = orderData.quantity;
+                        task.dateTime = orderData.dateTime;
+                        task.notes = orderData.notes;
+                        task.assignedOperatorId = orderData.assignedOperatorId;
+                        const cliente = clienti.find(c => c.nome === orderData.client);
+                        if (cliente) {
+                            task.clienteOrari = {
+                                apertura: cliente.orario_apertura,
+                                chiusura: cliente.orario_chiusura,
+                                consegna_inizio: cliente.orario_consegna_inizio,
+                                consegna_fine: cliente.orario_consegna_fine
+                            };
+                        }
+                        saveOrderTasks();
+                    }
+                    console.log('✏️ Ordine modificato:', order.client, order.assignedOperatorId ? ` (Operatore: ${order.assignedOperatorId})` : '');
+                }
+            } else {
+                // Nuovo ordine - PRENOTA L'INVENTARIO per tutti i prodotti
+                console.log('⏱️ [saveOrder] Inizio prenotazione inventario');
+                const t1 = performance.now();
+                const order = {
+                    id: Date.now(),
+                    ...orderData,
+                    createdAt: new Date().toISOString()
+                };
+                
+                // Prenota inventario per ogni prodotto nell'ordine
+                orderInventoryReservations[order.id] = [];
+                for (const productItem of orderData.products) {
+                    const article = articoli.find(a => a.nome === productItem.product);
+                    if (article) {
+                        try {
+                            console.log(`⏱️ [saveOrder] Prenotando inventario: ${article.codice} ${productItem.quantity}kg`);
+                            const tReserve = performance.now();
+                            const reserveResponse = await fetch(`${API_URL}/inventory/reserve`, {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': `Bearer ${token}`,
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    code: article.codice,
+                                    quantity: productItem.quantity,
+                                    orderId: order.id.toString()
+                                })
+                            });
+                            
+                            console.log(`⏱️ [saveOrder] Risposta API in ${Math.round(performance.now() - tReserve)}ms`);
+
+                            if (!reserveResponse.ok) {
+                                const errData = await reserveResponse.json();
+                                throw new Error(errData.error || 'Errore prenotazione inventario');
+                            }
+
+                            const reserveResult = await reserveResponse.json();
+                            console.log('✅ Inventario prenotato per', productItem.product, ':', reserveResult);
+                            
+                            // Salva info prenotazione per questo prodotto
+                            orderInventoryReservations[order.id].push({
+                                productCode: article.codice,
+                                quantity: productItem.quantity,
+                                product: productItem.product
+                            });
+                        } catch (error) {
+                            console.error('❌ Errore prenotazione inventario:', error);
+                            alert(`⚠️ Attenzione: ${error.message}`);
+                            return;
+                        }
+                    }
+                }
+                
+                orders.push(order);
+                
+                // Associa ordine al viaggio se tripId è stato definito
+                if (orderData.tripId) {
+                    const trip = trips.find(t => t.id === orderData.tripId);
+                    if (trip) {
+                        trip.sequence.push(order.id);
+                        localStorage.setItem('trips', JSON.stringify(trips));
+                    }
+                }
+                
+                // Genera task per ordini di ritiro
+                if (order.type === 'ritira') {
+                    generateTaskForOrder(order, []);
+                }
+                console.log('📝 Nuovo ordine creato:', order.client, '(', orderData.products.length, 'prodotti)');
+            }
+
+            renderOrderTasks();
+            saveOrders();
+            renderOrders();
+            updateStats();
+            renderCalendar();
+            
+            const tEnd = performance.now();
+            console.log(`⏱️ [saveOrder] ✅ COMPLETATO in ${Math.round(tEnd - t0)}ms`);
+            
+            closeOrderModal();
+            } catch (error) {
+                console.error('❌ Errore in saveOrder():', error);
+                alert(`Errore: ${error.message}`);
+            }
+        }
+
+        // Elimina ordine e LIBERA l'inventario prenotato
+        async function deleteOrder(id) {
+            // Elimina eventuale task collegato anche nel backend
+            const task = orderTasks.find(t => t.orderId === id);
+            if (task) {
+                await deleteBackendEntriesForTask(task);
+            }
+            
+            // LIBERA la prenotazione di inventario (solo se non ancora completato)
+            const order = orders.find(o => o.id === id);
+            if (order && order.status !== 'completed') {
+                const reservation = orderInventoryReservations[id];
+                if (reservation) {
+                    try {
+                        const releaseResponse = await fetch(`${API_URL}/inventory/release`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                code: reservation.productCode,
+                                quantity: reservation.quantity
+                            })
+                        });
+
+                        if (!releaseResponse.ok) {
+                            const errData = await releaseResponse.json();
+                            console.error('❌ Errore rilascio inventario:', errData);
+                        } else {
+                            console.log('✅ Prenotazione liberata');
+                            delete orderInventoryReservations[id];
+                        }
+                    } catch (error) {
+                        console.error('❌ Errore durante rilascio inventario:', error);
+                    }
+                }
+            }
+            
+            orders = orders.filter(o => o.id !== id);
+            saveOrders();
+            // Also remove generated task for this order, if any
+            const prevLen = orderTasks.length;
+            orderTasks = orderTasks.filter(t => t.orderId !== id);
+            if (orderTasks.length !== prevLen) {
+                saveOrderTasks();
+            }
+            renderOrders();
+            renderOrderTasks();
+            updateStats();
+            renderCalendar();
+        }
+
+        // Aggiorna stato ordine
+        // Aggiorna stato ordine e gestisce inventario
+        async function updateOrderStatus(id, newStatus) {
+            const order = orders.find(o => o.id === id);
+            if (order) {
+                const oldStatus = order.status;
+                order.status = newStatus;
+                
+                // Se marca come completato, CONSUMA l'inventario prenotato
+                if (newStatus === 'completed' && oldStatus !== 'completed') {
+                    const reservation = orderInventoryReservations[id];
+                    if (reservation) {
+                        try {
+                            const consumeResponse = await fetch(`${API_URL}/inventory/consume`, {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': `Bearer ${token}`,
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    code: reservation.productCode,
+                                    quantity: reservation.quantity
+                                })
+                            });
+
+                            if (!consumeResponse.ok) {
+                                const errData = await consumeResponse.json();
+                                console.error('❌ Errore consumo inventario:', errData);
+                            } else {
+                                const result = await consumeResponse.json();
+                                console.log('✅ Inventario consumato:', result);
+                                delete orderInventoryReservations[id];
+                            }
+                        } catch (error) {
+                            console.error('❌ Errore durante consumo inventario:', error);
+                        }
+                    }
+                }
+                
+                saveOrders();
+                renderOrders();
+                // If marking completed, sync related task status too
+                if (newStatus === 'completed') {
+                    const task = orderTasks.find(t => t.orderId === id);
+                    if (task) {
+                        task.status = 'completed';
+                        saveOrderTasks();
+                        renderOrderTasks();
+                    }
+                }
+                updateStats();
+                renderCalendar();
+            }
+        }
+
+        // Renderizza ordini
+        function renderOrders() {
+            const grid = document.getElementById('ordersGrid');
+            if (!grid) return;
+            
+            if (orders.length === 0) {
+                grid.innerHTML = '<p style="color: #808080; grid-column: 1/-1; text-align: center; padding: 20px;">Nessun ordine presente. Crea il primo ordine!</p>';
+                return;
+            }
+
+            grid.innerHTML = orders.map(order => {
+                const cliente = clienti.find(c => c.nome === order.client);
+                const orariInfo = cliente ? `
+                    <p><strong>Apertura:</strong> ${cliente.orario_apertura} - ${cliente.orario_chiusura}</p>
+                    <p><strong>Finestra Consegne:</strong> ${cliente.orario_consegna_inizio} - ${cliente.orario_consegna_fine}</p>
+                ` : '';
+                
+                return `
+                <div class="order-card">
+                    <div class="order-header">
+                        <div class="order-title">${order.client}</div>
+                        <div class="order-status ${order.status}">${getStatusLabel(order.status)}</div>
+                    </div>
+                    <div class="order-details">
+                        <p><strong>Prodotto:</strong> ${order.product}</p>
+                        <p><strong>Quantità:</strong> ${order.quantity} kg</p>
+                        <p><strong>Tipo:</strong> ${order.type === 'consegnato' ? '📦 Consegnato' : '🏪 Ritira Cliente'}</p>
+                        <p><strong>Data e Orario:</strong> ${order.dateTime ? new Date(order.dateTime).toLocaleString('it-IT', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'N/D'}</p>
+                        ${orariInfo}
+                        ${order.lotto ? `<p><strong>Lotto:</strong> ${order.lotto}</p>` : ''}
+                        ${order.ritiro_consegna ? `<p><strong>Ritiro/Consegna:</strong> ${order.ritiro_consegna}</p>` : ''}
+                        ${order.posizione ? `<p><strong>Scaffale:</strong> ${order.posizione}</p>` : ''}
+                        ${order.notes ? `<p><strong>Note:</strong> ${order.notes}</p>` : ''}
+                    </div>
+                    <div class="order-actions">
+                        <button class="btn btn-primary" onclick="updateOrderStatus(${order.id}, 'completed')">✓ Completa</button>
+                        <button class="btn btn-danger" onclick="deleteOrder(${order.id})">🗑️ Elimina</button>
+                    </div>
+                </div>
+            `}).join('');
+        }
+
+        // Ottieni etichetta stato
+        function getStatusLabel(status) {
+            const labels = {
+                'pending': '⏳ Sospeso',
+                'completed': '✓ Completato'
+            };
+            return labels[status] || status;
+        }
+
+        // Aggiorna statistiche
+        function updateStats() {
+            const total = orders.length;
+            const pending = orders.filter(o => o.status !== 'completed').length;
+            const completed = orders.filter(o => o.status === 'completed').length;
+
+            document.getElementById('totalOrders').textContent = total;
+            document.getElementById('pendingOrders').textContent = pending;
+            document.getElementById('completedOrders').textContent = completed;
+        }
+
+        // Genera 15 ordini casuali per i prossimi 10 giorni
+        function generateSampleOrders() {
+            if (orders.length > 0) {
+                const confirm = window.confirm('Ordini già presenti. Vuoi aggiungere 15 nuovi ordini?');
+                if (!confirm) return;
+            }
+
+            const statuses = ['pending', 'completed'];
+            const types = ['consegnato', 'ritira'];
+            
+            // Genera ordini raggruppati per giorno per calcolare carico e tempi
+            const ordersByDay = {};
+            const tempOrders = [];
+            
+            for (let i = 0; i < 15; i++) {
+                const randomClient = clienti[Math.floor(Math.random() * clienti.length)];
+                const randomProduct = articoli[Math.floor(Math.random() * articoli.length)];
+                const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
+                const randomType = types[Math.floor(Math.random() * types.length)];
+                const randomQuantity = (Math.random() * 49 + 1).toFixed(1);
+                // pick a base day within next 10 days that fits rules by type
+                let base = new Date();
+                base.setDate(base.getDate() + Math.floor(Math.random() * 11));
+                if (window.SettingsUtils) {
+                    if (randomType === 'ritira') {
+                        base = window.SettingsUtils.nextValidOpeningDateTime(base);
+                    } else {
+                        base = window.SettingsUtils.nextValidDeliveryDateTime(base);
+                    }
+                }
+                const dateStr = fmtLocalDate(base);
+
+                if (!ordersByDay[dateStr]) {
+                    ordersByDay[dateStr] = { deliveries: [], pickups: [] };
+                }
+
+                const orderData = {
+                    client: randomClient.nome,
+                    product: randomProduct.nome,
+                    quantity: parseFloat(randomQuantity),
+                    status: randomStatus,
+                    lotto: randomProduct.lotto,
+                    ritiro_consegna: randomProduct.ritiro_consegna,
+                    posizione: randomProduct.posizione_scaffale
+                };
+
+                if (randomType === 'consegnato') {
+                    ordersByDay[dateStr].deliveries.push(orderData);
+                } else {
+                    ordersByDay[dateStr].pickups.push(orderData);
+                }
+            }
+
+            // Calcola orari con tempo variabile in base al carico giornaliero
+            let orderId = Date.now();
+            for (const [date, dayData] of Object.entries(ordersByDay)) {
+                // Calcola carico totale del giorno (solo consegne)
+                const totalLoad = dayData.deliveries.reduce((sum, o) => sum + o.quantity, 0);
+                
+                // Calcola tempo per consegna: 15-45 min in base al carico
+                // Formula: minuti = 15 + (carico / 1200kg * 30)
+                const loadFactor = Math.min(totalLoad / 1200, 1); // Normalizza a 0-1
+                const minutesPerDelivery = Math.round(15 + (loadFactor * 30)); // 15-45 minuti
+                
+                // Start at first valid delivery window start, else 8:00
+                let currentTime = 8 * 60; // default
+                if (window.SettingsUtils) {
+                    const windows = window.SettingsUtils && window.SettingsUtils.load ? (function(){
+                        // ensure we use delivery windows here
+                        const s = window.SettingsUtils.load();
+                        const t = (s.deliveryMorningStart || '08:00');
+                        const [hh,mm] = t.split(':').map(x=>parseInt(x,10));
+                        return [{ start: (hh||8)*60+(mm||0)}];
+                    })() : null;
+                    if (windows && windows[0] && windows[0].start) currentTime = windows[0].start;
+                }
+                
+                // Processa consegne con tempi progressivi
+                dayData.deliveries.forEach((orderData) => {
+                    const hours = Math.floor(currentTime / 60);
+                    const minutes = currentTime % 60;
+                    const timeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+                    
+                    orders.push({
+                        id: orderId++,
+                        ...orderData,
+                        type: 'consegnato',
+                        dateTime: date + 'T' + timeStr,
+                        notes: '',
+                        createdAt: new Date().toISOString()
+                    });
+                    // Le consegne NON generano task - solo i viaggi generano task
+                    
+                    // Incrementa il tempo per la prossima consegna
+                    currentTime += minutesPerDelivery;
+                    // If we exceed delivery windows, move to next allowed day first window
+                    if (window.SettingsUtils) {
+                        const dt = new Date(date + 'T00:00:00');
+                        dt.setHours(Math.floor(currentTime/60), currentTime%60, 0, 0);
+                        const clamped = window.SettingsUtils.clampToDeliveryWindows(dt);
+                        const clampedDateStr = fmtLocalDate(clamped);
+                        const clampedTime = clamped.getHours()*60 + clamped.getMinutes();
+                        if (clampedDateStr !== date) {
+                            // skip remaining deliveries into the next day is complex; keep within same date by resetting to last window end
+                            currentTime = clampedTime; // approximate
+                        } else {
+                            currentTime = clampedTime;
+                        }
+                    }
+                });
+                
+                // Processa ritiri con orari casuali
+                dayData.pickups.forEach((orderData) => {
+                    // Prefer random time within opening windows
+                    let timeStr = '09:00';
+                    if (window.SettingsUtils) {
+                        const s = window.SettingsUtils.load();
+                        const candidates = [];
+                        if (s.openMorningStart && s.openMorningEnd) candidates.push([s.openMorningStart, s.openMorningEnd]);
+                        if (s.openAfternoonStart && s.openAfternoonEnd) candidates.push([s.openAfternoonStart, s.openAfternoonEnd]);
+                        if (candidates.length>0) {
+                            const pick = candidates[Math.floor(Math.random()*candidates.length)];
+                            const [sh,sm] = pick[0].split(':').map(n=>parseInt(n,10));
+                            const [eh,em] = pick[1].split(':').map(n=>parseInt(n,10));
+                            const startMin = (sh||9)*60 + (sm||0);
+                            const endMin = (eh||12)*60 + (em||0);
+                            const randMin = startMin + Math.floor(Math.random() * Math.max(1, (endMin-startMin-1)));
+                            const hh = String(Math.floor(randMin/60)).padStart(2,'0');
+                            const mm = String(randMin%60).padStart(2,'0');
+                            timeStr = `${hh}:${mm}`;
+                        }
+                    }
+                    
+                    orders.push({
+                        id: orderId++,
+                        ...orderData,
+                        type: 'ritira',
+                        dateTime: date + 'T' + timeStr,
+                        notes: '',
+                        createdAt: new Date().toISOString()
+                    });
+                    // I ritiri generano task individuali
+                    generateTaskForOrder(orders[orders.length - 1]);
+                });
+            }
+            
+            saveOrders();
+            renderOrderTasks();
+            renderOrders();
+            updateStats();
+            renderCalendar();
+            alert('✅ 15 ordini generati con successo!');
+        }
+
+        // Torna indietro
+        function goBack() {
+            window.history.back();
+        }
+
+        // Funzioni per gestire singolo e doppio click nel calendario
+        function handleCalendarDayClick(dateStr) {
+            selectedDate = dateStr;
+            if (calendarClickTimer) {
+                clearTimeout(calendarClickTimer);
+                calendarClickTimer = null;
+                // È un doppio click
+                handleCalendarDayDoubleClick(dateStr);
+            } else {
+                // Singolo click - attendi 300ms per verificare se è doppio
+                calendarClickTimer = setTimeout(() => {
+                    showDayOrdersModal(dateStr);
+                    renderCalendar();
+                    calendarClickTimer = null;
+                }, 300);
+            }
+        }
+        
+        function handleCalendarDayDoubleClick(dateStr) {
+            openOrderModal(dateStr);
+        }
+
+        // Renderizza calendario (settimana o mese)
+        function renderCalendar() {
+            if (calendarViewMode === 'week') {
+                renderCalendarWeek();
+            } else {
+                renderCalendarMonth();
+            }
+        }
+        
+        // Renderizza vista settimanale
+        function renderCalendarWeek() {
+            const container = document.getElementById('calendarContainer');
+            const startDate = new Date(weekStartDate);
+            
+            const dayNames = ['Do', 'Lu', 'Ma', 'Me', 'Gi', 'Ve', 'Sa'];
+            
+            let html = dayNames.map((day, idx) => {
+                const color = idx === 0 ? '#ef4444' : '#b0b0b0'; // Domenica rossa
+                return `<div style="font-weight: bold; text-align: center; padding: 6px; background: #3d3d3d; border: 1px solid #4d4d4d; border-radius: 4px; font-size: 12px; color: ${color};">${day}</div>`;
+            }).join('');
+            
+            for (let i = 0; i < 7; i++) {
+                const date = new Date(startDate);
+                date.setDate(date.getDate() + i);
+                const dateStr = String(date.getFullYear()).padStart(4, '0') + '-' + 
+                               String(date.getMonth() + 1).padStart(2, '0') + '-' + 
+                               String(date.getDate()).padStart(2, '0');
+                
+                const isHoliday = (window.SettingsUtils && window.SettingsUtils.isHolidayDate) ? window.SettingsUtils.isHolidayDate(date) : false;
+                const isAllowed = (window.SettingsUtils && window.SettingsUtils.isDeliveryAllowedDate) ? window.SettingsUtils.isDeliveryAllowedDate(date) : (date.getDay() !== 0);
+                
+                const dayOrders = orders.filter(order => {
+                    if (!order.dateTime) return false;
+                    return order.dateTime.startsWith(dateStr);
+                });
+                
+                const assignedOrders = dayOrders.filter(order => {
+                    const task = orderTasks.find(t => t.orderId === order.id);
+                    return task && task.assignedTo.length > 0;
+                }).length;
+                
+                const unassignedOrders = dayOrders.filter(order => {
+                    const task = orderTasks.find(t => t.orderId === order.id);
+                    return !task || task.assignedTo.length === 0;
+                }).length;
+                
+                // Controlla viaggi per questo giorno
+                const dayTrips = trips.filter(trip => trip.date?.startsWith(dateStr));
+                const hasTrips = dayTrips.length > 0;
+                const hasTripsClass = hasTrips ? 'has-trips' : '';
+                
+                const hasOrdersClass = assignedOrders > 0 ? 'has-orders' : '';
+                const hasUnassignedClass = unassignedOrders > 0 ? 'has-unassigned-orders' : '';
+                
+                // Calcola highlight per giorno corrente e selezionato
+                const today = new Date().toISOString().split('T')[0];
+                const isTodayClass = dateStr === today ? 'is-today' : '';
+                const isSelectedClass = dateStr === selectedDate ? 'is-selected' : '';
+                
+                const dayColor = (!isAllowed || isHoliday) ? 'color: #ef4444;' : '';
+                
+                let assignedCountHtml = '';
+                let tripCountHtml = '';
+                // Badge unico in basso a destra con totale ordini/ritiri
+                const totalOrdersCount = assignedOrders + unassignedOrders;
+                if (totalOrdersCount > 0) {
+                    assignedCountHtml = `<div style="position: absolute; bottom: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #16a34a; border-radius: 3px; padding: 2px 4px;">${totalOrdersCount}</div>`;
+                }
+                if (dayTrips.length > 0) {
+                    tripCountHtml = `<div style="position: absolute; top: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #2563eb; border-radius: 3px; padding: 2px 4px;">${dayTrips.length}</div>`;
+                }
+                
+                html += `<div class="calendar-day ${hasOrdersClass} ${hasUnassignedClass} ${hasTripsClass} ${isTodayClass} ${isSelectedClass}" style="cursor: pointer; position: relative; ${dayColor}" onclick="handleCalendarDayClick('${dateStr}')"><strong>${date.getDate()}</strong>${assignedCountHtml}${tripCountHtml}</div>`;
+            }
+            
+            container.innerHTML = html;
+            
+            // Calcola numero settimana
+            const firstDay = new Date(startDate.getFullYear(), 0, 1);
+            const pastDaysOfYear = (startDate - firstDay) / 86400000;
+            const weekNumber = Math.ceil((pastDaysOfYear + firstDay.getDay() + 1) / 7);
+            document.getElementById('calendarMonthYear').textContent = `Settimana ${weekNumber}`;
+        }
+        
+        // Renderizza vista mensile
+        function renderCalendarMonth() {
+            const container = document.getElementById('calendarContainer');
+            
+            const year = calendarDisplayYear;
+            const month = calendarDisplayMonth;
+            
+            // Impostazioni azienda per festivi e giorni consentiti
+            const companySettings = (window.SettingsUtils && window.SettingsUtils.load) ? window.SettingsUtils.load() : null;
+            
+            // Aggiorna il titolo del mese
+            const monthNames = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 
+                               'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
+            document.getElementById('calendarMonthYear').textContent = `${monthNames[month]} ${year}`;
+            
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const daysInMonth = lastDay.getDate();
+            const startingDayOfWeek = firstDay.getDay();
+            
+            const dayNames = ['Do', 'Lu', 'Ma', 'Me', 'Gi', 'Ve', 'Sa'];
+            let html = dayNames.map((day, idx) => {
+                const color = idx === 0 ? '#ef4444' : '#b0b0b0'; // Domenica rossa
+                return `<div style="font-weight: bold; text-align: center; padding: 6px; background: #3d3d3d; border: 1px solid #4d4d4d; border-radius: 4px; font-size: 12px; color: ${color};">${day}</div>`;
+            }).join('');
+            
+            for (let i = 0; i < startingDayOfWeek; i++) {
+                html += '<div></div>';
+            }
+            
+            for (let day = 1; day <= daysInMonth; day++) {
+                const date = new Date(year, month, day);
+                const dateStr = String(year).padStart(4, '0') + '-' + 
+                               String(month + 1).padStart(2, '0') + '-' + 
+                               String(day).padStart(2, '0');
+                const dayOfWeek = date.getDay();
+                const isHoliday = (window.SettingsUtils && window.SettingsUtils.isHolidayDate) ? window.SettingsUtils.isHolidayDate(date) : false;
+                const isAllowed = (window.SettingsUtils && window.SettingsUtils.isDeliveryAllowedDate) ? window.SettingsUtils.isDeliveryAllowedDate(date) : (dayOfWeek !== 0);
+                
+                // Conta ordini con data schedulata
+                const dayOrders = orders.filter(order => {
+                    if (!order.dateTime) return false;
+                    return order.dateTime.startsWith(dateStr);
+                });
+
+                // Conta ordini assegnati e da assegnare
+                const assignedOrders = dayOrders.filter(order => {
+                    const task = orderTasks.find(t => t.orderId === order.id);
+                    return task && task.assignedTo.length > 0;
+                }).length;
+                
+                const unassignedOrders = dayOrders.filter(order => {
+                    const task = orderTasks.find(t => t.orderId === order.id);
+                    return !task || task.assignedTo.length === 0;
+                }).length;
+
+                const totalOrders = dayOrders.length;
+                const hasOrdersClass = assignedOrders > 0 ? 'has-orders' : '';
+                const hasUnassignedClass = unassignedOrders > 0 ? 'has-unassigned-orders' : '';
+                
+                // Calcola highlight per giorno corrente e selezionato
+                const today = new Date().toISOString().split('T')[0];
+                const isTodayClass = dateStr === today ? 'is-today' : '';
+                const isSelectedClass = dateStr === selectedDate ? 'is-selected' : '';
+                
+                // Controlla viaggi per questo giorno
+                const dayTrips = trips.filter(trip => trip.date?.startsWith(dateStr));
+                const hasTrips = dayTrips.length > 0;
+                const hasTripsClass = hasTrips ? 'has-trips' : '';
+                
+                const dayColor = (!isAllowed || isHoliday) ? 'color: #ef4444;' : '';
+
+                let assignedCountHtml = '';
+                let tripCountHtml = '';
+                // Badge unico in basso a destra con totale ordini/ritiri
+                const totalOrdersCount = assignedOrders + unassignedOrders;
+                if (totalOrdersCount > 0) {
+                    assignedCountHtml = `<div style="position: absolute; bottom: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #16a34a; border-radius: 3px; padding: 2px 4px;">${totalOrdersCount}</div>`;
+                }
+                if (dayTrips.length > 0) {
+                    tripCountHtml = `<div style="position: absolute; top: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #2563eb; border-radius: 3px; padding: 2px 4px;">${dayTrips.length}</div>`;
+                }
+
+                html += `<div class="calendar-day ${hasOrdersClass} ${hasUnassignedClass} ${hasTripsClass} ${isTodayClass} ${isSelectedClass}" style="${dayColor}" onclick="handleCalendarDayClick('${dateStr}')" ondblclick=""><strong>${day}</strong>${assignedCountHtml}${tripCountHtml}</div>`;
+            }
+            
+            container.innerHTML = html;
+        }
+        
+        function previousPeriod() {
+            if (calendarViewMode === 'week') {
+                weekStartDate.setDate(weekStartDate.getDate() - 7);
+            } else {
+                calendarDisplayMonth--;
+                if (calendarDisplayMonth < 0) {
+                    calendarDisplayMonth = 11;
+                    calendarDisplayYear--;
+                }
+            }
+            renderCalendar();
+        }
+        
+        function nextPeriod() {
+            if (calendarViewMode === 'week') {
+                weekStartDate.setDate(weekStartDate.getDate() + 7);
+            } else {
+                calendarDisplayMonth++;
+                if (calendarDisplayMonth > 11) {
+                    calendarDisplayMonth = 0;
+                    calendarDisplayYear++;
+                }
+            }
+            renderCalendar();
+        }
+        
+        function toggleCalendarView() {
+            const btn = document.getElementById('toggleCalendarBtn');
+            if (calendarViewMode === 'week') {
+                calendarViewMode = 'month';
+                btn.textContent = '📅 Mese';
+            } else {
+                calendarViewMode = 'week';
+                btn.textContent = '🗓️ Settimana';
+                // Torna alla settimana corrente quando si torna a vista settimana
+                const today = new Date();
+                weekStartDate = new Date(today);
+                weekStartDate.setDate(weekStartDate.getDate() - weekStartDate.getDay());
+            }
+            renderCalendar();
+            renderOrders();
+            renderOrderTasks();
+        }
+
+        // Mostra ordini del giorno (filtra per data selezionata)
+        function showDayOrdersModal(dateStr) {
+            // Imposta la data selezionata
+            selectedDate = dateStr;
+            showAllOrders = false;
+            
+            // Aggiorna pulsante
+            const btn = document.getElementById('toggleShowAllBtn2');
+            btn.textContent = '👁️ Visualizza Tutti';
+            btn.classList.remove('btn-secondary');
+            btn.classList.add('btn-primary');
+            
+            // Re-render ordini con la nuova data
+            renderOrderTasks();
+            
+            // Scroll alla sezione ordini
+            setTimeout(() => {
+                document.getElementById('orderTasksGrid').parentElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        }
+
+        // === UI VIAGGI ===
+        let currentTripId = null;
+
+        function openTripsManager() {
+            renderTripsManager();
+            document.getElementById('tripsManagerModal').classList.add('active');
+        }
+
+        function closeTripsManager() {
+            document.getElementById('tripsManagerModal').classList.remove('active');
+        }
+
+        function renderTripsManager() {
+            const container = document.getElementById('tripsManagerList');
+            if (trips.length === 0) {
+                container.innerHTML = '<p style="color:#808080;text-align:center;padding:20px;">Nessun viaggio creato</p>';
+                return;
+            }
+
+            container.innerHTML = trips.map(trip => {
+                const tripOrders = getTripOrders(trip.id);
+                const totals = calculateTripTotals(trip.id);
+                const totalsHtml = Object.entries(totals).map(([product, qty]) => 
+                    `<span style="background:#1e3a2a;color:#86efac;padding:4px 8px;border-radius:4px;font-size:12px;margin-right:6px;">${product}: ${qty.toFixed(1)}kg</span>`
+                ).join('');
+
+                return `
+                    <div class="order-card" style="border-left:4px solid #16a34a;margin-bottom:15px;">
+                        <div class="order-header">
+                            <div class="order-title">${trip.name}</div>
+                            <span class="order-status" style="background:#1e3a2a;color:#86efac;">${tripOrders.length} ordini</span>
+                        </div>
+                        <div class="order-details">
+                            <p><strong>📅 Data:</strong> ${new Date(trip.date).toLocaleDateString('it-IT')}</p>
+                            ${totalsHtml ? `<p><strong>📊 Totali:</strong><br>${totalsHtml}</p>` : ''}
+                        </div>
+                        <div class="order-actions" style="justify-content:flex-end;gap:8px;margin-top:10px;">
+                            <button class="btn btn-primary" onclick="openTripOrders(${trip.id})" style="padding:6px 10px;font-size:12px;">📦 Gestisci Ordini</button>
+                            <button class="btn btn-danger" onclick="confirmDeleteTrip(${trip.id})" style="padding:6px 10px;font-size:12px;">🗑️ Elimina</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function openCreateTripModal() {
+            document.getElementById('createTripForm').reset();
+            document.getElementById('tripDate').valueAsDate = new Date();
+            document.getElementById('createTripModal').classList.add('active');
+        }
+
+        function closeCreateTripModal() {
+            document.getElementById('createTripModal').classList.remove('active');
+        }
+
+        function saveNewTrip(event) {
+            event.preventDefault();
+            const name = document.getElementById('tripName').value;
+            const date = document.getElementById('tripDate').value;
+            createTrip(name, date);
+            closeCreateTripModal();
+            renderTripsManager();
+            alert('✅ Viaggio creato con successo!');
+        }
+
+        function confirmDeleteTrip(tripId) {
+            deleteTrip(tripId);
+            renderTripsManager();
+            renderOrderTasks();
+        }
+
+        function openTripOrders(tripId) {
+            currentTripId = tripId;
+            const trip = trips.find(t => t.id === tripId);
+            if (!trip) return;
+
+            document.getElementById('tripOrdersTitle').textContent = `📦 ${trip.name} - Gestione Ordini`;
+            renderAvailableOrders(tripId);
+            renderTripOrdersList(tripId);
+            renderTripTotals(tripId);
+            document.getElementById('tripOrdersModal').classList.add('active');
+        }
+
+        function closeTripOrdersModal() {
+            document.getElementById('tripOrdersModal').classList.remove('active');
+            currentTripId = null;
+            renderTripsManager();
+        }
+
+        function renderAvailableOrders(tripId) {
+            const trip = trips.find(t => t.id === tripId);
+            const tripDate = trip.date.split('T')[0];
+            const available = orders.filter(o => {
+                const orderDate = o.dateTime ? o.dateTime.split('T')[0] : null;
+                return o.type === 'consegnato' && 
+                       orderDate === tripDate && 
+                       !o.tripId;
+            });
+
+            const container = document.getElementById('availableOrdersList');
+            if (available.length === 0) {
+                container.innerHTML = '<p style="color:#808080;font-size:12px;">Nessun ordine disponibile per questa data</p>';
+                return;
+            }
+
+            container.innerHTML = available.map(order => `
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:8px;background:#2d2d2d;margin-bottom:6px;border-radius:4px;">
+                    <div style="font-size:12px;">
+                        <strong>${order.client}</strong> - ${order.product} (${order.quantity}kg)
+                        <span style="color:#a0a0a0;margin-left:8px;">${new Date(order.dateTime).toLocaleTimeString('it-IT', {hour:'2-digit',minute:'2-digit'})}</span>
+                    </div>
+                    <button class="btn btn-primary" onclick="addOrderToCurrentTrip(${order.id})" style="padding:4px 8px;font-size:11px;">➕ Aggiungi</button>
+                </div>
+            `).join('');
+        }
+
+        function renderTripOrdersList(tripId) {
+            const tripOrders = getTripOrders(tripId);
+            const container = document.getElementById('tripOrdersList');
+            
+            if (tripOrders.length === 0) {
+                container.innerHTML = '<p style="color:#808080;font-size:12px;padding:10px;text-align:center;">Nessun ordine nel viaggio</p>';
+                return;
+            }
+
+            container.innerHTML = tripOrders.map((order, index) => `
+                <div style="display:flex;align-items:center;padding:10px;background:#3d3d3d;margin-bottom:8px;border-radius:4px;border-left:4px solid #16a34a;">
+                    <div style="display:flex;flex-direction:column;gap:6px;margin-right:10px;">
+                        <button class="btn btn-secondary" onclick="moveOrderUp(${tripId}, ${index})" ${index === 0 ? 'disabled' : ''} style="padding:2px 6px;font-size:10px;">▲</button>
+                        <button class="btn btn-secondary" onclick="moveOrderDown(${tripId}, ${index})" ${index === tripOrders.length - 1 ? 'disabled' : ''} style="padding:2px 6px;font-size:10px;">▼</button>
+                    </div>
+                    <div style="flex:1;">
+                        <div style="font-weight:600;font-size:14px;margin-bottom:4px;color:#16a34a;">#${index + 1} - ${order.client}</div>
+                        <div style="font-size:12px;color:#a0a0a0;">
+                            ${order.product} - ${order.quantity}kg
+                            <span style="margin-left:10px;">⏰ ${new Date(order.dateTime).toLocaleTimeString('it-IT', {hour:'2-digit',minute:'2-digit'})}</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-danger" onclick="removeOrderFromCurrentTrip(${order.id})" style="padding:4px 8px;font-size:11px;">✖</button>
+                </div>
+            `).join('');
+        }
+
+        function renderTripTotals(tripId) {
+            const totals = calculateTripTotals(tripId);
+            const container = document.getElementById('tripTotals');
+            
+            if (Object.keys(totals).length === 0) {
+                container.innerHTML = '<p style="color:#808080;font-size:12px;">Nessun prodotto</p>';
+                return;
+            }
+
+            container.innerHTML = Object.entries(totals).map(([product, qty]) => `
+                <div style="display:flex;justify-content:space-between;padding:8px;background:#3d3d3d;margin-bottom:6px;border-radius:4px;">
+                    <span style="font-weight:600;color:#e0e0e0;">${product}</span>
+                    <span style="color:#86efac;font-weight:700;">${qty.toFixed(1)} kg</span>
+                </div>
+            `).join('');
+        }
+
+        function addOrderToCurrentTrip(orderId) {
+            if (!currentTripId) return;
+            addOrderToTrip(currentTripId, orderId);
+            renderAvailableOrders(currentTripId);
+            renderTripOrdersList(currentTripId);
+            renderTripTotals(currentTripId);
+            renderOrderTasks();
+        }
+
+        function removeOrderFromCurrentTrip(orderId) {
+            if (!currentTripId) return;
+            removeOrderFromTrip(currentTripId, orderId);
+            renderAvailableOrders(currentTripId);
+            renderTripOrdersList(currentTripId);
+            renderTripTotals(currentTripId);
+            renderOrderTasks();
+            renderCalendar();
+        }
+
+        function moveOrderUp(tripId, index) {
+            const trip = trips.find(t => t.id === tripId);
+            if (!trip || index === 0) return;
+            
+            const newSequence = [...trip.sequence];
+            [newSequence[index], newSequence[index - 1]] = [newSequence[index - 1], newSequence[index]];
+            reorderTripSequence(tripId, newSequence);
+            renderTripOrdersList(tripId);
+        }
+
+        function moveOrderDown(tripId, index) {
+            const trip = trips.find(t => t.id === tripId);
+            if (!trip || index === trip.sequence.length - 1) return;
+            
+            const newSequence = [...trip.sequence];
+            [newSequence[index], newSequence[index + 1]] = [newSequence[index + 1], newSequence[index]];
+            reorderTripSequence(tripId, newSequence);
+            renderTripOrdersList(tripId);
+        }
+
+        // Inizializza
+        window.addEventListener('load', async () => {
+                // Display user info
+                const token = localStorage.getItem('token');
+                if (token) {
+                    try {
+                        const payload = JSON.parse(atob(token.split('.')[1]));
+                        const userInfo = document.getElementById('userInfo');
+                        if (userInfo && payload.username) {
+                            userInfo.textContent = `👤 ${payload.username}`;
+                        }
+                    } catch (e) {
+                        console.error('Error parsing token:', e);
+                    }
+                }
+            
+            // Load fresh company settings from backend
+            if (window.SettingsUtils && window.SettingsUtils.loadAsync) {
+                await window.SettingsUtils.loadAsync();
+            }
+            await loadOperators();
+            await loadCSVData();
+            loadOrders();
+            loadOrderTasks();
+            loadTrips();
+            renderOrderTasks();
+            renderCalendar();
+            // Admin: assicura che gli ordini 'ritira' siano sincronizzati nel DB e visibili
+            await syncRitiroOrdersToDb();
+        });
+
+        // Sincronizza dati quando cambiano da un'altra pagina (storage event listener)
+        window.addEventListener('storage', (event) => {
+            if (event.key === 'orders') {
+                console.log('📦 Sincronizzando ordini da un\'altra pagina...');
+                loadOrders();
+                renderOrders();
+                renderCalendar();
+                updateStats();
+            } else if (event.key === 'trips') {
+                console.log('🚚 Sincronizzando viaggi da un\'altra pagina...');
+                loadTrips();
+                renderCalendar();
+            } else if (event.key === 'orderTasks') {
+                console.log('✅ Sincronizzando task ordini da un\'altra pagina...');
+                loadOrderTasks();
+                renderOrderTasks();
+                renderCalendar();
+            }
+        });
+    </script>
+
+    <!-- Modal Assegna Task -->
+    <div id="assignTaskModal" class="modal">
+        <div class="modal-content" style="max-width:420px;">
+            <h2 style="margin-top:0;font-size:16px;">🔧 Assegna Task Ordine</h2>
+            <form onsubmit="assignTaskToOperators(event)">
+                <input type="hidden" id="assignTaskId">
+                <div id="operatorsChecklist" style="display:flex;flex-direction:column;margin-bottom:12px;"></div>
+                <div class="modal-actions" style="margin-top:10px;">
+                    <button type="submit" class="btn btn-primary">💾 Salva Assegnazione</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeAssignTaskModal()">❌ Chiudi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Gestione Viaggi -->
+    <div id="tripsManagerModal" class="modal">
+        <div class="modal-content" style="max-width:900px;max-height:80vh;overflow-y:auto;">
+            <h2>🚚 Gestione Viaggi</h2>
+            <button class="btn btn-primary" onclick="openCreateTripModal()" style="margin-bottom:15px;">➕ Nuovo Viaggio</button>
+            <div id="tripsManagerList"></div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeTripsManager()">❌ Chiudi</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Crea Viaggio -->
+    <div id="createTripModal" class="modal">
+        <div class="modal-content">
+            <h2>➕ Nuovo Viaggio</h2>
+            <form id="createTripForm" onsubmit="saveNewTrip(event)">
+                <div class="form-group">
+                    <label for="tripName">Nome Viaggio:</label>
+                    <input type="text" id="tripName" required placeholder="Es: Giro Mattina">
+                </div>
+                <div class="form-group">
+                    <label for="tripDate">Data:</label>
+                    <input type="date" id="tripDate" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary">💾 Crea</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeCreateTripModal()">❌ Annulla</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Gestione Ordini Viaggio -->
+    <div id="tripOrdersModal" class="modal">
+        <div class="modal-content" style="max-width:800px;max-height:80vh;overflow-y:auto;">
+            <h2 id="tripOrdersTitle">📦 Gestione Ordini Viaggio</h2>
+            <div style="margin:10px 0 18px 0;padding:10px;background:#2d2d2d;border-radius:6px;border:2px solid #3b82f6;">
+                <p style="color:#60a5fa;font-size:13px;margin:0;">💡 <strong>Nota:</strong> L'operatore verrà assegnato dall'admin tramite il task generato dal viaggio nella dashboard principale</p>
+            </div>
+            <div style="margin-bottom:15px;">
+                <h3 style="font-size:16px;margin-bottom:10px;">Ordini Disponibili (consegnati):</h3>
+                <div id="availableOrdersList" style="max-height:200px;overflow-y:auto;background:#3d3d3d;padding:10px;border-radius:6px;"></div>
+            </div>
+            <div style="margin-bottom:15px;">
+                <h3 style="font-size:16px;margin-bottom:10px;">Ordini nel Viaggio:</h3>
+                <div id="tripOrdersList"></div>
+            </div>
+            <div style="margin-top:15px;padding:15px;background:#2d2d2d;border-radius:6px;border:2px solid #16a34a;">
+                <h3 style="font-size:16px;margin-bottom:10px;color:#16a34a;">📊 Totali Prodotti:</h3>
+                <div id="tripTotals"></div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeTripOrdersModal()">❌ Chiudi</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Genera Dati Button at Bottom -->
+    <div style="position: fixed; bottom: 20px; right: 20px; z-index: 100;">
+        <button class="btn btn-warning" onclick="generateSampleOrders()" title="Genera dati di test">🔄 Genera Dati</button>
+    </div>
+</body>
+</html>

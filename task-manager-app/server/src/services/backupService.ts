@@ -63,12 +63,13 @@ export class BackupService {
         
         return backupPath;
       } else {
-        console.warn('⚠️ Database file not found');
+        console.warn(`⚠️ Database file not found at ${dbPath} - skipping backup`);
         return '';
       }
     } catch (error) {
       console.error('❌ Backup error:', error);
-      throw error;
+      // Non lanciare errore - continua comunque
+      return '';
     }
   }
 

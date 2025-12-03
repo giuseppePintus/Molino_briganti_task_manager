@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestione Codifiche - Molino Briganti</title>
+    <link rel="stylesheet" href="css/common.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2563eb;
+            --success: #16a34a;
+            --danger: #dc2626;
+            --warning: #ea580c;
+            --dark: #1f2937;
+            --light: #f3f4f6;
+            --border: #e5e7eb;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a1a;
+            color: #e0e0e0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: #2d2d2d;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin: 0;
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1e40af;
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #4b5563;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .btn-danger:hover {
+            background: #b91c1c;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #15803d;
+        }
+
+        .alert {
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #6ee7b7;
+        }
+
+        .alert-error {
+            background: #fee2e2;
+            color: #7f1d1d;
+            border: 1px solid #fca5a5;
+        }
+
+        .alert-info {
+            background: #dbeafe;
+            color: #0c2340;
+            border: 1px solid #93c5fd;
+        }
+
+        .content {
+            background: #2d2d2d;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: #1f2937;
+        }
+
+        th {
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid #444;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #444;
+        }
+
+        tbody tr:hover {
+            background: #3a3a3a;
+        }
+
+        .actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-edit {
+            background: var(--primary);
+            color: white;
+            padding: 6px 12px;
+            font-size: 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .btn-edit:hover {
+            background: #1e40af;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #2d2d2d;
+            border-radius: 8px;
+            padding: 30px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            border: 1px solid #444;
+        }
+
+        .modal-content h2 {
+            margin-top: 0;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: #e0e0e0;
+            font-size: 14px;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 25px;
+            justify-content: flex-end;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #9ca3af;
+        }
+
+        .empty-state p {
+            margin: 10px 0;
+        }
+
+        .search-box {
+            margin-bottom: 20px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px 15px;
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 6px;
+            color: #e0e0e0;
+            font-size: 14px;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 Gestione Codifiche Articoli</h1>
+            <div class="header-buttons">
+                <button class="btn btn-primary" onclick="openCreateModal()">➕ Nuova Codifica</button>
+                <button class="btn btn-secondary" onclick="goHome()">🏠 Home</button>
+            </div>
+        </div>
+
+        <div id="alert" class="alert"></div>
+
+        <div class="content">
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="🔍 Cerca per codice o descrizione..." onkeyup="filterTable()">
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Codice</th>
+                            <th>Descrizione</th>
+                            <th style="width: 150px; text-align: center;">Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody id="codificheTable">
+                        <tr>
+                            <td colspan="3" style="text-align: center; color: #9ca3af;">Caricamento...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Create/Edit -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <h2 id="modalTitle">Nuova Codifica</h2>
+            <form onsubmit="handleSave(event)">
+                <div class="form-group">
+                    <label for="codiceInput">Codice *</label>
+                    <input type="text" id="codiceInput" required placeholder="es. F-0-5">
+                </div>
+                <div class="form-group">
+                    <label for="descrizioneInput">Descrizione *</label>
+                    <input type="text" id="descrizioneInput" required placeholder="es. FARINA 0 da 5kg">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Annulla</button>
+                    <button type="submit" class="btn btn-success">Salva</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = `http://${window.location.hostname}:${window.location.port || 5000}/api`;
+        const token = localStorage.getItem('token');
+        const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        
+        console.log('=== CODIFICHE DEBUG ===');
+        console.log('Token:', token ? 'EXISTS' : 'MISSING');
+        console.log('User:', currentUser);
+        
+        let codifiche = [];
+        let editingCodice = null;
+
+        // Check authorization
+        window.addEventListener('load', () => {
+            console.log('Window loaded, checking auth...');
+            if (!token || (currentUser.role !== 'master' && currentUser.role !== 'slave')) {
+                console.log('Not authorized! Redirecting...');
+                window.location.href = '/index.html';
+                return;
+            }
+            console.log('Authorized! Loading codifiche...');
+            loadCodifiche();
+        });
+
+        function goHome() {
+            window.location.href = 'admin-dashboard.html';
+        }
+
+        function showAlert(message, type = 'info') {
+            const alertEl = document.getElementById('alert');
+            alertEl.textContent = message;
+            alertEl.className = `alert alert-${type} show`;
+            
+            if (type !== 'error') {
+                setTimeout(() => {
+                    alertEl.classList.remove('show');
+                }, 4000);
+            }
+        }
+
+        async function loadCodifiche() {
+            try {
+                const response = await fetch(`${API_URL}/codifiche/list`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Errore nel caricamento');
+                }
+
+                codifiche = await response.json();
+                console.log('Loaded codifiche:', codifiche.length, 'items');
+                console.log('Raw data:', JSON.stringify(codifiche, null, 2));
+                // Filter out any empty entries
+                codifiche = codifiche.filter(c => c && c.codice && c.codice.trim());
+                console.log('After filter:', codifiche.length, 'items');
+                renderTable();
+            } catch (error) {
+                console.error('Errore caricamento codifiche:', error);
+                showAlert('Errore nel caricamento dei dati: ' + error.message, 'error');
+                document.getElementById('codificheTable').innerHTML = `
+                    <tr>
+                        <td colspan="3" style="text-align: center; color: #dc2626;">
+                            Errore nel caricamento. <a href="#" onclick="loadCodifiche()" style="color: var(--primary);">Riprova</a>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        function renderTable(data = codifiche) {
+            const table = document.getElementById('codificheTable');
+            
+            // Filtra elementi vuoti o malformati
+            const validData = (data || []).filter(c => c && c.codice && c.codice.trim());
+            
+            console.log('renderTable called with:', validData.length, 'items');
+            validData.forEach((c, i) => {
+                console.log(`  [${i}] "${c.codice}" / "${c.descrizione}"`);
+            });
+
+            if (!validData || validData.length === 0) {
+                table.innerHTML = `
+                    <tr>
+                        <td colspan="3" style="text-align: center; color: #9ca3af; padding: 30px;">
+                            Nessuna codifica trovata
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            let html = '';
+            validData.forEach((c, idx) => {
+                if (!c.codice || !c.codice.trim()) {
+                    console.warn(`SKIPPING EMPTY CODICE AT INDEX ${idx}:`, c);
+                    return; // Salta elementi vuoti
+                }
+                const escapedCodice = c.codice.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+                const escapedDescrizione = c.descrizione.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+                html += `
+                <tr>
+                    <td><strong>${escapedCodice}</strong></td>
+                    <td>${escapedDescrizione}</td>
+                    <td style="text-align: center;">
+                        <div class="actions">
+                            <button class="btn-edit" onclick="openEditModal('${escapedCodice}', '${escapedDescrizione}')">✏️ Modifica</button>
+                            <button class="btn-danger" onclick="deleteCodifica('${escapedCodice}')">🗑️ Elimina</button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+            });
+            
+            table.innerHTML = html;
+        }
+
+        function filterTable() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = codifiche.filter(c => 
+                c.codice.toLowerCase().includes(searchTerm) || 
+                c.descrizione.toLowerCase().includes(searchTerm)
+            );
+            renderTable(filtered);
+        }
+
+        function openCreateModal() {
+            editingCodice = null;
+            document.getElementById('modalTitle').textContent = '➕ Nuova Codifica';
+            document.getElementById('codiceInput').value = '';
+            document.getElementById('descrizioneInput').value = '';
+            document.getElementById('codiceInput').disabled = false;
+            document.getElementById('modal').classList.add('active');
+        }
+
+        function openEditModal(codice, descrizione) {
+            editingCodice = codice;
+            document.getElementById('modalTitle').textContent = '✏️ Modifica Codifica';
+            document.getElementById('codiceInput').value = codice;
+            document.getElementById('descrizioneInput').value = descrizione;
+            document.getElementById('codiceInput').disabled = true;
+            document.getElementById('modal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+            editingCodice = null;
+        }
+
+        async function handleSave(event) {
+            event.preventDefault();
+
+            const codice = document.getElementById('codiceInput').value.trim();
+            const descrizione = document.getElementById('descrizioneInput').value.trim();
+
+            if (!codice || !descrizione) {
+                showAlert('Tutti i campi sono obbligatori', 'error');
+                return;
+            }
+
+            try {
+                let response;
+
+                if (editingCodice) {
+                    // Update
+                    response = await fetch(`${API_URL}/codifiche/update/${encodeURIComponent(editingCodice)}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({ descrizione })
+                    });
+                } else {
+                    // Create
+                    response = await fetch(`${API_URL}/codifiche/create`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({ codice, descrizione })
+                    });
+                }
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Errore nel salvataggio');
+                }
+
+                showAlert(editingCodice ? '✅ Codifica aggiornata' : '✅ Codifica creata', 'success');
+                closeModal();
+                await loadCodifiche();
+            } catch (error) {
+                console.error('Errore:', error);
+                showAlert('Errore: ' + error.message, 'error');
+            }
+        }
+
+        async function deleteCodifica(codice) {
+            if (!confirm(`Sei sicuro di voler eliminare la codifica "${codice}"?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/codifiche/delete/${encodeURIComponent(codice)}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Errore nell\'eliminazione');
+                }
+
+                showAlert('✅ Codifica eliminata', 'success');
+                await loadCodifiche();
+            } catch (error) {
+                console.error('Errore:', error);
+                showAlert('Errore: ' + error.message, 'error');
+            }
+        }
+
+        // Close modal on Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>

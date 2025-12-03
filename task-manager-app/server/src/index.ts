@@ -63,7 +63,8 @@ app.listen(PORT, async () => {
     // Sincronizza database schema usando prisma db push
     console.log('📦 Synchronizing database schema...');
     try {
-      await execAsync('npx prisma db push --skip-generate --skip-preview', {
+      const schemaPath = path.join(__dirname, '../prisma/schema.prisma');
+      await execAsync(`npx prisma db push --skip-generate --schema="${schemaPath}"`, {
         cwd: path.join(__dirname, '../..'),
         env: { ...process.env }
       });

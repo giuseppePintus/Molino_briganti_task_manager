@@ -155,6 +155,10 @@
             margin-top: 15px;
         }
 
+        .table-container.hidden-content {
+            display: none;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
@@ -462,29 +466,39 @@
 
         <!-- Inventory Data Card -->
         <div class="card">
-            <h2>📦 Dati Inventario</h2>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2 style="margin: 0;">📦 Dati Inventario</h2>
+                <button class="btn btn-primary" onclick="toggleInventoryTable()" id="toggleInventoryBtn">
+                    <span>▶ Apri</span>
+                </button>
+            </div>
             <p style="color: #a0a0a0; margin-bottom: 15px;">Inventario caricato dal file CSV</p>
             
-            <div class="table-container" id="inventoryTable">
+            <div class="table-container hidden-content" id="inventoryTable">
                 <div class="empty-state">Caricamento dati in corso...</div>
             </div>
         </div>
 
         <!-- Warehouse Status Card -->
         <div class="card">
-            <h2>📊 Stato Magazzino</h2>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2 style="margin: 0;">📊 Stato Magazzino</h2>
+                <button class="btn btn-primary" onclick="toggleWarehouseTable()" id="toggleWarehouseBtn">
+                    <span>▶ Apri</span>
+                </button>
+            </div>
             <p style="color: #a0a0a0; margin-bottom: 15px;">Visualizza e modifica le giacenze in tempo reale</p>
             
-            <div style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center;">
+            <div style="margin-bottom: 15px; display: none; gap: 10px; align-items: center; flex-wrap: wrap;">
                 <input type="text" id="searchWarehouse" placeholder="🔍 Cerca per nome, codice o posizione..." 
-                       style="flex: 1; padding: 10px; background: #3d3d3d; border: 1px solid #4d4d4d; color: #e0e0e0; border-radius: 4px;"
+                       style="flex: 1; min-width: 200px; padding: 10px; background: #3d3d3d; border: 1px solid #4d4d4d; color: #e0e0e0; border-radius: 4px;"
                        onkeyup="filterWarehouseTable()">
                 <button class="btn btn-primary" onclick="exportWarehouseData()" style="min-width: 150px;">
                     <span>📥 Esporta CSV</span>
                 </button>
             </div>
             
-            <div class="table-container" id="warehouseTable" style="max-height: 600px; overflow-y: auto;">
+            <div class="table-container hidden-content" id="warehouseTable">
                 <div class="empty-state">Caricamento stato magazzino...</div>
             </div>
         </div>
@@ -501,6 +515,9 @@
         const API_URL = `http://${window.location.hostname}:${window.location.port || 5000}/api`;
         let token = localStorage.getItem('token');
         let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        let allArticles = [];
+        let currentSortBy = 'position'; // Default sort by position
+        let currentSortAsc = true; // true = crescente (▲), false = decrescente (▼)
 
         // Check authorization
         window.addEventListener('load', () => {
@@ -724,9 +741,6 @@
             loadWarehouseStatus();
         }
 
-        // Store articles globally for warehouse table
-        let allArticles = [];
-
         async function loadWarehouseStatus() {
             try {
                 const response = await fetch(`${API_URL}/inventory/articles`, {
@@ -757,13 +771,21 @@
                 return;
             }
 
+            // Genera frecce per ordinamento
+            const getArrow = (col) => {
+                if (currentSortBy === col) {
+                    return currentSortAsc ? ' ▲' : ' ▼';
+                }
+                return '';
+            };
+
             let html = `
                 <table>
                     <thead>
                         <tr>
-                            <th>Posizione</th>
-                            <th>Codice</th>
-                            <th>Nome</th>
+                            <th style="cursor: pointer;" onclick="sortWarehouse('position')">Posizione${getArrow('position')}</th>
+                            <th style="cursor: pointer;" onclick="sortWarehouse('code')">Codice${getArrow('code')}</th>
+                            <th style="cursor: pointer;" onclick="sortWarehouse('name')">Nome${getArrow('name')}</th>
                             <th>Quantità (kg)</th>
                             <th>Lotto</th>
                             <th>Scadenza</th>
@@ -918,19 +940,19 @@
             }
 
             try {
-                // Crea CSV
-                let csv = 'Posizione,Codice,Nome,Quantità (kg),Lotto,Scadenza,Data Esportazione\n';
+                // Crea CSV - Formato esatto come inventory_data.csv
+                let csv = 'Posizione,Nome,Codice,Lotto,Scadenza,Quantita,Annotazioni\n';
                 
                 allArticles.forEach(article => {
-                    const posizione = article.inventory?.shelfPosition || '-';
-                    const codice = (article.code || '-').replace(/,/g, '');
-                    const nome = (article.name || '-').replace(/,/g, '');
+                    const posizione = article.inventory?.shelfPosition || '';
+                    const nome = (article.name || '').replace(/"/g, '""'); // Escape quotes
+                    const codice = article.code || '';
+                    const lotto = (article.inventory?.batch || '').replace(/"/g, '""');
+                    const scadenza = article.inventory?.expiry || '';
                     const quantita = article.inventory?.currentStock || 0;
-                    const lotto = (article.inventory?.batch || '-').replace(/,/g, '');
-                    const scadenza = (article.inventory?.expiry || '-').replace(/,/g, '');
-                    const dataEsportazione = new Date().toLocaleString('it-IT');
+                    const annotazioni = (article.inventory?.notes || '').replace(/"/g, '""');
 
-                    csv += `"${posizione}","${codice}","${nome}",${quantita},"${lotto}","${scadenza}","${dataEsportazione}"\n`;
+                    csv += `${posizione},${nome},${codice},${lotto},${scadenza},${quantita},${annotazioni}\n`;
                 });
 
                 // Scarica file
@@ -938,17 +960,77 @@
                 const link = document.createElement('a');
                 const url = URL.createObjectURL(blob);
                 link.setAttribute('href', url);
-                link.setAttribute('download', `magazzino-${new Date().getTime()}.csv`);
+                link.setAttribute('download', `inventory_data.csv`);
                 link.style.visibility = 'hidden';
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
 
-                showAlert('✅ File esportato con successo!', 'success');
+                showAlert('✅ File esportato con successo! (inventory_data.csv)', 'success');
             } catch (error) {
                 console.error('Errore esportazione:', error);
                 showAlert(`❌ Errore: ${error.message}`, 'error');
             }
+        }
+
+        function toggleInventoryTable() {
+            const btn = document.getElementById('toggleInventoryBtn');
+            const table = document.getElementById('inventoryTable');
+            
+            if (table.classList.contains('hidden-content')) {
+                table.classList.remove('hidden-content');
+                btn.innerHTML = '<span>▼ Chiudi</span>';
+            } else {
+                table.classList.add('hidden-content');
+                btn.innerHTML = '<span>▶ Apri</span>';
+            }
+        }
+
+        function toggleWarehouseTable() {
+            const btn = document.getElementById('toggleWarehouseBtn');
+            const table = document.getElementById('warehouseTable');
+            const search = document.querySelector('input[id="searchWarehouse"]').parentElement;
+            
+            if (table.classList.contains('hidden-content')) {
+                table.classList.remove('hidden-content');
+                search.style.display = 'flex';
+                btn.innerHTML = '<span>▼ Chiudi</span>';
+            } else {
+                table.classList.add('hidden-content');
+                search.style.display = 'none';
+                btn.innerHTML = '<span>▶ Apri</span>';
+            }
+        }
+
+        function sortWarehouse(sortBy) {
+            // Se clicco sulla stessa colonna, inverto l'ordinamento
+            if (currentSortBy === sortBy) {
+                currentSortAsc = !currentSortAsc;
+            } else {
+                currentSortBy = sortBy;
+                currentSortAsc = true; // Default crescente per nuova colonna
+            }
+            
+            // Ordina articoli
+            const sorted = [...allArticles].sort((a, b) => {
+                let valA, valB;
+                
+                if (sortBy === 'position') {
+                    valA = (a.inventory?.shelfPosition || a.posizione || a.position || '').toString();
+                    valB = (b.inventory?.shelfPosition || b.posizione || b.position || '').toString();
+                } else if (sortBy === 'code') {
+                    valA = (a.code || a.codice || '').toString();
+                    valB = (b.code || b.codice || '').toString();
+                } else if (sortBy === 'name') {
+                    valA = (a.name || a.nome || '').toString();
+                    valB = (b.name || b.nome || '').toString();
+                }
+                
+                const comparison = valA.localeCompare(valB, 'it', { numeric: true });
+                return currentSortAsc ? comparison : -comparison;
+            });
+            
+            renderWarehouseStatus(sorted);
         }
     </script>
 </body>

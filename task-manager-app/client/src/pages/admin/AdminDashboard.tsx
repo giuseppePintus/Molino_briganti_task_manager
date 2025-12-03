@@ -33,6 +33,7 @@ const AdminDashboard: React.FC = () => {
                 
                 const data = await response.json();
                 setTasks(data);
+                setError('');
             } catch (err) {
                 setError(err.message);
                 console.error('Error fetching tasks:', err);
@@ -42,7 +43,7 @@ const AdminDashboard: React.FC = () => {
         };
 
         fetchTasks();
-    }, [history]);
+    }, []);
 
     const handleLogout = () => {
         localStorage.removeItem('token');

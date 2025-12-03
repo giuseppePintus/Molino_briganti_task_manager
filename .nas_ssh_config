@@ -1,0 +1,20 @@
+# QNAP NAS SSH Configuration
+# File di configurazione per connessione SSH al NAS Molino Briganti
+
+NAS_IP=192.168.1.248
+NAS_USER=vsc
+NAS_PASSWORD=vsc12345
+NAS_DOCKER_PATH=/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker
+
+# Note di utilizzo:
+# - IP: 192.168.1.248
+# - Username: vsc
+# - Password: vsc12345
+# - Docker si trova in: /share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker
+
+# Comandi utili:
+# ssh vsc@192.168.1.248 "source /etc/profile; [comando]"
+# Esempi:
+#   docker ps
+#   docker pull c1ppo/molino-task-manager:latest
+#   docker run -d --name molino-task-manager -p 5000:5000 ...
