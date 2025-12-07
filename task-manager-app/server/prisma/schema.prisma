@@ -24,6 +24,10 @@ model User {
   acceptedTasks Task[] @relation("AcceptedTasks")
   completedTasks Task[] @relation("CompletedBy")
   notes TaskNote[]
+  
+  // Relazioni ordini e viaggi
+  assignedOrders Order[]
+  assignedTrips  Trip[]
 }
 
 model Task {
@@ -33,6 +37,7 @@ model Task {
   scheduledAt       DateTime?
   assignedOperator  User?   @relation("AssignedTo", fields: [assignedOperatorId], references: [id])
   assignedOperatorId Int?
+  assignedAt        DateTime?  // Quando il task viene assegnato
   estimatedMinutes  Int?
   priority          String  @default("MEDIUM")  // LOW, MEDIUM, HIGH, URGENT
   color             String  @default("#FCD34D") // hex color
@@ -138,11 +143,119 @@ model StockAlert {
 
 model OrderItem {
   id                Int       @id @default(autoincrement())
-  orderId           Int       // ID dell'ordine (nella tabella ordini)
+  order             Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId           Int
   article           Article   @relation(fields: [articleId], references: [id], onDelete: Restrict)
   articleId         Int
   quantityOrdered   Int
   quantityDelivered Int       @default(0)
   unitPrice         Float?
+  createdAt         DateTime  @default(now())
+}
+
+// ============================================
+// NUOVE TABELLE PER ORDINI, VIAGGI, CLIENTI
+// ============================================
+
+model Customer {
+  id                Int       @id @default(autoincrement())
+  code              String?   @unique  // Codice cliente (es. CLI001)
+  name              String    // Nome/Ragione sociale
+  address           String?
+  city              String?
+  province          String?
+  cap               String?
+  phone             String?
+  email             String?
+  piva              String?   // Partita IVA
+  cf                String?   // Codice Fiscale
+  notes             String?
+  openingTime       String?   // Orario apertura (es. "08:00")
+  closingTime       String?   // Orario chiusura (es. "18:00")
+  deliveryStartTime String?   // Orario inizio consegne
+  deliveryEndTime   String?   // Orario fine consegne
+  isActive          Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  orders            Order[]
+}
+
+model Order {
+  id                Int       @id @default(autoincrement())
+  type              String    // 'consegnato' (delivery) o 'ritira' (pickup)
+  customer          Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerId        Int?
+  clientName        String?   // Nome cliente (per compatibilità se non in DB)
+  
+  // Prodotti (JSON string per flessibilità)
+  products          String?   // JSON array: [{product, quantity, unit}]
+  
+  // Collegamento viaggio (solo per consegne)
+  trip              Trip?     @relation(fields: [tripId], references: [id], onDelete: SetNull)
+  tripId            Int?
+  
+  // Operatore assegnato (per ritiri)
+  assignedOperator  User?     @relation(fields: [assignedOperatorId], references: [id], onDelete: SetNull)
+  assignedOperatorId Int?
+  
+  // Data e ora programmata
+  dateTime          DateTime?
+  
+  // Stato
+  status            String    @default("pending")  // pending, in_progress, completed, cancelled
+  completedAt       DateTime?
+  
+  notes             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  items             OrderItem[]
+}
+
+model Trip {
+  id                Int       @id @default(autoincrement())
+  name              String    // Nome viaggio (es. "Viaggio Milano Nord")
+  date              DateTime  // Data del viaggio
+  
+  // Operatore assegnato
+  assignedOperator  User?     @relation(fields: [assignedOperatorId], references: [id], onDelete: SetNull)
+  assignedOperatorId Int?
+  
+  // Veicolo
+  vehicleId         Int?
+  vehicleName       String?
+  
+  // Stato
+  status            String    @default("planned")  // planned, in_progress, completed, cancelled
+  startedAt         DateTime?
+  completedAt       DateTime?
+  
+  notes             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  orders            Order[]
+}
+
+model CompanySettings {
+  id                Int       @id @default(autoincrement())
+  key               String    @unique  // Chiave impostazione
+  value             String    // Valore (JSON string per oggetti complessi)
+  updatedAt         DateTime  @updatedAt
+}
+
+model Vehicle {
+  id                Int       @id @default(autoincrement())
+  name              String    // Nome veicolo (es. "Furgone 1")
+  plate             String?   // Targa
+  isActive          Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+}
+
+model Holiday {
+  id                Int       @id @default(autoincrement())
+  date              DateTime  @unique  // Data festivo
+  description       String?   // Descrizione opzionale
   createdAt         DateTime  @default(now())
 }

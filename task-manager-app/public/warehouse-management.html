@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestione Magazzino - Molino Briganti</title>
     <link rel="stylesheet" href="css/common.css">
+    <script src="js/settings-utils.js"></script>
     <style>
         * {
             margin: 0;
@@ -520,10 +521,14 @@
         let currentSortAsc = true; // true = crescente (▲), false = decrescente (▼)
 
         // Check authorization
-        window.addEventListener('load', () => {
+        window.addEventListener('load', async () => {
             if (!token || (currentUser.role !== 'master' && currentUser.role !== 'slave')) {
                 window.location.href = '/index.html';
                 return;
+            }
+            // Load branding
+            if (window.SettingsUtils && window.SettingsUtils.loadAndApplyBranding) {
+                await window.SettingsUtils.loadAndApplyBranding();
             }
             loadInventoryData();
         });

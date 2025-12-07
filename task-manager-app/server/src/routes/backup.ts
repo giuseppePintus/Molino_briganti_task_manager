@@ -291,13 +291,136 @@ router.post('/settings/path', async (req: Request, res: Response) => {
  */
 router.get('/settings/paths', async (req: Request, res: Response) => {
   try {
+    // Percorso interno container: /data/molino/backups/database
+    // Mappato su NAS a: /share/CACHEDEV1_DATA/Container/data/molino/backups/database
+    // Visibile da Windows: \\NAS71F89C\Container\data\molino\backups\database
+    const defaultPath = '/data/molino/backups/database';
     res.json({
       success: true,
       paths: {
-        local: process.env.BACKUP_DIR_LOCAL || './backups',
-        nas: process.env.BACKUP_DIR_NAS || 'Not configured',
+        local: process.env.BACKUP_DIR || defaultPath,
+        nas: process.env.BACKUP_DIR_NAS || defaultPath,
         cloud: process.env.BACKUP_DIR_CLOUD || 'Not configured'
       },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error: any) {
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+/**
+ * GET /api/backup/auto-backup/settings
+ * Ottiene le impostazioni dell'auto-backup
+ */
+router.get('/auto-backup/settings', async (req: Request, res: Response) => {
+  try {
+    const settings = BackupService.getAutoBackupSettings();
+    res.json({
+      success: true,
+      settings: settings,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error: any) {
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+/**
+ * POST /api/backup/auto-backup/settings
+ * Aggiorna le impostazioni dell'auto-backup
+ */
+router.post('/auto-backup/settings', async (req: Request, res: Response) => {
+  try {
+    const { enabled, intervalHours } = req.body;
+    
+    // Validazione
+    if (enabled !== undefined && typeof enabled !== 'boolean') {
+      return res.status(400).json({
+        success: false,
+        error: 'enabled must be a boolean'
+      });
+    }
+    
+    if (intervalHours !== undefined) {
+      const hours = Number(intervalHours);
+      if (isNaN(hours) || hours < 1 || hours > 168) {
+        return res.status(400).json({
+          success: false,
+          error: 'intervalHours must be a number between 1 and 168'
+        });
+      }
+    }
+    
+    const updatedSettings = BackupService.updateAutoBackupSettings({
+      enabled: enabled,
+      intervalHours: intervalHours ? Number(intervalHours) : undefined
+    });
+    
+    res.json({
+      success: true,
+      message: enabled ? 'Auto-backup enabled' : 'Auto-backup disabled',
+      settings: updatedSettings,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error: any) {
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+/**
+ * POST /api/backup/auto-backup/start
+ * Avvia l'auto-backup
+ */
+router.post('/auto-backup/start', async (req: Request, res: Response) => {
+  try {
+    const { intervalHours } = req.body;
+    const hours = intervalHours ? Number(intervalHours) : 24;
+    
+    if (hours < 1 || hours > 168) {
+      return res.status(400).json({
+        success: false,
+        error: 'intervalHours must be between 1 and 168'
+      });
+    }
+    
+    BackupService.startAutoBackup(hours);
+    
+    res.json({
+      success: true,
+      message: `Auto-backup started with interval of ${hours} hours`,
+      settings: BackupService.getAutoBackupSettings(),
+      timestamp: new Date().toISOString()
+    });
+  } catch (error: any) {
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+/**
+ * POST /api/backup/auto-backup/stop
+ * Ferma l'auto-backup
+ */
+router.post('/auto-backup/stop', async (req: Request, res: Response) => {
+  try {
+    BackupService.stopAutoBackup();
+    
+    res.json({
+      success: true,
+      message: 'Auto-backup stopped',
+      settings: BackupService.getAutoBackupSettings(),
       timestamp: new Date().toISOString()
     });
   } catch (error: any) {

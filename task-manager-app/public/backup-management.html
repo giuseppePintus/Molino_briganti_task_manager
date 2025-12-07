@@ -356,15 +356,24 @@
         <!-- Auto-Backup Settings -->
         <div class="card">
             <h2>⏰ Backup Automatici</h2>
+            <div id="autoBackupStatus" style="margin-bottom: 15px; padding: 10px; border-radius: 6px; background: #1a1a2e;">
+                <span id="autoBackupStatusIcon">⏸️</span> 
+                <span id="autoBackupStatusText">Backup automatico disabilitato</span>
+            </div>
             <div class="form-group">
-                <label for="autoBackupEnabled">
-                    <input type="checkbox" id="autoBackupEnabled" onchange="toggleAutoBackup()">
-                    Abilita backup automatici
+                <label for="autoBackupEnabled" style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                    <input type="checkbox" id="autoBackupEnabled" onchange="toggleAutoBackup()" style="width: 20px; height: 20px;">
+                    <span>Abilita backup automatici</span>
                 </label>
             </div>
             <div class="form-group">
                 <label for="autoBackupInterval">Frequenza (ore):</label>
-                <input type="number" id="autoBackupInterval" min="1" max="168" value="24" onchange="saveAutoBackupSettings()">
+                <input type="number" id="autoBackupInterval" min="1" max="168" value="24">
+                <button class="btn btn-secondary" onclick="saveAutoBackupSettings()" style="margin-left: 10px; padding: 8px 15px;">💾 Salva Frequenza</button>
+            </div>
+            <div id="autoBackupInfo" style="margin-top: 15px; padding: 10px; background: #0d2137; border-radius: 6px; font-size: 13px;">
+                <div id="lastBackupInfo" style="margin-bottom: 5px;">📅 Ultimo backup: <span id="lastBackupTime">-</span></div>
+                <div id="nextBackupInfo">⏰ Prossimo backup: <span id="nextBackupTime">-</span></div>
             </div>
             <p style="margin-top: 15px; color: #a0a0a0; font-size: 13px;">
                 ℹ️ I backup automatici verranno eseguiti a intervalli regolari e conservati nel server.
@@ -641,15 +650,108 @@
 
         function toggleAutoBackup() {
             const enabled = document.getElementById('autoBackupEnabled').checked;
-            localStorage.setItem('autoBackupEnabled', String(enabled));
-            saveAutoBackupSettings();
+            const interval = parseInt(document.getElementById('autoBackupInterval').value) || 24;
+            
+            updateAutoBackupOnServer(enabled, interval);
         }
 
-        function saveAutoBackupSettings() {
+        async function saveAutoBackupSettings() {
             const enabled = document.getElementById('autoBackupEnabled').checked;
-            const interval = parseInt(document.getElementById('autoBackupInterval').value);
-            localStorage.setItem('autoBackupInterval', String(interval));
-            showAlert('⚙️ Impostazioni salvate', 'info');
+            const interval = parseInt(document.getElementById('autoBackupInterval').value) || 24;
+            
+            if (interval < 1 || interval > 168) {
+                showAlert('⚠️ La frequenza deve essere tra 1 e 168 ore', 'error');
+                return;
+            }
+            
+            await updateAutoBackupOnServer(enabled, interval);
+        }
+        
+        async function updateAutoBackupOnServer(enabled, intervalHours) {
+            try {
+                const response = await fetch(`${API_URL}/backup/auto-backup/settings`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        enabled: enabled,
+                        intervalHours: intervalHours
+                    })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    updateAutoBackupUI(result.settings);
+                    showAlert(enabled ? '✅ Backup automatico abilitato!' : '⏹️ Backup automatico disabilitato', 'success');
+                } else {
+                    throw new Error('Server error');
+                }
+            } catch (error) {
+                console.error('Errore:', error);
+                showAlert('❌ Errore nella configurazione del backup automatico', 'error');
+            }
+        }
+        
+        async function loadAutoBackupSettings() {
+            try {
+                const response = await fetch(`${API_URL}/backup/auto-backup/settings`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    updateAutoBackupUI(result.settings);
+                } else {
+                    // Fallback a localStorage se l'endpoint non esiste
+                    const autoBackupEnabled = localStorage.getItem('autoBackupEnabled') === 'true';
+                    const autoBackupInterval = parseInt(localStorage.getItem('autoBackupInterval') || '24');
+                    document.getElementById('autoBackupEnabled').checked = autoBackupEnabled;
+                    document.getElementById('autoBackupInterval').value = autoBackupInterval;
+                }
+            } catch (error) {
+                console.warn('Could not load auto-backup settings from server:', error);
+            }
+        }
+        
+        function updateAutoBackupUI(settings) {
+            document.getElementById('autoBackupEnabled').checked = settings.enabled;
+            document.getElementById('autoBackupInterval').value = settings.intervalHours;
+            
+            const statusIcon = document.getElementById('autoBackupStatusIcon');
+            const statusText = document.getElementById('autoBackupStatusText');
+            const statusDiv = document.getElementById('autoBackupStatus');
+            
+            if (settings.enabled) {
+                statusIcon.textContent = '▶️';
+                statusText.textContent = `Backup automatico ATTIVO - ogni ${settings.intervalHours} ore`;
+                statusDiv.style.background = '#0d3320';
+                statusDiv.style.borderLeft = '3px solid #22c55e';
+            } else {
+                statusIcon.textContent = '⏸️';
+                statusText.textContent = 'Backup automatico disabilitato';
+                statusDiv.style.background = '#1a1a2e';
+                statusDiv.style.borderLeft = '3px solid #6b7280';
+            }
+            
+            // Mostra orari ultimo/prossimo backup
+            const lastBackupTime = document.getElementById('lastBackupTime');
+            const nextBackupTime = document.getElementById('nextBackupTime');
+            
+            if (settings.lastBackup) {
+                const lastDate = new Date(settings.lastBackup);
+                lastBackupTime.textContent = lastDate.toLocaleString('it-IT');
+            } else {
+                lastBackupTime.textContent = 'Nessun backup automatico eseguito';
+            }
+            
+            if (settings.nextBackup && settings.enabled) {
+                const nextDate = new Date(settings.nextBackup);
+                nextBackupTime.textContent = nextDate.toLocaleString('it-IT');
+            } else {
+                nextBackupTime.textContent = settings.enabled ? 'In calcolo...' : '-';
+            }
         }
 
         // Funzioni per gestire i percorsi dei backup
@@ -761,13 +863,7 @@
         window.addEventListener('load', () => {
             loadBackups();
             loadBackupPathsFromServer();
-            
-            // Load auto-backup settings
-            const autoBackupEnabled = localStorage.getItem('autoBackupEnabled') === 'true';
-            const autoBackupInterval = parseInt(localStorage.getItem('autoBackupInterval') || '24');
-            
-            document.getElementById('autoBackupEnabled').checked = autoBackupEnabled;
-            document.getElementById('autoBackupInterval').value = autoBackupInterval;
+            loadAutoBackupSettings();
         });
     </script>
 </body>

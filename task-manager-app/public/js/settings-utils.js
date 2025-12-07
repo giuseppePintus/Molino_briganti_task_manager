@@ -1,5 +1,5 @@
 (function(){
-  const API_URL = (typeof window !== 'undefined') ? (window.API_URL || 'http://localhost:5000/api') : 'http://localhost:5000/api';
+  const API_URL = (typeof window !== 'undefined') ? (window.API_URL || `http://${window.location.hostname}:${window.location.port || 5000}/api`) : 'http://localhost:5000/api';
 
   function defaultCompanySettings(){
     return {
@@ -8,9 +8,15 @@
       openingDays: [1,2,3,4,5,6],
       openMorningStart: '08:00', openMorningEnd: '13:00',
       openAfternoonStart: '15:00', openAfternoonEnd: '18:00',
+      // Orari sabato apertura (se diversi)
+      openSatMorningStart: '08:00', openSatMorningEnd: '12:00',
+      openSatAfternoonStart: '', openSatAfternoonEnd: '',
       deliveryDays: [1,2,3,4,5,6],
       deliveryMorningStart: '08:00', deliveryMorningEnd: '12:00',
       deliveryAfternoonStart: '15:00', deliveryAfternoonEnd: '18:00',
+      // Orari sabato consegne (se diversi)
+      deliverySatMorningStart: '08:00', deliverySatMorningEnd: '12:00',
+      deliverySatAfternoonStart: '', deliverySatAfternoonEnd: '',
       holidays: [],
       vehicles: 2
     };
@@ -37,13 +43,34 @@
   }
   function pad2(n){ return String(n).padStart(2,'0'); }
   function toDateKey(d){ return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
+  function toMonthDay(d){ return pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
   function parseTime(str){ if(!str) return null; const [h,m] = str.split(':').map(x=>parseInt(x,10)); return {h: h||0, m: m||0}; }
   function minutesOfDay(d){ return d.getHours()*60 + d.getMinutes(); }
   function withinWindow(mins, start, end){ return mins>=start && mins<=end; }
 
+  // Festività italiane fisse (MM-DD)
+  const italianHolidays = [
+    '01-01', // Capodanno
+    '01-06', // Epifania
+    '04-25', // Festa della Liberazione
+    '05-01', // Festa del Lavoro
+    '06-02', // Festa della Repubblica
+    '08-15', // Ferragosto
+    '11-01', // Ognissanti
+    '12-08', // Immacolata Concezione
+    '12-25', // Natale
+    '12-26'  // Santo Stefano
+  ];
+
   function isHolidayDate(date){
     const s = load();
     const key = toDateKey(date);
+    const monthDay = toMonthDay(date);
+    
+    // Controlla festività italiane fisse
+    if (italianHolidays.includes(monthDay)) return true;
+    
+    // Controlla festività custom dalle impostazioni
     return Array.isArray(s.holidays) && s.holidays.includes(key);
   }
   function isDeliveryAllowedDate(date){
@@ -62,19 +89,47 @@
     if (isHolidayDate(date)) return false;
     return true;
   }
-  function getDeliveryWindows(){
+  function getDeliveryWindows(date){
     const s = load();
-    const m1 = parseTime(s.deliveryMorningStart), m2 = parseTime(s.deliveryMorningEnd);
-    const a1 = parseTime(s.deliveryAfternoonStart), a2 = parseTime(s.deliveryAfternoonEnd);
+    const isSaturday = date ? date.getDay() === 6 : false;
+    
+    let m1, m2, a1, a2;
+    if (isSaturday) {
+      // Usa orari sabato se definiti, altrimenti fallback agli orari normali
+      m1 = parseTime(s.deliverySatMorningStart || s.deliveryMorningStart);
+      m2 = parseTime(s.deliverySatMorningEnd || s.deliveryMorningEnd);
+      a1 = parseTime(s.deliverySatAfternoonStart);
+      a2 = parseTime(s.deliverySatAfternoonEnd);
+    } else {
+      m1 = parseTime(s.deliveryMorningStart);
+      m2 = parseTime(s.deliveryMorningEnd);
+      a1 = parseTime(s.deliveryAfternoonStart);
+      a2 = parseTime(s.deliveryAfternoonEnd);
+    }
+    
     const windows = [];
     if (m1 && m2) windows.push({ start: m1.h*60 + m1.m, end: m2.h*60 + m2.m });
     if (a1 && a2) windows.push({ start: a1.h*60 + a1.m, end: a2.h*60 + a2.m });
     return windows;
   }
-  function getOpeningWindows(){
+  function getOpeningWindows(date){
     const s = load();
-    const m1 = parseTime(s.openMorningStart), m2 = parseTime(s.openMorningEnd);
-    const a1 = parseTime(s.openAfternoonStart), a2 = parseTime(s.openAfternoonEnd);
+    const isSaturday = date ? date.getDay() === 6 : false;
+    
+    let m1, m2, a1, a2;
+    if (isSaturday) {
+      // Usa orari sabato se definiti, altrimenti fallback agli orari normali
+      m1 = parseTime(s.openSatMorningStart || s.openMorningStart);
+      m2 = parseTime(s.openSatMorningEnd || s.openMorningEnd);
+      a1 = parseTime(s.openSatAfternoonStart);
+      a2 = parseTime(s.openSatAfternoonEnd);
+    } else {
+      m1 = parseTime(s.openMorningStart);
+      m2 = parseTime(s.openMorningEnd);
+      a1 = parseTime(s.openAfternoonStart);
+      a2 = parseTime(s.openAfternoonEnd);
+    }
+    
     const windows = [];
     if (m1 && m2) windows.push({ start: m1.h*60 + m1.m, end: m2.h*60 + m2.m });
     if (a1 && a2) windows.push({ start: a1.h*60 + a1.m, end: a2.h*60 + a2.m });
@@ -82,13 +137,13 @@
   }
   function isWithinDeliveryWindows(date){
     const mins = minutesOfDay(date);
-    const windows = getDeliveryWindows();
+    const windows = getDeliveryWindows(date);
     if (windows.length===0) return true; // if not configured, allow
     return windows.some(w => withinWindow(mins, w.start, w.end));
   }
   function isWithinOpeningWindows(date){
     const mins = minutesOfDay(date);
-    const windows = getOpeningWindows();
+    const windows = getOpeningWindows(date);
     if (windows.length===0) return true;
     return windows.some(w => withinWindow(mins, w.start, w.end));
   }
@@ -96,7 +151,7 @@
     const d = new Date(fromDate.getTime());
     for (let i=0;i<14;i++) { // search up to 2 weeks
       if (isDeliveryAllowedDate(d)) {
-        const windows = getDeliveryWindows();
+        const windows = getDeliveryWindows(d);
         const mins = minutesOfDay(d);
         // If within a window, clamp to now or keep as is
         for (const w of windows){
@@ -110,7 +165,7 @@
         // Past all windows: move to next day at first window start
       }
       d.setDate(d.getDate()+1);
-      const w = getDeliveryWindows();
+      const w = getDeliveryWindows(d);
       if (w.length>0) d.setHours(Math.floor(w[0].start/60), w[0].start%60, 0, 0);
       else d.setHours(8,0,0,0);
     }
@@ -120,7 +175,7 @@
     const d = new Date(fromDate.getTime());
     for (let i=0;i<14;i++) {
       if (isPickupAllowedDate(d)) {
-        const windows = getOpeningWindows();
+        const windows = getOpeningWindows(d);
         const mins = minutesOfDay(d);
         for (const w of windows){
           if (mins <= w.end) {
@@ -132,7 +187,7 @@
         }
       }
       d.setDate(d.getDate()+1);
-      const w = getOpeningWindows();
+      const w = getOpeningWindows(d);
       if (w.length>0) d.setHours(Math.floor(w[0].start/60), w[0].start%60, 0, 0);
       else d.setHours(8,0,0,0);
     }
@@ -151,9 +206,46 @@
     return nextValidOpeningDateTime(d);
   }
 
+  // Funzione per applicare il branding aziendale (logo e nome) alle pagine
+  function applyBranding(settings) {
+    if (!settings) settings = load();
+    
+    // Aggiorna logo
+    if (settings.logoUrl) {
+      const logoSelectors = ['.header-logo img', '.login-logo img'];
+      for (const selector of logoSelectors) {
+        const logoImg = document.querySelector(selector);
+        if (logoImg) {
+          let logoSrc = settings.logoUrl;
+          if (logoSrc && !logoSrc.startsWith('http') && !logoSrc.startsWith('data:')) {
+            // Path relativo, costruisci URL completo
+            logoSrc = `${API_URL.replace('/api', '')}/${logoSrc}`;
+          }
+          logoImg.src = logoSrc;
+          logoImg.alt = settings.businessName || 'Logo Azienda';
+        }
+      }
+    }
+    
+    // Aggiorna titolo pagina se businessName presente
+    if (settings.businessName) {
+      const pageName = document.title.includes('-') ? document.title.split('-').pop().trim() : 'Task Manager';
+      document.title = settings.businessName + ' - ' + pageName;
+    }
+  }
+  
+  // Versione asincrona che carica e applica il branding
+  async function loadAndApplyBranding() {
+    const settings = await loadAsync();
+    applyBranding(settings);
+    return settings;
+  }
+
   window.SettingsUtils = {
     load,
     loadAsync,
+    loadAndApplyBranding,
+    applyBranding,
     defaultCompanySettings,
     isHolidayDate,
     isDeliveryAllowedDate,
@@ -163,6 +255,8 @@
     nextValidDeliveryDateTime,
     nextValidOpeningDateTime,
     clampToDeliveryWindows,
-    clampToOpeningWindows
+    clampToOpeningWindows,
+    getDeliveryWindows,
+    getOpeningWindows
   };
 })();

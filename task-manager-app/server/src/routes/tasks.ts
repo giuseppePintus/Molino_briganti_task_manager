@@ -21,6 +21,9 @@ router.post('/:id/resume', (req, res) => tasksController.resumeTask(req, res));
 router.post('/:id/postpone', (req, res) => tasksController.postponeTask(req, res));
 router.post('/:id/reset-suspended', (req, res) => tasksController.resetTaskToSuspended(req, res));
 
+// Task management
+router.post('/move-overdue', (req, res) => tasksController.moveOverdueTasks(req, res));
+
 // Task notes routes
 router.post('/:id/notes', (req, res) => tasksController.addNote(req, res));
 router.get('/:id/notes', (req, res) => tasksController.getNotes(req, res));

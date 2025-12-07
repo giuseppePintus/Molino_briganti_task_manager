@@ -925,6 +925,9 @@
             width: 100%;
         }
     </style>
+    <!-- Socket.io Client -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="js/socket-client.js"></script>
 </head>
 <body>
     <!-- Login Page - Operators Carousel -->
@@ -981,7 +984,7 @@
 
         <!-- Version Footer -->
         <div style="position: fixed; bottom: 10px; right: 15px; font-size: 11px; color: #666; background: rgba(0,0,0,0.3); padding: 5px 10px; border-radius: 4px; border: 1px solid #444;">
-            v1.0.0 • 15/11/2025
+            v1.0.15 • 07/12/2025
         </div>
     </div>
 
@@ -1014,8 +1017,54 @@
         let dragDistance = 0;  // Track pixel distance for drag detection
         let editingTaskId = null;  // Track if we're editing a task
 
+        // ==================== COMPANY SETTINGS (Logo, Nome) ====================
+        async function loadCompanySettings() {
+            try {
+                // Prima prova localStorage per caricamento veloce
+                const cached = localStorage.getItem('companySettings');
+                if (cached) {
+                    const settings = JSON.parse(cached);
+                    applyCompanyBranding(settings);
+                }
+                
+                // Poi carica da API per avere dati aggiornati
+                const resp = await fetch(`${API_URL}/settings/company`);
+                if (resp.ok) {
+                    const settings = await resp.json();
+                    localStorage.setItem('companySettings', JSON.stringify(settings));
+                    applyCompanyBranding(settings);
+                }
+            } catch (err) {
+                console.warn('⚠️ Errore caricamento impostazioni aziendali:', err);
+            }
+        }
+        
+        function applyCompanyBranding(settings) {
+            // Aggiorna logo
+            if (settings.logoUrl) {
+                const logoImg = document.querySelector('.login-logo img');
+                if (logoImg) {
+                    // Se il logoUrl è un path relativo (es. "uploads/logo-xxx.png"), costruisci URL completo
+                    let logoSrc = settings.logoUrl;
+                    if (logoSrc && !logoSrc.startsWith('http') && !logoSrc.startsWith('data:')) {
+                        logoSrc = `${API_URL.replace('/api', '')}/${logoSrc}`;
+                    }
+                    logoImg.src = logoSrc;
+                    logoImg.alt = settings.businessName || 'Logo Azienda';
+                }
+            }
+            
+            // Aggiorna titolo pagina
+            if (settings.businessName) {
+                document.title = settings.businessName + ' - Task Manager';
+            }
+        }
+
         // ==================== CAROUSEL MANAGEMENT ====================
         async function loadOperatorsCarousel() {
+            // Carica impostazioni aziendali (logo, nome)
+            loadCompanySettings();
+            
             try {
                 let response;
                 let timeoutId;

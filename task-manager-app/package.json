@@ -1,6 +1,6 @@
 {
   "name": "task-manager-app",
-  "version": "1.0.0",
+  "version": "1.0.7",
   "description": "A task management web application with user authentication and role-based access.",
   "main": "server/src/index.ts",
   "scripts": {
@@ -16,11 +16,13 @@
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^12.5.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "jsonwebtoken": "^8.5.1",
-    "multer": "^1.4.5-lts.1"
+    "multer": "^1.4.5-lts.1",
+    "socket.io": "^4.8.1"
   },
   "devDependencies": {
     "@prisma/client": "^6.19.0",

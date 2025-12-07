@@ -11,6 +11,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TasksController = void 0;
 const client_1 = require("@prisma/client");
+const socketService_1 = require("../services/socketService");
 const prisma = new client_1.PrismaClient();
 // Priority to color mapping
 const priorityColors = {
@@ -81,6 +82,7 @@ class TasksController {
                             description: description || null,
                             scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
                             assignedOperatorId: assignedOperatorId || null,
+                            assignedAt: assignedOperatorId ? new Date() : null,
                             estimatedMinutes: estimatedMinutes || null,
                             priority: taskPriority,
                             color: taskColor,
@@ -94,6 +96,8 @@ class TasksController {
                             createdBy: { select: { id: true, username: true } },
                         },
                     });
+                    // Notifica WebSocket
+                    socketService_1.socketService.notifyTaskCreated(newTask);
                     res.status(201).json(newTask);
                     return;
                 }
@@ -138,6 +142,7 @@ class TasksController {
                             description: description || null,
                             scheduledAt: new Date(instanceDate),
                             assignedOperatorId: assignedOperatorId || null,
+                            assignedAt: assignedOperatorId ? new Date() : null,
                             estimatedMinutes: estimatedMinutes || null,
                             priority: taskPriority,
                             color: taskColor,
@@ -152,6 +157,10 @@ class TasksController {
                         },
                     });
                     createdTasks.push(task);
+                }
+                // Notifica WebSocket per tutti i task ricorrenti creati
+                for (const task of createdTasks) {
+                    socketService_1.socketService.notifyTaskCreated(task);
                 }
                 res.status(201).json({
                     message: `Creati ${createdTasks.length} task ricorrenti`,
@@ -182,8 +191,17 @@ class TasksController {
                 if (scheduledAt !== undefined) {
                     updateData.scheduledAt = scheduledAt ? new Date(scheduledAt) : null;
                 }
-                if (assignedOperatorId !== undefined)
+                if (assignedOperatorId !== undefined) {
+                    // Se viene assegnato un operatore (da null a un valore), imposta assignedAt
+                    const currentTask = yield prisma.task.findUnique({ where: { id: parseInt(id) } });
+                    if (assignedOperatorId && (!(currentTask === null || currentTask === void 0 ? void 0 : currentTask.assignedOperatorId) || currentTask.assignedOperatorId !== assignedOperatorId)) {
+                        updateData.assignedAt = new Date();
+                    }
+                    else if (!assignedOperatorId) {
+                        updateData.assignedAt = null;
+                    }
                     updateData.assignedOperatorId = assignedOperatorId;
+                }
                 if (estimatedMinutes !== undefined)
                     updateData.estimatedMinutes = estimatedMinutes;
                 if (recurrenceType !== undefined) {
@@ -231,6 +249,8 @@ class TasksController {
                     },
                 });
                 console.log(`DEBUG: Task updated successfully. New recurrenceType:`, updatedTask.recurrenceType);
+                // Notifica WebSocket
+                socketService_1.socketService.notifyTaskUpdated(updatedTask);
                 res.json(updatedTask);
             }
             catch (err) {
@@ -247,7 +267,10 @@ class TasksController {
                     return res.status(403).json({ message: 'Only master can delete tasks' });
                 }
                 const { id } = req.params;
-                yield prisma.task.delete({ where: { id: parseInt(id) } });
+                const taskId = parseInt(id);
+                yield prisma.task.delete({ where: { id: taskId } });
+                // Notifica WebSocket
+                socketService_1.socketService.notifyTaskDeleted(taskId);
                 res.status(204).send();
             }
             catch (err) {
@@ -384,6 +407,8 @@ class TasksController {
                         completedBy: { select: { id: true, username: true } },
                     },
                 });
+                // Notifica WebSocket
+                socketService_1.socketService.notifyTaskUpdated(acceptedTask);
                 res.json(acceptedTask);
             }
             catch (err) {
@@ -421,6 +446,8 @@ class TasksController {
                         completedBy: { select: { id: true, username: true } },
                     },
                 });
+                // Notifica WebSocket
+                socketService_1.socketService.notifyTaskUpdated(pausedTask);
                 res.json(pausedTask);
             }
             catch (err) {
@@ -458,6 +485,8 @@ class TasksController {
                         completedBy: { select: { id: true, username: true } },
                     },
                 });
+                // Notifica WebSocket
+                socketService_1.socketService.notifyTaskUpdated(resumedTask);
                 res.json(resumedTask);
             }
             catch (err) {
@@ -546,6 +575,8 @@ class TasksController {
                         completedBy: { select: { id: true, username: true } },
                     },
                 });
+                // Notifica WebSocket
+                socketService_1.socketService.notifyTaskUpdated(postponedTask);
                 res.json(postponedTask);
             }
             catch (err) {
@@ -585,7 +616,62 @@ class TasksController {
                         completedBy: { select: { id: true, username: true } },
                     },
                 });
+                // Notifica WebSocket
+                socketService_1.socketService.notifyTaskUpdated(resetTask);
                 res.json(resetTask);
+            }
+            catch (err) {
+                const errorMsg = err instanceof Error ? err.message : 'Internal server error';
+                res.status(500).json({ message: errorMsg });
+            }
+        });
+    }
+    // Sposta i task non completati del giorno precedente (o precedenti) al giorno corrente
+    moveOverdueTasks(req, res) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                if (!req.user || req.user.role !== 'master') {
+                    return res.status(403).json({ message: 'Only master can move overdue tasks' });
+                }
+                // Data di oggi a mezzanotte (inizio giornata)
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                // Trova tutti i task schedulati prima di oggi che non sono completati
+                const overdueTasks = yield prisma.task.findMany({
+                    where: {
+                        scheduledAt: { lt: today },
+                        completed: false,
+                    },
+                    include: {
+                        assignedOperator: { select: { id: true, username: true } },
+                        createdBy: { select: { id: true, username: true } },
+                    },
+                });
+                if (overdueTasks.length === 0) {
+                    return res.json({ message: 'Nessun task da spostare', movedCount: 0 });
+                }
+                // Sposta ogni task a oggi mantenendo l'ora originale
+                const movedTasks = [];
+                for (const task of overdueTasks) {
+                    const originalDate = new Date(task.scheduledAt);
+                    const newScheduledAt = new Date(today);
+                    newScheduledAt.setHours(originalDate.getHours(), originalDate.getMinutes(), 0, 0);
+                    const updatedTask = yield prisma.task.update({
+                        where: { id: task.id },
+                        data: { scheduledAt: newScheduledAt },
+                        include: {
+                            assignedOperator: { select: { id: true, username: true } },
+                            createdBy: { select: { id: true, username: true } },
+                        },
+                    });
+                    movedTasks.push(updatedTask);
+                    socketService_1.socketService.notifyTaskUpdated(updatedTask);
+                }
+                res.json({
+                    message: `Spostati ${movedTasks.length} task a oggi`,
+                    movedCount: movedTasks.length,
+                    tasks: movedTasks
+                });
             }
             catch (err) {
                 const errorMsg = err instanceof Error ? err.message : 'Internal server error';

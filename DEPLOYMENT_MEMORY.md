@@ -62,11 +62,25 @@ volumes:
 
 ## 📝 VERSIONAMENTO
 
-### Ultima versione deployata: v1.0.0 (01/12/2025 18:38 UTC+1)
+### Ultima versione deployata: v1.0.12 (06/12/2025)
+- Docker image: task-manager-nas:1.0.12
+- **FIX CRITICO**: Corretto path .env.docker per bind mount persistente
+  - DATABASE_URL cambiato da `/share/Container/data/molino/tasks.db` a `/data/molino/tasks.db`
+  - BACKUP_DIR cambiato da `/share/Container/data/molino/backups/database` a `/data/molino/backups`
+- **FIX**: Reset connessione Prisma dopo restore backup (PrismaClientManager)
+- **FIX**: Creato modulo centralizzato `lib/prisma.ts` per gestione connessioni
+- Rimosso VOLUME declaration dal Dockerfile (usa solo bind mount)
+- Operatori ora persistono correttamente nel database
 - CSV import: ✅ WORKING
 - Database schema: ✅ SYNCED
 - Server: ✅ RUNNING at port 5000
-- Default users: ✅ INITIALIZED (Manuel/123, etc.)
+- Users: Manuel, Barbara, Gio, Sow, Mat ✅ VERIFIED
+
+### Bind Mount NAS:
+- **Host path**: `/share/homes/vsc/molino-data`
+- **Container path**: `/data/molino`
+- **Database**: `/data/molino/tasks.db`
+- **Backups**: `/data/molino/backups/`
 
 ### Incrementare versione per:
 1. Nuove feature completate
@@ -83,6 +97,24 @@ volumes:
 3. **PRISMA SCHEMA**: Se modificato, ricrea il database (delete tasks.db + docker restart)
 4. **UPLOADS CSV**: Testare sempre localmente prima di NAS
 5. **MEMORIA**: Consultare questo file PRIMA di ogni modifica
+
+---
+
+## 🔴 CHECKLIST AGGIORNAMENTO VERSIONE (OBBLIGATORIA!)
+
+**OGNI VOLTA che fai un deploy, DEVI aggiornare TUTTI questi file:**
+
+1. [ ] `public/index.html` - Version Footer (linea ~984)
+2. [ ] `public/admin-dashboard.html` - Version Badge
+3. [ ] `DEPLOYMENT_MEMORY.md` - Sezione "Ultima versione deployata"
+4. [ ] Docker image tag nel build command
+
+**Formato versione**: `vX.Y.Z` dove:
+- X = major (breaking changes)
+- Y = minor (nuove feature)
+- Z = patch (bug fix)
+
+**NON DIMENTICARE**: La versione nel frontend DEVE corrispondere al tag Docker!
 
 ---
 

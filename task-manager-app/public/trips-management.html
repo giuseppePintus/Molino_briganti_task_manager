@@ -634,8 +634,9 @@
         </div>
     </div>
 
+    <script src="js/data-sync.js"></script>
     <script>
-        const API_URL = 'http://localhost:5000/api';
+        const API_URL = `http://${window.location.hostname}:${window.location.port || 5000}/api`;
         let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
         let token = localStorage.getItem('token') || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
         
@@ -741,27 +742,39 @@
         }
 
         // Load trips
-        function loadTrips() {
-            const stored = localStorage.getItem('trips');
-            trips = stored ? JSON.parse(stored) : [];
+        async function loadTrips() {
+            try {
+                trips = await DataSync.loadTrips();
+            } catch (error) {
+                console.error('Errore caricamento viaggi:', error);
+                const stored = localStorage.getItem('trips');
+                trips = stored ? JSON.parse(stored) : [];
+            }
             updateStats();
             renderTrips();
             renderCalendar();
         }
 
         // Save trips
-        function saveTrips() {
+        async function saveTrips() {
+            // Mantiene anche il localStorage per compatibilità
             localStorage.setItem('trips', JSON.stringify(trips));
         }
 
         // Load orders
-        function loadOrders() {
-            const stored = localStorage.getItem('orders');
-            orders = stored ? JSON.parse(stored) : [];
+        async function loadOrders() {
+            try {
+                orders = await DataSync.loadOrders();
+            } catch (error) {
+                console.error('Errore caricamento ordini:', error);
+                const stored = localStorage.getItem('orders');
+                orders = stored ? JSON.parse(stored) : [];
+            }
         }
 
         // Save orders
-        function saveOrders() {
+        async function saveOrders() {
+            // Mantiene anche il localStorage per compatibilità
             localStorage.setItem('orders', JSON.stringify(orders));
         }
 
@@ -884,9 +897,10 @@
                 const ymd = fmtLocalDate(d);
                 const dayTrips = trips.filter(t => (t.date||'').startsWith(ymd));
                 
-                // Controlla se è domenica
+                // Controlla se è domenica o festivo
                 const dayOfWeek = d.getDay();
-                const dayColor = dayOfWeek === 0 ? 'color: #ef4444;' : '';
+                const isHoliday = (window.SettingsUtils && window.SettingsUtils.isHolidayDate) ? window.SettingsUtils.isHolidayDate(d) : false;
+                const dayColor = (dayOfWeek === 0 || isHoliday) ? 'color: #ef4444;' : '';
                 
                 // Calcola highlight per giorno corrente e selezionato
                 const today = new Date().toISOString().split('T')[0];
@@ -931,9 +945,10 @@
                 const ymd = fmtLocalDate(date);
                 const dayTrips = trips.filter(t => (t.date||'').startsWith(ymd));
                 
-                // Controlla se è domenica
+                // Controlla se è domenica o festivo
                 const dayOfWeek = date.getDay();
-                const dayColor = dayOfWeek === 0 ? 'color: #ef4444;' : '';
+                const isHoliday = (window.SettingsUtils && window.SettingsUtils.isHolidayDate) ? window.SettingsUtils.isHolidayDate(date) : false;
+                const dayColor = (dayOfWeek === 0 || isHoliday) ? 'color: #ef4444;' : '';
                 
                 // Calcola highlight per giorno corrente e selezionato
                 const today = new Date().toISOString().split('T')[0];
@@ -1010,7 +1025,7 @@
         }
 
         // Create trip
-        function createTrip(name, date) {
+        async function createTrip(name, date) {
             const trip = {
                 id: Date.now(),
                 name: name,
@@ -1021,7 +1036,7 @@
                 tripTaskId: null
             };
             trips.push(trip);
-            saveTrips();
+            await saveTrips();
             return trip;
         }
 
@@ -1046,32 +1061,32 @@
         }
 
         // Add order to trip
-        function addOrderToTrip(tripId, orderId) {
+        async function addOrderToTrip(tripId, orderId) {
             const trip = trips.find(t => t.id === tripId);
             if (trip && !trip.orderIds.includes(orderId)) {
                 trip.orderIds.push(orderId);
                 trip.sequence.push(orderId);
-                saveTrips();
+                await saveTrips();
                 const order = orders.find(o => o.id === orderId);
                 if (order) {
                     order.tripId = tripId;
-                    saveOrders();
+                    await saveOrders();
                 }
                 syncTripTask(tripId);
             }
         }
 
         // Remove order from trip
-        function removeOrderFromTrip(tripId, orderId) {
+        async function removeOrderFromTrip(tripId, orderId) {
             const trip = trips.find(t => t.id === tripId);
             if (trip) {
                 trip.orderIds = trip.orderIds.filter(id => id !== orderId);
                 trip.sequence = trip.sequence.filter(id => id !== orderId);
-                saveTrips();
+                await saveTrips();
                 const order = orders.find(o => o.id === orderId);
                 if (order) {
                     delete order.tripId;
-                    saveOrders();
+                    await saveOrders();
                 }
                 const remaining = trip.orderIds.length;
                 if (remaining === 0) {
@@ -1083,15 +1098,15 @@
         }
 
         // Delete trip
-        function deleteTrip(tripId) {
+        async function deleteTrip(tripId) {
             trips = trips.filter(t => t.id !== tripId);
-            saveTrips();
+            await saveTrips();
             orders.forEach(o => {
                 if (o.tripId === tripId) {
                     delete o.tripId;
                 }
             });
-            saveOrders();
+            await saveOrders();
             deleteTripTask(tripId);
         }
 
@@ -1156,7 +1171,7 @@
                     if (resp.ok) {
                         const saved = await resp.json();
                         trip.tripTaskId = saved.id;
-                        saveTrips();
+                        await saveTrips();
                     } else {
                         console.warn('Creazione task viaggio fallita', resp.status);
                     }
@@ -1180,7 +1195,7 @@
                 });
                 if (resp.status === 204 || resp.ok) {
                     trip.tripTaskId = null;
-                    saveTrips();
+                    await saveTrips();
                 }
             } catch (e) {
                 console.error('Errore deleteTripTask:', e);
@@ -1256,10 +1271,10 @@
             document.getElementById('tripOrdersModal').classList.add('active');
         }
 
-        function closeTripOrdersModal() {
+        async function closeTripOrdersModal() {
             document.getElementById('tripOrdersModal').classList.remove('active');
             currentTripId = null;
-            loadTrips();
+            await loadTrips();
         }
 
         function renderTripOperatorAssign(tripId) {
@@ -1275,16 +1290,16 @@
             }
         }
 
-        function saveTripOperator() {
+        async function saveTripOperator() {
             if (!currentTripId) return;
             const trip = trips.find(t => t.id === currentTripId);
             if (!trip) return;
             const select = document.getElementById('tripOperatorSelect');
             const val = select && select.value ? parseInt(select.value) : null;
             trip.assignedOperatorId = val || null;
-            saveTrips();
+            await saveTrips();
             syncTripTask(trip.id);
-            loadTrips();
+            await loadTrips();
             showAlert('✅ Operatore viaggio salvato', 'success');
         }
 
@@ -1432,19 +1447,21 @@
                 userInfo.textContent = `👤 ${currentUser.username}`;
             }
 
-            // Load fresh company settings from backend
-            if (window.SettingsUtils && window.SettingsUtils.loadAsync) {
+            // Load fresh company settings from backend and apply branding
+            if (window.SettingsUtils && window.SettingsUtils.loadAndApplyBranding) {
+                await window.SettingsUtils.loadAndApplyBranding();
+            } else if (window.SettingsUtils && window.SettingsUtils.loadAsync) {
                 await window.SettingsUtils.loadAsync();
             }
             console.log('Trips Management: Loading data...');
             await loadOperators();
-            loadOrders();
+            await loadOrders();
             try {
                 loadCalendarState(); // Carica stato PRIMA di renderizzare
             } catch (e) {
                 console.error('Errore loadCalendarState:', e);
             }
-            loadTrips();
+            await loadTrips();
             console.log('Trips Management: Rendering calendar...');
             try {
                 renderCalendar(); // Renderizza calendario anche se vuoto
@@ -1456,14 +1473,14 @@
         });
 
         // Sincronizza dati quando cambiano da un'altra pagina (storage event listener)
-        window.addEventListener('storage', (event) => {
+        window.addEventListener('storage', async (event) => {
             if (event.key === 'orders') {
                 console.log('📦 Sincronizzando ordini da un\'altra pagina...');
-                loadOrders();
+                await loadOrders();
                 renderCalendar();
             } else if (event.key === 'trips') {
                 console.log('🚚 Sincronizzando viaggi da un\'altra pagina...');
-                loadTrips();
+                await loadTrips();
                 renderCalendar();
             }
         });

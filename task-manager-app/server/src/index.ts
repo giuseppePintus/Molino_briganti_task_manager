@@ -6,6 +6,7 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 
 import express from 'express';
 import cors from 'cors';
+import http from 'http';
 import { PrismaClient } from '@prisma/client';
 import { exec } from 'child_process';
 import { promisify } from 'util';
@@ -16,14 +17,23 @@ import backupRoutes from './routes/backup';
 import settingsRoutes from './routes/settings';
 import inventoryRoutes from './routes/inventory';
 import codificheRoutes from './routes/codifiche';
+import uploadRoutes, { UPLOAD_DIR } from './routes/upload';
+import ordersRoutes from './routes/orders';
+import tripsRoutes from './routes/trips';
+import customersRoutes from './routes/customers';
 import setupBackupMiddleware from './middleware/backupMiddleware';
 import BackupService from './services/backupService';
 import { initializeDatabaseIfEmpty } from './services/databaseInit';
+import { socketService } from './services/socketService';
 
 const execAsync = promisify(exec);
 const app = express();
+const httpServer = http.createServer(app);
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 5000;
+
+// Inizializza WebSocket
+socketService.initialize(httpServer);
 
 // Crea cartella uploads se non esiste
 const uploadsDir = path.join(process.cwd(), 'uploads');
@@ -39,6 +49,10 @@ app.use(express.json());
 // Serve static files
 app.use(express.static(path.join(__dirname, '../../public')));
 
+// Serve uploads da directory persistente (bind mount in produzione)
+app.use('/uploads', express.static(UPLOAD_DIR));
+console.log(`📂 Uploads directory: ${UPLOAD_DIR}`);
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/tasks', tasksRoutes);
@@ -46,6 +60,10 @@ app.use('/api/backup', backupRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/codifiche', codificheRoutes);
+app.use('/api/upload', uploadRoutes);
+app.use('/api/orders', ordersRoutes);
+app.use('/api/trips', tripsRoutes);
+app.use('/api/customers', customersRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -57,8 +75,8 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../../public/index.html'));
 });
 
-// Start server
-app.listen(PORT, async () => {
+// Start server with WebSocket support
+httpServer.listen(PORT, async () => {
   try {
     // Sincronizza database schema usando prisma db push
     console.log('📦 Synchronizing database schema...');
@@ -104,6 +122,7 @@ app.listen(PORT, async () => {
     console.log(`✅ Server is running on port ${PORT}`);
     console.log(`🌐 Web UI: http://localhost:${PORT}`);
     console.log(`💾 Backup API: http://localhost:${PORT}/api/backup`);
+    console.log(`🔌 WebSocket: ws://localhost:${PORT}`);
   } catch (err) {
     console.error('❌ Database connection error:', err);
     process.exit(1);

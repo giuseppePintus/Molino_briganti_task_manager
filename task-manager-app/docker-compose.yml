@@ -8,7 +8,7 @@ services:
       dockerfile: Dockerfile
       args:
         - NODE_ENV=production
-    image: molino-task-manager:v1.0.1
+    image: molino-task-manager:v1.0.3
     container_name: molino-briganti-task-manager
     ports:
       - "5000:5000"
@@ -17,8 +17,9 @@ services:
       - PORT=5000
       - NODE_ENV=production
       
-      # Database - PERCORSO PERSISTENTE SUL NAS (montato in /data/molino all'interno del container)
-      - DATABASE_URL=file:/data/molino/tasks.db
+      # Database - PERCORSO PERSISTENTE SUL NAS 
+      # \\NAS71F89C\Container\data\molino\tasks.db
+      - DATABASE_URL=file:/share/Container/data/molino/tasks.db
       
       # JWT
       - JWT_SECRET=${JWT_SECRET:-your-secret-key-change-this}
@@ -27,16 +28,18 @@ services:
       - DEFAULT_MASTER_USER=master
       - DEFAULT_MASTER_PASS=masterpass
       
-      # Backup - PERCORSI PERSISTENTI SUL NAS
-      - BACKUP_DIR=/data/molino/backups
+      # Backup - PERCORSI INTERNI AL CONTAINER
+      # Container: /share/Container/data/molino → Host NAS: /share/Container/data/molino  
+      # Windows Explorer: \\NAS71F89C\Container\data\molino\backups\database
+      - BACKUP_DIR=/share/Container/data/molino/backups/database
       - NAS_URL=${NAS_URL:-localhost}
       - NAS_PORT=${NAS_PORT:-5001}
-      - NAS_PATH=/data/molino/backups
+      - NAS_PATH=/share/Container/data/molino/backups/database
     
     volumes:
-      # Database e backups - Monta dal percorso locale del NAS alle directory home dell'utente
-      # Relative paths quando docker-compose è in ~/molino-app
-      - ../molino-data:/data/molino:rw
+      # Database e backups - Monta il percorso Container del NAS
+      # /share/Container/data/molino = \\NAS71F89C\Container\data\molino
+      - /share/Container/data/molino:/share/Container/data/molino:rw
     
     depends_on:
       - nas-backup-server

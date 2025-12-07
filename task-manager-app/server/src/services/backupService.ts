@@ -4,16 +4,33 @@ import * as http from 'http';
 import * as https from 'https';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { PrismaClientManager } from '../lib/prisma';
 
 const execPromise = promisify(exec);
+
+// Interfaccia per le impostazioni auto-backup
+export interface AutoBackupSettings {
+  enabled: boolean;
+  intervalHours: number;
+  lastBackup: string | null;
+  nextBackup: string | null;
+}
 
 export class BackupService {
   private backupDir: string;
   private nasUrl: string;
   private nasPort: number;
   private maxLocalBackups: number = 10;
+  private autoBackupTimer: NodeJS.Timeout | null = null;
+  private configFilePath: string;
+  private autoBackupSettings: AutoBackupSettings = {
+    enabled: false,
+    intervalHours: 24,
+    lastBackup: null,
+    nextBackup: null
+  };
 
-  constructor(backupDir: string = '/share/CACHEDEV1_DATA/molino/backups', nasUrl: string = '192.168.1.100', nasPort: number = 5000) {
+  constructor(backupDir: string = '/share/Container/data/molino/backups/database', nasUrl: string = '192.168.1.248', nasPort: number = 5000) {
     this.backupDir = backupDir;
     this.nasUrl = nasUrl;
     this.nasPort = nasPort;
@@ -27,6 +44,43 @@ export class BackupService {
         this.backupDir = './backups';
         fs.mkdirSync(this.backupDir, { recursive: true });
       }
+    }
+    
+    // File di configurazione per le impostazioni auto-backup
+    this.configFilePath = path.join(this.backupDir, 'backup-config.json');
+    this.loadAutoBackupSettings();
+    
+    // Avvia auto-backup se era abilitato
+    if (this.autoBackupSettings.enabled) {
+      console.log('🔄 Restoring auto-backup from saved settings...');
+      this.startAutoBackup(this.autoBackupSettings.intervalHours);
+    }
+  }
+  
+  /**
+   * Carica le impostazioni auto-backup dal file di configurazione
+   */
+  private loadAutoBackupSettings(): void {
+    try {
+      if (fs.existsSync(this.configFilePath)) {
+        const data = fs.readFileSync(this.configFilePath, 'utf-8');
+        this.autoBackupSettings = JSON.parse(data);
+        console.log(`⚙️ Auto-backup settings loaded: enabled=${this.autoBackupSettings.enabled}, interval=${this.autoBackupSettings.intervalHours}h`);
+      }
+    } catch (error) {
+      console.warn('⚠️ Could not load auto-backup settings:', error);
+    }
+  }
+  
+  /**
+   * Salva le impostazioni auto-backup nel file di configurazione
+   */
+  private saveAutoBackupSettings(): void {
+    try {
+      fs.writeFileSync(this.configFilePath, JSON.stringify(this.autoBackupSettings, null, 2));
+      console.log('💾 Auto-backup settings saved');
+    } catch (error) {
+      console.error('❌ Could not save auto-backup settings:', error);
     }
   }
 
@@ -169,15 +223,24 @@ export class BackupService {
         dbPath = path.join(process.cwd(), dbPath);
       }
       
+      // IMPORTANTE: Disconnetti Prisma prima di sostituire il file database
+      console.log('🔌 Disconnecting Prisma before restore...');
+      await PrismaClientManager.resetConnection();
+      
       // Backup del database corrente
       if (fs.existsSync(dbPath)) {
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
         fs.copyFileSync(dbPath, path.join(this.backupDir, `db-pre-restore-${timestamp}.sql`));
       }
 
-      // Ripristina
+      // Ripristina il file database
       fs.copyFileSync(backupPath, dbPath);
-      console.log(`✅ Database restored from: ${backupPath}`);
+      console.log(`✅ Database file restored from: ${backupPath}`);
+      
+      // IMPORTANTE: Reset della connessione Prisma per vedere i nuovi dati
+      console.log('🔄 Reconnecting Prisma to restored database...');
+      await PrismaClientManager.resetConnection();
+      console.log('✅ Prisma reconnected - restore complete');
     } catch (error) {
       console.error('❌ Restore error:', error);
       throw error;
@@ -253,8 +316,8 @@ export class BackupService {
       // Ripristina
       await this.restoreDatabase(downloadedPath);
     } catch (error) {
-      console.error('❌ Restore from NAS error:', error);
-      throw error;
+      console.warn('⚠️ Restore from NAS skipped (NAS not reachable)');
+      // Non fare throw - il NAS potrebbe non essere raggiungibile in localhost
     }
   }
 
@@ -268,7 +331,8 @@ export class BackupService {
           hostname: this.nasUrl,
           port: this.nasPort,
           path: '/api/backup/list',
-          method: 'GET'
+          method: 'GET',
+          timeout: 5000  // 5 secondi timeout
         };
 
         const req = http.request(options, (res) => {
@@ -284,6 +348,12 @@ export class BackupService {
           });
         });
 
+        // Timeout per evitare blocchi
+        req.setTimeout(5000, () => {
+          req.destroy();
+          resolve([]);
+        });
+
         req.on('error', () => resolve([]));
         req.end();
       } catch {
@@ -293,18 +363,99 @@ export class BackupService {
   }
 
   /**
-   * Configura backup automatico periodico
+   * Avvia il backup automatico
    */
-  setupAutoBackup(intervalMinutes: number = 60): NodeJS.Timer {
-    console.log(`⏰ Auto backup scheduled every ${intervalMinutes} minutes`);
-    return setInterval(() => {
-      this.backupDatabase().catch(err => console.error('Auto backup failed:', err));
-    }, intervalMinutes * 60 * 1000);
+  startAutoBackup(intervalHours: number = 24): void {
+    // Ferma eventuali timer esistenti
+    this.stopAutoBackup();
+    
+    const intervalMs = intervalHours * 60 * 60 * 1000;
+    const now = new Date();
+    const nextBackupTime = new Date(now.getTime() + intervalMs);
+    
+    this.autoBackupSettings.enabled = true;
+    this.autoBackupSettings.intervalHours = intervalHours;
+    this.autoBackupSettings.nextBackup = nextBackupTime.toISOString();
+    this.saveAutoBackupSettings();
+    
+    console.log(`⏰ Auto backup STARTED: every ${intervalHours} hours`);
+    console.log(`📅 Next backup scheduled for: ${nextBackupTime.toLocaleString()}`);
+    
+    // Imposta il timer
+    this.autoBackupTimer = setInterval(async () => {
+      console.log('⏰ Auto backup triggered...');
+      try {
+        const backupPath = await this.backupDatabase();
+        if (backupPath) {
+          this.autoBackupSettings.lastBackup = new Date().toISOString();
+          this.autoBackupSettings.nextBackup = new Date(Date.now() + intervalMs).toISOString();
+          this.saveAutoBackupSettings();
+          console.log(`✅ Auto backup completed: ${backupPath}`);
+        }
+      } catch (error) {
+        console.error('❌ Auto backup failed:', error);
+      }
+    }, intervalMs);
+  }
+  
+  /**
+   * Ferma il backup automatico
+   */
+  stopAutoBackup(): void {
+    if (this.autoBackupTimer) {
+      clearInterval(this.autoBackupTimer);
+      this.autoBackupTimer = null;
+      console.log('⏹️ Auto backup STOPPED');
+    }
+    
+    this.autoBackupSettings.enabled = false;
+    this.autoBackupSettings.nextBackup = null;
+    this.saveAutoBackupSettings();
+  }
+  
+  /**
+   * Ottieni le impostazioni correnti dell'auto-backup
+   */
+  getAutoBackupSettings(): AutoBackupSettings {
+    return { ...this.autoBackupSettings };
+  }
+  
+  /**
+   * Aggiorna le impostazioni dell'auto-backup
+   */
+  updateAutoBackupSettings(settings: Partial<AutoBackupSettings>): AutoBackupSettings {
+    // Aggiorna solo i campi forniti
+    if (settings.intervalHours !== undefined) {
+      this.autoBackupSettings.intervalHours = settings.intervalHours;
+    }
+    
+    // Se enabled cambia, avvia/ferma il timer
+    if (settings.enabled !== undefined) {
+      if (settings.enabled && !this.autoBackupSettings.enabled) {
+        this.startAutoBackup(this.autoBackupSettings.intervalHours);
+      } else if (!settings.enabled && this.autoBackupSettings.enabled) {
+        this.stopAutoBackup();
+      } else if (settings.enabled && settings.intervalHours !== undefined) {
+        // Se già abilitato e cambia l'intervallo, riavvia
+        this.startAutoBackup(settings.intervalHours);
+      }
+    }
+    
+    return this.getAutoBackupSettings();
+  }
+  
+  /**
+   * Configura backup automatico periodico (legacy method per compatibilità)
+   */
+  setupAutoBackup(intervalMinutes: number = 60): NodeJS.Timeout {
+    const intervalHours = intervalMinutes / 60;
+    this.startAutoBackup(intervalHours);
+    return this.autoBackupTimer!;
   }
 }
 
 export default new BackupService(
-  process.env.BACKUP_DIR || '/share/CACHEDEV1_DATA/molino/backups',
-  process.env.NAS_URL || '192.168.1.100',
+  process.env.BACKUP_DIR || '/share/Container/data/molino/backups/database',
+  process.env.NAS_URL || '192.168.1.248',
   parseInt(process.env.NAS_PORT || '5000')
 );

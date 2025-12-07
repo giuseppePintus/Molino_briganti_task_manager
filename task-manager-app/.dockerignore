@@ -41,6 +41,9 @@ backups/
 build-nas-*/
 *.backup
 *.tmp
+*.sql
+*.tar
+molino-*.tar
 
 # Documentation
 *.md
@@ -59,12 +62,14 @@ test
 *.spec.js
 coverage
 
-# Prisma
+# Prisma - escludi dati di test
 prisma/migrations/
+server/prisma/data/
+*.db
+*.db-journal
 
-# Public data
-public/data/
-public/images/
+# Public - escludi solo uploads
+uploads/
 
 # Temp
 .eslintcache

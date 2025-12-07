@@ -371,7 +371,34 @@
             margin-top: 5px;
             font-weight: 500;
         }
+        
+        /* Live Update Indicator */
+        .live-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+            color: #888;
+        }
+        .live-indicator.connected { color: #4caf50; }
+        .live-indicator .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #888;
+        }
+        .live-indicator.connected .dot {
+            background: #4caf50;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
     </style>
+    <!-- Socket.io Client -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="js/socket-client.js"></script>
 </head>
 <body>
     <div class="container">
@@ -440,8 +467,122 @@
 
         async function initDashboard() {
             document.getElementById('userInfo').textContent = `👤 ${currentUser.username}`;
+            
+            // Carica impostazioni aziendali (logo, nome)
+            await loadCompanyBranding();
+            
             await loadTasks();
             updateStats();
+            
+            // Inizializza aggiornamenti in tempo reale
+            initLiveUpdates();
+        }
+        
+        function initLiveUpdates() {
+            if (typeof LiveUpdates !== 'undefined') {
+                LiveUpdates.init({
+                    onTaskChange: (action, task) => {
+                        console.log(`🔄 Task ${action}:`, task);
+                        // Ricarica i task quando c'è un cambiamento
+                        loadTasks();
+                        updateStats();
+                        
+                        // Mostra notifica se il task è assegnato a questo operatore
+                        if (task && task.assignedOperatorId === currentUser.id) {
+                            showNotification(action, task);
+                        }
+                    },
+                    onOrderChange: (action, order) => {
+                        console.log(`🔄 Order ${action}:`, order);
+                        // Se ci sono ordini nella dashboard, ricarica
+                        if (order && order.assignedOperatorId === currentUser.id) {
+                            showNotification('order_' + action, order);
+                        }
+                    },
+                    onConnect: () => {
+                        console.log('✅ Live updates connected');
+                    },
+                    onDisconnect: () => {
+                        console.log('⚠️ Live updates disconnected');
+                    }
+                });
+            }
+        }
+        
+        function showNotification(action, item) {
+            const messages = {
+                'created': `📋 Nuovo task assegnato: ${item.title}`,
+                'updated': `🔄 Task aggiornato: ${item.title}`,
+                'assigned': `👤 Task assegnato a te: ${item.title}`,
+                'deleted': `🗑️ Task eliminato`,
+                'order_created': `📦 Nuovo ordine assegnato`,
+                'order_assigned': `📦 Ordine assegnato a te`,
+                'order_statusChanged': `📦 Stato ordine aggiornato`
+            };
+            
+            const message = messages[action] || `Aggiornamento: ${action}`;
+            
+            // Mostra un alert temporaneo
+            const alertDiv = document.createElement('div');
+            alertDiv.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #2196f3;
+                color: white;
+                padding: 15px 20px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                z-index: 10000;
+                animation: slideIn 0.3s ease;
+            `;
+            alertDiv.textContent = message;
+            document.body.appendChild(alertDiv);
+            
+            setTimeout(() => {
+                alertDiv.style.animation = 'fadeOut 0.3s ease';
+                setTimeout(() => alertDiv.remove(), 300);
+            }, 3000);
+        }
+        
+        async function loadCompanyBranding() {
+            try {
+                // Prima prova localStorage per caricamento veloce
+                const cached = localStorage.getItem('companySettings');
+                if (cached) {
+                    applyCompanyBranding(JSON.parse(cached));
+                }
+                
+                // Poi carica da API per avere dati aggiornati
+                const resp = await fetch(`${API_URL}/settings/company`);
+                if (resp.ok) {
+                    const settings = await resp.json();
+                    localStorage.setItem('companySettings', JSON.stringify(settings));
+                    applyCompanyBranding(settings);
+                }
+            } catch (err) {
+                console.warn('⚠️ Errore caricamento impostazioni aziendali:', err);
+            }
+        }
+        
+        function applyCompanyBranding(settings) {
+            // Aggiorna logo
+            if (settings.logoUrl) {
+                const logoImg = document.querySelector('.header-logo img');
+                if (logoImg) {
+                    let logoSrc = settings.logoUrl;
+                    if (logoSrc && !logoSrc.startsWith('http') && !logoSrc.startsWith('data:')) {
+                        logoSrc = `${API_URL.replace('/api', '')}/${logoSrc}`;
+                    }
+                    logoImg.src = logoSrc;
+                    logoImg.alt = settings.businessName || 'Logo Azienda';
+                }
+            }
+            
+            // Aggiorna titolo pagina
+            if (settings.businessName) {
+                document.title = settings.businessName + ' - Dashboard Operatore';
+            }
         }
 
         function formatPriority(priority) {

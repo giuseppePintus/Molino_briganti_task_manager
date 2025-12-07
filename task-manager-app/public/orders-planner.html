@@ -914,6 +914,7 @@
         </div>
     </div>
 
+    <script src="js/data-sync.js"></script>
     <script>
         let orders = [];
         let clienti = [];
@@ -926,7 +927,7 @@
         let allOperators = [];
         let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
         let token = localStorage.getItem('token') || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-        const API_URL = 'http://localhost:5000/api';
+        const API_URL = `http://${window.location.hostname}:${window.location.port || 5000}/api`;
         
         // Tracking inventario e prenotazioni
         let currentAvailableBatches = [];
@@ -1592,7 +1593,7 @@
             }
             closeAssignTaskModal();
         }
-        function markTaskCompleted(taskId) {
+        async function markTaskCompleted(taskId) {
             const task = orderTasks.find(t => t.id === taskId);
             if (task) {
                 task.status = 'completed';
@@ -1601,7 +1602,7 @@
                 const order = orders.find(o => ('task-' + o.id) === taskId || o.id === task.orderId);
                 if (order) {
                     order.status = 'completed';
-                    saveOrders();
+                    await saveOrders();
                 }
                 renderOrderTasks();
                 updateStats();
@@ -1619,7 +1620,7 @@
             // Also delete underlying order if present
             if (task && task.orderId) {
                 orders = orders.filter(o => o.id !== task.orderId);
-                saveOrders();
+                await saveOrders();
             }
             renderOrderTasks();
             updateStats();
@@ -1675,64 +1676,100 @@
                     clienti = parseCSV(csvText);
                 }
 
-                // Carica articoli da localStorage
+                // Carica articoli PRIMA dall'API inventory, poi fallback a localStorage/CSV
                 try {
-                    const stored = localStorage.getItem('products');
-                    if (stored) {
-                        articoli = JSON.parse(stored);
-                        // Controlla se hanno la vecchia struttura (con "nome") e se sì, ricarica da CSV
-                        if (articoli.length > 0 && articoli[0].nome && !articoli[0].codice) {
-                            console.log('Articoli in localStorage hanno vecchia struttura, ricarico da CSV');
+                    const inventoryResponse = await fetch(`${API_URL}/inventory/articles`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    
+                    if (inventoryResponse.ok) {
+                        const inventoryArticles = await inventoryResponse.json();
+                        if (inventoryArticles && inventoryArticles.length > 0) {
+                            // Mappa i dati dell'inventario al formato atteso
+                            articoli = inventoryArticles.map(a => ({
+                                codice: a.code || a.codice || a.name || '',
+                                descrizione: a.name || a.descrizione || a.description || '',
+                                nome: a.name || a.nome || ''
+                            }));
+                            console.log('✅ Articoli caricati da API inventory:', articoli.length);
+                        } else {
+                            throw new Error('API inventory vuota');
+                        }
+                    } else {
+                        throw new Error('API inventory non disponibile');
+                    }
+                } catch (apiError) {
+                    console.warn('⚠️ API inventory non disponibile, provo localStorage/CSV:', apiError.message);
+                    
+                    // Fallback a localStorage
+                    try {
+                        const stored = localStorage.getItem('products');
+                        if (stored) {
+                            articoli = JSON.parse(stored);
+                            if (articoli.length > 0 && articoli[0].nome && !articoli[0].codice) {
+                                console.log('Articoli in localStorage hanno vecchia struttura, ricarico da CSV');
+                                const csvResponse = await fetch('data/codifica articoli.csv');
+                                const csvText = await csvResponse.text();
+                                articoli = parseArticoliCSV(csvText);
+                                localStorage.removeItem('products');
+                            } else {
+                                console.log('Articoli caricati da localStorage:', articoli.length);
+                            }
+                        } else {
                             const csvResponse = await fetch('data/codifica articoli.csv');
                             const csvText = await csvResponse.text();
                             articoli = parseArticoliCSV(csvText);
-                            localStorage.removeItem('products'); // Pulisci localStorage
-                        } else {
-                            console.log('Articoli caricati da localStorage:', articoli.length);
+                            console.log('Articoli caricati da CSV (fallback):', articoli.length);
                         }
-                    } else {
-                        // Fallback a CSV se non c'è localStorage
+                    } catch (error) {
+                        console.error('Errore caricamento articoli, fallback a CSV:', error);
                         const csvResponse = await fetch('data/codifica articoli.csv');
                         const csvText = await csvResponse.text();
                         articoli = parseArticoliCSV(csvText);
-                        console.log('Articoli caricati da CSV (fallback):', articoli.length);
                     }
-                } catch (error) {
-                    console.error('Errore caricamento articoli, fallback a CSV:', error);
-                    const csvResponse = await fetch('data/codifica articoli.csv');
-                    const csvText = await csvResponse.text();
-                    articoli = parseArticoliCSV(csvText);
                 }
             } catch (error) {
                 console.error('Errore caricamento dati:', error);
             }
         }
 
-        // Carica ordini da localStorage
-        function loadOrders() {
-            const stored = localStorage.getItem('orders');
-            orders = stored ? JSON.parse(stored) : [];
+        // Carica ordini da API/localStorage
+        async function loadOrders() {
+            try {
+                orders = await DataSync.loadOrders();
+            } catch (error) {
+                console.error('Errore caricamento ordini:', error);
+                const stored = localStorage.getItem('orders');
+                orders = stored ? JSON.parse(stored) : [];
+            }
             renderOrders();
             updateStats();
             renderCalendar();
         }
 
-        // Salva ordini in localStorage
-        function saveOrders() {
+        // Salva ordini via API
+        async function saveOrders() {
+            // Mantiene anche il localStorage per compatibilità
             localStorage.setItem('orders', JSON.stringify(orders));
         }
 
         // === GESTIONE VIAGGI ===
-        function loadTrips() {
-            const stored = localStorage.getItem('trips');
-            trips = stored ? JSON.parse(stored) : [];
+        async function loadTrips() {
+            try {
+                trips = await DataSync.loadTrips();
+            } catch (error) {
+                console.error('Errore caricamento viaggi:', error);
+                const stored = localStorage.getItem('trips');
+                trips = stored ? JSON.parse(stored) : [];
+            }
         }
 
-        function saveTrips() {
+        async function saveTrips() {
+            // Mantiene anche il localStorage per compatibilità
             localStorage.setItem('trips', JSON.stringify(trips));
         }
 
-        function createTrip(name, date) {
+        async function createTrip(name, date) {
             const trip = {
                 id: Date.now(),
                 name: name,
@@ -1744,36 +1781,36 @@
                 tripTaskId: null
             };
             trips.push(trip);
-            saveTrips();
+            await saveTrips();
             return trip;
         }
 
-        function addOrderToTrip(tripId, orderId) {
+        async function addOrderToTrip(tripId, orderId) {
             const trip = trips.find(t => t.id === tripId);
             if (trip && !trip.orderIds.includes(orderId)) {
                 trip.orderIds.push(orderId);
                 trip.sequence.push(orderId);
-                saveTrips();
+                await saveTrips();
                 const order = orders.find(o => o.id === orderId);
                 if (order) {
                     order.tripId = tripId;
-                    saveOrders();
+                    await saveOrders();
                 }
                 // Sync trip task with backend
                 syncTripTask(tripId);
             }
         }
 
-        function removeOrderFromTrip(tripId, orderId) {
+        async function removeOrderFromTrip(tripId, orderId) {
             const trip = trips.find(t => t.id === tripId);
             if (trip) {
                 trip.orderIds = trip.orderIds.filter(id => id !== orderId);
                 trip.sequence = trip.sequence.filter(id => id !== orderId);
-                saveTrips();
+                await saveTrips();
                 const order = orders.find(o => o.id === orderId);
                 if (order) {
                     delete order.tripId;
-                    saveOrders();
+                    await saveOrders();
                 }
                 // If no more orders, delete trip task, else update it
                 const remaining = trip.orderIds.length;
@@ -1787,24 +1824,24 @@
             }
         }
 
-        function deleteTrip(tripId) {
+        async function deleteTrip(tripId) {
             trips = trips.filter(t => t.id !== tripId);
-            saveTrips();
+            await saveTrips();
             orders.forEach(o => {
                 if (o.tripId === tripId) {
                     delete o.tripId;
                 }
             });
-            saveOrders();
+            await saveOrders();
             // Remove backend task too
             deleteTripTask(tripId);
         }
 
-        function reorderTripSequence(tripId, newSequence) {
+        async function reorderTripSequence(tripId, newSequence) {
             const trip = trips.find(t => t.id === tripId);
             if (trip) {
                 trip.sequence = newSequence;
-                saveTrips();
+                await saveTrips();
                 // Re-sequencing changes description; update backend task if exists
                 syncTripTask(tripId);
             }
@@ -2930,6 +2967,7 @@
                             const oldTrip = trips.find(t => t.id === order.tripId);
                             if (oldTrip) {
                                 oldTrip.sequence = oldTrip.sequence.filter(id => id !== editingId);
+                                await DataSync.updateTrip(oldTrip.id, oldTrip);
                             }
                         }
                         // Aggiungi a viaggio nuovo
@@ -2937,12 +2975,18 @@
                             const newTrip = trips.find(t => t.id === orderData.tripId);
                             if (newTrip && !newTrip.sequence.includes(editingId)) {
                                 newTrip.sequence.push(editingId);
+                                await DataSync.updateTrip(newTrip.id, newTrip);
                             }
                         }
-                        localStorage.setItem('trips', JSON.stringify(trips));
                     }
                     
-                    Object.assign(order, orderData);
+                    // Aggiorna ordine nel backend
+                    const updatedOrder = await DataSync.updateOrder(editingId, orderData);
+                    if (updatedOrder) {
+                        Object.assign(order, updatedOrder);
+                    } else {
+                        Object.assign(order, orderData);
+                    }
                     
                     // Aggiorna anche il task associato
                     const task = orderTasks.find(t => t.orderId == editingId);
@@ -2967,7 +3011,7 @@
                         }
                         saveOrderTasks();
                     }
-                    console.log('✏️ Ordine modificato:', order.client, order.assignedOperatorId ? ` (Operatore: ${order.assignedOperatorId})` : '');
+                    console.log('✏️ Ordine modificato e salvato:', order.client);
                 }
             } else {
                 // Nuovo ordine - PRENOTA L'INVENTARIO per tutti i prodotti
@@ -3024,26 +3068,31 @@
                     }
                 }
                 
-                orders.push(order);
-                
-                // Associa ordine al viaggio se tripId è stato definito
-                if (orderData.tripId) {
-                    const trip = trips.find(t => t.id === orderData.tripId);
-                    if (trip) {
-                        trip.sequence.push(order.id);
-                        localStorage.setItem('trips', JSON.stringify(trips));
+                // Salva ordine nel backend via DataSync
+                const savedOrder = await DataSync.saveOrder(orderData);
+                if (savedOrder) {
+                    orders.push(savedOrder);
+                    
+                    // Associa ordine al viaggio se tripId è stato definito
+                    if (orderData.tripId) {
+                        const trip = trips.find(t => t.id === orderData.tripId);
+                        if (trip) {
+                            trip.sequence.push(savedOrder.id);
+                            await DataSync.updateTrip(trip.id, trip);
+                        }
                     }
+                    
+                    // Genera task per ordini di ritiro
+                    if (savedOrder.type === 'ritira') {
+                        generateTaskForOrder(savedOrder, []);
+                    }
+                    console.log('📝 Nuovo ordine creato e salvato:', savedOrder.client, '(', orderData.products.length, 'prodotti)');
+                } else {
+                    throw new Error('Errore salvataggio ordine nel database');
                 }
-                
-                // Genera task per ordini di ritiro
-                if (order.type === 'ritira') {
-                    generateTaskForOrder(order, []);
-                }
-                console.log('📝 Nuovo ordine creato:', order.client, '(', orderData.products.length, 'prodotti)');
             }
 
             renderOrderTasks();
-            saveOrders();
             renderOrders();
             updateStats();
             renderCalendar();
@@ -3098,7 +3147,7 @@
             }
             
             orders = orders.filter(o => o.id !== id);
-            saveOrders();
+            await DataSync.deleteOrder(id);
             // Also remove generated task for this order, if any
             const prevLen = orderTasks.length;
             orderTasks = orderTasks.filter(t => t.orderId !== id);
@@ -3150,7 +3199,7 @@
                     }
                 }
                 
-                saveOrders();
+                await DataSync.updateOrder(id, { status: newStatus });
                 renderOrders();
                 // If marking completed, sync related task status too
                 if (newStatus === 'completed') {
@@ -3260,7 +3309,7 @@
         }
 
         // Genera 15 ordini casuali per i prossimi 10 giorni
-        function generateSampleOrders() {
+        async function generateSampleOrders() {
             if (orders.length > 0) {
                 const confirm = window.confirm('Ordini già presenti. Vuoi aggiungere 15 nuovi ordini?');
                 if (!confirm) return;
@@ -3405,7 +3454,7 @@
                 });
             }
             
-            saveOrders();
+            await saveOrders();
             renderOrderTasks();
             renderOrders();
             updateStats();
@@ -3893,15 +3942,17 @@
                     }
                 }
             
-            // Load fresh company settings from backend
-            if (window.SettingsUtils && window.SettingsUtils.loadAsync) {
+            // Load fresh company settings from backend and apply branding
+            if (window.SettingsUtils && window.SettingsUtils.loadAndApplyBranding) {
+                await window.SettingsUtils.loadAndApplyBranding();
+            } else if (window.SettingsUtils && window.SettingsUtils.loadAsync) {
                 await window.SettingsUtils.loadAsync();
             }
             await loadOperators();
             await loadCSVData();
-            loadOrders();
+            await loadOrders();
             loadOrderTasks();
-            loadTrips();
+            await loadTrips();
             renderOrderTasks();
             renderCalendar();
             // Admin: assicura che gli ordini 'ritira' siano sincronizzati nel DB e visibili
@@ -3909,16 +3960,16 @@
         });
 
         // Sincronizza dati quando cambiano da un'altra pagina (storage event listener)
-        window.addEventListener('storage', (event) => {
+        window.addEventListener('storage', async (event) => {
             if (event.key === 'orders') {
                 console.log('📦 Sincronizzando ordini da un\'altra pagina...');
-                loadOrders();
+                await loadOrders();
                 renderOrders();
                 renderCalendar();
                 updateStats();
             } else if (event.key === 'trips') {
                 console.log('🚚 Sincronizzando viaggi da un\'altra pagina...');
-                loadTrips();
+                await loadTrips();
                 renderCalendar();
             } else if (event.key === 'orderTasks') {
                 console.log('✅ Sincronizzando task ordini da un\'altra pagina...');

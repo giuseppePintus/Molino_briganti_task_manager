@@ -45,11 +45,11 @@ COPY --from=builder /app/public ./public
 # Copia .env per Docker
 COPY .env.docker ./server/.env
 
+# Crea directory per backups nel bind mount
+RUN mkdir -p /data/molino/backups
+
 # Esponi porta
 EXPOSE 5000
-
-# Volume per backup persistenti
-VOLUME ["/share/CACHEDEV1_DATA"]
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \

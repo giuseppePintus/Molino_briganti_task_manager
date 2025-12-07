@@ -87,8 +87,13 @@
           <input type="text" id="businessName" placeholder="Es. Molino Briganti S.r.l.">
         </div>
         <div class="form-group">
-          <label for="logoUrl">Logo (URL)</label>
-          <input type="text" id="logoUrl" placeholder="https://...">
+          <label for="logoFile">Logo Azienda</label>
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <input type="file" id="logoFile" accept="image/*" onchange="handleLogoUpload(event)" style="flex: 1;">
+            <img id="logoPreview" src="" alt="Preview" style="max-height: 50px; max-width: 100px; display: none; border-radius: 4px;">
+          </div>
+          <input type="hidden" id="logoUrl">
+          <small style="color: #888; margin-top: 5px; display: block;">Seleziona un'immagine dal tuo computer</small>
         </div>
       </div>
     </div>
@@ -115,6 +120,25 @@
           </div>
         </div>
       </div>
+      <div style="border-top: 1px solid #4d4d4d; margin-top: 15px; padding-top: 15px;">
+        <h3 style="font-size: 16px; color: #fbbf24; margin-bottom: 12px;">📅 Orari Sabato (se diversi)</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Mattina Sabato</label>
+            <div style="display:flex; gap:10px;">
+              <input type="time" id="openSatMorningStart" value="08:00">
+              <input type="time" id="openSatMorningEnd" value="12:00">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Pomeriggio Sabato (opzionale)</label>
+            <div style="display:flex; gap:10px;">
+              <input type="time" id="openSatAfternoonStart" value="">
+              <input type="time" id="openSatAfternoonEnd" value="">
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="card">
@@ -136,6 +160,25 @@
           <div style="display:flex; gap:10px;">
             <input type="time" id="deliveryAfternoonStart" value="15:00">
             <input type="time" id="deliveryAfternoonEnd" value="18:00">
+          </div>
+        </div>
+      </div>
+      <div style="border-top: 1px solid #4d4d4d; margin-top: 15px; padding-top: 15px;">
+        <h3 style="font-size: 16px; color: #fbbf24; margin-bottom: 12px;">📅 Orari Consegna Sabato (se diversi)</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Mattina Sabato</label>
+            <div style="display:flex; gap:10px;">
+              <input type="time" id="deliverySatMorningStart" value="08:00">
+              <input type="time" id="deliverySatMorningEnd" value="12:00">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Pomeriggio Sabato (opzionale)</label>
+            <div style="display:flex; gap:10px;">
+              <input type="time" id="deliverySatAfternoonStart" value="">
+              <input type="time" id="deliverySatAfternoonEnd" value="">
+            </div>
           </div>
         </div>
       </div>
@@ -175,6 +218,67 @@
     const DAYS = ['Dom','Lun','Mar','Mer','Gio','Ven','Sab'];
     const API_URL = `http://${window.location.hostname}:${window.location.port || 5000}/api`;
 
+    // Gestione upload logo
+    async function handleLogoUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      
+      // Mostra preview immediato
+      const preview = document.getElementById('logoPreview');
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        preview.src = e.target.result;
+        preview.style.display = 'block';
+      };
+      reader.readAsDataURL(file);
+      
+      // Upload al server
+      const formData = new FormData();
+      formData.append('logo', file);
+      
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/upload/logo`, {
+          method: 'POST',
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+          body: formData
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          document.getElementById('logoUrl').value = result.url;
+          showAlert('✅ Logo caricato con successo!', 'success');
+        } else {
+          // Fallback: salva come base64 in localStorage
+          const base64 = await fileToBase64(file);
+          document.getElementById('logoUrl').value = base64;
+          showAlert('⚠️ Logo salvato localmente (server non disponibile)', 'warning');
+        }
+      } catch (error) {
+        // Fallback: salva come base64 in localStorage
+        const base64 = await fileToBase64(file);
+        document.getElementById('logoUrl').value = base64;
+        showAlert('⚠️ Logo salvato localmente', 'warning');
+      }
+    }
+    
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+    
+    function showAlert(message, type = 'success') {
+      const alert = document.getElementById('alert');
+      alert.textContent = message;
+      alert.className = `alert ${type}`;
+      alert.style.display = 'block';
+      setTimeout(() => alert.style.display = 'none', 3000);
+    }
+
     function defaultCompanySettings() {
       return {
         businessName: 'Molino Briganti',
@@ -182,9 +286,15 @@
         openingDays: [1,2,3,4,5,6], // lun-sab
         openMorningStart: '08:00', openMorningEnd: '13:00',
         openAfternoonStart: '15:00', openAfternoonEnd: '18:00',
+        // Orari sabato apertura
+        openSatMorningStart: '08:00', openSatMorningEnd: '12:00',
+        openSatAfternoonStart: '', openSatAfternoonEnd: '',
         deliveryDays: [1,2,3,4,5,6],
         deliveryMorningStart: '08:00', deliveryMorningEnd: '12:00',
         deliveryAfternoonStart: '15:00', deliveryAfternoonEnd: '18:00',
+        // Orari sabato consegne
+        deliverySatMorningStart: '08:00', deliverySatMorningEnd: '12:00',
+        deliverySatAfternoonStart: '', deliverySatAfternoonEnd: '',
         holidays: [],
         vehicles: [
           { id: 1, name: 'Furgone 1' },
@@ -209,9 +319,35 @@
 
     async function saveSettings() {
       const s = collectForm();
-      // Salva direttamente su localStorage senza cercare l'API
+      
+      // Salva su localStorage come backup
       localStorage.setItem('companySettings', JSON.stringify(s));
-      alert('✅ Impostazioni salvate');
+      
+      // Salva anche su database via API
+      try {
+        const token = localStorage.getItem('token');
+        const headers = { 
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        };
+        
+        const resp = await fetch(`${API_URL}/settings`, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify(s)
+        });
+        
+        if (resp.ok) {
+          alert('✅ Impostazioni salvate nel database');
+        } else {
+          const errData = await resp.json().catch(() => ({}));
+          console.warn('API save failed:', errData);
+          alert('⚠️ Errore: ' + (errData.message || 'Impossibile salvare nel database'));
+        }
+      } catch (err) {
+        console.warn('API save error:', err);
+        alert('⚠️ Impostazioni salvate solo localmente');
+      }
     }
 
     function resetDefaults() {
@@ -239,11 +375,21 @@
         openMorningEnd: document.getElementById('openMorningEnd').value,
         openAfternoonStart: document.getElementById('openAfternoonStart').value,
         openAfternoonEnd: document.getElementById('openAfternoonEnd').value,
+        // Orari sabato apertura
+        openSatMorningStart: document.getElementById('openSatMorningStart').value,
+        openSatMorningEnd: document.getElementById('openSatMorningEnd').value,
+        openSatAfternoonStart: document.getElementById('openSatAfternoonStart').value,
+        openSatAfternoonEnd: document.getElementById('openSatAfternoonEnd').value,
         deliveryDays,
         deliveryMorningStart: document.getElementById('deliveryMorningStart').value,
         deliveryMorningEnd: document.getElementById('deliveryMorningEnd').value,
         deliveryAfternoonStart: document.getElementById('deliveryAfternoonStart').value,
         deliveryAfternoonEnd: document.getElementById('deliveryAfternoonEnd').value,
+        // Orari sabato consegne
+        deliverySatMorningStart: document.getElementById('deliverySatMorningStart').value,
+        deliverySatMorningEnd: document.getElementById('deliverySatMorningEnd').value,
+        deliverySatAfternoonStart: document.getElementById('deliverySatAfternoonStart').value,
+        deliverySatAfternoonEnd: document.getElementById('deliverySatAfternoonEnd').value,
         holidays: currentSettings.holidays || [],
         vehicles: currentSettings.vehicles || []
       }
@@ -284,8 +430,22 @@
       if (!val) return;
       const s = await loadSettingsAsync();
       s.holidays = Array.from(new Set([...(s.holidays||[]), val]));
-      // Salva direttamente su localStorage
+      // Salva su localStorage e API
       localStorage.setItem('companySettings', JSON.stringify(s));
+      try {
+        const token = localStorage.getItem('token');
+        const headers = { 
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        };
+        await fetch(`${API_URL}/settings`, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify(s)
+        });
+      } catch (err) {
+        console.warn('⚠️ Errore salvataggio API:', err);
+      }
       input.value = '';
       renderHolidays(s.holidays);
       alert('✅ Giorno festivo aggiunto');
@@ -295,8 +455,22 @@
       const s = await loadSettingsAsync();
       if (!Array.isArray(s.holidays)) s.holidays = [];
       s.holidays.splice(index, 1);
-      // Salva direttamente su localStorage
+      // Salva su localStorage e API
       localStorage.setItem('companySettings', JSON.stringify(s));
+      try {
+        const token = localStorage.getItem('token');
+        const headers = { 
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        };
+        await fetch(`${API_URL}/settings`, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify(s)
+        });
+      } catch (err) {
+        console.warn('⚠️ Errore salvataggio API:', err);
+      }
       renderHolidays(s.holidays);
     }
 
@@ -323,8 +497,22 @@
       if (!Array.isArray(s.vehicles)) s.vehicles = [];
       const newId = Math.max(...s.vehicles.map(v => v.id || 0), 0) + 1;
       s.vehicles.push({ id: newId, name: val });
-      // Salva direttamente su localStorage
+      // Salva su localStorage e API
       localStorage.setItem('companySettings', JSON.stringify(s));
+      try {
+        const token = localStorage.getItem('token');
+        const headers = { 
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        };
+        await fetch(`${API_URL}/settings`, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify(s)
+        });
+      } catch (err) {
+        console.warn('⚠️ Errore salvataggio API:', err);
+      }
       input.value = '';
       renderVehicles(s.vehicles);
       alert('✅ Automezzo aggiunto');
@@ -334,24 +522,58 @@
       const s = await loadSettingsAsync();
       if (!Array.isArray(s.vehicles)) s.vehicles = [];
       s.vehicles.splice(index, 1);
-      // Salva direttamente su localStorage
+      // Salva su localStorage e API
       localStorage.setItem('companySettings', JSON.stringify(s));
+      try {
+        const token = localStorage.getItem('token');
+        const headers = { 
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        };
+        await fetch(`${API_URL}/settings`, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify(s)
+        });
+      } catch (err) {
+        console.warn('⚠️ Errore salvataggio API:', err);
+      }
       renderVehicles(s.vehicles);
     }
 
     function renderForm(s) {
       document.getElementById('businessName').value = s.businessName || '';
       document.getElementById('logoUrl').value = s.logoUrl || '';
+      
+      // Mostra preview del logo se presente
+      const logoPreview = document.getElementById('logoPreview');
+      if (s.logoUrl) {
+        logoPreview.src = s.logoUrl;
+        logoPreview.style.display = 'block';
+      } else {
+        logoPreview.style.display = 'none';
+      }
+      
       renderDays('openingDays', s.openingDays || []);
       document.getElementById('openMorningStart').value = s.openMorningStart || '08:00';
       document.getElementById('openMorningEnd').value = s.openMorningEnd || '13:00';
       document.getElementById('openAfternoonStart').value = s.openAfternoonStart || '';
       document.getElementById('openAfternoonEnd').value = s.openAfternoonEnd || '';
+      // Orari sabato apertura
+      document.getElementById('openSatMorningStart').value = s.openSatMorningStart || '08:00';
+      document.getElementById('openSatMorningEnd').value = s.openSatMorningEnd || '12:00';
+      document.getElementById('openSatAfternoonStart').value = s.openSatAfternoonStart || '';
+      document.getElementById('openSatAfternoonEnd').value = s.openSatAfternoonEnd || '';
       renderDays('deliveryDays', s.deliveryDays || []);
       document.getElementById('deliveryMorningStart').value = s.deliveryMorningStart || '08:00';
       document.getElementById('deliveryMorningEnd').value = s.deliveryMorningEnd || '12:00';
       document.getElementById('deliveryAfternoonStart').value = s.deliveryAfternoonStart || '';
       document.getElementById('deliveryAfternoonEnd').value = s.deliveryAfternoonEnd || '';
+      // Orari sabato consegne
+      document.getElementById('deliverySatMorningStart').value = s.deliverySatMorningStart || '08:00';
+      document.getElementById('deliverySatMorningEnd').value = s.deliverySatMorningEnd || '12:00';
+      document.getElementById('deliverySatAfternoonStart').value = s.deliverySatAfternoonStart || '';
+      document.getElementById('deliverySatAfternoonEnd').value = s.deliverySatAfternoonEnd || '';
       renderHolidays(s.holidays || []);
       renderVehicles(s.vehicles || []);
     }

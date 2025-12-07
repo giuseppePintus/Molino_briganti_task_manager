@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { socketService } from '../services/socketService';
 
 const prisma = new PrismaClient();
 
@@ -75,6 +76,7 @@ export class TasksController {
                         description: description || null,
                         scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
                         assignedOperatorId: assignedOperatorId || null,
+                        assignedAt: assignedOperatorId ? new Date() : null,
                         estimatedMinutes: estimatedMinutes || null,
                         priority: taskPriority,
                         color: taskColor,
@@ -88,6 +90,9 @@ export class TasksController {
                         createdBy: { select: { id: true, username: true } },
                     },
                 });
+
+                // Notifica WebSocket
+                socketService.notifyTaskCreated(newTask);
 
                 res.status(201).json(newTask);
                 return;
@@ -139,6 +144,7 @@ export class TasksController {
                         description: description || null,
                         scheduledAt: new Date(instanceDate),
                         assignedOperatorId: assignedOperatorId || null,
+                        assignedAt: assignedOperatorId ? new Date() : null,
                         estimatedMinutes: estimatedMinutes || null,
                         priority: taskPriority,
                         color: taskColor,
@@ -153,6 +159,11 @@ export class TasksController {
                     },
                 });
                 createdTasks.push(task);
+            }
+
+            // Notifica WebSocket per tutti i task ricorrenti creati
+            for (const task of createdTasks) {
+                socketService.notifyTaskCreated(task);
             }
 
             res.status(201).json({ 
@@ -185,7 +196,16 @@ export class TasksController {
             if (scheduledAt !== undefined) {
                 updateData.scheduledAt = scheduledAt ? new Date(scheduledAt) : null;
             }
-            if (assignedOperatorId !== undefined) updateData.assignedOperatorId = assignedOperatorId;
+            if (assignedOperatorId !== undefined) {
+                // Se viene assegnato un operatore (da null a un valore), imposta assignedAt
+                const currentTask = await prisma.task.findUnique({ where: { id: parseInt(id) } });
+                if (assignedOperatorId && (!currentTask?.assignedOperatorId || currentTask.assignedOperatorId !== assignedOperatorId)) {
+                    updateData.assignedAt = new Date();
+                } else if (!assignedOperatorId) {
+                    updateData.assignedAt = null;
+                }
+                updateData.assignedOperatorId = assignedOperatorId;
+            }
             if (estimatedMinutes !== undefined) updateData.estimatedMinutes = estimatedMinutes;
             if (recurrenceType !== undefined) {
                 console.log(`DEBUG: Setting recurrenceType to "${recurrenceType}"`);
@@ -233,6 +253,9 @@ export class TasksController {
 
             console.log(`DEBUG: Task updated successfully. New recurrenceType:`, updatedTask.recurrenceType);
 
+            // Notifica WebSocket
+            socketService.notifyTaskUpdated(updatedTask);
+
             res.json(updatedTask);
         } catch (err: unknown) {
             const errorMsg = err instanceof Error ? err.message : 'Internal server error';
@@ -248,7 +271,11 @@ export class TasksController {
             }
 
             const { id } = req.params;
-            await prisma.task.delete({ where: { id: parseInt(id) } });
+            const taskId = parseInt(id);
+            await prisma.task.delete({ where: { id: taskId } });
+
+            // Notifica WebSocket
+            socketService.notifyTaskDeleted(taskId);
 
             res.status(204).send();
         } catch (err: unknown) {
@@ -393,6 +420,9 @@ export class TasksController {
                 },
             });
 
+            // Notifica WebSocket
+            socketService.notifyTaskUpdated(acceptedTask);
+
             res.json(acceptedTask);
         } catch (err: unknown) {
             const errorMsg = err instanceof Error ? err.message : 'Internal server error';
@@ -433,6 +463,9 @@ export class TasksController {
                 },
             });
 
+            // Notifica WebSocket
+            socketService.notifyTaskUpdated(pausedTask);
+
             res.json(pausedTask);
         } catch (err: unknown) {
             const errorMsg = err instanceof Error ? err.message : 'Internal server error';
@@ -472,6 +505,9 @@ export class TasksController {
                     completedBy: { select: { id: true, username: true } },
                 },
             });
+
+            // Notifica WebSocket
+            socketService.notifyTaskUpdated(resumedTask);
 
             res.json(resumedTask);
         } catch (err: unknown) {
@@ -570,6 +606,9 @@ export class TasksController {
                 },
             });
 
+            // Notifica WebSocket
+            socketService.notifyTaskUpdated(postponedTask);
+
             res.json(postponedTask);
         } catch (err: unknown) {
             const errorMsg = err instanceof Error ? err.message : 'Internal server error';
@@ -611,7 +650,68 @@ export class TasksController {
                 },
             });
 
+            // Notifica WebSocket
+            socketService.notifyTaskUpdated(resetTask);
+
             res.json(resetTask);
+        } catch (err: unknown) {
+            const errorMsg = err instanceof Error ? err.message : 'Internal server error';
+            res.status(500).json({ message: errorMsg });
+        }
+    }
+
+    // Sposta i task non completati del giorno precedente (o precedenti) al giorno corrente
+    async moveOverdueTasks(req: Request, res: Response) {
+        try {
+            if (!req.user || req.user.role !== 'master') {
+                return res.status(403).json({ message: 'Only master can move overdue tasks' });
+            }
+
+            // Data di oggi a mezzanotte (inizio giornata)
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            // Trova tutti i task schedulati prima di oggi che non sono completati
+            const overdueTasks = await prisma.task.findMany({
+                where: {
+                    scheduledAt: { lt: today },
+                    completed: false,
+                },
+                include: {
+                    assignedOperator: { select: { id: true, username: true } },
+                    createdBy: { select: { id: true, username: true } },
+                },
+            });
+
+            if (overdueTasks.length === 0) {
+                return res.json({ message: 'Nessun task da spostare', movedCount: 0 });
+            }
+
+            // Sposta ogni task a oggi mantenendo l'ora originale
+            const movedTasks = [];
+            for (const task of overdueTasks) {
+                const originalDate = new Date(task.scheduledAt!);
+                const newScheduledAt = new Date(today);
+                newScheduledAt.setHours(originalDate.getHours(), originalDate.getMinutes(), 0, 0);
+
+                const updatedTask = await prisma.task.update({
+                    where: { id: task.id },
+                    data: { scheduledAt: newScheduledAt },
+                    include: {
+                        assignedOperator: { select: { id: true, username: true } },
+                        createdBy: { select: { id: true, username: true } },
+                    },
+                });
+
+                movedTasks.push(updatedTask);
+                socketService.notifyTaskUpdated(updatedTask);
+            }
+
+            res.json({ 
+                message: `Spostati ${movedTasks.length} task a oggi`, 
+                movedCount: movedTasks.length,
+                tasks: movedTasks 
+            });
         } catch (err: unknown) {
             const errorMsg = err instanceof Error ? err.message : 'Internal server error';
             res.status(500).json({ message: errorMsg });

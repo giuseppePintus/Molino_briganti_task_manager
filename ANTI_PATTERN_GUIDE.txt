@@ -1,0 +1,675 @@
+================================================================================
+                        ⚠️ ANTI-PATTERN GUIDE ⚠️
+                    COSA NON FARE - ERRORI GIÀ COMMESSI
+================================================================================
+
+Questo file documenta tutti i problemi che HAI GIÀ AFFRONTATO e RISOLTO.
+LEGGI PRIMA DI RIGENERARE IL PROGETTO PER NON RIPETERLI.
+
+================================================================================
+🚨 DATABASE & PRISMA ERRORS
+================================================================================
+
+ERRORE #1: Schema Prisma non sincronizzato con DB
+---
+PROBLEMA:
+  - Aggiungi colonna a schema.prisma
+  - Container parte, ma DB non ha la nuova colonna
+  - Risultato: "column `reserved` does not exist" (500 errors)
+
+ROOT CAUSE:
+  - docker-compose.yml montava schema Prisma in read-only: ./server/prisma:ro
+  - Questo blocca le migrazioni Prisma
+
+SOLUZIONE:
+  ✅ RIMUOVI `./server/prisma:ro` da docker-compose.yml
+  ✅ Lascia Prisma gestire migrazioni liberamente
+  ✅ Priorizza schema.prisma come FONTE DI VERITÀ
+
+CODICE CORRETTO (docker-compose.yml):
+  volumes:
+    - ./data/molino:/data/molino          # Database + backups
+    - ./public:/app/public               # HTML/CSS/JS (no schema!)
+    # ❌ NON MONTARE: ./server/prisma:ro
+    # ❌ NON MONTARE: ./server/src:ro
+
+PREVENZIONE:
+  - Prima di ogni deploy, verifica schema.prisma
+  - Esegui: npx prisma migrate dev (localmente)
+  - Poi: docker compose build
+  - Verifica: docker compose logs | grep -i "migrat"
+
+---
+
+ERRORE #2: Startup script bloccato su Prisma
+---
+PROBLEMA:
+  - Container parte ma rimane stuck su "Running Prisma migrations..."
+  - Timeout 3+ minuti, client app non carica
+
+ROOT CAUSE:
+  - docker-start.sh eseguiva: npx prisma migrate deploy
+  - Con --skip-generate, ma blocca comunque se migrazioni pendenti
+  - Application non eseguiva DB init
+
+SOLUZIONE:
+  ✅ docker-start.sh ORA:
+     - Crea directory /data/molino/backups
+     - Avvia direttamente app Node
+     - App gestisce DB init in index.ts
+
+CODICE CORRETTO (docker-start.sh):
+  #!/bin/sh
+  set -e
+  echo "🚀 Starting Molino Task Manager..."
+  mkdir -p /data/molino/backups
+  exec node /app/server/dist/index.js
+
+  # ❌ NON FARE: npx prisma migrate deploy
+  # ❌ NON FARE: sleep 10 (aspetta!)
+
+CODICE CORRETTO (server/src/index.ts):
+  const prisma = new PrismaClient();
+  
+  // All startup, app gestisce DB:
+  prisma.$connect().then(() => {
+    console.log('✅ Database connected');
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on ${PORT}`);
+    });
+  });
+
+PREVENZIONE:
+  - docker-start.sh deve essere minimalista
+  - App TypeScript gestisce Prisma operations
+  - Test startup: docker-compose up -d && sleep 3 && curl http://localhost:5000/health
+
+---
+
+ERRORE #3: Migrazioni bloccate/corrotte
+---
+PROBLEMA:
+  - Schema.prisma cambiato, ma migrazioni vecchie rimangono
+  - Shadow DB non sincronizzato
+  - Errore: "migration files are not in sync"
+
+ROOT CAUSE:
+  - Operazione incompleta su migrate
+  - docker volume non cancellato
+  - File migrazione manuale corrotto
+
+SOLUZIONE:
+  ✅ Pulisci e ricrea:
+    docker compose down
+    docker volume prune -f
+    docker compose up -d
+
+  ✅ Localmente (dev):
+    npx prisma migrate reset --force
+    npm run prisma:seed
+
+PREVENZIONE:
+  - Commit schema.prisma changes con migration file
+  - Prima di docker build: npx prisma migrate dev (locally)
+  - Verifica: ls -la server/prisma/migrations/
+
+================================================================================
+📋 CSV & DATA ERRORS
+================================================================================
+
+ERRORE #4: CSV import sovrascrive colonne importanti
+---
+PROBLEMA:
+  - Importa CSV articoli
+  - Aggiungi campo "reserved" in memoria per ordine
+  - Re-import cancella "reserved" dal DB
+
+ROOT CAUSE:
+  - CSV import usa .map() per creare records, non distingue update da insert
+  - Overwrite incondizionato di tutti i campi
+
+SOLUZIONE:
+  ✅ Usa prisma.upsert() con WHERE unico:
+    await prisma.inventoryItem.upsert({
+      where: { codice: row.codice },
+      update: {
+        descrizione: row.descrizione,
+        categoria: row.categoria,
+        // ✅ NON TOCCARE: unita, minimo (da altro processo)
+      },
+      create: { ...row }
+    });
+
+PREVENZIONE:
+  - CSV import = update SOLO campi da CSV
+  - Mantieni altri campi intatti
+  - Specifica esplicitamente campi in .update({ ... })
+
+---
+
+ERRORE #5: CSV parser non gestisce BOM e encoding
+---
+PROBLEMA:
+  - CSV salvato in UTF-8 con BOM (Windows)
+  - Prima colonna ha caratteri strani: ïnome» invece di "nome"
+
+ROOT CAUSE:
+  - csv-parser non rimuove BOM automaticamente
+  - Headers corrotti
+
+SOLUZIONE:
+  ✅ Leggi file con encoding specifico:
+    import { createReadStream } from 'fs';
+    fs.createReadStream(filepath, { encoding: 'utf8' })
+      .pipe(csv())
+      .on('data', ...)
+
+  ✅ O pulisci prima:
+    const cleaned = csvText.replace(/^\uFEFF/, '');
+
+PREVENZIONE:
+  - Salva CSV sempre in UTF-8 WITHOUT BOM
+  - Testa con file reali prima di production
+  - Log prima colonna header per debug
+
+---
+
+ERRORE #6: CSV con special characters causa 500
+---
+PROBLEMA:
+  - Articolo con nome: "Olio 10W-40 (speciale)"
+  - Import fallisce con charset error
+
+ROOT CAUSE:
+  - Virgolette non escaped nel CSV
+  - Parser confuso da delimitatori
+
+SOLUZIONE:
+  ✅ CSV corretto:
+    "ART001","Olio 10W-40 (speciale)","Lubrificanti",...
+    (sempre tra virgolette se contiene virgole/special chars)
+
+  ✅ Usa libreria csv con opzioni:
+    csv({ delimiter: ',', quote: '"', escape: '"' })
+
+PREVENZIONE:
+  - Sempre quote CSV fields
+  - Test con dati contenenti: parentesi, virgole, quote
+  - Valida CSV prima di import
+
+================================================================================
+🔌 API & FRONTEND ERRORS
+================================================================================
+
+ERRORE #7: Modal aperta mostra HTML source code
+---
+PROBLEMA:
+  - Clicca bottone "Nuovo Ordine"
+  - Modale nera appare
+  - Contiene codice HTML: <meta name=...
+
+ROOT CAUSE:
+  - Select dropdown (id="orderProduct") non popola con articoli
+  - JavaScript tenta di leggere valore di option vuota
+  - Copia innerHTML di elemento sbagliato (forse title tag)
+
+SOLUZIONE:
+  ✅ Verifica articoli caricati:
+    const productSelect = document.getElementById('orderProduct');
+    console.log('articoli.length:', articoli.length);
+    
+  ✅ Popola PRIMA di aprire modale:
+    await loadCSVData(); // Wait!
+    openOrderModal();    // Then open
+    
+  ✅ Usa OPZIONI valide:
+    articoli.map(a => `<option value="${a.codice || a.nome}">
+      ${a.codice} - ${a.descrizione}
+    </option>`)
+
+PREVENZIONE:
+  - Console.log prima di usare array
+  - Verifica length > 0
+  - Test con 10 items prima di 140
+  - Non fare console.log per OGNI item (browser crash!)
+
+---
+
+ERRORE #8: 401 Unauthorized su company-settings.html
+---
+PROBLEMA:
+  - Login funziona
+  - Admin dashboard carica
+  - company-settings.html: tutte le richieste API ritornano 401
+
+ROOT CAUSE:
+  - API_URL hardcodato a localhost
+  - Se browser accede da 127.0.0.1, API_URL = localhost → CORS fallisce
+  - JWT token non inviato in header
+
+SOLUZIONE:
+  ✅ API_URL dinamico:
+    const API_URL = `http://${window.location.hostname}:5000`;
+    // Ora funziona da localhost, 127.0.0.1, IP, ecc
+    
+  ✅ JWT token in header:
+    const token = localStorage.getItem('token');
+    fetch(`${API_URL}/api/...`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    })
+
+PREVENZIONE:
+  - Sempre usa window.location.hostname
+  - Verifica localStorage.getItem('token') prima di API call
+  - Test da 3 URL: localhost, 127.0.0.1, actual IP
+
+---
+
+ERRORE #9: CORS blocca API calls da frontend
+---
+PROBLEMA:
+  - Frontend (localhost:3000) chiama backend (localhost:5000)
+  - Errore: "No 'Access-Control-Allow-Origin' header"
+
+ROOT CAUSE:
+  - CORS non configurato in Express
+
+SOLUZIONE:
+  ✅ Express:
+    import cors from 'cors';
+    app.use(cors({
+      origin: ['http://localhost:5000', 'http://192.168.1.248:5000'],
+      credentials: true
+    }));
+
+PREVENZIONE:
+  - Aggiungi CORS all'inizio di Express setup
+  - Whitelist TUTTI gli URL che accedono
+
+================================================================================
+🎨 UI/UX ERRORS
+================================================================================
+
+ERRORE #10: Ordini mostrano "undefined" per prodotto
+---
+PROBLEMA:
+  - Admin dashboard mostra: "📦 Prodotto: undefined"
+  - Order details modal vuoto
+
+ROOT CAUSE:
+  - Schema ordine incoerente (admin vs orders-planner create diverso)
+  - Admin usa: { product, quantity }
+  - Orders-planner usa: { products: [{product, quantity}] }
+  - Template tenta leggere campo inesistente
+
+SOLUZIONE:
+  ✅ Helper function normalizzazione:
+    function getOrderFullInfo(order) {
+      return {
+        ...order,
+        products: order.products || (order.product ? 
+          [{product: order.product, quantity: order.quantity}] : [])
+      };
+    }
+    
+  ✅ Usa in template:
+    const full = getOrderFullInfo(order);
+    full.products.map(p => p.product + ' x' + p.quantity)
+
+PREVENZIONE:
+  - Decidi schema UNA VOLTA, documenta
+  - Tutti i controller creano STESSO schema
+  - Helper normalizza se legacy data esiste
+
+---
+
+ERRORE #11: Button senza testo labels
+---
+PROBLEMA:
+  - Admin vede tasti grigi senza scritte
+  - Solo emoji: 🗑️ (ma non si vede bene)
+  - User confuso sul cosa fare
+
+ROOT CAUSE:
+  - Button HTML solo emoji, no text
+  - CSS non mostra value
+
+SOLUZIONE:
+  ✅ HTML con testo:
+    <button onclick="deleteItem(id)">🗑️ Rimuovi</button>
+    <button onclick="editItem(id)">✏️ Modifica</button>
+    
+  ✅ CSS per spazi:
+    button { padding: 10px 15px; }
+
+PREVENZIONE:
+  - Sempre testo + emoji
+  - Test su mobile (button 44x44px min)
+  - Verifica visibilità testo
+
+================================================================================
+🐳 DOCKER ERRORS
+================================================================================
+
+ERRORE #12: Build context enorme, build molto lento
+---
+PROBLEMA:
+  - `docker compose build` impiega 5+ minuti
+  - Ogni change ricompila tutto
+
+ROOT CAUSE:
+  - .dockerignore vuoto o assente
+  - Docker invia 500MB+ di context
+  - Copia node_modules inutilmente
+
+SOLUZIONE:
+  ✅ .dockerignore esteso (60+ entries):
+    node_modules
+    dist
+    .git
+    README*.md
+    server/prisma/migrations
+    backups
+    .vscode
+    test
+    *.db
+    (... vedi file completo)
+
+  ✅ Dockerfile strati ordinati:
+    1. COPY package.json
+    2. RUN npm install
+    3. COPY code
+    4. RUN npm run build
+    
+    Così: cambiamenti a HTML non ricompila npm!
+
+RISULTATO:
+  - Primo build: 1-2 minuti (completo)
+  - Cambio HTML: 10-15 secondi (cache hit on npm!)
+
+PREVENZIONE:
+  - .dockerignore sempre presente
+  - Ordina Dockerfile layers: stable PRIMO
+  - Test build time prima/dopo
+
+---
+
+ERRORE #13: Container crashes silenziosamente
+---
+PROBLEMA:
+  - docker-compose up -d parte
+  - container exited senza errori
+  - logs vuoti o traili
+
+ROOT CAUSE:
+  - App TypeScript non compila
+  - dist/ folder vuoto
+  - node modules mancano
+
+SOLUZIONE:
+  ✅ Build localmente prima:
+    npm run build
+    ls -la server/dist/index.js  # Verifica esiste
+
+  ✅ Healthcheck nel compose:
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  ✅ Verifica logs:
+    docker compose logs molino-app --tail 100
+
+PREVENZIONE:
+  - Aggiungi healthcheck a ogni container
+  - Test locally prima di docker
+  - docker compose logs è tuo amico
+
+================================================================================
+🔐 SECURITY ERRORS
+================================================================================
+
+ERRORE #14: JWT secret hardcodato in codice
+---
+PROBLEMA:
+  - JWT_SECRET = "default-secret" nel index.ts
+  - Commesso al repo
+  - Anyone può falsificare tokens
+
+ROOT CAUSE:
+  - Sviluppatore pigro
+
+SOLUZIONE:
+  ✅ .env file:
+    JWT_SECRET="your-long-random-secret-min-32-chars"
+    NODE_ENV="development"
+    DATABASE_URL="file:./data/molino.db"
+
+  ✅ Code:
+    const secret = process.env.JWT_SECRET || 'fallback-error';
+    if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET required');
+
+  ✅ .gitignore:
+    .env
+    .env.local
+    .env.*.local
+
+PREVENZIONE:
+  - Sempre usa .env per secrets
+  - Genera JWT_SECRET: openssl rand -base64 32
+  - Verifica token decode per debug (mai in logs)
+
+---
+
+ERRORE #15: Passwords in plain text in DB
+---
+PROBLEMA:
+  - Utente ha password plain text nel DB
+  - Chiunque acceda al file DB vede password
+
+ROOT CAUSE:
+  - Admin user creato senza bcrypt
+  - seed.ts non hashed password
+
+SOLUZIONE:
+  ✅ Seed con bcrypt:
+    import bcrypt from 'bcryptjs';
+    const hashed = await bcrypt.hash('masterpass', 10);
+    await prisma.user.create({
+      data: {
+        username: 'master',
+        password: hashed  // Hashed!
+      }
+    });
+
+  ✅ Login verifica:
+    const valid = await bcrypt.compare(inputPassword, user.password);
+
+PREVENZIONE:
+  - Tutti gli user creati con bcrypt
+  - Verifica password NEVER loggato
+  - Test: SELECT password FROM users; (deve essere hash!)
+
+================================================================================
+📊 PERFORMANCE ERRORS
+================================================================================
+
+ERRORE #16: Console.log loop su 140 items fa crash browser
+---
+PROBLEMA:
+  - openOrderModal() per 140 articoli
+  - Aggiungi: console.log per ogni articolo nel .map()
+  - Browser freeze 10+ secondi, user pensa è broken
+
+ROOT CAUSE:
+  - 140 console.log all'improvviso → CPU spike
+  - Browser render thread bloccato
+
+SOLUZIONE:
+  ✅ Debug intelligente:
+    console.log('📊 Loading', articoli.length, 'items');
+    if (articoli.length > 0) console.log('First:', articoli[0]);
+    // ❌ MAI: articoli.forEach(a => console.log(a))
+
+  ✅ Usa breakpoint nel DevTools
+  ✅ Se devi loggare tutto:
+    console.table(articoli);  // Tabella leggibile
+
+PREVENZIONE:
+  - Conta items prima di aggiungere logs
+  - Test con dati VERI (140+ items)
+  - Rimuovi console.log di debug prima di commit
+
+---
+
+ERRORE #17: Query N+1 quando fetch ordini
+---
+PROBLEMA:
+  - GET /api/orders?limit=100 impiega 5+ secondi
+  - 100 query separate al DB
+
+ROOT CAUSE:
+  - Prisma non usa include/select
+  - Deve fare 1 query orders + 100 query per products
+
+SOLUZIONE:
+  ✅ Include relazioni:
+    const orders = await prisma.order.findMany({
+      include: {
+        products: true,
+        operator: true,
+        trip: true
+      }
+    });
+
+PREVENZIONE:
+  - Prisma: sempre explicit include/select
+  - Testa con 100+ records
+  - Monitora query count in logs
+
+================================================================================
+📝 DOCUMENTATION ERRORS
+================================================================================
+
+ERRORE #18: Nessuna documentazione di schema
+---
+PROBLEMA:
+  - 6 mesi dopo: "Qual era la struttura ordine?"
+  - Developer nuovo: "Che campi ha InventoryItem?"
+  - Rispondi a sentimento
+
+SOLUZIONE:
+  ✅ Documento DEPLOYMENT_MEMORY.md:
+    - Schema overview
+    - Campi importanti
+    - Migrazioni recenti
+    - Cosa non break
+
+  ✅ Prisma schema self-documented:
+    model Order {
+      id        Int     @id @default(autoincrement())
+      type      String  /// "consegna" | "ritiro"
+      client    String  /// Client name
+      /// ...
+    }
+
+PREVENZIONE:
+  - Update DEPLOYMENT_MEMORY dopo ogni deploy
+  - Comment campi complessi in schema
+  - Keep README aggiornato
+
+---
+
+ERRORE #19: Changelog incompleto
+---
+PROBLEMA:
+  - "Che è cambiato tra v1.0 e v1.0.1?"
+  - Nessuna traccia
+
+ROOT CAUSE:
+  - Nessun changelog file
+
+SOLUZIONE:
+  ✅ Crea CHANGELOG.md:
+    ## v1.0.1 (2025-12-02)
+    - Fixed: Orders modal showing HTML source
+    - Fixed: CSV import overwriting reserved column
+    - Improved: Build cache (60% faster)
+    
+    ## v1.0.0 (2025-12-01)
+    - Initial release
+
+PREVENZIONE:
+  - Update CHANGELOG per ogni feature/fix
+  - Include date + what changed
+  - Tag git releases (git tag v1.0.1)
+
+================================================================================
+✅ FINAL PREVENTION CHECKLIST
+================================================================================
+
+BEFORE EVERY DEPLOY:
+
+Database:
+  [ ] schema.prisma reviewed
+  [ ] new migrations tested locally
+  [ ] backup exists
+  [ ] Prisma generate ran
+
+Backend:
+  [ ] npm run build succeeds
+  [ ] no TypeScript errors
+  [ ] JWT_SECRET in .env
+  [ ] passwords bcrypted
+  [ ] CORS configured
+
+Frontend:
+  [ ] No console errors (F12)
+  [ ] Buttons have text labels
+  [ ] Modals test with real data
+  [ ] CSV import tested
+  [ ] Responsive tested on mobile
+
+Docker:
+  [ ] .dockerignore updated
+  [ ] docker build completes
+  [ ] docker run successful
+  [ ] healthcheck passes
+  [ ] logs clean
+
+Testing:
+  [ ] Create order works
+  [ ] Import CSV works (140 items)
+  [ ] Modify order works
+  [ ] Delete order works
+  [ ] Backup system works
+  [ ] NAS sync works (if applicable)
+
+Documentation:
+  [ ] DEPLOYMENT_MEMORY updated
+  [ ] CHANGELOG updated
+  [ ] README accurate
+  [ ] Schema documented
+
+RELEASE:
+  [ ] Version bumped (v1.0.1 → v1.0.2)
+  [ ] git tag created
+  [ ] Image built and named
+  [ ] Pushed to registry/NAS
+  [ ] Verified on target
+
+================================================================================
+END OF ANTI-PATTERN GUIDE
+================================================================================
+
+Remember:
+- Questa lista è basata su ERRORI REALI che hai fatto
+- Ogni errore è una lezione: non ripeterli
+- Aggiungi nuovi errori a questa lista man mano che li trovi
+- Condividi questa lista con il team per prevenire regressions
+
+================================================================================

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - Molino Briganti</title>
     <link rel="stylesheet" href="css/common.css">
+    <script src="js/settings-utils.js"></script>
     <style>
         * {
             margin: 0;
@@ -1501,7 +1502,35 @@
             border-color: #60a5fa;
             box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4), 0 0 30px rgba(37, 99, 235, 0.3);
         }
+        
+        /* Live Update Indicator */
+        .live-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+            color: #888;
+            margin-left: 10px;
+        }
+        .live-indicator.connected { color: #4caf50; }
+        .live-indicator .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #888;
+        }
+        .live-indicator.connected .dot {
+            background: #4caf50;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
     </style>
+    <!-- Socket.io Client -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="js/socket-client.js"></script>
 </head>
 <body>
     <div class="container">
@@ -1616,6 +1645,7 @@
         </div>
     </div>
 
+    <script src="js/data-sync.js"></script>
     <script>
         const API_URL = `http://${window.location.hostname}:${window.location.port || 5000}/api`;
         let token = localStorage.getItem('token');
@@ -1644,18 +1674,29 @@
         let trips = [];
         let orders = [];
 
-        function loadTripsFromPlanner() {
-            const storedTrips = localStorage.getItem('trips');
-            const storedOrders = localStorage.getItem('orders');
-            trips = storedTrips ? JSON.parse(storedTrips) : [];
-            orders = storedOrders ? JSON.parse(storedOrders) : [];
+        async function loadTripsFromPlanner() {
+            try {
+                trips = await DataSync.loadTrips();
+                orders = await DataSync.loadOrders();
+            } catch (error) {
+                console.error('Errore caricamento dati:', error);
+                // Fallback a localStorage
+                const storedTrips = localStorage.getItem('trips');
+                const storedOrders = localStorage.getItem('orders');
+                trips = storedTrips ? JSON.parse(storedTrips) : [];
+                orders = storedOrders ? JSON.parse(storedOrders) : [];
+            }
         }
 
-        function saveTrips() {
+        async function saveTrips() {
+            // Il salvataggio viene gestito per singolo trip tramite DataSync
+            // Questa funzione è mantenuta per compatibilità
             localStorage.setItem('trips', JSON.stringify(trips));
         }
 
-        function saveOrders() {
+        async function saveOrders() {
+            // Il salvataggio viene gestito per singolo ordine tramite DataSync
+            // Questa funzione è mantenuta per compatibilità
             localStorage.setItem('orders', JSON.stringify(orders));
         }
 
@@ -1738,7 +1779,7 @@
         }
 
         // Crea un nuovo viaggio
-        function createNewTrip(name, orderIds = []) {
+        async function createNewTrip(name, orderIds = []) {
             const trip = {
                 id: Date.now(),
                 name: name || `Consegne ${new Date().toLocaleDateString('it-IT')}`,
@@ -1748,16 +1789,16 @@
                 status: 'pending'
             };
             trips.push(trip);
-            saveTrips();
+            await saveTrips();
             return trip;
         }
 
         // Assegna viaggio a operatore
-        function assignTripToOperator(tripId, operatorId) {
+        async function assignTripToOperator(tripId, operatorId) {
             const trip = trips.find(t => t.id === tripId);
             if (!trip) return;
             trip.assignedOperatorId = operatorId;
-            saveTrips();
+            await saveTrips();
             renderCalendar();
         }
 
@@ -1814,20 +1855,34 @@
         }
 
         // Salva ordine modificato
-        function saveEditedOrder(orderId) {
+        async function saveEditedOrder(orderId) {
             const order = orders.find(o => o.id === orderId);
             if (!order) return;
 
-            order.client = document.getElementById('editOrderClient').value;
-            order.product = document.getElementById('editOrderProduct').value;
-            order.quantity = parseFloat(document.getElementById('editOrderQuantity').value) || 0;
-            order.dateTime = document.getElementById('editOrderDateTime').value;
-            order.notes = document.getElementById('editOrderNotes').value;
+            const updates = {
+                client: document.getElementById('editOrderClient').value,
+                product: document.getElementById('editOrderProduct').value,
+                quantity: parseFloat(document.getElementById('editOrderQuantity').value) || 0,
+                dateTime: document.getElementById('editOrderDateTime').value,
+                notes: document.getElementById('editOrderNotes').value
+            };
 
-            saveOrders();
+            try {
+                await DataSync.updateOrder(orderId, updates);
+            } catch (error) {
+                console.warn('⚠️ Errore aggiornamento ordine API:', error);
+            }
+
+            // Aggiorna anche localmente
+            Object.assign(order, updates);
+            await saveOrders();
             document.getElementById('editOrderModal').remove();
             showAlert('Ordine salvato!', 'success');
             renderCalendar();
+            // Aggiorna il modal del giorno se aperto
+            if (lastViewedDayDate) {
+                showDayTasksModal(lastViewedDayDate);
+            }
         }
 
         // Apri modal per modifica viaggio
@@ -1875,19 +1930,31 @@
         }
 
         // Salva viaggio modificato
-        function saveEditedTrip(tripId) {
+        async function saveEditedTrip(tripId) {
             const trip = trips.find(t => t.id === tripId);
             if (!trip) return;
 
-            trip.name = document.getElementById('editTripName').value;
-            saveTrips();
+            const newName = document.getElementById('editTripName').value;
+
+            try {
+                await DataSync.updateTrip(tripId, { name: newName });
+            } catch (error) {
+                console.warn('⚠️ Errore aggiornamento viaggio API:', error);
+            }
+
+            trip.name = newName;
+            await saveTrips();
             document.getElementById('editTripModal').remove();
             showAlert('Viaggio salvato!', 'success');
             renderCalendar();
+            // Aggiorna il modal del giorno se aperto
+            if (lastViewedDayDate) {
+                showDayTasksModal(lastViewedDayDate);
+            }
         }
 
         // Rimuovi ordine da viaggio
-        function removeOrderFromTrip(tripId, orderId) {
+        async function removeOrderFromTrip(tripId, orderId) {
             const trip = trips.find(t => t.id === tripId);
             if (!trip) return;
             trip.sequence = trip.sequence.filter(id => id !== orderId);
@@ -1898,8 +1965,8 @@
                 order.tripId = null;
             }
             
-            saveTrips();
-            saveOrders();
+            await saveTrips();
+            await saveOrders();
             showAlert('Ordine rimosso dal viaggio', 'success');
             // Riapri il modal di modifica
             openEditTripModal(tripId);
@@ -1907,23 +1974,23 @@
         }
 
         // Crea nuovo viaggio e associa un ordine
-        function createNewTripWithOrder(orderId) {
+        async function createNewTripWithOrder(orderId) {
             const order = orders.find(o => o.id === orderId);
             if (!order) return;
 
             const tripName = `Consegne ${new Date(order.dateTime).toLocaleDateString('it-IT')}`;
-            const trip = createNewTrip(tripName, [orderId]);
+            const trip = await createNewTrip(tripName, [orderId]);
             
             // Associa l'ordine al viaggio
             order.tripId = trip.id;
-            saveOrders();
+            await saveOrders();
             
             showAlert('Viaggio creato e ordine aggiunto!', 'success');
             renderCalendar();
         }
 
         // Elimina viaggio (e rimuove associazione da ordini)
-        function handleDeleteTrip(tripId) {
+        async function handleDeleteTrip(tripId) {
             if (!confirm('Sei sicuro di voler eliminare questo viaggio? Gli ordini verranno sospesi.')) return;
 
             const trip = trips.find(t => t.id === tripId);
@@ -1938,8 +2005,8 @@
             // Elimina il viaggio
             trips = trips.filter(t => t.id !== tripId);
             
-            saveTrips();
-            saveOrders();
+            await saveTrips();
+            await saveOrders();
             showAlert('Viaggio eliminato', 'success');
             renderCalendar();
         }
@@ -1975,15 +2042,15 @@
         });
 
         // Sincronizza dati quando cambiano da un'altra pagina (storage event listener)
-        window.addEventListener('storage', (event) => {
+        window.addEventListener('storage', async (event) => {
             if (event.key === 'orders') {
                 console.log('📦 Sincronizzando ordini da un\'altra pagina...');
-                loadTripsFromPlanner();
+                await loadTripsFromPlanner();
                 renderCalendar();
                 renderCalendar();
             } else if (event.key === 'trips') {
                 console.log('🚚 Sincronizzando viaggi da un\'altra pagina...');
-                loadTripsFromPlanner();
+                await loadTripsFromPlanner();
                 renderCalendar();
             }
         });
@@ -2017,10 +2084,21 @@
             }
         }
 
+        function closeDayTasksCard() {
+            const dayTasksCard = document.getElementById('dayTasksCard');
+            if (dayTasksCard) {
+                dayTasksCard.style.display = 'none';
+            }
+        }
+
         async function initDashboard() {
             document.getElementById('userInfo').textContent = `👤 ${currentUser.username}`;
             document.getElementById('myTasksTitle').textContent = `📋 Task da Assegnare`;
-            loadTripsFromPlanner();
+            
+            // Carica impostazioni aziendali (logo, nome)
+            await loadCompanyBranding();
+            
+            await loadTripsFromPlanner();
             await loadOperators();
             await loadAssignees();
             await loadTasks();
@@ -2032,6 +2110,137 @@
             const today = new Date();
             const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
             showDayTasksModal(todayStr);
+            
+            // Inizializza aggiornamenti in tempo reale
+            initLiveUpdates();
+        }
+        
+        function initLiveUpdates() {
+            if (typeof LiveUpdates !== 'undefined') {
+                LiveUpdates.init({
+                    onTaskChange: async (action, task) => {
+                        console.log(`🔄 Task ${action}:`, task);
+                        // Ricarica i task e aggiorna la UI
+                        await loadTasks();
+                        await updateStats();
+                        await renderCalendar();
+                        
+                        // Mostra notifica
+                        showLiveNotification(`Task ${getActionLabel(action)}: ${task?.title || 'ID ' + task?.id}`);
+                    },
+                    onOrderChange: async (action, order) => {
+                        console.log(`🔄 Order ${action}:`, order);
+                        // Ricarica eventuali ordini visibili
+                        showLiveNotification(`Ordine ${getActionLabel(action)}`);
+                    },
+                    onConnect: () => {
+                        console.log('✅ Live updates connected');
+                        updateConnectionIndicator(true);
+                    },
+                    onDisconnect: () => {
+                        console.log('⚠️ Live updates disconnected');
+                        updateConnectionIndicator(false);
+                    }
+                });
+            }
+        }
+        
+        function getActionLabel(action) {
+            const labels = {
+                'created': 'creato',
+                'updated': 'aggiornato',
+                'deleted': 'eliminato',
+                'assigned': 'assegnato',
+                'statusChanged': 'stato cambiato'
+            };
+            return labels[action] || action;
+        }
+        
+        function updateConnectionIndicator(connected) {
+            let indicator = document.getElementById('liveIndicator');
+            if (!indicator) {
+                // Crea indicatore se non esiste
+                const headerRight = document.querySelector('.header-right');
+                if (headerRight) {
+                    indicator = document.createElement('span');
+                    indicator.id = 'liveIndicator';
+                    indicator.className = 'live-indicator';
+                    indicator.innerHTML = '<span class="dot"></span> LIVE';
+                    headerRight.insertBefore(indicator, headerRight.firstChild);
+                }
+            }
+            if (indicator) {
+                indicator.className = 'live-indicator' + (connected ? ' connected' : '');
+            }
+        }
+        
+        function showLiveNotification(message) {
+            const alertDiv = document.createElement('div');
+            alertDiv.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
+                color: white;
+                padding: 12px 20px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                z-index: 10000;
+                font-size: 14px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                animation: slideIn 0.3s ease;
+            `;
+            alertDiv.innerHTML = `<span style="font-size: 18px;">🔄</span> ${message}`;
+            document.body.appendChild(alertDiv);
+            
+            setTimeout(() => {
+                alertDiv.style.opacity = '0';
+                alertDiv.style.transform = 'translateX(20px)';
+                alertDiv.style.transition = 'all 0.3s ease';
+                setTimeout(() => alertDiv.remove(), 300);
+            }, 3000);
+        }
+        
+        async function loadCompanyBranding() {
+            try {
+                // Prima prova localStorage per caricamento veloce
+                const cached = localStorage.getItem('companySettings');
+                if (cached) {
+                    applyCompanyBranding(JSON.parse(cached));
+                }
+                
+                // Poi carica da API per avere dati aggiornati
+                const resp = await fetch(`${API_URL}/settings/company`);
+                if (resp.ok) {
+                    const settings = await resp.json();
+                    localStorage.setItem('companySettings', JSON.stringify(settings));
+                    applyCompanyBranding(settings);
+                }
+            } catch (err) {
+                console.warn('⚠️ Errore caricamento impostazioni aziendali:', err);
+            }
+        }
+        
+        function applyCompanyBranding(settings) {
+            // Aggiorna logo
+            if (settings.logoUrl) {
+                const logoImg = document.querySelector('.header-logo img');
+                if (logoImg) {
+                    let logoSrc = settings.logoUrl;
+                    if (logoSrc && !logoSrc.startsWith('http') && !logoSrc.startsWith('data:')) {
+                        logoSrc = `${API_URL.replace('/api', '')}/${logoSrc}`;
+                    }
+                    logoImg.src = logoSrc;
+                    logoImg.alt = settings.businessName || 'Logo Azienda';
+                }
+            }
+            
+            // Aggiorna titolo pagina
+            if (settings.businessName) {
+                document.title = settings.businessName + ' - Admin Dashboard';
+            }
         }
 
         function toggleMobileComfort() {
@@ -2101,8 +2310,8 @@
                 today.setHours(0, 0, 0, 0);
                 
                 const tasksToMove = tasks.filter(task => {
-                    // Sposta solo i task non completati, non in pausa, programmati nel passato
-                    if (task.completed || task.paused) return false;
+                    // Sposta i task non completati programmati nel passato (inclusi quelli in pausa)
+                    if (task.completed) return false;
                     if (!task.scheduledAt) return false;
                     
                     const taskDate = new Date(task.scheduledAt);
@@ -2651,9 +2860,10 @@
                                String(date.getMonth() + 1).padStart(2, '0') + '-' + 
                                String(date.getDate()).padStart(2, '0');
                 
-                // Controlla se è domenica
+                // Controlla se è domenica o festivo
                 const dayOfWeek = date.getDay();
-                const dayColor = dayOfWeek === 0 ? 'color: #ef4444;' : '';
+                const isHoliday = (window.SettingsUtils && window.SettingsUtils.isHolidayDate) ? window.SettingsUtils.isHolidayDate(date) : false;
+                const dayColor = (dayOfWeek === 0 || isHoliday) ? 'color: #ef4444;' : '';
                 
                 let dayTasks = tasksToDisplay.filter(task => {
                     if (!task.scheduledAt) return false;
@@ -2762,19 +2972,7 @@
             
             // Continua a renderizzare il calendario anche se non ci sono task
 
-            // Festivi italiani fissi
-            const italianHolidays = [
-                '01-01', // Capodanno
-                '01-06', // Epifania
-                '04-25', // Festa della Liberazione
-                '05-01', // Festa del Lavoro
-                '06-02', // Festa della Repubblica
-                '08-15', // Ferragosto
-                '11-01', // Ognissanti
-                '12-08', // Immacolata Concezione
-                '12-25', // Natale
-                '12-26'  // Santo Stefano
-            ];
+            // I festivi vengono letti da SettingsUtils
 
             const year = calendarDisplayYear;
             const month = calendarDisplayMonth;
@@ -2807,9 +3005,9 @@
                                String(day).padStart(2, '0');
                 const dayOfWeek = date.getDay(); // 0 = Domenica
                 
-                // Controlla se è domenica (0) o festivo
-                const monthDay = String(month + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
-                const isHoliday = dayOfWeek === 0 || italianHolidays.includes(monthDay);
+                // Controlla se è domenica (0) o festivo usando SettingsUtils
+                const isHolidayDate = (window.SettingsUtils && window.SettingsUtils.isHolidayDate) ? window.SettingsUtils.isHolidayDate(date) : false;
+                const isHoliday = dayOfWeek === 0 || isHolidayDate;
                 
                 // Conta task con data schedulata
                 let dayTasks = tasksToDisplay.filter(task => {
@@ -3716,18 +3914,31 @@
         async function handleCreateTaskFromModal(event) {
             event.preventDefault();
             
-            const title = document.getElementById('modalTaskTitle').value.toUpperCase();
-            const description = document.getElementById('modalTaskDescription').value;
-            const scheduledAt = document.getElementById('modalTaskScheduledAt').value;
-            let assignedOperatorId = document.getElementById('modalTaskOperator').value;
+            // Usa il form corrente per evitare conflitti con ID duplicati
+            const form = event.target;
+            const title = form.querySelector('#modalTaskTitle')?.value?.toUpperCase() || '';
+            const description = form.querySelector('#modalTaskDescription')?.value || '';
+            const scheduledAt = form.querySelector('#modalTaskScheduledAt')?.value || '';
+            let assignedOperatorId = form.querySelector('#modalTaskOperator')?.value || '';
+            
+            // Campi ricorrenza
+            const taskType = form.querySelector('#modalTaskType')?.value || 'single';
+            const recurrence = form.querySelector('#modalTaskRecurrence')?.value || '';
+            const recurrenceEnd = form.querySelector('#modalTaskRecurrenceEnd')?.value || '';
             
             // Se selezionato "Per Me", usa l'ID dell'admin corrente
             if (assignedOperatorId === 'me') {
                 assignedOperatorId = currentUser.id;
             }
             
-            const priority = document.getElementById('modalTaskPriority').value;
-            const estimatedMinutes = document.getElementById('modalTaskEstimatedMinutes')?.value || '';
+            const priority = form.querySelector('#modalTaskPriority')?.value || 'MEDIUM';
+            const estimatedMinutes = form.querySelector('#modalTaskEstimatedMinutes')?.value || '';
+            
+            // Validazione
+            if (!title.trim()) {
+                showAlert('Il titolo è obbligatorio', 'error');
+                return;
+            }
             
             try {
                 if (editingTaskId) {
@@ -3740,7 +3951,7 @@
                         body: JSON.stringify({
                             title,
                             description: description || null,
-                            scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+                            scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : null,
                             assignedOperatorId: assignedOperatorId ? parseInt(assignedOperatorId) : null,
                             priority,
                             estimatedMinutes: estimatedMinutes ? parseInt(estimatedMinutes) : null
@@ -3754,27 +3965,33 @@
                     
                     showAlert('Task modificato!', 'success');
                 } else {
-                    // Crea un task SINGOLO senza ricorrenza
+                    // Determina se è un task ricorrente
+                    const isRecurring = taskType === 'recurring' && recurrence;
+                    
+                    const taskData = {
+                        title,
+                        description: description || null,
+                        scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : null,
+                        assignedOperatorId: assignedOperatorId ? parseInt(assignedOperatorId) : null,
+                        priority,
+                        recurrenceType: isRecurring ? recurrence : null,
+                        recurrenceEnd: isRecurring && recurrenceEnd ? new Date(recurrenceEnd).toISOString() : null,
+                        estimatedMinutes: estimatedMinutes ? parseInt(estimatedMinutes) : null
+                    };
+                    console.log('📤 Invio task:', taskData);
+                    
                     const response = await fetch(`${API_URL}/tasks`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                             'Authorization': `Bearer ${token}`
                         },
-                        body: JSON.stringify({
-                            title,
-                            description: description || null,
-                            scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
-                            assignedOperatorId: assignedOperatorId ? parseInt(assignedOperatorId) : null,
-                            priority,
-                            recurrenceType: null,
-                            recurrenceEnd: null,
-                            estimatedMinutes: estimatedMinutes ? parseInt(estimatedMinutes) : null
-                        })
+                        body: JSON.stringify(taskData)
                     });
                     
                     if (!response.ok) {
                         const error = await response.json();
+                        console.error('❌ Errore risposta:', error);
                         throw new Error(error.message || 'Errore creazione');
                     }
                     
@@ -3821,9 +4038,13 @@
                 if (order) {
                     // È un ordine, eliminalo da localStorage
                     orders = orders.filter(o => o.id !== taskId);
-                    saveOrders();
+                    await saveOrders();
                     showAlert('Ordine eliminato!', 'success');
                     await renderCalendar();
+                    // Aggiorna la card del giorno se visibile
+                    if (lastViewedDayDate) {
+                        showDayTasksModal(lastViewedDayDate);
+                    }
                     return;
                 }
                 
@@ -3841,6 +4062,11 @@
                 showAlert('Task eliminato!', 'success');
                 await loadTasks();
                 await updateStats();
+                await renderCalendar();
+                // Aggiorna la card del giorno se visibile
+                if (lastViewedDayDate) {
+                    showDayTasksModal(lastViewedDayDate);
+                }
             } catch (error) {
                 showAlert('Errore: ' + error.message, 'error');
             }
@@ -3887,7 +4113,12 @@
                     openMorningStart: '08:00',
                     openMorningEnd: '13:00',
                     openAfternoonStart: '15:00',
-                    openAfternoonEnd: '18:00'
+                    openAfternoonEnd: '18:00',
+                    // Orari sabato
+                    openSatMorningStart: '08:00',
+                    openSatMorningEnd: '12:00',
+                    openSatAfternoonStart: '',
+                    openSatAfternoonEnd: ''
                 };
             }
             
@@ -3896,6 +4127,7 @@
             const taskDate = new Date(task.scheduledAt);
             const dayOfWeek = taskDate.getDay(); // 0=domenica, 6=sabato
             const timeStr = task.scheduledAt.split('T')[1].substring(0, 5); // HH:MM
+            const isSaturday = dayOfWeek === 6;
             
             // Controlla gli orari di LAVORO generali
             const openDays = Array.isArray(settings.openingDays) ? settings.openingDays : [];
@@ -3904,11 +4136,19 @@
                 return true; // Fuori orario
             }
             
-            // Verifica se l'orario è entro i limiti di lavoro
-            const morningStart = settings.openMorningStart;
-            const morningEnd = settings.openMorningEnd;
-            const afternoonStart = settings.openAfternoonStart;
-            const afternoonEnd = settings.openAfternoonEnd;
+            // Usa orari sabato se è sabato, altrimenti orari normali
+            let morningStart, morningEnd, afternoonStart, afternoonEnd;
+            if (isSaturday) {
+                morningStart = settings.openSatMorningStart || settings.openMorningStart;
+                morningEnd = settings.openSatMorningEnd || settings.openMorningEnd;
+                afternoonStart = settings.openSatAfternoonStart;
+                afternoonEnd = settings.openSatAfternoonEnd;
+            } else {
+                morningStart = settings.openMorningStart;
+                morningEnd = settings.openMorningEnd;
+                afternoonStart = settings.openAfternoonStart;
+                afternoonEnd = settings.openAfternoonEnd;
+            }
             
             const isInMorning = timeStr >= morningStart && timeStr <= morningEnd;
             const isInAfternoon = afternoonStart && afternoonEnd && timeStr >= afternoonStart && timeStr <= afternoonEnd;
@@ -4543,18 +4783,60 @@
                             const status = task.completed ? 'Completato' : (task.paused ? 'In Pausa' : (task.acceptedAt ? 'Accettato' : 'In Sospeso'));
                             const statusIcon = task.completed ? '✅' : (task.paused ? '⏸️' : (task.acceptedAt ? '👍' : '📋'));
                             const statusColor = task.completed ? '#10b981' : (task.paused ? '#f59e0b' : (task.acceptedAt ? '#3b82f6' : '#8b5cf6'));
+                            const operatorInfo = task.assignedOperator 
+                                ? `<span style="color: #10b981; font-size: 12px;">👤 ${task.assignedOperator.username}</span>`
+                                : `<span style="color: #f59e0b; font-size: 12px;">👤 Non assegnato</span>`;
+                            
+                            // Funzione per formattare data/ora
+                            const formatDateTime = (dateStr) => {
+                                if (!dateStr) return null;
+                                const d = new Date(dateStr);
+                                return d.toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                            };
+                            
+                            // Costruisci la timeline
+                            let timelineHtml = '<div style="margin-top: 8px; padding: 8px; background: #252525; border-radius: 4px; font-size: 11px;">';
+                            timelineHtml += '<div style="color: #888; margin-bottom: 4px; font-weight: bold;">📜 Storico:</div>';
+                            
+                            if (task.createdAt) {
+                                timelineHtml += `<div style="color: #a78bfa; margin: 2px 0;">📝 Creato: ${formatDateTime(task.createdAt)}</div>`;
+                            }
+                            if (task.assignedAt) {
+                                timelineHtml += `<div style="color: #0ea5e9; margin: 2px 0;">👤 Assegnato: ${formatDateTime(task.assignedAt)}</div>`;
+                            }
+                            if (task.acceptedAt) {
+                                timelineHtml += `<div style="color: #3b82f6; margin: 2px 0;">👍 Accettato: ${formatDateTime(task.acceptedAt)}</div>`;
+                            }
+                            if (task.pausedAt && task.paused) {
+                                timelineHtml += `<div style="color: #f59e0b; margin: 2px 0;">⏸️ In Pausa: ${formatDateTime(task.pausedAt)}</div>`;
+                            }
+                            if (task.completedAt) {
+                                timelineHtml += `<div style="color: #10b981; margin: 2px 0;">✅ Completato: ${formatDateTime(task.completedAt)}</div>`;
+                            }
+                            timelineHtml += '</div>';
+                            
                             return `
                                 <div style="background: #1a1a1a; border-left: 3px solid ${statusColor}; padding: 12px; margin: 8px 0; border-radius: 4px;">
                                     <div style="display: flex; justify-content: space-between; align-items: start;">
                                         <div style="flex: 1;">
                                             <h4 style="margin: 0 0 4px 0; color: #fff;">${task.title}</h4>
-                                            <span style="background: ${statusColor}; color: white; padding: 2px 8px; border-radius: 3px; font-size: 11px;">${statusIcon} ${status}</span>
+                                            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 4px;">
+                                                <span style="background: ${statusColor}; color: white; padding: 2px 8px; border-radius: 3px; font-size: 11px;">${statusIcon} ${status}</span>
+                                                ${operatorInfo}
+                                            </div>
                                             ${task.description ? `<p style="margin: 4px 0; color: #a0a0a0; font-size: 13px;">${task.description}</p>` : ''}
+                                            ${task.estimatedMinutes ? `<p style="margin: 2px 0; color: #fbbf24; font-size: 12px;">⏱️ ${task.estimatedMinutes} min</p>` : ''}
+                                            ${task.priority ? `<p style="margin: 2px 0; color: #a0a0a0; font-size: 12px;">${formatPriority(task.priority)}</p>` : ''}
+                                            ${timelineHtml}
                                         </div>
                                     </div>
                                     <div style="margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap;">
+                                        <button class="btn btn-primary btn-small" onclick="openEditTaskModal(${task.id})" style="background: #3b82f6; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">✏️ Modifica</button>
+                                        ${!task.assignedOperator ? `<button class="btn btn-info btn-small" onclick="openAssignTaskModal(${task.id})" style="background: #0ea5e9; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">👤 Assegna</button>` : ''}
                                         ${!task.assignedOperator && !task.acceptedAt ? `<button class="btn btn-success btn-small" onclick="handleTaskStatusChange(${task.id}, 'accept')" style="background: #22c55e; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">👍 Accetta</button>` : ''}
                                         ${task.acceptedAt && !task.completed && !task.paused ? `<button class="btn btn-success btn-small" onclick="handleTaskStatusChange(${task.id}, 'complete')" style="background: #22c55e; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">✅ Completa</button>` : ''}
+                                        ${task.paused ? `<button class="btn btn-warning btn-small" onclick="handleTaskStatusChange(${task.id}, 'resume')" style="background: #f59e0b; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">▶️ Riprendi</button>` : ''}
+                                        ${task.acceptedAt && !task.completed && !task.paused ? `<button class="btn btn-warning btn-small" onclick="handleTaskStatusChange(${task.id}, 'pause')" style="background: #f59e0b; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">⏸️ Pausa</button>` : ''}
                                         <button class="btn btn-secondary btn-small" onclick="handleDeleteTask(${task.id})" style="background: #6b7280; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">🗑️ Rimuovi</button>
                                     </div>
                                 </div>
@@ -4795,7 +5077,7 @@
                     order.assignedOperator = operator;
                 }
 
-                saveOrders();
+                await saveOrders();
                 showAlert('Viaggio assegnato con successo!', 'success');
             } catch (error) {
                 showAlert('Errore nell\'assegnazione: ' + error.message, 'error');
@@ -4864,9 +5146,14 @@
                 trip.date = date;
                 trip.vehicle = vehicle;
 
-                saveTrips();
+                await saveTrips();
                 closeModal();
                 showAlert('Viaggio aggiornato con successo!', 'success');
+                // Aggiorna la vista
+                renderCalendar();
+                if (lastViewedDayDate) {
+                    showDayTasksModal(lastViewedDayDate);
+                }
             } catch (error) {
                 showAlert('Errore nell\'aggiornamento: ' + error.message, 'error');
             }
@@ -4881,7 +5168,7 @@
                 trip.acceptedAt = new Date().toISOString();
                 trip.acceptedBy = currentUser.id;
 
-                saveTrips();
+                await saveTrips();
                 showAlert('Viaggio accettato!', 'success');
             } catch (error) {
                 showAlert('Errore nell\'accettazione: ' + error.message, 'error');
@@ -4978,7 +5265,7 @@
             modal.classList.add('active');
         }
 
-        function addExistingOrderToTrip(tripId, orderId) {
+        async function addExistingOrderToTrip(tripId, orderId) {
             console.log('DEBUG: addExistingOrderToTrip called with tripId:', tripId, 'orderId:', orderId);
             
             const trip = trips.find(t => t.id == tripId);
@@ -5004,7 +5291,7 @@
             // Pulisci la sequenza da duplicati (in caso ce ne fossero)
             trip.sequence = [...new Set(trip.sequence.map(String))];
             
-            saveTrips();
+            await saveTrips();
             
             console.log('Order added successfully. New sequence:', trip.sequence);
             
@@ -5048,7 +5335,7 @@
             `;
         }
 
-        function saveNewOrder(tripId, newOrderId) {
+        async function saveNewOrder(tripId, newOrderId) {
             const clientInput = document.getElementById(`newClient-${newOrderId}`);
             const productInput = document.getElementById(`newProduct-${newOrderId}`);
             const quantityInput = document.getElementById(`newQuantity-${newOrderId}`);
@@ -5085,15 +5372,15 @@
             trip.sequence.push(newOrder.id);
             
             // Salva i dati
-            saveOrders();
-            saveTrips();
+            await saveOrders();
+            await saveTrips();
             
             // Riapri il modal con il nuovo ordine
             openEditOrdersModal(tripId);
             showAlert('Ordine consegna aggiunto con successo!', 'success');
         }
 
-        function removeOrderFromTrip(tripId, orderIndex) {
+        async function removeOrderFromTrip(tripId, orderIndex) {
             if (!confirm('Rimuovere questo ordine dal viaggio?')) return;
             
             const trip = trips.find(t => t.id === tripId);
@@ -5103,13 +5390,13 @@
             if (orderIndex >= 0 && orderIndex < tripOrders.length) {
                 const orderId = tripOrders[orderIndex].id;
                 trip.sequence = trip.sequence.filter(id => id !== orderId);
-                saveTrips();
+                await saveTrips();
                 openEditOrdersModal(tripId);
                 showAlert('Ordine rimosso dal viaggio', 'success');
             }
         }
 
-        function saveEditedOrders(tripId) {
+        async function saveEditedOrders(tripId) {
             const tripOrders = getTripOrders(tripId);
             let hasChanges = false;
             
@@ -5158,20 +5445,21 @@
             });
             
             if (hasChanges) {
-                saveOrders();
+                await saveOrders();
                 closeModal();
                 showAlert('Ordini aggiornati con successo!', 'success');
+                // Aggiorna la vista
+                renderCalendar();
+                if (lastViewedDayDate) {
+                    showDayTasksModal(lastViewedDayDate);
+                }
             } else {
                 closeModal();
             }
         }
-
-        function saveOrders() {
-            localStorage.setItem('orders', JSON.stringify(orders));
-        }
     </script>
     
     <!-- Version Badge -->
-    <div class="version-badge">v1.0.1</div>
+    <div class="version-badge">v1.0.15</div>
 </body>
 </html>

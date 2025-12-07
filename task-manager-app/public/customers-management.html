@@ -308,39 +308,46 @@
         </div>
     </div>
 
+    <script src="js/data-sync.js"></script>
     <script>
         let customers = [];
         let editingCustomerId = null;
 
-        // Carica clienti da CSV
+        // Carica clienti da API/localStorage
         async function loadCustomers() {
             try {
-                const response = await fetch('data/clienti.csv');
-                const text = await response.text();
-                const lines = text.trim().split('\n');
-                const headers = lines[0].split(',');
-                
-                customers = lines.slice(1).map(line => {
-                    const values = line.split(',');
-                    return {
-                        id: values[0].trim(),
-                        nome: values[1].trim(),
-                        email: values[2].trim(),
-                        telefono: values[3].trim(),
-                        indirizzo: values[4].trim(),
-                        città: values[5].trim(),
-                        orario_apertura: values[6]?.trim() || '',
-                        orario_chiusura: values[7]?.trim() || '',
-                        orario_consegna_inizio: values[8]?.trim() || '',
-                        orario_consegna_fine: values[9]?.trim() || '',
-                        // Parse split hours if available (format: "08:00-13:00,15:00-19:00")
-                        orari_split: values[6]?.includes('-') ? values[6].trim() : ''
-                    };
-                });
-
+                // Prima prova a caricare da API
+                customers = await DataSync.loadCustomers();
                 renderCustomers();
             } catch (error) {
-                console.error('Errore caricamento clienti:', error);
+                console.log('API non disponibile, carico da CSV...');
+                try {
+                    const response = await fetch('data/clienti.csv');
+                    const text = await response.text();
+                    const lines = text.trim().split('\n');
+                    const headers = lines[0].split(',');
+                    
+                    customers = lines.slice(1).map(line => {
+                        const values = line.split(',');
+                        return {
+                            id: values[0].trim(),
+                            nome: values[1].trim(),
+                            email: values[2].trim(),
+                            telefono: values[3].trim(),
+                            indirizzo: values[4].trim(),
+                            città: values[5].trim(),
+                            orario_apertura: values[6]?.trim() || '',
+                            orario_chiusura: values[7]?.trim() || '',
+                            orario_consegna_inizio: values[8]?.trim() || '',
+                            orario_consegna_fine: values[9]?.trim() || '',
+                            orari_split: values[6]?.includes('-') ? values[6].trim() : ''
+                        };
+                    });
+
+                    renderCustomers();
+                } catch (csvError) {
+                    console.error('Errore caricamento clienti:', csvError);
+                }
             }
         }
 
@@ -444,7 +451,7 @@
         }
 
         // Salva cliente
-        function saveCustomer(event) {
+        async function saveCustomer(event) {
             event.preventDefault();
 
             const morningStart = document.getElementById('customerOpenMorningStart').value;
@@ -485,39 +492,66 @@
 
             if (editingCustomerId) {
                 // Modifica cliente esistente
-                const index = customers.findIndex(c => c.id == editingCustomerId);
-                if (index >= 0) {
-                    customers[index] = customerData;
+                try {
+                    await DataSync.updateCustomer(editingCustomerId, customerData);
+                    const index = customers.findIndex(c => c.id == editingCustomerId);
+                    if (index >= 0) {
+                        customers[index] = customerData;
+                    }
+                } catch (error) {
+                    console.warn('⚠️ Errore aggiornamento API, salvo localmente:', error);
+                    const index = customers.findIndex(c => c.id == editingCustomerId);
+                    if (index >= 0) {
+                        customers[index] = customerData;
+                    }
                 }
             } else {
                 // Nuovo cliente
-                customers.push(customerData);
+                try {
+                    const savedCustomer = await DataSync.saveCustomer(customerData);
+                    customerData.id = savedCustomer.id || customerData.id;
+                    customers.push(customerData);
+                } catch (error) {
+                    console.warn('⚠️ Errore creazione API, salvo localmente:', error);
+                    customers.push(customerData);
+                }
             }
 
-            saveToLocalStorage();
+            // Backup in localStorage
+            localStorage.setItem('customers', JSON.stringify(customers));
             renderCustomers();
             closeCustomerModal();
             alert('✅ Cliente salvato con successo!');
         }
 
         // Elimina cliente
-        function deleteCustomer(id) {
+        async function deleteCustomer(id) {
+            try {
+                await DataSync.deleteCustomer(id);
+            } catch (error) {
+                console.warn('⚠️ Errore eliminazione API:', error);
+            }
             customers = customers.filter(c => c.id != id);
-            saveToLocalStorage();
+            localStorage.setItem('customers', JSON.stringify(customers));
             renderCustomers();
             alert('✅ Cliente eliminato!');
         }
 
-        // Salva in localStorage
-        function saveToLocalStorage() {
+        // Salva in localStorage/API
+        async function saveToLocalStorage() {
+            // Mantiene anche il localStorage per compatibilità
             localStorage.setItem('customers', JSON.stringify(customers));
         }
 
-        // Carica da localStorage
-        function loadFromLocalStorage() {
-            const stored = localStorage.getItem('customers');
-            if (stored) {
-                customers = JSON.parse(stored);
+        // Carica da localStorage (fallback)
+        async function loadFromLocalStorage() {
+            try {
+                customers = await DataSync.loadCustomers();
+            } catch (error) {
+                const stored = localStorage.getItem('customers');
+                if (stored) {
+                    customers = JSON.parse(stored);
+                }
             }
         }
 
@@ -528,16 +562,19 @@
 
         // Inizializza
         window.addEventListener('load', async () => {
+            // Carica branding (logo, nome azienda)
+            if (window.SettingsUtils && window.SettingsUtils.loadAndApplyBranding) {
+                await window.SettingsUtils.loadAndApplyBranding();
+            }
             await loadCustomers();
-            loadFromLocalStorage();
             renderCustomers();
         });
 
         // Sincronizza dati quando cambiano da un'altra pagina (storage event listener)
-        window.addEventListener('storage', (event) => {
-            if (event.key === 'orders') {
-                console.log('📦 Sincronizzando ordini da un\'altra pagina...');
-                loadFromLocalStorage();
+        window.addEventListener('storage', async (event) => {
+            if (event.key === 'customers') {
+                console.log('👥 Sincronizzando clienti da un\'altra pagina...');
+                await loadFromLocalStorage();
                 renderCustomers();
             }
         });

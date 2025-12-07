@@ -1,0 +1,316 @@
+import { Router, Request, Response } from 'express';
+import { PrismaClient } from '@prisma/client';
+
+const router = Router();
+const prisma = new PrismaClient();
+
+/**
+ * GET /api/trips
+ * Lista tutti i viaggi
+ */
+router.get('/', async (req: Request, res: Response) => {
+  try {
+    const { status, from, to, operatorId } = req.query;
+    
+    const where: any = {};
+    
+    if (status) where.status = status;
+    if (operatorId) where.assignedOperatorId = parseInt(operatorId as string);
+    
+    // Filtro date
+    if (from || to) {
+      where.date = {};
+      if (from) where.date.gte = new Date(from as string);
+      if (to) where.date.lte = new Date(to as string);
+    }
+    
+    const trips = await prisma.trip.findMany({
+      where,
+      include: {
+        assignedOperator: {
+          select: { id: true, username: true, image: true }
+        },
+        orders: {
+          include: {
+            customer: true
+          }
+        }
+      },
+      orderBy: { date: 'asc' }
+    });
+    
+    // Converti orders.products da JSON string a array
+    const tripsWithProducts = trips.map(trip => ({
+      ...trip,
+      orders: trip.orders.map(order => ({
+        ...order,
+        products: order.products ? JSON.parse(order.products) : []
+      }))
+    }));
+    
+    res.json(tripsWithProducts);
+  } catch (error: any) {
+    console.error('Error fetching trips:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/trips/:id
+ * Ottieni singolo viaggio
+ */
+router.get('/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    const trip = await prisma.trip.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        assignedOperator: {
+          select: { id: true, username: true, image: true }
+        },
+        orders: {
+          include: {
+            customer: true
+          }
+        }
+      }
+    });
+    
+    if (!trip) {
+      return res.status(404).json({ error: 'Trip not found' });
+    }
+    
+    res.json({
+      ...trip,
+      orders: trip.orders.map(order => ({
+        ...order,
+        products: order.products ? JSON.parse(order.products) : []
+      }))
+    });
+  } catch (error: any) {
+    console.error('Error fetching trip:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/trips
+ * Crea nuovo viaggio
+ */
+router.post('/', async (req: Request, res: Response) => {
+  try {
+    const { 
+      name, 
+      date, 
+      assignedOperatorId,
+      vehicleId,
+      vehicleName,
+      notes 
+    } = req.body;
+    
+    const trip = await prisma.trip.create({
+      data: {
+        name,
+        date: new Date(date),
+        assignedOperatorId: assignedOperatorId || null,
+        vehicleId: vehicleId || null,
+        vehicleName: vehicleName || null,
+        notes: notes || null,
+        status: 'planned'
+      },
+      include: {
+        assignedOperator: {
+          select: { id: true, username: true, image: true }
+        },
+        orders: true
+      }
+    });
+    
+    res.status(201).json(trip);
+  } catch (error: any) {
+    console.error('Error creating trip:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * PUT /api/trips/:id
+ * Aggiorna viaggio
+ */
+router.put('/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { 
+      name, 
+      date, 
+      assignedOperatorId,
+      vehicleId,
+      vehicleName,
+      status,
+      notes 
+    } = req.body;
+    
+    const updateData: any = {};
+    
+    if (name !== undefined) updateData.name = name;
+    if (date !== undefined) updateData.date = new Date(date);
+    if (assignedOperatorId !== undefined) updateData.assignedOperatorId = assignedOperatorId;
+    if (vehicleId !== undefined) updateData.vehicleId = vehicleId;
+    if (vehicleName !== undefined) updateData.vehicleName = vehicleName;
+    if (notes !== undefined) updateData.notes = notes;
+    if (status !== undefined) {
+      updateData.status = status;
+      if (status === 'in_progress') {
+        updateData.startedAt = new Date();
+      } else if (status === 'completed') {
+        updateData.completedAt = new Date();
+      }
+    }
+    
+    const trip = await prisma.trip.update({
+      where: { id: parseInt(id) },
+      data: updateData,
+      include: {
+        assignedOperator: {
+          select: { id: true, username: true, image: true }
+        },
+        orders: {
+          include: { customer: true }
+        }
+      }
+    });
+    
+    res.json({
+      ...trip,
+      orders: trip.orders.map(order => ({
+        ...order,
+        products: order.products ? JSON.parse(order.products) : []
+      }))
+    });
+  } catch (error: any) {
+    console.error('Error updating trip:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * DELETE /api/trips/:id
+ * Elimina viaggio
+ */
+router.delete('/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    // Prima rimuovi il collegamento dagli ordini
+    await prisma.order.updateMany({
+      where: { tripId: parseInt(id) },
+      data: { tripId: null }
+    });
+    
+    await prisma.trip.delete({
+      where: { id: parseInt(id) }
+    });
+    
+    res.json({ success: true, message: 'Trip deleted' });
+  } catch (error: any) {
+    console.error('Error deleting trip:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/trips/:id/orders
+ * Aggiungi ordini a un viaggio
+ */
+router.post('/:id/orders', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { orderIds } = req.body;
+    
+    if (!Array.isArray(orderIds)) {
+      return res.status(400).json({ error: 'orderIds must be an array' });
+    }
+    
+    await prisma.order.updateMany({
+      where: { id: { in: orderIds } },
+      data: { tripId: parseInt(id) }
+    });
+    
+    const trip = await prisma.trip.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        assignedOperator: {
+          select: { id: true, username: true, image: true }
+        },
+        orders: {
+          include: { customer: true }
+        }
+      }
+    });
+    
+    res.json(trip);
+  } catch (error: any) {
+    console.error('Error adding orders to trip:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * DELETE /api/trips/:id/orders/:orderId
+ * Rimuovi ordine da un viaggio
+ */
+router.delete('/:id/orders/:orderId', async (req: Request, res: Response) => {
+  try {
+    const { orderId } = req.params;
+    
+    await prisma.order.update({
+      where: { id: parseInt(orderId) },
+      data: { tripId: null }
+    });
+    
+    res.json({ success: true, message: 'Order removed from trip' });
+  } catch (error: any) {
+    console.error('Error removing order from trip:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/trips/bulk
+ * Importa viaggi in blocco (per migrazione da localStorage)
+ */
+router.post('/bulk', async (req: Request, res: Response) => {
+  try {
+    const { trips } = req.body;
+    
+    if (!Array.isArray(trips)) {
+      return res.status(400).json({ error: 'trips must be an array' });
+    }
+    
+    const created = await prisma.$transaction(
+      trips.map(trip => prisma.trip.create({
+        data: {
+          name: trip.name,
+          date: new Date(trip.date || trip.createdAt || new Date()),
+          assignedOperatorId: trip.assignedOperatorId || null,
+          vehicleId: trip.vehicleId || null,
+          vehicleName: trip.vehicleName || null,
+          notes: trip.notes || null,
+          status: trip.status || 'planned'
+        }
+      }))
+    );
+    
+    res.status(201).json({ 
+      success: true, 
+      count: created.length,
+      message: `${created.length} trips imported`
+    });
+  } catch (error: any) {
+    console.error('Error bulk importing trips:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+export default router;
