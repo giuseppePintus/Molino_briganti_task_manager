@@ -1,6 +1,6 @@
 {
   "name": "task-manager-app",
-  "version": "1.0.17",
+  "version": "1.0.19",
   "description": "A task management web application with user authentication and role-based access.",
   "main": "server/src/index.ts",
   "scripts": {

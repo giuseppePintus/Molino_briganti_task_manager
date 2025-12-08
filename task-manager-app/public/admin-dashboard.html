@@ -1673,11 +1673,86 @@
         // Sistema viaggi (sincronizzato con orders-planner)
         let trips = [];
         let orders = [];
+        
+        // Clienti e articoli per il modal di modifica ordine
+        let clienti = [];
+        let articoli = [];
 
         // Helper per ottenere il nome cliente in modo sicuro (compatibile con server API)
         function getClientName(order) {
             if (!order) return 'Cliente sconosciuto';
             return order.customer?.name || order.clientName || order.client || 'Cliente sconosciuto';
+        }
+
+        // Funzione per parsare CSV clienti
+        function parseCSV(csvText) {
+            const lines = csvText.trim().split('\n');
+            if (lines.length < 2) return [];
+            return lines.slice(1).map(line => {
+                const parts = line.split(';');
+                return { nome: parts[0] || '' };
+            }).filter(c => c.nome);
+        }
+
+        // Funzione per parsare CSV articoli
+        function parseArticoliCSV(csvText) {
+            const lines = csvText.trim().split('\n');
+            if (lines.length < 2) return [];
+            return lines.slice(1).map(line => {
+                const parts = line.split(';');
+                return { 
+                    codice: parts[0] || '', 
+                    descrizione: parts[1] || parts[0] || '',
+                    nome: parts[0] || ''
+                };
+            }).filter(a => a.codice);
+        }
+
+        // Carica clienti e articoli per il modal di modifica
+        async function loadClientiAndArticoli() {
+            // Carica clienti
+            try {
+                const stored = localStorage.getItem('customers');
+                if (stored) {
+                    clienti = JSON.parse(stored);
+                } else {
+                    const csvResponse = await fetch('data/clienti.csv');
+                    const csvText = await csvResponse.text();
+                    clienti = parseCSV(csvText);
+                }
+                console.log('Admin-dashboard: clienti caricati:', clienti.length);
+            } catch (error) {
+                console.error('Errore caricamento clienti:', error);
+            }
+
+            // Carica articoli
+            try {
+                const inventoryResponse = await fetch(`${API_URL}/inventory/articles`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (inventoryResponse.ok) {
+                    const inventoryArticles = await inventoryResponse.json();
+                    if (inventoryArticles && inventoryArticles.length > 0) {
+                        articoli = inventoryArticles.map(a => ({
+                            codice: a.code || a.codice || a.name || '',
+                            descrizione: a.name || a.descrizione || a.description || '',
+                            nome: a.name || a.nome || ''
+                        }));
+                        console.log('Admin-dashboard: articoli caricati da API:', articoli.length);
+                    }
+                }
+            } catch (apiError) {
+                console.warn('API inventory non disponibile, fallback a CSV:', apiError.message);
+                try {
+                    const csvResponse = await fetch('data/codifica articoli.csv');
+                    const csvText = await csvResponse.text();
+                    articoli = parseArticoliCSV(csvText);
+                    console.log('Admin-dashboard: articoli caricati da CSV:', articoli.length);
+                } catch (e) {
+                    console.error('Errore caricamento articoli:', e);
+                }
+            }
         }
 
         // Helper per generare timeline/storico degli ordini
@@ -1890,11 +1965,20 @@
                 editOrderProducts = [{ product: order.product, quantity: order.quantity || 0, unit: 'kg' }];
             }
 
-            // Genera HTML prodotti
+            // Genera HTML prodotti con select per articoli
+            const articoliOptions = articoli.map(a => {
+                const cod = a.codice || a.nome || '???';
+                const desc = a.descrizione || a.nome || '???';
+                return { cod, desc };
+            });
+            
             const productsHtml = editOrderProducts.length > 0 ? 
                 editOrderProducts.map((p, idx) => `
                     <div style="display: flex; gap: 8px; align-items: center; padding: 8px; background: #1a1a1a; border-radius: 4px; margin-bottom: 6px;" id="editProd_${idx}">
-                        <input type="text" value="${p.product}" placeholder="Articolo" style="flex: 2; padding: 8px; background: #2a2a2a; border: 1px solid #444; border-radius: 4px; color: #fff;" onchange="updateEditProduct(${idx}, 'product', this.value)">
+                        <select style="flex: 2; padding: 8px; background: #2a2a2a; border: 1px solid #444; border-radius: 4px; color: #fff;" onchange="updateEditProduct(${idx}, 'product', this.value)">
+                            <option value="">-- Seleziona Articolo --</option>
+                            ${articoliOptions.map(a => `<option value="${a.cod}" ${a.cod === p.product ? 'selected' : ''}>${a.cod} - ${a.desc}</option>`).join('')}
+                        </select>
                         <input type="number" value="${p.quantity}" placeholder="Qty" step="0.1" style="width: 80px; padding: 8px; background: #2a2a2a; border: 1px solid #444; border-radius: 4px; color: #fff;" onchange="updateEditProduct(${idx}, 'quantity', this.value)">
                         <span style="color: #888;">kg</span>
                         <button type="button" onclick="removeEditProduct(${idx})" style="background: #dc2626; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">✕</button>
@@ -1918,7 +2002,10 @@
                             <!-- Cliente -->
                             <div class="form-group" style="margin-bottom: 16px;">
                                 <label style="display: block; color: #e0e0e0; margin-bottom: 6px; font-weight: 600;">👤 Cliente</label>
-                                <input type="text" id="editUnifiedClient" value="${clientName}" style="width: 100%; padding: 12px; background: #2a2a2a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;">
+                                <select id="editUnifiedClient" style="width: 100%; padding: 12px; background: #2a2a2a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;">
+                                    <option value="">-- Seleziona Cliente --</option>
+                                    ${clienti.map(c => `<option value="${c.nome}" ${c.nome === clientName ? 'selected' : ''}>${c.nome}</option>`).join('')}
+                                </select>
                             </div>
 
                             <!-- Tipo Ordine -->
@@ -2002,10 +2089,20 @@
             const container = document.getElementById('editProductsList');
             if (!container) return;
             
+            // Genera opzioni articoli
+            const articoliOptions = articoli.map(a => {
+                const cod = a.codice || a.nome || '???';
+                const desc = a.descrizione || a.nome || '???';
+                return { cod, desc };
+            });
+            
             container.innerHTML = editOrderProducts.length > 0 ? 
                 editOrderProducts.map((p, idx) => `
                     <div style="display: flex; gap: 8px; align-items: center; padding: 8px; background: #1a1a1a; border-radius: 4px; margin-bottom: 6px;" id="editProd_${idx}">
-                        <input type="text" value="${p.product}" placeholder="Articolo" style="flex: 2; padding: 8px; background: #2a2a2a; border: 1px solid #444; border-radius: 4px; color: #fff;" onchange="updateEditProduct(${idx}, 'product', this.value)">
+                        <select style="flex: 2; padding: 8px; background: #2a2a2a; border: 1px solid #444; border-radius: 4px; color: #fff;" onchange="updateEditProduct(${idx}, 'product', this.value)">
+                            <option value="">-- Seleziona Articolo --</option>
+                            ${articoliOptions.map(a => `<option value="${a.cod}" ${a.cod === p.product ? 'selected' : ''}>${a.cod} - ${a.desc}</option>`).join('')}
+                        </select>
                         <input type="number" value="${p.quantity}" placeholder="Qty" step="0.1" style="width: 80px; padding: 8px; background: #2a2a2a; border: 1px solid #444; border-radius: 4px; color: #fff;" onchange="updateEditProduct(${idx}, 'quantity', this.value)">
                         <span style="color: #888;">kg</span>
                         <button type="button" onclick="removeEditProduct(${idx})" style="background: #dc2626; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">✕</button>
@@ -2027,14 +2124,15 @@
             const operatorId = document.getElementById('editUnifiedOperator').value;
             const notes = document.getElementById('editUnifiedNotes').value;
 
-            // Sincronizza i valori correnti dai campi input
+            // Sincronizza i valori correnti dai campi select/input
             document.querySelectorAll('[id^="editProd_"]').forEach((div, idx) => {
-                const inputs = div.querySelectorAll('input');
-                if (inputs[0] && editOrderProducts[idx]) {
-                    editOrderProducts[idx].product = inputs[0].value;
+                const productSelect = div.querySelector('select');
+                const quantityInput = div.querySelector('input[type="number"]');
+                if (productSelect && editOrderProducts[idx]) {
+                    editOrderProducts[idx].product = productSelect.value;
                 }
-                if (inputs[1] && editOrderProducts[idx]) {
-                    editOrderProducts[idx].quantity = parseFloat(inputs[1].value) || 0;
+                if (quantityInput && editOrderProducts[idx]) {
+                    editOrderProducts[idx].quantity = parseFloat(quantityInput.value) || 0;
                 }
             });
 
@@ -2311,6 +2409,7 @@
             await loadCompanyBranding();
             
             await loadTripsFromPlanner();
+            await loadClientiAndArticoli();
             await loadOperators();
             await loadAssignees();
             await loadTasks();
@@ -3167,7 +3266,7 @@
                     tripCountHtml = `<div style="position: absolute; top: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #2563eb; border-radius: 3px; padding: 2px 4px;">${dayDeliveryOrders.length}</div>`;
                 }
                 if (dayUnassignedPickupOrders.length > 0) {
-                    unassignedPickupHtml = `<div style="position: absolute; bottom: 0; right: 0; width: 0; height: 0; border-style: solid; border-width: 0 0 22px 22px; border-color: transparent transparent #16a34a transparent; border-radius: 0 0 4px 0; z-index: 25;"><span style="position: absolute; bottom: 4px; right: -14px; font-size: 10px; font-weight: bold; color: white; z-index: 26;">${dayUnassignedPickupOrders.length}</span></div>`;
+                    unassignedPickupHtml = `<div style="position: absolute; bottom: 0; right: 0; width: 0; height: 0; border-style: solid; border-width: 0 0 22px 22px; border-color: transparent transparent #16a34a transparent; border-radius: 0 0 4px 0; z-index: 20;"></div><div style="position: absolute; bottom: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 25; border: 2px solid #16a34a; border-radius: 3px; padding: 2px 4px;">${dayUnassignedPickupOrders.length}</div>`;
                 }
                 
                 html += `<div class="calendar-day ${hasTasksClass} ${hasUnassignedClass} ${hasTripsClass} ${hasUnassignedPickupsClass} ${isTodayClass} ${isSelectedClass}" style="cursor: pointer; position: relative; ${dayColor}" onclick="handleCalendarDayClick('${dateStr}')"><strong>${date.getDate()}</strong>${taskCountHtml}${unassignedCountHtml}${tripCountHtml}${unassignedPickupHtml}</div>`;
@@ -3358,7 +3457,7 @@
                 });
                 let unassignedPickupHtml = '';
                 if (dayUnassignedPickupOrders.length > 0) {
-                    unassignedPickupHtml = `<div style="position: absolute; bottom: 0; right: 0; width: 0; height: 0; border-style: solid; border-width: 0 0 22px 22px; border-color: transparent transparent #16a34a transparent; border-radius: 0 0 4px 0; z-index: 25;"><span style="position: absolute; bottom: 4px; right: -14px; font-size: 10px; font-weight: bold; color: white; z-index: 26;">${dayUnassignedPickupOrders.length}</span></div>`;
+                    unassignedPickupHtml = `<div style="position: absolute; bottom: 0; right: 0; width: 0; height: 0; border-style: solid; border-width: 0 0 22px 22px; border-color: transparent transparent #16a34a transparent; border-radius: 0 0 4px 0; z-index: 20;"></div><div style="position: absolute; bottom: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 25; border: 2px solid #16a34a; border-radius: 3px; padding: 2px 4px;">${dayUnassignedPickupOrders.length}</div>`;
                 }
                 
                 html += `<div class="calendar-day ${hasTasksClass} ${hasUnassignedClass} ${hasTripsClass} ${isTodayClass} ${isSelectedClass}" style="${dayColor}; cursor: pointer; position: relative;" onclick="handleCalendarDayClick('${dateForClick}')"><strong>${day}</strong>${taskCountHtml}${unassignedCountHtml}${tripCountHtml}${unassignedPickupHtml}</div>`;
@@ -5200,23 +5299,23 @@
             const pendingOrders = getPendingDeliveryOrders(dateStr);
             if (pendingOrders.length > 0) {
                 contentHtml += `
-                    <div style="background: #2d2213; border: 1px solid #f59e0b; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
+                    <div style="background: #1a2d32; border: 1px solid #3b82f6; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                            <h3 style="margin: 0; color: #fbbf24; font-size: 16px;">⏳ Consegne Sospese (${pendingOrders.length})</h3>
+                            <h3 style="margin: 0; color: #3b82f6; font-size: 16px;">⏳ Consegne Sospese (${pendingOrders.length})</h3>
                         </div>
-                        <p style="margin: 0 0 12px 0; color: #d4a574; font-size: 12px;">📝 Da aggiungere a un viaggio:</p>
+                        <p style="margin: 0 0 12px 0; color: #93c5fd; font-size: 12px;">📝 Da aggiungere a un viaggio:</p>
                         ${pendingOrders.map(order => {
                             const fullInfo = getOrderFullInfo(order.id);
                             const timelineHtml = getOrderTimelineHtml(order);
                             return `
-                            <div style="background: #1a1410; border-left: 3px solid #f59e0b; padding: 12px; margin: 8px 0; border-radius: 4px;">
+                            <div style="background: #0f1a1f; border-left: 3px solid #3b82f6; padding: 12px; margin: 8px 0; border-radius: 4px;">
                                 <h4 style="margin: 0 0 4px 0; color: #fff;">${fullInfo?.client || 'Cliente'}</h4>
-                                <p style="margin: 4px 0; color: #fbbf24; font-size: 13px;"><strong>📦 ${fullInfo?.products?.map(p => `${p.product || 'N/D'} (${p.quantity || 0}kg)`).join(' + ') || fullInfo?.product || 'N/D'}</strong></p>
-                                <p style="margin: 4px 0; color: #fbbf24; font-size: 12px;">📅 ${order.dateTime ? new Date(order.dateTime).toLocaleString('it-IT') : 'N/D'}</p>
-                                ${fullInfo?.notes ? `<p style="margin: 4px 0; color: #fbbf24; font-size: 11px;">📝 ${fullInfo.notes}</p>` : ''}
+                                <p style="margin: 4px 0; color: #93c5fd; font-size: 13px;"><strong>📦 ${fullInfo?.products?.map(p => `${p.product || 'N/D'} (${p.quantity || 0}kg)`).join(' + ') || fullInfo?.product || 'N/D'}</strong></p>
+                                <p style="margin: 4px 0; color: #93c5fd; font-size: 12px;">📅 ${order.dateTime ? new Date(order.dateTime).toLocaleString('it-IT') : 'N/D'}</p>
+                                ${fullInfo?.notes ? `<p style="margin: 4px 0; color: #93c5fd; font-size: 11px;">📝 ${fullInfo.notes}</p>` : ''}
                                 ${timelineHtml}
                                 <div style="margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap;">
-                                    <button class="btn btn-warning btn-small" onclick="createNewTripWithOrder(${order.id})" style="background: #ea580c; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">🆕 Nuovo viaggio</button>
+                                    <button class="btn btn-info btn-small" onclick="createNewTripWithOrder(${order.id})" style="background: #0ea5e9; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">🆕 Nuovo viaggio</button>
                                     <button class="btn btn-primary btn-small" onclick="openEditDeliveryOrderModal(${order.id})" style="background: #3b82f6; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">✏️ Modifica</button>
                                     <button class="btn btn-secondary btn-small" onclick="handleDeleteTask(${order.id})" style="background: #6b7280; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">🗑️ Rimuovi</button>
                                 </div>

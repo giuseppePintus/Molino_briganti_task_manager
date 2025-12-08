@@ -6,8 +6,9 @@ WORKDIR /app
 # Copia SOLO package files PRIMA per sfruttare la cache layer npm install
 COPY package*.json ./
 
-# Install dependencies with retry (layer stabile per cache)
-RUN npm install --legacy-peer-deps --audit=false || npm install --legacy-peer-deps --audit=false || npm install --legacy-peer-deps --audit=false
+# Install dependencies with BuildKit cache mount (MOLTO più veloce su rebuild)
+RUN --mount=type=cache,target=/root/.npm \
+    npm install --legacy-peer-deps --audit=false --prefer-offline
 
 # Crea directory per la build
 RUN mkdir -p /app/server /app/client

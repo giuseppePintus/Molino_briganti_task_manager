@@ -768,113 +768,117 @@
         </div>
     </div>
 
-    <!-- Order Modal -->
+    <!-- Order Modal - Stile migliorato come admin-dashboard -->
     <div id="orderModal" class="modal">
-        <div class="modal-content">
-            <h2>📝 Nuovo Ordine</h2>
-            <form id="orderForm" onsubmit="saveOrder(event)">
-                <div class="form-group">
-                    <label for="orderClient">Cliente:</label>
-                    <select id="orderClient" required onchange="updateClientInfo()">
-                        <option value="">-- Seleziona Cliente --</option>
-                    </select>
-                    <div id="clientHoursInfo" style="margin-top: 8px; font-size: 12px; color: #86efac; display: none;">
-                        <!-- Client hours will be displayed here -->
-                    </div>
+        <div class="modal-content" style="padding: 0; border-radius: 12px; border: 2px solid #3b82f6; max-width: 600px;">
+            <!-- Header con colore -->
+            <div id="orderModalHeader" style="background: rgba(59, 130, 246, 0.2); padding: 20px; border-bottom: 1px solid #3b82f6;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h2 style="margin: 0; color: #3b82f6; font-size: 20px;">📝 Nuovo Ordine</h2>
+                    <button type="button" onclick="closeOrderModal()" style="background: none; border: none; color: #999; font-size: 28px; cursor: pointer; padding: 0; line-height: 1;" title="Chiudi">×</button>
                 </div>
-
-                <!-- NUOVO: Sezione Prodotti Multipli -->
-                <div class="form-group" style="background: #2d2d2d; padding: 15px; border-radius: 6px; border-left: 3px solid #86efac;">
-                    <label style="font-weight: bold; color: #86efac;">📦 Prodotti nell'ordine:</label>
-                    
-                    <!-- Selettore e aggiunta prodotto -->
-                    <div style="display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-bottom: 12px;">
-                        <div>
-                            <select id="orderProduct" onchange="loadAvailableBatches()" style="width: 100%; padding: 8px; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; color: #fff;">
-                                <option value="">-- Seleziona Articolo --</option>
-                            </select>
-                        </div>
-                        <div style="display: grid; grid-template-columns: 1fr auto; gap: 4px;">
-                            <input type="number" id="orderQuantity" min="0.1" step="0.1" placeholder="Qty (kg)" style="padding: 8px; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; color: #fff; width: 80px; -moz-appearance: textfield;" onwheel="event.preventDefault();">
-                            <style>
-                                #orderQuantity::-webkit-outer-spin-button,
-                                #orderQuantity::-webkit-inner-spin-button {
-                                    -webkit-appearance: none;
-                                    margin: 0;
-                                }
-                            </style>
-                            <button type="button" onclick="addProductToOrder()" class="btn-secondary" style="padding: 8px 12px; background: #86efac; color: #000; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">➕ Aggiungi</button>
-                        </div>
+            </div>
+            
+            <!-- Body scrollabile -->
+            <div style="padding: 20px; max-height: 60vh; overflow-y: auto;">
+                <form id="orderForm" onsubmit="saveOrder(event)">
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <label for="orderClient" style="display: block; color: #e0e0e0; margin-bottom: 6px; font-weight: 600;">👤 Cliente</label>
+                        <select id="orderClient" required onchange="updateClientInfo()" style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;">
+                            <option value="">-- Seleziona Cliente --</option>
+                        </select>
+                        <div id="clientHoursInfo" style="margin-top: 8px; font-size: 12px; color: #86efac; display: none;"></div>
                     </div>
 
-                    <!-- Tabella prodotti aggiunti -->
-                    <div id="orderProductsTableContainer" style="display: none;">
-                        <table style="width: 100%; border-collapse: collapse; background: #1a1a1a; font-size: 12px;">
-                            <thead>
-                                <tr style="background: #0d0d0d; border-bottom: 2px solid #4d4d4d;">
-                                    <th style="padding: 8px; text-align: left; color: #e0e0e0;">Articolo</th>
-                                    <th style="padding: 8px; text-align: right; color: #e0e0e0;">Quantità (kg)</th>
-                                    <th style="padding: 8px; text-align: center; color: #e0e0e0;">Lotti</th>
-                                    <th style="padding: 8px; text-align: center; color: #e0e0e0;">Azione</th>
-                                </tr>
-                            </thead>
-                            <tbody id="orderProductsTableBody">
-                                <!-- Rows will be added here -->
-                            </tbody>
-                        </table>
-                        <div style="margin-top: 8px; padding: 8px; background: #2d2d2d; border-radius: 4px;">
-                            <strong style="color: #86efac;">Totale: <span id="orderProductsTotal">0</span> kg</strong>
+                    <!-- Sezione Prodotti -->
+                    <div class="form-group" style="margin-bottom: 16px; background: #252525; padding: 15px; border-radius: 8px; border-left: 3px solid #86efac;">
+                        <label style="display: block; color: #86efac; margin-bottom: 10px; font-weight: 600;">📦 Prodotti nell'ordine</label>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-bottom: 12px;">
+                            <div>
+                                <select id="orderProduct" onchange="loadAvailableBatches()" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;">
+                                    <option value="">-- Seleziona Articolo --</option>
+                                </select>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr auto; gap: 4px;">
+                                <input type="number" id="orderQuantity" min="0.1" step="0.1" placeholder="Qty (kg)" style="padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; width: 80px; -moz-appearance: textfield;" onwheel="event.preventDefault();">
+                                <style>
+                                    #orderQuantity::-webkit-outer-spin-button,
+                                    #orderQuantity::-webkit-inner-spin-button {
+                                        -webkit-appearance: none;
+                                        margin: 0;
+                                    }
+                                </style>
+                                <button type="button" onclick="addProductToOrder()" style="padding: 10px 14px; background: #86efac; color: #000; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">➕ Aggiungi</button>
+                            </div>
+                        </div>
+
+                        <div id="orderProductsTableContainer" style="display: none;">
+                            <table style="width: 100%; border-collapse: collapse; background: #1a1a1a; font-size: 12px; border-radius: 6px; overflow: hidden;">
+                                <thead>
+                                    <tr style="background: #0d0d0d; border-bottom: 2px solid #4d4d4d;">
+                                        <th style="padding: 8px; text-align: left; color: #e0e0e0;">Articolo</th>
+                                        <th style="padding: 8px; text-align: right; color: #e0e0e0;">Quantità (kg)</th>
+                                        <th style="padding: 8px; text-align: center; color: #e0e0e0;">Lotti</th>
+                                        <th style="padding: 8px; text-align: center; color: #e0e0e0;">Azione</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="orderProductsTableBody"></tbody>
+                            </table>
+                            <div style="margin-top: 8px; padding: 8px; background: #1a1a1a; border-radius: 6px;">
+                                <strong style="color: #86efac;">Totale: <span id="orderProductsTotal">0</span> kg</strong>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="form-group">
-                    <label for="orderType">Tipo Ordine:</label>
-                    <select id="orderType" required onchange="updateTripOptions()">
-                        <option value="consegnato">📦 Consegnato</option>
-                        <option value="ritira">🏪 Ritira Cliente</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="orderDateTime">Data e Orario Consegna:</label>
-                    <input type="datetime-local" id="orderDateTime" required onchange="updateTripOptions()">
-                </div>
-                
-                <!-- NUOVO: Sezione Viaggio (solo per consegnati) -->
-                <div class="form-group" id="tripSection" style="display: none; background: #2d2d2d; padding: 15px; border-radius: 6px; border-left: 3px solid #2563eb;">
-                    <label for="tripOptions" style="font-weight: bold; color: #2563eb;">🚚 Viaggio:</label>
-                    <select id="tripOptions" onchange="updateTripSelection()">
-                        <option value="">-- Scegli opzione --</option>
-                        <option value="new">🆕 Crea nuovo viaggio</option>
-                        <option value="existing">📌 Aggiungi a viaggio esistente</option>
-                        <option value="pending">⏳ Senza viaggio (Sospeso)</option>
-                    </select>
-                    
-                    <!-- Campo per nuovo viaggio -->
-                    <div id="newTripFields" style="display: none; margin-top: 12px;">
-                        <label for="newTripName" style="font-size: 12px; color: #bbb;">Nome viaggio:</label>
-                        <input type="text" id="newTripName" placeholder="es. Consegne 30/11" style="width: 100%; padding: 8px; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; color: #fff; font-size: 12px; margin-top: 4px;">
-                    </div>
-                    
-                    <!-- Selezione viaggio esistente -->
-                    <div id="existingTripFields" style="display: none; margin-top: 12px;">
-                        <label for="existingTrip" style="font-size: 12px; color: #bbb;">Viaggio disponibile:</label>
-                        <select id="existingTrip" style="width: 100%; padding: 8px; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; color: #fff; font-size: 12px; margin-top: 4px;">
-                            <option value="">-- Nessun viaggio disponibile --</option>
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <label for="orderType" style="display: block; color: #e0e0e0; margin-bottom: 6px; font-weight: 600;">📋 Tipo Ordine</label>
+                        <select id="orderType" required onchange="updateTripOptions()" style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;">
+                            <option value="consegnato">🚚 Consegnato</option>
+                            <option value="ritira">📥 Ritira Cliente</option>
                         </select>
                     </div>
-                </div>
 
-                <div class="form-group">
-                    <label for="orderNotes">Note:</label>
-                    <textarea id="orderNotes" rows="3" placeholder="Note aggiuntive..."></textarea>
-                </div>
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <label for="orderDateTime" style="display: block; color: #e0e0e0; margin-bottom: 6px; font-weight: 600;">📅 Data e Orario</label>
+                        <input type="datetime-local" id="orderDateTime" required onchange="updateTripOptions()" style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;">
+                    </div>
+                    
+                    <!-- Sezione Viaggio -->
+                    <div class="form-group" id="tripSection" style="display: none; margin-bottom: 16px; background: #252525; padding: 15px; border-radius: 8px; border-left: 3px solid #3b82f6;">
+                        <label for="tripOptions" style="display: block; color: #3b82f6; margin-bottom: 10px; font-weight: 600;">🚚 Viaggio</label>
+                        <select id="tripOptions" onchange="updateTripSelection()" style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;">
+                            <option value="">-- Scegli opzione --</option>
+                            <option value="new">🆕 Crea nuovo viaggio</option>
+                            <option value="existing">📌 Aggiungi a viaggio esistente</option>
+                            <option value="pending">⏳ Senza viaggio (Sospeso)</option>
+                        </select>
+                        
+                        <div id="newTripFields" style="display: none; margin-top: 12px;">
+                            <label for="newTripName" style="font-size: 12px; color: #bbb;">Nome viaggio:</label>
+                            <input type="text" id="newTripName" placeholder="es. Consegne 30/11" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 13px; margin-top: 4px;">
+                        </div>
+                        
+                        <div id="existingTripFields" style="display: none; margin-top: 12px;">
+                            <label for="existingTrip" style="font-size: 12px; color: #bbb;">Viaggio disponibile:</label>
+                            <select id="existingTrip" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 13px; margin-top: 4px;">
+                                <option value="">-- Nessun viaggio disponibile --</option>
+                            </select>
+                        </div>
+                    </div>
 
-                <div class="modal-actions">
-                    <button type="submit" class="btn btn-primary">💾 Salva</button>
-                    <button type="button" class="btn btn-secondary" onclick="closeOrderModal()">❌ Annulla</button>
-                </div>
-            </form>
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <label for="orderNotes" style="display: block; color: #e0e0e0; margin-bottom: 6px; font-weight: 600;">📝 Note</label>
+                        <textarea id="orderNotes" rows="3" placeholder="Note aggiuntive..." style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px; resize: vertical;"></textarea>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Footer con azioni -->
+            <div style="padding: 16px 20px; background: #252525; border-top: 1px solid #444; display: flex; gap: 12px; justify-content: flex-end;">
+                <button type="button" onclick="closeOrderModal()" style="background: #6b7280; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-weight: 600;">❌ Annulla</button>
+                <button type="button" onclick="document.getElementById('orderForm').dispatchEvent(new Event('submit', {cancelable: true}))" style="background: #3b82f6; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-weight: 600;">💾 Salva</button>
+            </div>
         </div>
     </div>
 
@@ -1987,7 +1991,9 @@
 
         // Apri modal ordine
         async function openOrderModal(selectedDate = null) {
-            document.querySelector('#orderModal h2').textContent = '📝 Nuovo Ordine';
+            // Aggiorna header modal
+            const headerEl = document.querySelector('#orderModalHeader h2');
+            if (headerEl) headerEl.textContent = '📝 Nuovo Ordine';
             document.getElementById('orderForm').dataset.editingId = '';
             
             console.log('🔍 DEBUG openOrderModal - articoli.length:', articoli.length);
@@ -2061,14 +2067,38 @@
             const order = orders.find(o => o.id === orderId);
             if (!order) return;
 
-            document.querySelector('#orderModal h2').textContent = '✏️ Modifica Ordine';
+            // Aggiorna header modal con colore in base al tipo ordine
+            const isRitiro = order.type === 'ritira';
+            const borderColor = isRitiro ? '#16a34a' : '#3b82f6';
+            const typeLabel = isRitiro ? '📥 Ritiro' : '🚚 Consegna';
+            
+            const headerEl = document.getElementById('orderModalHeader');
+            if (headerEl) {
+                headerEl.style.background = `${borderColor}20`;
+                headerEl.style.borderBottom = `1px solid ${borderColor}`;
+                const h2 = headerEl.querySelector('h2');
+                if (h2) {
+                    h2.textContent = `✏️ Modifica ${typeLabel}`;
+                    h2.style.color = borderColor;
+                }
+            }
+            
+            // Aggiorna bordo del modal
+            const modalContent = document.querySelector('#orderModal .modal-content');
+            if (modalContent) modalContent.style.borderColor = borderColor;
+            
+            // Aggiorna pulsante salva
+            const saveBtn = document.querySelector('#orderModal [style*="background: #3b82f6"]');
+            if (saveBtn) saveBtn.style.background = borderColor;
+            
             document.getElementById('orderForm').dataset.editingId = orderId;
             
             // Popola dropdown clienti (usa dati già caricati da CSV/localStorage)
             const clientSelect = document.getElementById('orderClient');
+            const clientName = getClientName(order); // Usa helper che gestisce order.customer.name, order.clientName, order.client
             clientSelect.innerHTML = '<option value="">-- Seleziona Cliente --</option>' +
                 clienti.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
-            clientSelect.value = order.client;
+            clientSelect.value = clientName;
 
             // Popola dropdown articoli (usa dati già caricati da CSV/localStorage)
             const productSelect = document.getElementById('orderProduct');
@@ -3565,6 +3595,10 @@
                     return order.dateTime.startsWith(dateStr);
                 });
                 
+                // Separa consegne e ritiri
+                const dayDeliveryOrders = dayOrders.filter(order => order.type === 'consegnato');
+                const dayPickupOrders = dayOrders.filter(order => order.type === 'ritira');
+
                 const assignedOrders = dayOrders.filter(order => {
                     const task = orderTasks.find(t => t.orderId === order.id);
                     return task && task.assignedTo.length > 0;
@@ -3590,18 +3624,25 @@
                 
                 const dayColor = (!isAllowed || isHoliday) ? 'color: #ef4444;' : '';
                 
-                let assignedCountHtml = '';
+                let deliveryCountHtml = '';
+                let pickupCountHtml = '';
                 let tripCountHtml = '';
-                // Badge unico in basso a destra con totale ordini/ritiri
-                const totalOrdersCount = assignedOrders + unassignedOrders;
-                if (totalOrdersCount > 0) {
-                    assignedCountHtml = `<div style="position: absolute; bottom: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #16a34a; border-radius: 3px; padding: 2px 4px;">${totalOrdersCount}</div>`;
-                }
-                if (dayTrips.length > 0) {
-                    tripCountHtml = `<div style="position: absolute; top: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #2563eb; border-radius: 3px; padding: 2px 4px;">${dayTrips.length}</div>`;
+                
+                // Consegne: triangolo blu + box blu in alto a destra
+                if (dayDeliveryOrders.length > 0) {
+                    deliveryCountHtml = `<div style="position: absolute; top: 0; right: 0; width: 0; height: 0; border-style: solid; border-width: 0 22px 22px 0; border-color: transparent #2563eb transparent transparent; border-radius: 0 4px 0 0; z-index: 20;"></div><div style="position: absolute; top: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 25; border: 2px solid #2563eb; border-radius: 3px; padding: 2px 4px;">${dayDeliveryOrders.length}</div>`;
                 }
                 
-                html += `<div class="calendar-day ${hasOrdersClass} ${hasUnassignedClass} ${hasTripsClass} ${isTodayClass} ${isSelectedClass}" style="cursor: pointer; position: relative; ${dayColor}" onclick="handleCalendarDayClick('${dateStr}')"><strong>${date.getDate()}</strong>${assignedCountHtml}${tripCountHtml}</div>`;
+                // Ritiri: triangolo verde + box verde in basso a destra
+                if (dayPickupOrders.length > 0) {
+                    pickupCountHtml = `<div style="position: absolute; bottom: 0; right: 0; width: 0; height: 0; border-style: solid; border-width: 0 0 22px 22px; border-color: transparent transparent #16a34a transparent; border-radius: 0 0 4px 0; z-index: 20;"></div><div style="position: absolute; bottom: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 25; border: 2px solid #16a34a; border-radius: 3px; padding: 2px 4px;">${dayPickupOrders.length}</div>`;
+                }
+                
+                if (dayTrips.length > 0) {
+                    tripCountHtml = `<div style="position: absolute; top: 8px; left: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #ff9800; border-radius: 3px; padding: 2px 4px;">${dayTrips.length}</div>`;
+                }
+                
+                html += `<div class="calendar-day ${hasOrdersClass} ${hasUnassignedClass} ${hasTripsClass} ${isTodayClass} ${isSelectedClass}" style="cursor: pointer; position: relative; ${dayColor}" onclick="handleCalendarDayClick('${dateStr}')"><strong>${date.getDate()}</strong>${deliveryCountHtml}${pickupCountHtml}${tripCountHtml}</div>`;
             }
             
             container.innerHTML = html;
@@ -3658,6 +3699,10 @@
                     return order.dateTime.startsWith(dateStr);
                 });
 
+                // Separa consegne e ritiri
+                const dayDeliveryOrders = dayOrders.filter(order => order.type === 'consegnato');
+                const dayPickupOrders = dayOrders.filter(order => order.type === 'ritira');
+
                 // Conta ordini assegnati e da assegnare
                 const assignedOrders = dayOrders.filter(order => {
                     const task = orderTasks.find(t => t.orderId === order.id);
@@ -3685,18 +3730,26 @@
                 
                 const dayColor = (!isAllowed || isHoliday) ? 'color: #ef4444;' : '';
 
-                let assignedCountHtml = '';
+                let deliveryCountHtml = '';
+                let pickupCountHtml = '';
                 let tripCountHtml = '';
-                // Badge unico in basso a destra con totale ordini/ritiri
-                const totalOrdersCount = assignedOrders + unassignedOrders;
-                if (totalOrdersCount > 0) {
-                    assignedCountHtml = `<div style="position: absolute; bottom: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #16a34a; border-radius: 3px; padding: 2px 4px;">${totalOrdersCount}</div>`;
+                
+                // Consegne: triangolo blu + box blu in alto a destra
+                if (dayDeliveryOrders.length > 0) {
+                    deliveryCountHtml = `<div style="position: absolute; top: 0; right: 0; width: 0; height: 0; border-style: solid; border-width: 0 22px 22px 0; border-color: transparent #2563eb transparent transparent; border-radius: 0 4px 0 0; z-index: 20;"></div><div style="position: absolute; top: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 25; border: 2px solid #2563eb; border-radius: 3px; padding: 2px 4px;">${dayDeliveryOrders.length}</div>`;
                 }
+                
+                // Ritiri: triangolo verde + box verde in basso a destra
+                if (dayPickupOrders.length > 0) {
+                    pickupCountHtml = `<div style="position: absolute; bottom: 0; right: 0; width: 0; height: 0; border-style: solid; border-width: 0 0 22px 22px; border-color: transparent transparent #16a34a transparent; border-radius: 0 0 4px 0; z-index: 20;"></div><div style="position: absolute; bottom: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 25; border: 2px solid #16a34a; border-radius: 3px; padding: 2px 4px;">${dayPickupOrders.length}</div>`;
+                }
+                
+                // Viaggi: box arancione in alto a sinistra
                 if (dayTrips.length > 0) {
-                    tripCountHtml = `<div style="position: absolute; top: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #2563eb; border-radius: 3px; padding: 2px 4px;">${dayTrips.length}</div>`;
+                    tripCountHtml = `<div style="position: absolute; top: 8px; left: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #ff9800; border-radius: 3px; padding: 2px 4px;">${dayTrips.length}</div>`;
                 }
 
-                html += `<div class="calendar-day ${hasOrdersClass} ${hasUnassignedClass} ${hasTripsClass} ${isTodayClass} ${isSelectedClass}" style="${dayColor}" onclick="handleCalendarDayClick('${dateStr}')" ondblclick=""><strong>${day}</strong>${assignedCountHtml}${tripCountHtml}</div>`;
+                html += `<div class="calendar-day ${hasOrdersClass} ${hasUnassignedClass} ${hasTripsClass} ${isTodayClass} ${isSelectedClass}" style="${dayColor}; cursor: pointer; position: relative;" onclick="handleCalendarDayClick('${dateStr}')" ondblclick=""><strong>${day}</strong>${deliveryCountHtml}${pickupCountHtml}${tripCountHtml}</div>`;
             }
             
             container.innerHTML = html;

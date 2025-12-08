@@ -30,7 +30,7 @@ export class BackupService {
     nextBackup: null
   };
 
-  constructor(backupDir: string = '/share/Container/data/molino/backups/database', nasUrl: string = '192.168.1.248', nasPort: number = 5000) {
+  constructor(backupDir: string = '/data/molino/backups/database', nasUrl: string = '192.168.1.248', nasPort: number = 5000) {
     this.backupDir = backupDir;
     this.nasUrl = nasUrl;
     this.nasPort = nasPort;
@@ -455,7 +455,7 @@ export class BackupService {
 }
 
 export default new BackupService(
-  process.env.BACKUP_DIR || '/share/Container/data/molino/backups/database',
+  process.env.BACKUP_DIR || '/data/molino/backups/database',
   process.env.NAS_URL || '192.168.1.248',
   parseInt(process.env.NAS_PORT || '5000')
 );
