@@ -202,8 +202,10 @@ model Order {
   // Data e ora programmata
   dateTime          DateTime?
   
-  // Stato
+  // Stato e Timeline
   status            String    @default("pending")  // pending, in_progress, completed, cancelled
+  assignedAt        DateTime? // Quando è stato assegnato all'operatore
+  acceptedAt        DateTime? // Quando l'operatore ha accettato
   completedAt       DateTime?
   
   notes             String?

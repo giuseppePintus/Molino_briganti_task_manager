@@ -98,7 +98,8 @@ router.post('/', async (req: Request, res: Response) => {
     const { 
       type, 
       customerId, 
-      clientName, 
+      clientName,
+      client,  // Alias per clientName (compatibilità frontend)
       products, 
       tripId, 
       assignedOperatorId,
@@ -106,11 +107,14 @@ router.post('/', async (req: Request, res: Response) => {
       notes 
     } = req.body;
     
+    // Accetta sia clientName che client (alias)
+    const clientNameValue = clientName || client || null;
+    
     const order = await prisma.order.create({
       data: {
         type,
         customerId: customerId || null,
-        clientName: clientName || null,
+        clientName: clientNameValue,
         products: products ? JSON.stringify(products) : null,
         tripId: tripId || null,
         assignedOperatorId: assignedOperatorId || null,
@@ -152,7 +156,8 @@ router.put('/:id', async (req: Request, res: Response) => {
     const { 
       type, 
       customerId, 
-      clientName, 
+      clientName,
+      client,  // Alias per clientName (compatibilità frontend)
       products, 
       tripId, 
       assignedOperatorId,
@@ -165,15 +170,37 @@ router.put('/:id', async (req: Request, res: Response) => {
     
     if (type !== undefined) updateData.type = type;
     if (customerId !== undefined) updateData.customerId = customerId;
-    if (clientName !== undefined) updateData.clientName = clientName;
+    // Accetta sia clientName che client (alias)
+    const clientNameValue = clientName !== undefined ? clientName : client;
+    if (clientNameValue !== undefined) updateData.clientName = clientNameValue;
     if (products !== undefined) updateData.products = JSON.stringify(products);
     if (tripId !== undefined) updateData.tripId = tripId;
-    if (assignedOperatorId !== undefined) updateData.assignedOperatorId = assignedOperatorId;
+    
+    // Gestione assegnazione operatore con timestamp
+    if (assignedOperatorId !== undefined) {
+      updateData.assignedOperatorId = assignedOperatorId;
+      // Se viene assegnato un operatore, salva la data di assegnazione
+      if (assignedOperatorId && assignedOperatorId !== null) {
+        // Leggi l'ordine corrente per vedere se era già assegnato
+        const currentOrder = await prisma.order.findUnique({ where: { id: parseInt(id) } });
+        if (!currentOrder?.assignedOperatorId) {
+          updateData.assignedAt = new Date();
+        }
+      }
+    }
+    
     if (dateTime !== undefined) updateData.dateTime = dateTime ? new Date(dateTime) : null;
     if (status !== undefined) {
       updateData.status = status;
       if (status === 'completed') {
         updateData.completedAt = new Date();
+      }
+      // Se lo status passa a in_progress (accettato), salva acceptedAt
+      if (status === 'in_progress') {
+        const currentOrder = await prisma.order.findUnique({ where: { id: parseInt(id) } });
+        if (!currentOrder?.acceptedAt) {
+          updateData.acceptedAt = new Date();
+        }
       }
     }
     if (notes !== undefined) updateData.notes = notes;

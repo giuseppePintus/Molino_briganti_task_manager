@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Operatore - Molino Briganti</title>
+    <style>
+        /* CSS compatibile con browser vecchi - no flexbox/grid avanzato */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+            font-size: 16px;
+            line-height: 1.4;
+        }
+        
+        /* Header */
+        .header {
+            background-color: #2d2d2d;
+            padding: 12px 15px;
+            border-bottom: 2px solid #ea580c;
+            position: relative;
+        }
+        
+        .header h1 {
+            font-size: 18px;
+            color: #fff;
+            margin: 0;
+            display: inline-block;
+        }
+        
+        .header .user-info {
+            float: right;
+            font-size: 14px;
+            color: #a0a0a0;
+            padding-top: 2px;
+        }
+        
+        .header .logout-btn {
+            background-color: #dc2626;
+            color: #fff;
+            border: none;
+            padding: 8px 12px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-left: 10px;
+            border-radius: 4px;
+        }
+        
+        .clear {
+            clear: both;
+        }
+        
+        /* Container */
+        .container {
+            padding: 15px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        /* Status bar */
+        .status-bar {
+            background-color: #2d2d2d;
+            padding: 10px 15px;
+            margin-bottom: 15px;
+            border-radius: 6px;
+            font-size: 14px;
+            text-align: center;
+        }
+        
+        .status-bar .online {
+            color: #22c55e;
+        }
+        
+        .status-bar .offline {
+            color: #dc2626;
+        }
+        
+        .status-bar .last-update {
+            color: #888;
+            font-size: 12px;
+            margin-top: 4px;
+        }
+        
+        /* Section title */
+        .section-title {
+            font-size: 16px;
+            color: #ea580c;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #3d3d3d;
+        }
+        
+        /* Task card */
+        .task-card {
+            background-color: #2d2d2d;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 12px;
+            border-left: 4px solid #8b5cf6;
+        }
+        
+        .task-card.accepted {
+            border-left-color: #3b82f6;
+        }
+        
+        .task-card.paused {
+            border-left-color: #f59e0b;
+        }
+        
+        .task-card.completed {
+            border-left-color: #22c55e;
+            opacity: 0.7;
+        }
+        
+        .task-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+        
+        .task-meta {
+            font-size: 13px;
+            color: #a0a0a0;
+            margin-bottom: 4px;
+        }
+        
+        .task-status {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .task-status.pending {
+            background-color: #8b5cf6;
+            color: #fff;
+        }
+        
+        .task-status.accepted {
+            background-color: #3b82f6;
+            color: #fff;
+        }
+        
+        .task-status.paused {
+            background-color: #f59e0b;
+            color: #fff;
+        }
+        
+        .task-status.completed {
+            background-color: #22c55e;
+            color: #fff;
+        }
+        
+        /* Buttons */
+        .btn-container {
+            margin-top: 12px;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 12px 16px;
+            font-size: 14px;
+            font-weight: bold;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-right: 8px;
+            margin-bottom: 8px;
+            min-width: 100px;
+            text-align: center;
+        }
+        
+        .btn-accept {
+            background-color: #22c55e;
+            color: #fff;
+        }
+        
+        .btn-complete {
+            background-color: #3b82f6;
+            color: #fff;
+        }
+        
+        .btn-pause {
+            background-color: #f59e0b;
+            color: #fff;
+        }
+        
+        .btn-resume {
+            background-color: #8b5cf6;
+            color: #fff;
+        }
+        
+        .btn:active {
+            opacity: 0.8;
+        }
+        
+        .btn:disabled {
+            background-color: #555;
+            color: #888;
+            cursor: not-allowed;
+        }
+        
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #888;
+        }
+        
+        .empty-state .icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+        
+        /* Login form */
+        .login-container {
+            max-width: 350px;
+            margin: 60px auto;
+            padding: 30px;
+            background-color: #2d2d2d;
+            border-radius: 10px;
+        }
+        
+        .login-container h2 {
+            text-align: center;
+            margin-bottom: 25px;
+            color: #ea580c;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #e0e0e0;
+            font-size: 14px;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 14px;
+            font-size: 16px;
+            border: 1px solid #4d4d4d;
+            border-radius: 6px;
+            background-color: #1a1a1a;
+            color: #fff;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #ea580c;
+        }
+        
+        .btn-login {
+            width: 100%;
+            padding: 14px;
+            background-color: #ea580c;
+            color: #fff;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        
+        .error-msg {
+            background-color: #dc2626;
+            color: #fff;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            text-align: center;
+            display: none;
+        }
+        
+        /* Timeline */
+        .task-timeline {
+            background-color: #252525;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            font-size: 11px;
+        }
+        
+        .task-timeline .timeline-title {
+            color: #888;
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+        
+        .task-timeline .timeline-item {
+            color: #a0a0a0;
+            margin: 3px 0;
+        }
+        
+        /* Priority colors */
+        .priority-low { color: #10B981; }
+        .priority-medium { color: #FCD34D; }
+        .priority-high { color: #F97316; }
+        .priority-urgent { color: #EF4444; }
+        
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #888;
+        }
+        
+        /* Refresh button */
+        .refresh-btn {
+            background-color: #3d3d3d;
+            color: #fff;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .refresh-btn:active {
+            background-color: #555;
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Section -->
+    <div id="loginSection">
+        <div class="login-container">
+            <h2>🏭 Molino Briganti</h2>
+            <div id="errorMsg" class="error-msg"></div>
+            <form id="loginForm" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label for="username">👤 Username</label>
+                    <input type="text" id="username" name="username" required autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label for="password">🔒 Password</label>
+                    <input type="password" id="password" name="password" required autocomplete="current-password">
+                </div>
+                <button type="submit" class="btn-login">Accedi</button>
+            </form>
+            <p id="version-op-lite" style="text-align: center; margin-top: 15px; font-size: 12px; color: #666;">Versione Lite v1.0.17</p>
+        </div>
+    </div>
+    
+    <!-- Dashboard Section -->
+    <div id="dashboardSection" style="display: none;">
+        <div class="header">
+            <h1>📋 I Miei Task</h1>
+            <div class="user-info">
+                <span id="userDisplay"></span>
+                <button class="logout-btn" onclick="handleLogout()">Esci</button>
+            </div>
+            <div class="clear"></div>
+        </div>
+        
+        <div class="container">
+            <div class="status-bar">
+                <span id="connectionStatus" class="online">● Online</span>
+                <div class="last-update">Ultimo aggiornamento: <span id="lastUpdate">--:--</span></div>
+                <button class="refresh-btn" onclick="loadTasks()" style="margin-top: 8px;">🔄 Aggiorna</button>
+            </div>
+            
+            <h3 class="section-title">📅 Task di Oggi</h3>
+            
+            <div id="tasksList">
+                <div class="loading">Caricamento...</div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Configurazione - ES5 compatibile
+        var API_URL = window.location.protocol + '//' + window.location.hostname + ':' + (window.location.port || 5000) + '/api';
+        var token = null;
+        var currentUser = null;
+        var tasks = [];
+        var refreshInterval = null;
+        
+        // Inizializzazione
+        function init() {
+            token = localStorage.getItem('token');
+            var userStr = localStorage.getItem('currentUser');
+            if (userStr) {
+                try {
+                    currentUser = JSON.parse(userStr);
+                } catch(e) {
+                    currentUser = null;
+                }
+            }
+            
+            if (token && currentUser) {
+                showDashboard();
+                loadTasks();
+                startAutoRefresh();
+            } else {
+                showLogin();
+            }
+        }
+        
+        function showLogin() {
+            document.getElementById('loginSection').style.display = 'block';
+            document.getElementById('dashboardSection').style.display = 'none';
+        }
+        
+        function showDashboard() {
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('dashboardSection').style.display = 'block';
+            document.getElementById('userDisplay').textContent = currentUser ? currentUser.username : '';
+        }
+        
+        // Login
+        function handleLogin(event) {
+            event.preventDefault();
+            var username = document.getElementById('username').value;
+            var password = document.getElementById('password').value;
+            var errorMsg = document.getElementById('errorMsg');
+            
+            errorMsg.style.display = 'none';
+            
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', API_URL + '/auth/login', true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        var response = JSON.parse(xhr.responseText);
+                        token = response.token;
+                        currentUser = response.user;
+                        localStorage.setItem('token', token);
+                        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                        showDashboard();
+                        loadTasks();
+                        startAutoRefresh();
+                    } else {
+                        errorMsg.textContent = 'Username o password errati';
+                        errorMsg.style.display = 'block';
+                    }
+                }
+            };
+            
+            xhr.send(JSON.stringify({ username: username, password: password }));
+        }
+        
+        // Logout
+        function handleLogout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('currentUser');
+            token = null;
+            currentUser = null;
+            stopAutoRefresh();
+            showLogin();
+        }
+        
+        // Load tasks
+        function loadTasks() {
+            if (!token) return;
+            
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', API_URL + '/tasks', true);
+            xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+            
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        tasks = JSON.parse(xhr.responseText);
+                        renderTasks();
+                        updateLastRefresh();
+                        setConnectionStatus(true);
+                    } else if (xhr.status === 401) {
+                        handleLogout();
+                    } else {
+                        setConnectionStatus(false);
+                    }
+                }
+            };
+            
+            xhr.onerror = function() {
+                setConnectionStatus(false);
+            };
+            
+            xhr.send();
+        }
+        
+        // Render tasks
+        function renderTasks() {
+            var container = document.getElementById('tasksList');
+            
+            // Filtra task di oggi assegnati a me
+            var today = new Date();
+            var todayStr = today.getFullYear() + '-' + 
+                          padZero(today.getMonth() + 1) + '-' + 
+                          padZero(today.getDate());
+            
+            var myTasks = [];
+            for (var i = 0; i < tasks.length; i++) {
+                var task = tasks[i];
+                if (task.assignedOperatorId === currentUser.id || 
+                    (task.assignedOperator && task.assignedOperator.id === currentUser.id)) {
+                    if (task.scheduledAt) {
+                        var taskDate = task.scheduledAt.split('T')[0];
+                        if (taskDate === todayStr) {
+                            myTasks.push(task);
+                        }
+                    }
+                }
+            }
+            
+            if (myTasks.length === 0) {
+                container.innerHTML = '<div class="empty-state">' +
+                    '<div class="icon">✅</div>' +
+                    '<p>Nessun task assegnato per oggi</p>' +
+                    '</div>';
+                return;
+            }
+            
+            var html = '';
+            for (var j = 0; j < myTasks.length; j++) {
+                html += renderTaskCard(myTasks[j]);
+            }
+            container.innerHTML = html;
+        }
+        
+        function renderTaskCard(task) {
+            var statusClass = 'pending';
+            var statusText = '📋 In Sospeso';
+            var cardClass = '';
+            
+            if (task.completed) {
+                statusClass = 'completed';
+                statusText = '✅ Completato';
+                cardClass = 'completed';
+            } else if (task.paused) {
+                statusClass = 'paused';
+                statusText = '⏸️ In Pausa';
+                cardClass = 'paused';
+            } else if (task.acceptedAt) {
+                statusClass = 'accepted';
+                statusText = '👍 Accettato';
+                cardClass = 'accepted';
+            }
+            
+            var priorityClass = 'priority-medium';
+            var priorityText = '🟡 Media';
+            if (task.priority === 'LOW') {
+                priorityClass = 'priority-low';
+                priorityText = '🟢 Bassa';
+            } else if (task.priority === 'HIGH') {
+                priorityClass = 'priority-high';
+                priorityText = '🟠 Alta';
+            } else if (task.priority === 'URGENT') {
+                priorityClass = 'priority-urgent';
+                priorityText = '🔴 Urgente';
+            }
+            
+            var buttons = '';
+            
+            if (!task.completed) {
+                if (!task.acceptedAt) {
+                    buttons += '<button class="btn btn-accept" onclick="acceptTask(' + task.id + ')">👍 Accetta</button>';
+                } else if (task.paused) {
+                    buttons += '<button class="btn btn-resume" onclick="resumeTask(' + task.id + ')">▶️ Riprendi</button>';
+                } else {
+                    buttons += '<button class="btn btn-complete" onclick="completeTask(' + task.id + ')">✅ Completa</button>';
+                    buttons += '<button class="btn btn-pause" onclick="pauseTask(' + task.id + ')">⏸️ Pausa</button>';
+                }
+            }
+            
+            // Timeline
+            var timeline = '<div class="task-timeline">';
+            timeline += '<div class="timeline-title">📜 Storico:</div>';
+            if (task.createdAt) {
+                timeline += '<div class="timeline-item">📝 Creato: ' + formatDateTime(task.createdAt) + '</div>';
+            }
+            if (task.assignedAt) {
+                timeline += '<div class="timeline-item">👤 Assegnato: ' + formatDateTime(task.assignedAt) + '</div>';
+            }
+            if (task.acceptedAt) {
+                timeline += '<div class="timeline-item">👍 Accettato: ' + formatDateTime(task.acceptedAt) + '</div>';
+            }
+            if (task.pausedAt && task.paused) {
+                timeline += '<div class="timeline-item">⏸️ In Pausa: ' + formatDateTime(task.pausedAt) + '</div>';
+            }
+            if (task.completedAt) {
+                timeline += '<div class="timeline-item">✅ Completato: ' + formatDateTime(task.completedAt) + '</div>';
+            }
+            timeline += '</div>';
+            
+            var html = '<div class="task-card ' + cardClass + '">';
+            html += '<div class="task-title">' + escapeHtml(task.title) + '</div>';
+            html += '<span class="task-status ' + statusClass + '">' + statusText + '</span>';
+            
+            if (task.description) {
+                html += '<div class="task-meta">📝 ' + escapeHtml(task.description) + '</div>';
+            }
+            if (task.estimatedMinutes) {
+                html += '<div class="task-meta">⏱️ ' + task.estimatedMinutes + ' min</div>';
+            }
+            html += '<div class="task-meta ' + priorityClass + '">' + priorityText + '</div>';
+            
+            html += timeline;
+            
+            if (buttons) {
+                html += '<div class="btn-container">' + buttons + '</div>';
+            }
+            
+            html += '</div>';
+            
+            return html;
+        }
+        
+        // Task actions
+        function acceptTask(taskId) {
+            sendTaskAction(taskId, 'accept');
+        }
+        
+        function pauseTask(taskId) {
+            sendTaskAction(taskId, 'pause');
+        }
+        
+        function resumeTask(taskId) {
+            sendTaskAction(taskId, 'resume');
+        }
+        
+        function completeTask(taskId) {
+            if (confirm('Confermi di aver completato questo task?')) {
+                sendTaskAction(taskId, 'complete');
+            }
+        }
+        
+        function sendTaskAction(taskId, action) {
+            var xhr = new XMLHttpRequest();
+            
+            if (action === 'complete') {
+                xhr.open('PUT', API_URL + '/tasks/' + taskId, true);
+                xhr.setRequestHeader('Content-Type', 'application/json');
+                xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+                
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState === 4) {
+                        if (xhr.status === 200) {
+                            loadTasks();
+                        } else {
+                            alert('Errore durante l\'operazione');
+                        }
+                    }
+                };
+                
+                xhr.send(JSON.stringify({ completed: true }));
+            } else {
+                xhr.open('POST', API_URL + '/tasks/' + taskId + '/' + action, true);
+                xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+                
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState === 4) {
+                        if (xhr.status === 200) {
+                            loadTasks();
+                        } else {
+                            alert('Errore durante l\'operazione');
+                        }
+                    }
+                };
+                
+                xhr.send();
+            }
+        }
+        
+        // Utility functions
+        function padZero(num) {
+            return num < 10 ? '0' + num : '' + num;
+        }
+        
+        function formatDateTime(dateStr) {
+            if (!dateStr) return '--';
+            var d = new Date(dateStr);
+            return padZero(d.getDate()) + '/' + 
+                   padZero(d.getMonth() + 1) + '/' + 
+                   d.getFullYear() + ' ' + 
+                   padZero(d.getHours()) + ':' + 
+                   padZero(d.getMinutes());
+        }
+        
+        function escapeHtml(text) {
+            if (!text) return '';
+            var div = document.createElement('div');
+            div.appendChild(document.createTextNode(text));
+            return div.innerHTML;
+        }
+        
+        function updateLastRefresh() {
+            var now = new Date();
+            document.getElementById('lastUpdate').textContent = 
+                padZero(now.getHours()) + ':' + padZero(now.getMinutes()) + ':' + padZero(now.getSeconds());
+        }
+        
+        function setConnectionStatus(online) {
+            var elem = document.getElementById('connectionStatus');
+            if (online) {
+                elem.className = 'online';
+                elem.textContent = '● Online';
+            } else {
+                elem.className = 'offline';
+                elem.textContent = '● Offline';
+            }
+        }
+        
+        // Auto refresh ogni 5 secondi
+        function startAutoRefresh() {
+            stopAutoRefresh();
+            refreshInterval = setInterval(loadTasks, 5000);
+        }
+        
+        function stopAutoRefresh() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+                refreshInterval = null;
+            }
+        }
+        
+        // Start app
+        init();
+    </script>
+</body>
+</html>

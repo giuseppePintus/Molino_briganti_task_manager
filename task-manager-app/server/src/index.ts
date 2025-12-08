@@ -4,6 +4,10 @@ import path from 'path';
 // Load environment variables from server/.env
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
+// Load version from package.json
+const packageJson = require('../../package.json');
+const APP_VERSION = packageJson.version || '1.0.0';
+
 import express from 'express';
 import cors from 'cors';
 import http from 'http';
@@ -67,7 +71,12 @@ app.use('/api/customers', customersRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok' });
+  res.json({ status: 'ok', version: APP_VERSION });
+});
+
+// Version endpoint
+app.get('/api/version', (req, res) => {
+  res.json({ version: APP_VERSION, date: new Date().toISOString().split('T')[0] });
 });
 
 // Serve index.html for all other routes (SPA)

@@ -1,0 +1,16 @@
+id,nome,email,telefono,indirizzo,città,orario_apertura,orario_chiusura,orario_consegna_inizio,orario_consegna_fine
+1,Panificio Da Vinci,info@davinci.it,0547-123456,Via Mazzini 12,Cesenatico,05:00,13:00,06:00,12:00
+2,Pizzeria Bella Napoli,pizza@bellanapoli.it,0547-234567,Via Roma 45,Cesenatico,11:00,23:00,09:00,10:30
+3,Ristorante Mare Blu,info@mareblu.it,0547-345678,Viale Carducci 8,Cesenatico,12:00,23:30,09:00,11:00
+4,Bar Centrale,bar@centrale.it,0547-456789,Piazza Costa 3,Cesenatico,06:00,20:00,06:30,09:00
+5,Pasticceria Dolce Vita,dolci@dolcevita.it,0547-567890,Via Saffi 22,Gatteo Mare,06:30,13:30,07:00,12:00
+6,Trattoria Il Gabbiano,info@gabbiano.it,0547-678901,Via Milano 67,Gatteo,11:30,22:00,09:00,10:30
+7,Osteria del Porto,porto@osteria.it,0547-789012,Via Porto Canale 18,Cesenatico,12:00,23:00,09:30,11:00
+8,Hotel Riviera,reception@hotelriviera.it,0547-890123,Viale Vespucci 101,Cesenatico,00:00,23:59,07:00,10:00
+9,Alimentari Franco,franco@alimentari.it,0547-901234,Via Dante 5,Villamarina,07:00,13:00,07:30,12:00
+10,Ristorante La Barca,info@labarca.it,0547-012345,Lungomare Gramsci 33,Cesenatico,12:00,23:00,09:00,11:00
+11,Pizzeria Da Mario,mario@pizza.it,0547-112233,Via Cavour 14,San Mauro Mare,11:00,23:00,09:00,10:30
+12,Bar Sport,sport@bar.it,0547-223344,Via Kennedy 9,Gatteo,06:00,21:00,06:30,09:30
+13,Pasticceria Artigiana,info@artigiana.it,0547-334455,Via Mazzini 78,Cesenatico,06:00,13:00,06:30,12:00
+14,Ristorante La Piazzetta,piazzetta@ristorante.it,0547-445566,Piazza Pisacane 11,Cesenatico,12:00,23:00,09:00,11:00
+15,Hotel Mare Nostrum,info@marenostrum.it,0547-556677,Viale dei Mille 55,Cesenatico,00:00,23:59,07:00,10:00
