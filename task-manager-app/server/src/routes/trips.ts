@@ -39,9 +39,10 @@ router.get('/', async (req: Request, res: Response) => {
       orderBy: { date: 'asc' }
     });
     
-    // Converti orders.products da JSON string a array
+    // Converti orders.products da JSON string a array e sequence da JSON string a array
     const tripsWithProducts = trips.map(trip => ({
       ...trip,
+      sequence: trip.sequence ? JSON.parse(trip.sequence) : [],
       orders: trip.orders.map(order => ({
         ...order,
         products: order.products ? JSON.parse(order.products) : []
@@ -83,6 +84,7 @@ router.get('/:id', async (req: Request, res: Response) => {
     
     res.json({
       ...trip,
+      sequence: trip.sequence ? JSON.parse(trip.sequence) : [],
       orders: trip.orders.map(order => ({
         ...order,
         products: order.products ? JSON.parse(order.products) : []
@@ -106,9 +108,11 @@ router.post('/', async (req: Request, res: Response) => {
       assignedOperatorId,
       vehicleId,
       vehicleName,
+      sequence,
       notes 
     } = req.body;
     
+    // Crea il viaggio senza includere orders subito
     const trip = await prisma.trip.create({
       data: {
         name,
@@ -116,9 +120,15 @@ router.post('/', async (req: Request, res: Response) => {
         assignedOperatorId: assignedOperatorId || null,
         vehicleId: vehicleId || null,
         vehicleName: vehicleName || null,
+        sequence: sequence ? JSON.stringify(sequence) : null,
         notes: notes || null,
         status: 'planned'
-      },
+      }
+    });
+    
+    // Recupera il viaggio completo con relazioni
+    const fullTrip = await prisma.trip.findUnique({
+      where: { id: trip.id },
       include: {
         assignedOperator: {
           select: { id: true, username: true, image: true }
@@ -127,7 +137,14 @@ router.post('/', async (req: Request, res: Response) => {
       }
     });
     
-    res.status(201).json(trip);
+    res.status(201).json({
+      ...fullTrip,
+      sequence: fullTrip?.sequence ? JSON.parse(fullTrip.sequence) : [],
+      orders: fullTrip?.orders.map(order => ({
+        ...order,
+        products: order.products ? JSON.parse(order.products) : []
+      }))
+    });
   } catch (error: any) {
     console.error('Error creating trip:', error);
     res.status(500).json({ error: error.message });
@@ -147,6 +164,7 @@ router.put('/:id', async (req: Request, res: Response) => {
       assignedOperatorId,
       vehicleId,
       vehicleName,
+      sequence,
       status,
       notes 
     } = req.body;
@@ -158,6 +176,7 @@ router.put('/:id', async (req: Request, res: Response) => {
     if (assignedOperatorId !== undefined) updateData.assignedOperatorId = assignedOperatorId;
     if (vehicleId !== undefined) updateData.vehicleId = vehicleId;
     if (vehicleName !== undefined) updateData.vehicleName = vehicleName;
+    if (sequence !== undefined) updateData.sequence = Array.isArray(sequence) ? JSON.stringify(sequence) : sequence;
     if (notes !== undefined) updateData.notes = notes;
     if (status !== undefined) {
       updateData.status = status;
@@ -183,6 +202,7 @@ router.put('/:id', async (req: Request, res: Response) => {
     
     res.json({
       ...trip,
+      sequence: trip.sequence ? JSON.parse(trip.sequence) : [],
       orders: trip.orders.map(order => ({
         ...order,
         products: order.products ? JSON.parse(order.products) : []

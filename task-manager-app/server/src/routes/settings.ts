@@ -272,11 +272,23 @@ router.put('/', authMiddleware, async (req: Request, res: Response) => {
     if (Array.isArray(vehicles)) {
       await prisma.vehicle.updateMany({ data: { isActive: false } });
       for (const v of vehicles) {
-        if (v.id) {
-          await prisma.vehicle.update({
-            where: { id: v.id },
-            data: { name: v.name, isActive: true }
+        if (v.id && typeof v.id === 'number') {
+          // Controlla se il veicolo esiste prima di aggiornarlo
+          const existingVehicle = await prisma.vehicle.findUnique({
+            where: { id: v.id }
           });
+          
+          if (existingVehicle) {
+            await prisma.vehicle.update({
+              where: { id: v.id },
+              data: { name: v.name, isActive: true }
+            });
+          } else {
+            // L'ID non esiste nel DB, crea un nuovo veicolo
+            await prisma.vehicle.create({
+              data: { name: v.name, isActive: true }
+            });
+          }
         } else {
           await prisma.vehicle.create({
             data: { name: v.name, isActive: true }
@@ -354,9 +366,19 @@ router.delete('/vehicles/:id', authMiddleware, async (req: Request, res: Respons
     }
     
     const { id } = req.params;
+    const vehicleId = parseInt(id);
+    
+    // Controlla se il veicolo esiste prima di aggiornarlo
+    const existingVehicle = await prisma.vehicle.findUnique({
+      where: { id: vehicleId }
+    });
+    
+    if (!existingVehicle) {
+      return res.status(404).json({ message: 'Vehicle not found' });
+    }
     
     await prisma.vehicle.update({
-      where: { id: parseInt(id) },
+      where: { id: vehicleId },
       data: { isActive: false }
     });
     

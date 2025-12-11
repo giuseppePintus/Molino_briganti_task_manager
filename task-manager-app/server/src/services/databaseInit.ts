@@ -1,11 +1,25 @@
 import { PrismaClient } from '@prisma/client';
 import bcryptjs from 'bcryptjs';
+import { execSync } from 'child_process';
 
 /**
  * Crea le tabelle del database se non esistono
  */
 export async function createTablesIfNotExist(prisma: PrismaClient) {
   try {
+    // Assicura che il Prisma client sia rigenerato per l'attuale schema
+    console.log('🔄 Ensuring Prisma Client is up-to-date...');
+    try {
+      execSync('npm run prisma:generate', { stdio: 'inherit', cwd: '/app' });
+    } catch (e) {
+      // Ignora errori - il Prisma client potrebbe essere già aggiornato
+      console.log('⚠️  Prisma generation skipped or failed (may already be current)');
+    }
+    
+    // Disabilita i foreign key constraints per permettere la ricreazione
+    await prisma.$executeRawUnsafe(`PRAGMA foreign_keys = OFF`);
+
+    
     // Esegui il SQL per creare le tabelle direttamente secondo lo schema Prisma
     await prisma.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS "User" (
@@ -139,11 +153,173 @@ export async function createTablesIfNotExist(prisma: PrismaClient) {
     await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "StockAlert_isResolved_idx" ON "StockAlert"("isResolved")`);
     await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "StockAlert_createdAt_idx" ON "StockAlert"("createdAt")`);
 
+    // Tabelle per ordini e clienti
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "Customer" (
+        "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        "code" TEXT UNIQUE,
+        "name" TEXT NOT NULL,
+        "address" TEXT,
+        "city" TEXT,
+        "province" TEXT,
+        "cap" TEXT,
+        "phone" TEXT,
+        "email" TEXT,
+        "piva" TEXT,
+        "cf" TEXT,
+        "notes" TEXT,
+        "openingTime" TEXT,
+        "closingTime" TEXT,
+        "deliveryStartTime" TEXT,
+        "deliveryEndTime" TEXT,
+        "isActive" BOOLEAN NOT NULL DEFAULT 1,
+        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "Order" (
+        "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        "type" TEXT NOT NULL,
+        "customerId" INTEGER,
+        "clientName" TEXT,
+        "products" TEXT,
+        "tripId" INTEGER,
+        "assignedOperatorId" INTEGER,
+        "dateTime" DATETIME,
+        "status" TEXT NOT NULL DEFAULT 'pending',
+        "assignedAt" DATETIME,
+        "acceptedAt" DATETIME,
+        "completedAt" DATETIME,
+        "notes" TEXT,
+        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "Order_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
+        CONSTRAINT "Order_assignedOperatorId_fkey" FOREIGN KEY ("assignedOperatorId") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+      )
+    `);
+
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "Trip" (
+        "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        "name" TEXT NOT NULL,
+        "date" DATETIME NOT NULL,
+        "assignedOperatorId" INTEGER,
+        "vehicleId" INTEGER,
+        "vehicleName" TEXT,
+        "sequence" TEXT,
+        "status" TEXT NOT NULL DEFAULT 'planned',
+        "startedAt" DATETIME,
+        "completedAt" DATETIME,
+        "notes" TEXT,
+        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "Trip_assignedOperatorId_fkey" FOREIGN KEY ("assignedOperatorId") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+      )
+    `);
+
+    // Aggiungi colonna assignedOperatorId se non esiste (migration per DB vecchi)
+    try {
+      await prisma.$executeRawUnsafe(`
+        ALTER TABLE "Trip" ADD COLUMN "assignedOperatorId" INTEGER DEFAULT NULL
+      `);
+    } catch (e) {
+      // La colonna potrebbe già esistere, ignora l'errore
+    }
+
+    // Aggiungi il foreign key se non esiste (sqlite non supporta ALTER TABLE ADD CONSTRAINT, 
+    // ma Prisma almeno creerà il record, sarà validato a livello app)
+
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "Vehicle" (
+        "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        "name" TEXT NOT NULL,
+        "plate" TEXT,
+        "isActive" BOOLEAN NOT NULL DEFAULT 1,
+        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "Holiday" (
+        "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        "date" DATETIME NOT NULL UNIQUE,
+        "description" TEXT,
+        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "CompanySettings" (
+        "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        "key" TEXT NOT NULL UNIQUE,
+        "value" TEXT NOT NULL,
+        "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Aggiungi colonna assignedAt se manca in Task
+    try {
+      await prisma.$executeRawUnsafe(`
+        ALTER TABLE "Task" ADD COLUMN "assignedAt" DATETIME
+      `);
+    } catch (error: any) {
+      // Colonna potrebbe già esistere
+      if (!error.message.includes('already exists') && !error.message.includes('duplicate')) {
+        console.log('Note:', error.message);
+      }
+    }
+
+    // Aggiungi colonna "reserved" se manca in Inventory
+    try {
+      await prisma.$executeRawUnsafe(`
+        ALTER TABLE "Inventory" ADD COLUMN "reserved" INTEGER NOT NULL DEFAULT 0
+      `);
+    } catch (error: any) {
+      if (!error.message.includes('already exists') && !error.message.includes('duplicate')) {
+        console.log('Note:', error.message);
+      }
+    }
+
+    // Aggiungi colonna "batch" e "expiry" se mancano in Inventory
+    try {
+      await prisma.$executeRawUnsafe(`
+        ALTER TABLE "Inventory" ADD COLUMN "batch" TEXT
+      `);
+    } catch (error: any) {
+      if (!error.message.includes('already exists') && !error.message.includes('duplicate')) {
+        console.log('Note:', error.message);
+      }
+    }
+
+    try {
+      await prisma.$executeRawUnsafe(`
+        ALTER TABLE "Inventory" ADD COLUMN "expiry" TEXT
+      `);
+    } catch (error: any) {
+      if (!error.message.includes('already exists') && !error.message.includes('duplicate')) {
+        console.log('Note:', error.message);
+      }
+    }
+
+    // Aggiungi colonna "type" se manca in StockMovement
+    try {
+      await prisma.$executeRawUnsafe(`
+        ALTER TABLE "StockMovement" ADD COLUMN "type" TEXT
+      `);
+    } catch (error: any) {
+      if (!error.message.includes('already exists') && !error.message.includes('duplicate')) {
+        console.log('Note:', error.message);
+      }
+    }
+
     console.log('✅ Database tables created successfully');
   } catch (error: any) {
     // Ignora errori se le tabelle esistono già
+    console.error('⚠️  Error creating tables:', error.message, error.code);
     if (!error.message.includes('already exists')) {
-      console.error('⚠️  Error creating tables:', error.message);
+      // Logga sempre, non silenzioso
     }
   }
 }
@@ -214,6 +390,9 @@ export async function initializeDatabaseIfEmpty(prisma: PrismaClient) {
     console.log(`   👤 ${operator1.username} (Operator) - Password: operator123`);
     console.log(`   👤 ${operator2.username} (Operator) - Password: operator123`);
     console.log('⚠️  IMPORTANTE: Cambia le password di default in produzione!');
+
+    // Re-abilita i foreign key constraints
+    await prisma.$executeRawUnsafe(`PRAGMA foreign_keys = ON`);
 
     return {
       admins: [admin1, admin2],

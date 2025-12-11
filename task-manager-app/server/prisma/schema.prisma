@@ -228,6 +228,9 @@ model Trip {
   vehicleId         Int?
   vehicleName       String?
   
+  // Sequenza ordini nel viaggio (array JSON)
+  sequence          String?   // JSON array: [ordine_id1, ordine_id2, ...]
+  
   // Stato
   status            String    @default("planned")  // planned, in_progress, completed, cancelled
   startedAt         DateTime?

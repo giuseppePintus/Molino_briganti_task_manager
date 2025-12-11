@@ -458,18 +458,7 @@
             position: relative;
         }
 
-        .calendar-day.has-unassigned-orders::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            right: 0;
-            width: 0;
-            height: 0;
-            border-style: solid;
-            border-width: 0 0 18px 18px;
-            border-color: transparent transparent #16a34a transparent;
-            border-radius: 4px 0 0 0;
-        }
+        /* Rimosso ::after - il triangolino verde per ritiri viene generato via JS */
 
         .calendar-day.has-trips {
             position: relative;
@@ -761,9 +750,20 @@
         <div class="card">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;flex-wrap:wrap;gap:10px;">
                 <h2 style="display:flex;align-items:center;gap:6px;margin:0;">📋 Ordini <span id="tasksCount" style="font-size:11px;color:#a0a0a0;font-weight:400;"></span></h2>
+                <button class="btn btn-success" onclick="openCreateTripModal()" style="font-size:12px;padding:6px 12px;">🚐 Crea Viaggio</button>
             </div>
             <div class="orders-grid" id="orderTasksGrid">
                 <!-- Orders will appear here -->
+            </div>
+        </div>
+
+        <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;flex-wrap:wrap;gap:10px;">
+                <h2 style="display:flex;align-items:center;gap:6px;margin:0;">🚐 Viaggi <span id="tripsCount" style="font-size:11px;color:#a0a0a0;font-weight:400;"></span></h2>
+                <button class="btn btn-primary" onclick="forceRefreshTrips()" style="font-size:12px;padding:6px 12px;">🔄 Sincronizza</button>
+            </div>
+            <div class="orders-grid" id="tripsGrid">
+                <!-- Trips will appear here -->
             </div>
         </div>
     </div>
@@ -848,15 +848,24 @@
                     <div class="form-group" id="tripSection" style="display: none; margin-bottom: 16px; background: #252525; padding: 15px; border-radius: 8px; border-left: 3px solid #3b82f6;">
                         <label for="tripOptions" style="display: block; color: #3b82f6; margin-bottom: 10px; font-weight: 600;">🚚 Viaggio</label>
                         <select id="tripOptions" onchange="updateTripSelection()" style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;">
-                            <option value="">-- Scegli opzione --</option>
+                            <option value="pending" selected>⏳ Senza viaggio (Sospeso)</option>
                             <option value="new">🆕 Crea nuovo viaggio</option>
                             <option value="existing">📌 Aggiungi a viaggio esistente</option>
-                            <option value="pending">⏳ Senza viaggio (Sospeso)</option>
                         </select>
                         
                         <div id="newTripFields" style="display: none; margin-top: 12px;">
-                            <label for="newTripName" style="font-size: 12px; color: #bbb;">Nome viaggio:</label>
-                            <input type="text" id="newTripName" placeholder="es. Consegne 30/11" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 13px; margin-top: 4px;">
+                            <label for="newTripName" style="font-size: 12px; color: #bbb; display: block; margin-bottom: 4px;">Nome viaggio:</label>
+                            <input type="text" id="newTripName" placeholder="es. Consegne 30/11" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 13px; margin-bottom: 10px;">
+                            
+                            <label for="newTripVehicle" style="font-size: 12px; color: #bbb; display: block; margin-bottom: 4px;">🚐 Automezzo:</label>
+                            <select id="newTripVehicle" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 13px; margin-bottom: 10px;">
+                                <option value="">-- Seleziona automezzo --</option>
+                            </select>
+                            
+                            <label for="newTripOperator" style="font-size: 12px; color: #bbb; display: block; margin-bottom: 4px;">👤 Operatore:</label>
+                            <select id="newTripOperator" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 13px;">
+                                <option value="">-- Seleziona operatore --</option>
+                            </select>
                         </div>
                         
                         <div id="existingTripFields" style="display: none; margin-top: 12px;">
@@ -939,8 +948,16 @@
         
         // Helper per ottenere il nome cliente in modo sicuro (compatibile con server API)
         function getClientName(order) {
-            if (!order) return 'Cliente sconosciuto';
-            return order.customer?.name || order.clientName || order.client || 'Cliente sconosciuto';
+            if (!order) return '';
+            // Prova tutti i possibili campi dove il cliente potrebbe essere memorizzato
+            const clientName = order.customer?.name || 
+                             order.clientName || 
+                             order.client || 
+                             order.customerName ||
+                             (typeof order.customer === 'string' ? order.customer : '') ||
+                             '';
+            console.log('🔍 getClientName:', { orderId: order.id, clientName, orderCustomer: order.customer, orderClientName: order.clientName, orderClient: order.client });
+            return clientName;
         }
         
         function fmtLocalDateTime(d){
@@ -998,12 +1015,11 @@
 
             const dateStr = dateTimeStr.split('T')[0]; // YYYY-MM-DD
             
-            // Filtra viaggi per data e senza operatore assegnato
+            // Filtra viaggi per data - mostra tutti i viaggi per quella data
             const availableTrips = trips.filter(trip => {
-                if (trip.assignedOperatorId) return false; // Skip se già assegnato
-                // Controlla se il viaggio ha ordini per questa data
-                const tripOrders = (trip.sequence || []).map(orderId => orders.find(o => o.id === orderId)).filter(Boolean);
-                return tripOrders.some(o => o.dateTime && o.dateTime.split('T')[0] === dateStr);
+                // Confronta la data del viaggio con la data dell'ordine
+                const tripDate = trip.date ? trip.date.split('T')[0] : null;
+                return tripDate === dateStr;
             });
 
             const select = document.getElementById('existingTrip');
@@ -1517,6 +1533,20 @@
                 });
             }
             
+            // Filtra solo ordini NON assegnati a un viaggio
+            ordersToShow = ordersToShow.filter(order => {
+                // Un ordine è assegnato se il suo ID è dentro il sequence di un viaggio
+                const isAssignedToTrip = trips.some(trip => {
+                    if (!trip.sequence || !Array.isArray(trip.sequence) || trip.sequence.length === 0) {
+                        return false;
+                    }
+                    // Confronto type-safe: converti entrambi a string
+                    const orderId = String(order.id);
+                    return trip.sequence.some(seqId => String(seqId) === orderId);
+                });
+                return !isAssignedToTrip; // Mostra solo ordini NON assegnati
+            });
+            
             // Aggiorna contatore
             if (countSpan) {
                 if (showAllOrders) {
@@ -1671,6 +1701,168 @@
             renderCalendar();
         }
 
+        // Renderizza le card dei viaggi
+        function renderTrips() {
+            const grid = document.getElementById('tripsGrid');
+            const countSpan = document.getElementById('tripsCount');
+            if (!grid) return;
+            
+            console.log('🚐 [renderTrips] Inizio renderizzazione. Trips totali:', trips.length, 'showAllOrders:', showAllOrders);
+            
+            // Filtra i viaggi in base a showAllOrders o selectedDate
+            let tripsToShow = trips;
+            if (!showAllOrders) {
+                const filterDate = selectedDate || new Date().toISOString().split('T')[0];
+                tripsToShow = trips.filter(trip => {
+                    if (!trip.date) {
+                        console.warn('⚠️ Trip senza date:', trip);
+                        return false;
+                    }
+                    
+                    // Converti trip.date se è un oggetto Date
+                    const tripDateStr = trip.date instanceof Date 
+                        ? trip.date.toISOString().split('T')[0]
+                        : (typeof trip.date === 'string' ? trip.date.split('T')[0] : null);
+                    
+                    console.log(`🔍 Filtraggio trip ${trip.id}: date="${tripDateStr}" vs filter="${filterDate}"`);
+                    
+                    if (!tripDateStr) return false;
+                    return tripDateStr.startsWith(filterDate);
+                });
+            }
+            
+            console.log('📊 [renderTrips] Dopo filtro:', tripsToShow.length, 'trip da mostrare');
+            
+            // Aggiorna contatore
+            if (countSpan) {
+                if (showAllOrders) {
+                    countSpan.textContent = `(${tripsToShow.length} totali)`;
+                } else if (selectedDate) {
+                    const date = new Date(selectedDate + 'T00:00:00');
+                    const formatted = date.toLocaleDateString('it-IT', { 
+                        weekday: 'short', 
+                        day: 'numeric', 
+                        month: 'short'
+                    });
+                    countSpan.textContent = `(${tripsToShow.length} - ${formatted})`;
+                } else {
+                    countSpan.textContent = `(${tripsToShow.length} oggi)`;
+                }
+            }
+            
+            if (tripsToShow.length === 0) {
+                grid.innerHTML = '<p style="color:#808080;grid-column:1/-1;text-align:center;padding:20px;">Nessun viaggio ' + (showAllOrders ? '' : 'per oggi') + '</p>';
+                console.log('⚠️ [renderTrips] Nessun viaggio da mostrare');
+                return;
+            }
+            
+            // Ordina i viaggi per data
+            tripsToShow.sort((a, b) => {
+                if (!a.date && !b.date) return 0;
+                if (!a.date) return 1;
+                if (!b.date) return -1;
+                const dateA = a.date instanceof Date ? a.date : new Date(a.date);
+                const dateB = b.date instanceof Date ? b.date : new Date(b.date);
+                return dateA - dateB;
+            });
+            
+            grid.innerHTML = tripsToShow.map(trip => {
+                const dateObj = trip.date instanceof Date ? trip.date : (trip.date ? new Date(trip.date) : null);
+                const timeOnly = dateObj ? dateObj.toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'}) : 'N/D';
+                const dateOnly = dateObj ? dateObj.toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit', year:'numeric'}) : 'N/D';
+                
+                // Filtro ordini del viaggio - confronto tipo-safe tra ID
+                const tripOrders = orders.filter(o => {
+                    if (!trip.sequence || trip.sequence.length === 0) return false;
+                    // Converti entrambi a string per confronto sicuro
+                    const orderId = String(o.id);
+                    const found = trip.sequence.some(seqId => String(seqId) === orderId);
+                    return found;
+                });
+                
+                console.log(`🔍 [renderTrips] Trip ${trip.id} (${trip.name}): sequence=${JSON.stringify(trip.sequence)} orders disponibili=${orders.length} ordini trovati=${tripOrders.length}`);
+                if (tripOrders.length > 0) {
+                    console.log(`   Ordini: ${tripOrders.map(o => o.id + ' (' + o.client + ')').join(', ')}`);
+                }
+                
+                // Ottieni il nome dell'operatore
+                let operatorName = 'Non assegnato';
+                if (trip.assignedOperatorId) {
+                    console.log(`🔍 [renderTrips] Cercando operatore con ID: ${trip.assignedOperatorId}, allOperators disponibili: ${allOperators?.length || 0}`);
+                    const foundOperator = allOperators?.find(op => op.id === trip.assignedOperatorId);
+                    if (foundOperator) {
+                        operatorName = foundOperator.name || foundOperator.username || 'Non assegnato';
+                        console.log(`✅ [renderTrips] Operatore trovato: ${operatorName}`);
+                    } else {
+                        console.warn(`⚠️ [renderTrips] Operatore con ID ${trip.assignedOperatorId} non trovato`);
+                    }
+                }
+                
+                const vehicleName = trip.vehicleName || 'Furgone';
+                
+                // HTML per gli ordini dentro il viaggio
+                const ordersHTML = tripOrders.map(order => {
+                    const fullInfo = getOrderFullInfo(order.id);
+                    const cliente = clienti.find(c => c.nome === order.client);
+                    const productsStr = fullInfo?.products?.map(p => `${p.product} (${p.quantity}kg)`).join(' + ') || fullInfo?.product;
+                    const lottoStr = order.lotto ? `<p><strong>Lotto:</strong> ${order.lotto}</p>` : '';
+                    const posizioneStr = order.posizione ? `<p><strong>Scaffale:</strong> ${order.posizione}</p>` : '';
+                    return `
+                        <div class="order-card" style="margin-bottom: 10px; border-left: 4px solid #10b981;">
+                            <div class="order-header">
+                                <div class="order-title">${fullInfo?.client || 'Cliente'}</div>
+                                <div class="order-status ${order.status}">${getStatusLabel(order.status)}</div>
+                            </div>
+                            <div class="order-details" style="font-size: 12px;">
+                                <p><strong>📦 Prodotti:</strong> ${productsStr}</p>
+                                <p><strong>Quantità:</strong> ${fullInfo?.quantity} kg</p>
+                                <p><strong>Tipo:</strong> ${order.type === 'consegnato' ? '📦 Consegnato' : '🏪 Ritira Cliente'}</p>
+                                ${lottoStr}
+                                ${posizioneStr}
+                            </div>
+                            <div class="order-actions" style="display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap;">
+                                <button class="btn btn-secondary btn-small" onclick="openEditOrderModal(${order.id})" style="flex: 1; min-width: 80px; padding: 6px 8px;">✏️ Modifica</button>
+                                <button class="btn btn-danger btn-small" onclick="deleteOrder(${order.id})" style="flex: 1; min-width: 80px; padding: 6px 8px;">🗑️ Elimina</button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                return `
+                    <div class="task-card" style="border-left: 4px solid #38bdf8;">
+                        <div class="task-header">
+                            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                                <span style="font-size: 32px;">🚐</span>
+                                <div>
+                                    <div style="font-size: 18px; font-weight: 700; color: #e0e0e0;">${trip.name || 'Senza nome'}</div>
+                                    <div style="font-size: 14px; color: #a0a0a0; margin-top: 2px;">Viaggio: <strong style="color: #38bdf8;">${vehicleName}</strong></div>
+                                </div>
+                            </div>
+                            <span class="task-status" style="background: #38bdf8; color: white; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600;">${tripOrders.length} ordini</span>
+                        </div>
+                        <div style="margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px; color: #a0a0a0;">
+                            <div><strong>⏰ Partenza:</strong> ${dateOnly} • ${timeOnly}</div>
+                            <div><strong>👤 Operatore:</strong> ${operatorName}</div>
+                            <div><strong>📦 Quantità Tot:</strong> ${tripOrders.reduce((sum, o) => sum + (o.products?.reduce((s, p) => s + (p.quantity || 0), 0) || o.quantity || 0), 0)} kg</div>
+                            <div><strong>🎯 Destinazioni:</strong> ${tripOrders.length}</div>
+                        </div>
+                        ${tripOrders.length > 0 ? `
+                            <div style="margin-top: 15px; padding: 12px; background: #1a2a2a; border-radius: 6px;">
+                                <div style="font-weight: 700; color: #38bdf8; margin-bottom: 10px;">📋 Ordini del Viaggio:</div>
+                                ${ordersHTML}
+                            </div>
+                        ` : '<div style="margin-top: 10px; padding: 8px; background: #2a1a1a; border-radius: 6px; color: #a0a0a0; font-size: 12px;">Nessun ordine assegnato</div>'}
+                        <div class="task-actions" style="display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap;">
+                            <button class="btn btn-primary btn-small" onclick="openEditTripModal(${trip.id})" style="flex: 1; min-width: 100px;">✏️ Modifica</button>
+                            <button class="btn btn-danger btn-small" onclick="deleteTrip(${trip.id})" style="flex: 1; min-width: 100px;">🗑️ Elimina</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            console.log('✅ [renderTrips] Renderizzazione completata');
+        }
+
         // Analizza CSV
         function parseCSV(text) {
             const lines = text.trim().split('\n');
@@ -1800,11 +1992,26 @@
         // === GESTIONE VIAGGI ===
         async function loadTrips() {
             try {
-                trips = await DataSync.loadTrips();
+                console.log('🚀 [loadTrips] Caricamento viaggi da API...');
+                // Prova a caricare direttamente dall'API
+                const loadedTrips = await DataSync.Trips.getAll();
+                if (loadedTrips && loadedTrips.length > 0) {
+                    trips = loadedTrips;
+                    // Salva in localStorage per backup offline
+                    localStorage.setItem('trips', JSON.stringify(trips));
+                    console.log('✅ [loadTrips] Viaggi caricati da API. Totale:', trips.length);
+                } else {
+                    // Se nessun viaggio dal server, usa localStorage
+                    const stored = localStorage.getItem('trips');
+                    trips = stored ? JSON.parse(stored) : [];
+                    console.log('⚠️ [loadTrips] Nessun viaggio dal server. Fallback a localStorage:', trips.length);
+                }
             } catch (error) {
-                console.error('Errore caricamento viaggi:', error);
+                console.error('❌ [loadTrips] Errore caricamento API:', error);
+                // Fallback a localStorage
                 const stored = localStorage.getItem('trips');
                 trips = stored ? JSON.parse(stored) : [];
+                console.log('⚠️ [loadTrips] Fallback a localStorage. Totale:', trips.length);
             }
         }
 
@@ -1827,6 +2034,24 @@
             trips.push(trip);
             await saveTrips();
             return trip;
+        }
+
+        // Crea viaggio via API con dati completi
+        async function createTripFromData(tripData) {
+            try {
+                console.log('🚀 Creazione viaggio via API:', tripData);
+                const createdTrip = await DataSync.saveTrip(tripData);
+                if (createdTrip) {
+                    createdTrip.sequence = createdTrip.sequence || [];
+                    trips.push(createdTrip);
+                    await saveTrips();
+                    console.log('✅ Viaggio creato:', createdTrip);
+                    return createdTrip;
+                }
+            } catch (error) {
+                console.error('❌ Errore creazione viaggio:', error);
+                alert('❌ Errore: ' + error.message);
+            }
         }
 
         async function addOrderToTrip(tripId, orderId) {
@@ -1868,17 +2093,10 @@
             }
         }
 
-        async function deleteTrip(tripId) {
-            trips = trips.filter(t => t.id !== tripId);
-            await saveTrips();
-            orders.forEach(o => {
-                if (o.tripId === tripId) {
-                    delete o.tripId;
-                }
-            });
-            await saveOrders();
-            // Remove backend task too
-            deleteTripTask(tripId);
+        function getTripOrders(tripId) {
+            const trip = trips.find(t => t.id === tripId);
+            if (!trip) return [];
+            return trip.sequence.map(orderId => orders.find(o => o.id === orderId)).filter(Boolean);
         }
 
         async function reorderTripSequence(tripId, newSequence) {
@@ -1886,15 +2104,8 @@
             if (trip) {
                 trip.sequence = newSequence;
                 await saveTrips();
-                // Re-sequencing changes description; update backend task if exists
                 syncTripTask(tripId);
             }
-        }
-
-        function getTripOrders(tripId) {
-            const trip = trips.find(t => t.id === tripId);
-            if (!trip) return [];
-            return trip.sequence.map(orderId => orders.find(o => o.id === orderId)).filter(Boolean);
         }
 
         function calculateTripTotals(tripId) {
@@ -2037,9 +2248,29 @@
 
             // Reset sezione viaggio
             document.getElementById('tripSection').style.display = 'none';
-            document.getElementById('tripOptions').value = '';
+            document.getElementById('tripOptions').value = 'pending'; // Default: senza viaggio
             document.getElementById('newTripName').value = '';
+            document.getElementById('newTripFields').style.display = 'none'; // Nascondi campi nuovo viaggio
+            document.getElementById('existingTripFields').style.display = 'none'; // Nascondi campi viaggio esistente
             document.getElementById('existingTrip').innerHTML = '<option value="">-- Nessun viaggio disponibile --</option>';
+            
+            // Popola automezzo e operatori per nuovo viaggio
+            const vehicleSelect = document.getElementById('newTripVehicle');
+            const operatorSelect = document.getElementById('newTripOperator');
+            
+            // Carica automezzi da impostazioni azienda
+            const companySettings = JSON.parse(localStorage.getItem('companySettings') || '{}');
+            const vehicles = companySettings.vehicles || [];
+            // Gestisci sia array di stringhe che array di oggetti
+            vehicleSelect.innerHTML = '<option value="">-- Seleziona automezzo --</option>' +
+                vehicles.map(v => {
+                    const vehicleName = typeof v === 'string' ? v : (v.name || v.nome || JSON.stringify(v));
+                    return `<option value="${vehicleName}">${vehicleName}</option>`;
+                }).join('');
+            
+            // Popola operatori
+            operatorSelect.innerHTML = '<option value="">-- Seleziona operatore --</option>' +
+                allOperators.map(op => `<option value="${op.id}">${op.username}</option>`).join('');
 
             // Aggancia validazione data/ora contro festivi e orari consegna
             const dt = document.getElementById('orderDateTime');
@@ -2096,9 +2327,21 @@
             // Popola dropdown clienti (usa dati già caricati da CSV/localStorage)
             const clientSelect = document.getElementById('orderClient');
             const clientName = getClientName(order); // Usa helper che gestisce order.customer.name, order.clientName, order.client
-            clientSelect.innerHTML = '<option value="">-- Seleziona Cliente --</option>' +
-                clienti.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
-            clientSelect.value = clientName;
+            
+            // Costruisci le opzioni, assicurandoti che il cliente selezionato sia incluso
+            let clientOptions = '<option value="">-- Seleziona Cliente --</option>';
+            
+            // Aggiungi prima il cliente attuale (se non è vuoto e non è già nella lista)
+            if (clientName && !clienti.some(c => c.nome === clientName)) {
+                clientOptions += `<option value="${clientName}" selected>${clientName}</option>`;
+            }
+            
+            // Aggiungi tutti i clienti dalla lista
+            clienti.forEach(c => {
+                const isSelected = c.nome === clientName ? 'selected' : '';
+                clientOptions += `<option value="${c.nome}" ${isSelected}>${c.nome}</option>`;
+            });
+            clientSelect.innerHTML = clientOptions;
 
             // Popola dropdown articoli (usa dati già caricati da CSV/localStorage)
             const productSelect = document.getElementById('orderProduct');
@@ -2114,7 +2357,18 @@
             renderOrderProducts();
 
             document.getElementById('orderType').value = order.type;
-            document.getElementById('orderDateTime').value = order.dateTime;
+            
+            // Converti ISO string (2025-01-15T14:30:00.000Z) a formato datetime-local (2025-01-15T14:30)
+            if (order.dateTime) {
+                const dt = new Date(order.dateTime);
+                const year = dt.getFullYear();
+                const month = String(dt.getMonth() + 1).padStart(2, '0');
+                const day = String(dt.getDate()).padStart(2, '0');
+                const hours = String(dt.getHours()).padStart(2, '0');
+                const minutes = String(dt.getMinutes()).padStart(2, '0');
+                document.getElementById('orderDateTime').value = `${year}-${month}-${day}T${hours}:${minutes}`;
+            }
+            
             document.getElementById('orderNotes').value = order.notes || '';
 
             // Mostra sezione viaggio e seleziona l'opzione corretta (solo per consegnati)
@@ -2145,6 +2399,9 @@
                 }
             } else {
                 tripSection.style.display = 'none';
+                // Nascondi anche i campi interni quando è ritiro
+                document.getElementById('existingTripFields').style.display = 'none';
+                document.getElementById('newTripFields').style.display = 'none';
             }
 
             // Popola dropdown operatori
@@ -2156,6 +2413,25 @@
                 if (order.assignedOperatorId) {
                     assignToOperator.value = order.assignedOperatorId;
                 }
+            }
+
+            // Popola dropdown veicoli per sezione "Crea nuovo viaggio"
+            const newTripVehicleSelect = document.getElementById('newTripVehicle');
+            if (newTripVehicleSelect) {
+                const companySettings = JSON.parse(localStorage.getItem('companySettings') || '{}');
+                const vehicles = companySettings.vehicles || [];
+                newTripVehicleSelect.innerHTML = '<option value="">-- Seleziona automezzo --</option>' +
+                    vehicles.map(v => {
+                        const vehicleName = typeof v === 'string' ? v : (v.name || v.nome || JSON.stringify(v));
+                        return `<option value="${vehicleName}">${vehicleName}</option>`;
+                    }).join('');
+            }
+
+            // Popola dropdown operatori per sezione "Crea nuovo viaggio"
+            const newTripOperatorSelect = document.getElementById('newTripOperator');
+            if (newTripOperatorSelect) {
+                newTripOperatorSelect.innerHTML = '<option value="">-- Seleziona operatore --</option>' +
+                    allOperators.map(op => `<option value="${op.id}">${op.username}</option>`).join('');
             }
 
             updateClientInfo();
@@ -2945,31 +3221,46 @@
                     return;
                 }
 
-                // Validazione: almeno un prodotto deve essere aggiunto (nuovo sistema multi-prodotto)
+                // Reset evidenziazione errori precedenti
+                document.querySelectorAll('.field-error').forEach(el => {
+                    el.style.border = '';
+                    el.style.boxShadow = '';
+                });
+                
+                let missingFields = [];
+                
+                // Validazione: almeno un prodotto
                 if (currentOrderProducts.length === 0) {
-                    alert('⚠️ Aggiungi almeno un prodotto all\'ordine');
+                    missingFields.push('Prodotti');
+                }
+                
+                // Validazione: cliente
+                const clientInput = document.getElementById('orderClient');
+                if (!clientInput.value || !clientInput.value.trim()) {
+                    missingFields.push('Cliente');
+                    clientInput.style.border = '2px solid #ef4444';
+                    clientInput.style.boxShadow = '0 0 8px rgba(239, 68, 68, 0.5)';
+                    clientInput.classList.add('field-error');
+                }
+                
+                // Validazione: data e ora obbligatoria
+                const dateTimeInput = document.getElementById('orderDateTime');
+                let rawDateTime = dateTimeInput.value;
+                if (!rawDateTime || !rawDateTime.trim()) {
+                    missingFields.push('Data e Orario');
+                    dateTimeInput.style.border = '2px solid #ef4444';
+                    dateTimeInput.style.boxShadow = '0 0 8px rgba(239, 68, 68, 0.5)';
+                    dateTimeInput.classList.add('field-error');
+                }
+                
+                if (missingFields.length > 0) {
+                    alert('⚠️ Compila i seguenti campi obbligatori:\n\n' + missingFields.join('\n'));
                     return;
                 }
                 
                 const editingId = orderForm.dataset.editingId;
                 
-                // Verifica che tutti gli elementi del form esistano
-                const requiredElements = [
-                    'orderClient', 'orderType', 'orderDateTime',
-                    'orderNotes'
-                ];
-                
-                for (const elementId of requiredElements) {
-                    const el = document.getElementById(elementId);
-                    if (!el) {
-                        console.error(`❌ Elemento mancante nel form: ${elementId}`);
-                        alert(`Errore: elemento del form non trovato (${elementId})`);
-                        return;
-                    }
-                }
-                
                 // Valida/sistema data/ora rispetto a festivi e orari di consegna
-                let rawDateTime = document.getElementById('orderDateTime').value;
             if (window.SettingsUtils && rawDateTime) {
                 const selectedType = document.getElementById('orderType').value;
                 const dateObj = new Date(rawDateTime);
@@ -2994,19 +3285,53 @@
             
             if (orderType === 'consegnato') {
                 if (tripOption === 'new') {
-                    // Crea nuovo viaggio
+                    // Crea nuovo viaggio nel database
                     const tripName = document.getElementById('newTripName')?.value || `Consegne ${new Date().toLocaleDateString('it-IT')}`;
-                    const newTrip = {
-                        id: Date.now(),
+                    const tripVehicle = document.getElementById('newTripVehicle')?.value || null;
+                    const tripOperator = document.getElementById('newTripOperator')?.value || null;
+                    
+                    const tripData = {
                         name: tripName,
-                        sequence: [], // Verrà aggiunto l'ordine dopo
-                        assignedOperatorId: null,
-                        createdAt: new Date().toISOString(),
-                        status: 'pending'
+                        date: new Date(rawDateTime).toISOString(),
+                        assignedOperatorId: tripOperator ? parseInt(tripOperator) : null,
+                        vehicleId: null,
+                        vehicleName: tripVehicle,
+                        notes: null,
+                        status: 'planned'
                     };
-                    trips.push(newTrip);
-                    tripId = newTrip.id;
-                    localStorage.setItem('trips', JSON.stringify(trips));
+                    
+                    // Crea viaggio tramite API
+                    console.log('🚀 Tentativo creazione viaggio:', tripData);
+                    try {
+                        const createdTrip = await DataSync.saveTrip(tripData);
+                        console.log('✅ Viaggio creato:', createdTrip);
+                        if (createdTrip) {
+                            // Assicura che il viaggio abbia un array sequence
+                            createdTrip.sequence = createdTrip.sequence || [];
+                            tripId = createdTrip.id;
+                            trips.push(createdTrip);
+                            localStorage.setItem('trips', JSON.stringify(trips));
+                        } else {
+                            console.warn('⚠️ saveTrip returned null, usando fallback localStorage');
+                            // Fallback a localStorage se API fallisce
+                            const newTrip = {
+                                id: Date.now(),
+                                name: tripName,
+                                sequence: [],
+                                vehicle: tripVehicle,
+                                assignedOperatorId: tripOperator ? parseInt(tripOperator) : null,
+                                createdAt: new Date().toISOString(),
+                                status: 'pending'
+                            };
+                            trips.push(newTrip);
+                            tripId = newTrip.id;
+                            localStorage.setItem('trips', JSON.stringify(trips));
+                        }
+                    } catch (error) {
+                        console.error('❌ Errore creazione viaggio:', error);
+                        alert('⚠️ Errore nella creazione del viaggio: ' + error.message + '. L\'ordine sarà salvato come "senza viaggio".');
+                        tripId = null;
+                    }
                 } else if (tripOption === 'existing') {
                     // Usa viaggio esistente
                     tripId = parseInt(document.getElementById('existingTrip')?.value || 0);
@@ -3036,16 +3361,44 @@
                         if (order.tripId) {
                             const oldTrip = trips.find(t => t.id === order.tripId);
                             if (oldTrip) {
+                                // Assicura che sequence esista e sia un array
+                                if (!oldTrip.sequence) oldTrip.sequence = [];
                                 oldTrip.sequence = oldTrip.sequence.filter(id => id !== editingId);
-                                await DataSync.updateTrip(oldTrip.id, oldTrip);
+                                const oldTripUpdate = {
+                                    id: oldTrip.id,
+                                    name: oldTrip.name,
+                                    date: oldTrip.date,
+                                    assignedOperatorId: oldTrip.assignedOperatorId,
+                                    vehicleId: oldTrip.vehicleId,
+                                    vehicleName: oldTrip.vehicleName,
+                                    sequence: oldTrip.sequence,
+                                    status: oldTrip.status,
+                                    notes: oldTrip.notes
+                                };
+                                await DataSync.updateTrip(oldTrip.id, oldTripUpdate);
                             }
                         }
                         // Aggiungi a viaggio nuovo
                         if (orderData.tripId) {
                             const newTrip = trips.find(t => t.id === orderData.tripId);
-                            if (newTrip && !newTrip.sequence.includes(editingId)) {
-                                newTrip.sequence.push(editingId);
-                                await DataSync.updateTrip(newTrip.id, newTrip);
+                            if (newTrip) {
+                                // Assicura che sequence esista
+                                if (!newTrip.sequence) newTrip.sequence = [];
+                                if (!newTrip.sequence.includes(editingId)) {
+                                    newTrip.sequence.push(editingId);
+                                    const newTripUpdate = {
+                                        id: newTrip.id,
+                                        name: newTrip.name,
+                                        date: newTrip.date,
+                                        assignedOperatorId: newTrip.assignedOperatorId,
+                                        vehicleId: newTrip.vehicleId,
+                                        vehicleName: newTrip.vehicleName,
+                                        sequence: newTrip.sequence,
+                                        status: newTrip.status,
+                                        notes: newTrip.notes
+                                    };
+                                    await DataSync.updateTrip(newTrip.id, newTripUpdate);
+                                }
                             }
                         }
                     }
@@ -3139,16 +3492,54 @@
                 }
                 
                 // Salva ordine nel backend via DataSync
+                console.log('💾 Tentativo salvataggio ordine:', orderData);
                 const savedOrder = await DataSync.saveOrder(orderData);
-                if (savedOrder) {
+                console.log('✅ Ordine salvato dal backend:', savedOrder);
+                
+                if (savedOrder && savedOrder.id) {
+                    // Verifica che orders sia un array
+                    if (!Array.isArray(orders)) {
+                        console.error('❌ CRITICO: orders non è un array!', typeof orders);
+                        orders = [];
+                    }
+                    
                     orders.push(savedOrder);
+                    console.log('✅ Ordine aggiunto all\'array locale. Total orders:', orders.length);
                     
                     // Associa ordine al viaggio se tripId è stato definito
                     if (orderData.tripId) {
+                        console.log('🔗 Associando ordine al viaggio:', orderData.tripId);
                         const trip = trips.find(t => t.id === orderData.tripId);
+                        console.log('🔍 Trip trovato:', trip);
                         if (trip) {
-                            trip.sequence.push(savedOrder.id);
-                            await DataSync.updateTrip(trip.id, trip);
+                            if (!Array.isArray(trip.sequence)) {
+                                trip.sequence = [];
+                            }
+                            if (!trip.sequence.includes(savedOrder.id)) {
+                                trip.sequence.push(savedOrder.id);
+                                console.log('📝 Sequenza viaggio aggiornata:', trip.sequence);
+                                // Invia solo i campi necessari al backend
+                                const tripUpdate = {
+                                    id: trip.id,
+                                    name: trip.name,
+                                    date: trip.date,
+                                    assignedOperatorId: trip.assignedOperatorId,
+                                    vehicleId: trip.vehicleId,
+                                    vehicleName: trip.vehicleName,
+                                    sequence: trip.sequence,
+                                    status: trip.status,
+                                    notes: trip.notes
+                                };
+                                console.log('🔍 Dati inviati al backend:', tripUpdate);
+                                const updatedTrip = await DataSync.updateTrip(trip.id, tripUpdate);
+                                console.log('✅ Viaggio aggiornato dal backend:', updatedTrip);
+                                console.log('🔍 Trip dopo aggiornamento:', trip);
+                            } else {
+                                console.log('ℹ️ Ordine già presente in sequenza viaggio');
+                            }
+                        } else {
+                            console.warn('⚠️ Viaggio non trovato:', orderData.tripId);
+                            console.log('📋 Trips disponibili:', trips.map(t => ({ id: t.id, name: t.name })));
                         }
                     }
                     
@@ -3158,7 +3549,8 @@
                     }
                     console.log('📝 Nuovo ordine creato e salvato:', savedOrder.client, '(', orderData.products.length, 'prodotti)');
                 } else {
-                    throw new Error('Errore salvataggio ordine nel database');
+                    console.error('❌ ERRORE CRITICO: saveOrder ha restituito:', savedOrder);
+                    throw new Error('Errore salvataggio ordine nel database - nessun ID restituito');
                 }
             }
 
@@ -3166,16 +3558,31 @@
             renderOrders();
             updateStats();
             renderCalendar();
+            renderTrips();  // Aggiorna visualizzazione viaggi
+            
+            // Sincronizza automaticamente i viaggi dopo il salvataggio dell'ordine
+            // Con small delay per permettere al backend di elaborare
+            setTimeout(async () => {
+                await forceRefreshTrips();
+                renderOrderTasks();  // Ricarica lista ordini per mostrare filtro aggiornato
+                renderTrips();  // Ricarica visualizzazione viaggi
+            }, 300);
+            
+            // Ricarica ordini dal server per assicurarsi che siano aggiornati
+            if (editingId) {
+                await loadOrders();
+            }
             
             const tEnd = performance.now();
             console.log(`⏱️ [saveOrder] ✅ COMPLETATO in ${Math.round(tEnd - t0)}ms`);
             
             closeOrderModal();
-            } catch (error) {
-                console.error('❌ Errore in saveOrder():', error);
-                alert(`Errore: ${error.message}`);
-            }
+        } catch (error) {
+            console.error('❌ Errore in saveOrder():', error);
+            console.error('Stack trace:', error.stack);
+            alert(`Errore durante il salvataggio: ${error.message}`);
         }
+    }
 
         // Elimina ordine e LIBERA l'inventario prenotato
         async function deleteOrder(id) {
@@ -3226,8 +3633,365 @@
             }
             renderOrders();
             renderOrderTasks();
+            renderTrips();
             updateStats();
             renderCalendar();
+            
+            // Sincronizza automaticamente i viaggi dopo l'eliminazione dell'ordine
+            // Con small delay per permettere al backend di elaborare
+            setTimeout(async () => {
+                await forceRefreshTrips();
+                renderOrderTasks();  // Ricarica lista ordini per mostrare filtro aggiornato
+            }, 300);
+        }
+
+        // Elimina viaggio
+        async function deleteTrip(id) {
+            try {
+                const trip = trips.find(t => t.id === id);
+                if (trip) {
+                    const ordersCount = trip.sequence?.length || 0;
+                    
+                    // Mostra dialog con due opzioni
+                    const message = ordersCount > 0 
+                        ? `Questo viaggio ha ${ordersCount} ordine/i associato/i.\n\nCosa vuoi fare?`
+                        : `Elimina questo viaggio?\n\nNessun ordine è associato.`;
+                    
+                    if (ordersCount > 0) {
+                        // Mostra dialog personalizzato con due pulsanti
+                        const confirmDialog = document.createElement('div');
+                        confirmDialog.style.cssText = `
+                            position: fixed;
+                            top: 50%;
+                            left: 50%;
+                            transform: translate(-50%, -50%);
+                            background: #2d2d2d;
+                            border: 2px solid #3b82f6;
+                            border-radius: 8px;
+                            padding: 30px;
+                            z-index: 10000;
+                            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+                            max-width: 400px;
+                            text-align: center;
+                        `;
+                        
+                        confirmDialog.innerHTML = `
+                            <h3 style="color: #e0e0e0; margin-bottom: 10px;">⚠️ Elimina Viaggio</h3>
+                            <p style="color: #a0a0a0; margin-bottom: 20px;">${message}</p>
+                            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                                <button id="deleteAllBtn" class="btn btn-danger" style="flex: 1; padding: 10px;">🗑️ Elimina Tutto</button>
+                                <button id="deleteTripOnlyBtn" class="btn btn-primary" style="flex: 1; padding: 10px;">✂️ Solo Viaggio</button>
+                            </div>
+                            <button id="cancelDeleteBtn" class="btn btn-secondary" style="width: 100%; padding: 10px;">❌ Annulla</button>
+                        `;
+                        
+                        document.body.appendChild(confirmDialog);
+                        
+                        document.getElementById('deleteAllBtn').onclick = async () => {
+                            document.body.removeChild(confirmDialog);
+                            await deleteTripWithOrders(id);
+                        };
+                        
+                        document.getElementById('deleteTripOnlyBtn').onclick = async () => {
+                            document.body.removeChild(confirmDialog);
+                            await deleteTripOnly(id);
+                        };
+                        
+                        document.getElementById('cancelDeleteBtn').onclick = () => {
+                            document.body.removeChild(confirmDialog);
+                        };
+                    } else {
+                        // Nessun ordine, elimina direttamente il viaggio
+                        if (confirm('Elimina questo viaggio?')) {
+                            await deleteTripOnly(id);
+                        }
+                    }
+                } else {
+                    alert('❌ Viaggio non trovato');
+                }
+            } catch (error) {
+                console.error('❌ Errore eliminazione viaggio:', error);
+                alert('❌ Errore: ' + error.message);
+            }
+        }
+
+        // Elimina viaggio E tutti gli ordini associati
+        async function deleteTripWithOrders(id) {
+            try {
+                const trip = trips.find(t => t.id === id);
+                if (trip) {
+                    console.log(`🗑️ [deleteTripWithOrders] Eliminazione viaggio ${id} (${trip.name}) E ${trip.sequence?.length || 0} ordini`);
+                    
+                    // Elimina tutti gli ordini associati al viaggio
+                    if (trip.sequence && trip.sequence.length > 0) {
+                        for (const orderId of trip.sequence) {
+                            const order = orders.find(o => o.id === orderId);
+                            if (order) {
+                                console.log(`  → Eliminando ordine ${orderId} (${order.client})`);
+                                try {
+                                    await DataSync.deleteOrder(orderId);
+                                } catch (error) {
+                                    console.error(`  ❌ Errore eliminazione ordine ${orderId}:`, error);
+                                }
+                                orders = orders.filter(o => o.id !== orderId);
+                            }
+                        }
+                    }
+                    
+                    // Elimina il viaggio
+                    trips = trips.filter(t => t.id !== id);
+                    await saveTrips();
+                    await DataSync.deleteTrip(id);
+                    
+                    // Aggiorna UI
+                    renderOrders();
+                    renderOrderTasks();
+                    renderTrips();
+                    updateStats();
+                    renderCalendar();
+                    alert('✅ Viaggio e ordini associati eliminati');
+                }
+            } catch (error) {
+                console.error('❌ Errore:', error);
+                alert('❌ Errore: ' + error.message);
+            }
+        }
+
+        // Elimina SOLO il viaggio, lascia gli ordini (come "senza viaggio")
+        async function deleteTripOnly(id) {
+            try {
+                const trip = trips.find(t => t.id === id);
+                if (trip) {
+                    console.log(`✂️ [deleteTripOnly] Eliminazione SOLO viaggio ${id}, mantenendo ${trip.sequence?.length || 0} ordini`);
+                    
+                    // Rimuovi la relazione tra ordini e viaggio (senza eliminarli)
+                    if (trip.sequence && trip.sequence.length > 0) {
+                        for (const orderId of trip.sequence) {
+                            const order = orders.find(o => o.id === orderId);
+                            if (order) {
+                                console.log(`  → Scollegando ordine ${orderId} dal viaggio`);
+                                order.tripId = null;
+                                order.status = 'pending';  // Resetta a sospeso
+                                // Aggiorna nel backend
+                                try {
+                                    await DataSync.updateOrder(orderId, order);
+                                } catch (error) {
+                                    console.error(`  ❌ Errore aggiornamento ordine ${orderId}:`, error);
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Elimina il viaggio
+                    trips = trips.filter(t => t.id !== id);
+                    await saveTrips();
+                    await DataSync.deleteTrip(id);
+                    
+                    // Aggiorna UI
+                    renderOrders();
+                    renderOrderTasks();
+                    renderTrips();
+                    updateStats();
+                    renderCalendar();
+                    alert('✅ Viaggio eliminato. Gli ordini rimangono come "Sospeso"');
+                }
+            } catch (error) {
+                console.error('❌ Errore:', error);
+                alert('❌ Errore: ' + error.message);
+            }
+        }
+
+        // Apri modal per modificare viaggio
+        function openEditTripModal(tripId) {
+            const trip = trips.find(t => t.id === tripId);
+            if (!trip) {
+                alert('Viaggio non trovato');
+                return;
+            }
+            
+            // Salva l'ID del viaggio in modifica
+            window.editingTripId = tripId;
+            
+            // Popola i campi del modal con i dati attuali
+            document.getElementById('editTripName').value = trip.name;
+            document.getElementById('editTripDate').valueAsDate = new Date(trip.date);
+            
+            // Popola select operatori
+            const operatorSelect = document.getElementById('editTripOperator');
+            operatorSelect.innerHTML = '<option value="">-- Non assegnato --</option>';
+            if (allOperators && allOperators.length > 0) {
+                allOperators.forEach(op => {
+                    const option = document.createElement('option');
+                    option.value = op.id;
+                    option.textContent = op.name || op.username;
+                    if (trip.assignedOperatorId === op.id) {
+                        option.selected = true;
+                    }
+                    operatorSelect.appendChild(option);
+                });
+            }
+            if (trip.assignedOperatorId && !operatorSelect.value) {
+                operatorSelect.value = trip.assignedOperatorId;
+            }
+            
+            // Popola select veicoli
+            const vehicleSelect = document.getElementById('editTripVehicle');
+            const companySettings = JSON.parse(localStorage.getItem('companySettings') || '{}');
+            const vehicles = companySettings.vehicles || [];
+            
+            if (vehicles.length > 0 && vehicleSelect.tagName === 'INPUT') {
+                const newSelect = document.createElement('select');
+                newSelect.id = 'editTripVehicle';
+                newSelect.style.cssText = 'width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; box-sizing: border-box;';
+                newSelect.innerHTML = '<option value="">-- Non assegnato --</option>' + 
+                    vehicles.map(v => {
+                        const vehicleName = typeof v === 'string' ? v : (v.name || v.nome || '');
+                        const selected = trip.vehicleName === vehicleName ? 'selected' : '';
+                        return `<option value="${vehicleName}" ${selected}>${vehicleName}</option>`;
+                    }).join('');
+                vehicleSelect.replaceWith(newSelect);
+            } else if (vehicleSelect.tagName === 'SELECT') {
+                vehicleSelect.value = trip.vehicleName || '';
+            } else {
+                vehicleSelect.value = trip.vehicleName || '';
+            }
+            
+            // Mostra il modal
+            document.getElementById('editTripModal').classList.add('active');
+        }
+        
+        function closeEditTripModal() {
+            document.getElementById('editTripModal').classList.remove('active');
+            window.editingTripId = null;
+        }
+        
+        async function saveEditedTrip(event) {
+            event.preventDefault();
+            const tripId = window.editingTripId;
+            if (!tripId) return;
+            
+            const trip = trips.find(t => t.id === tripId);
+            if (!trip) return;
+            
+            const name = document.getElementById('editTripName').value;
+            const date = document.getElementById('editTripDate').value;
+            const operatorId = document.getElementById('editTripOperator').value;
+            const vehicleSelect = document.getElementById('editTripVehicle');
+            const vehicleName = vehicleSelect.tagName === 'SELECT' ? vehicleSelect.value : vehicleSelect.value;
+            
+            if (!name || !date) {
+                alert('⚠️ Nome e Data sono obbligatori!');
+                return;
+            }
+            
+            // Aggiorna i dati del viaggio
+            trip.name = name;
+            trip.date = date + 'T12:00:00Z';
+            trip.assignedOperatorId = operatorId ? parseInt(operatorId) : null;
+            trip.vehicleName = vehicleName || null;
+            
+            console.log('💾 [saveEditedTrip] Salvando viaggio:', { name, date, operatorId: trip.assignedOperatorId, vehicleName: trip.vehicleName });
+            
+            // Salva nel backend e aspetta il completamento
+            try {
+                await updateTripData(trip);
+                console.log('✅ [saveEditedTrip] Viaggio salvato con successo');
+            } catch (error) {
+                console.error('❌ [saveEditedTrip] Errore nel salvataggio:', error);
+                alert('❌ Errore nel salvataggio: ' + error.message);
+                return;
+            }
+            
+            // Aggiorna l'UI
+            closeEditTripModal();
+            renderTripsManager();
+            renderTrips();
+            renderCalendar();
+            
+            // Sincronizza automaticamente
+            setTimeout(async () => {
+                await forceRefreshTrips();
+            }, 100);
+            
+            alert('✅ Viaggio modificato con successo!');
+        }
+        
+        // Funzione per aggiornare il viaggio nel backend
+        async function updateTripData(trip) {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`${API_URL}/trips/${trip.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: trip.name,
+                        date: trip.date,
+                        assignedOperatorId: trip.assignedOperatorId,
+                        vehicleName: trip.vehicleName,
+                        sequence: trip.sequence || []
+                    })
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    console.error('❌ Errore aggiornamento viaggio:', error);
+                    throw new Error(error.message || 'Errore aggiornamento viaggio');
+                }
+                
+                const updated = await response.json();
+                console.log('✅ Viaggio aggiornato:', updated);
+                
+                // Salva in localStorage
+                await saveTrips();
+            } catch (error) {
+                console.error('❌ Errore:', error);
+                throw error;
+            }
+        }
+
+        // Forza il caricamento dei viaggi da API
+        async function forceRefreshTrips() {
+            console.log('🔄 [forceRefreshTrips] Forzando sincronizzazione viaggi...');
+            try {
+                // Carica direttamente dall'API (senza svuotare localStorage)
+                const loadedTrips = await DataSync.Trips.getAll();
+                console.log('✅ [forceRefreshTrips] Viaggi caricati da API:', loadedTrips);
+                
+                if (loadedTrips && loadedTrips.length > 0) {
+                    trips = loadedTrips;
+                    // Log dettagliato di ogni viaggio
+                    trips.forEach(t => {
+                        // Assicura che sequence sia sempre un array
+                        if (!t.sequence) t.sequence = [];
+                        console.log(`📋 Trip ${t.id} (${t.name}): sequence=${JSON.stringify(t.sequence)}`);
+                    });
+                    // Salva in localStorage per backup offline
+                    localStorage.setItem('trips', JSON.stringify(trips));
+                    console.log('📊 [forceRefreshTrips] Trips sincronizzati. Totale:', trips.length);
+                } else {
+                    // Se nessun viaggio dal server, usa localStorage
+                    const stored = localStorage.getItem('trips');
+                    trips = stored ? JSON.parse(stored) : [];
+                    console.log('⚠️ [forceRefreshTrips] Nessun viaggio dal server. Caricati da localStorage:', trips.length);
+                }
+                
+                // Renderizza
+                renderTrips();
+                renderCalendar();
+                updateStats();
+            } catch (error) {
+                console.error('❌ [forceRefreshTrips] Errore:', error);
+                // Fallback a localStorage
+                const stored = localStorage.getItem('trips');
+                trips = stored ? JSON.parse(stored) : [];
+                console.log('⚠️ [forceRefreshTrips] Errore API, fallback a localStorage:', trips.length);
+                renderTrips();
+                renderCalendar();
+                updateStats();
+            }
         }
 
         // Aggiorna stato ordine
@@ -3282,6 +4046,13 @@
                 }
                 updateStats();
                 renderCalendar();
+                
+                // Sincronizza automaticamente i viaggi dopo il cambio di stato
+                // Con small delay per permettere al backend di elaborare
+                setTimeout(async () => {
+                    await forceRefreshTrips();
+                    renderOrderTasks();  // Ricarica lista ordini per mostrare filtro aggiornato
+                }, 300);
             }
         }
 
@@ -3318,12 +4089,17 @@
             const grid = document.getElementById('ordersGrid');
             if (!grid) return;
             
-            if (orders.length === 0) {
-                grid.innerHTML = '<p style="color: #808080; grid-column: 1/-1; text-align: center; padding: 20px;">Nessun ordine presente. Crea il primo ordine!</p>';
+            // Filtra gli ordini che NON sono assegnati a nessun viaggio
+            const unassignedOrders = orders.filter(order => {
+                return !trips.some(trip => trip.sequence && trip.sequence.includes(order.id));
+            });
+            
+            if (unassignedOrders.length === 0) {
+                grid.innerHTML = '<p style="color: #808080; grid-column: 1/-1; text-align: center; padding: 20px;">Nessun ordine non assegnato. Tutti gli ordini sono inclusi in un viaggio!</p>';
                 return;
             }
 
-            grid.innerHTML = orders.map(order => {
+            grid.innerHTML = unassignedOrders.map(order => {
                 const fullInfo = getOrderFullInfo(order.id);
                 const cliente = clienti.find(c => c.nome === order.client);
                 const orariInfo = cliente ? `
@@ -3550,6 +4326,10 @@
                 calendarClickTimer = setTimeout(() => {
                     showDayOrdersModal(dateStr);
                     renderCalendar();
+                    // Sincronizza automaticamente i viaggi quando clicchi un giorno
+                    setTimeout(async () => {
+                        await forceRefreshTrips();
+                    }, 100);
                     calendarClickTimer = null;
                 }, 300);
             }
@@ -3627,21 +4407,22 @@
                 let deliveryCountHtml = '';
                 let pickupCountHtml = '';
                 let tripCountHtml = '';
-                
+
                 // Consegne: triangolo blu + box blu in alto a destra
                 if (dayDeliveryOrders.length > 0) {
-                    deliveryCountHtml = `<div style="position: absolute; top: 0; right: 0; width: 0; height: 0; border-style: solid; border-width: 0 22px 22px 0; border-color: transparent #2563eb transparent transparent; border-radius: 0 4px 0 0; z-index: 20;"></div><div style="position: absolute; top: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 25; border: 2px solid #2563eb; border-radius: 3px; padding: 2px 4px;">${dayDeliveryOrders.length}</div>`;
+                    deliveryCountHtml = `<div style="position: absolute; top: 0; right: 0; width: 0; height: 0; border-style: solid; border-width: 0 22px 22px 0; border-color: transparent #2563eb transparent transparent; border-radius: 0 4px 0 0; z-index: 20;"></div><div style="position: absolute; top: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 25; border: 2px solid #2563eb; border-radius: 3px; padding: 2px 4px; background: transparent;">${dayDeliveryOrders.length}</div>`;
                 }
-                
+
                 // Ritiri: triangolo verde + box verde in basso a destra
                 if (dayPickupOrders.length > 0) {
-                    pickupCountHtml = `<div style="position: absolute; bottom: 0; right: 0; width: 0; height: 0; border-style: solid; border-width: 0 0 22px 22px; border-color: transparent transparent #16a34a transparent; border-radius: 0 0 4px 0; z-index: 20;"></div><div style="position: absolute; bottom: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 25; border: 2px solid #16a34a; border-radius: 3px; padding: 2px 4px;">${dayPickupOrders.length}</div>`;
+                    pickupCountHtml = `<div style="position: absolute; bottom: 0; right: 0; width: 0; height: 0; border-style: solid; border-width: 0 0 22px 22px; border-color: transparent transparent #16a34a transparent; border-radius: 0 0 4px 0; z-index: 20;"></div><div style="position: absolute; bottom: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 25; border: 2px solid #16a34a; border-radius: 3px; padding: 2px 4px; background: transparent;">${dayPickupOrders.length}</div>`;
                 }
-                
+
+                // Viaggi: triangolo azzurro + cifra azzurra in alto a sinistra
                 if (dayTrips.length > 0) {
-                    tripCountHtml = `<div style="position: absolute; top: 8px; left: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #ff9800; border-radius: 3px; padding: 2px 4px;">${dayTrips.length}</div>`;
+                    tripCountHtml = `<div style="position: absolute; top: 0; left: 0; width: 0; height: 0; border-style: solid; border-width: 22px 22px 0 0; border-color: #38bdf8 transparent transparent transparent; border-radius: 4px 0 0 0; z-index: 20;"></div><div style="position: absolute; top: 8px; left: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 25; border: 2px solid #38bdf8; border-radius: 3px; padding: 2px 4px; background: transparent;">${dayTrips.length}</div>`;
                 }
-                
+
                 html += `<div class="calendar-day ${hasOrdersClass} ${hasUnassignedClass} ${hasTripsClass} ${isTodayClass} ${isSelectedClass}" style="cursor: pointer; position: relative; ${dayColor}" onclick="handleCalendarDayClick('${dateStr}')"><strong>${date.getDate()}</strong>${deliveryCountHtml}${pickupCountHtml}${tripCountHtml}</div>`;
             }
             
@@ -3845,6 +4626,15 @@
                 const totalsHtml = Object.entries(totals).map(([product, qty]) => 
                     `<span style="background:#1e3a2a;color:#86efac;padding:4px 8px;border-radius:4px;font-size:12px;margin-right:6px;">${product}: ${qty.toFixed(1)}kg</span>`
                 ).join('');
+                
+                // Ottieni il nome dell'operatore assegnato
+                let operatorName = 'Non assegnato';
+                if (trip.assignedOperatorId && allOperators) {
+                    const operator = allOperators.find(op => op.id === trip.assignedOperatorId);
+                    if (operator) {
+                        operatorName = operator.name || operator.username;
+                    }
+                }
 
                 return `
                     <div class="order-card" style="border-left:4px solid #16a34a;margin-bottom:15px;">
@@ -3854,6 +4644,8 @@
                         </div>
                         <div class="order-details">
                             <p><strong>📅 Data:</strong> ${new Date(trip.date).toLocaleDateString('it-IT')}</p>
+                            <p><strong>👤 Operatore:</strong> ${operatorName}</p>
+                            ${trip.vehicleName ? `<p><strong>🚐 Veicolo:</strong> ${trip.vehicleName}</p>` : ''}
                             ${totalsHtml ? `<p><strong>📊 Totali:</strong><br>${totalsHtml}</p>` : ''}
                         </div>
                         <div class="order-actions" style="justify-content:flex-end;gap:8px;margin-top:10px;">
@@ -3868,6 +4660,42 @@
         function openCreateTripModal() {
             document.getElementById('createTripForm').reset();
             document.getElementById('tripDate').valueAsDate = new Date();
+            
+            // Popola select operatori
+            const operatorSelect = document.getElementById('tripOperator');
+            operatorSelect.innerHTML = '<option value="">-- Non assegnato --</option>';
+            if (allOperators && allOperators.length > 0) {
+                allOperators.forEach(op => {
+                    const option = document.createElement('option');
+                    option.value = op.id;
+                    option.textContent = op.name || op.username;
+                    operatorSelect.appendChild(option);
+                });
+            }
+            
+            // Popola select veicoli da companySettings
+            const vehicleSelect = document.getElementById('tripVehicle');
+            const companySettings = JSON.parse(localStorage.getItem('companySettings') || '{}');
+            const vehicles = companySettings.vehicles || [];
+            
+            if (vehicles.length > 0) {
+                // Sostituisci l'input text con una select
+                const newSelect = document.createElement('select');
+                newSelect.id = 'tripVehicle';
+                newSelect.style.cssText = 'width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; box-sizing: border-box;';
+                newSelect.innerHTML = '<option value="">-- Non assegnato --</option>' + 
+                    vehicles.map(v => {
+                        const vehicleName = typeof v === 'string' ? v : (v.name || v.nome || '');
+                        return `<option value="${vehicleName}">${vehicleName}</option>`;
+                    }).join('');
+                
+                // Sostituisci l'input con la select
+                vehicleSelect.replaceWith(newSelect);
+            } else {
+                // Se non ci sono veicoli configurati, mantieni l'input text
+                vehicleSelect.placeholder = 'Es: Furgone 1 (nessun veicolo configurato)';
+            }
+            
             document.getElementById('createTripModal').classList.add('active');
         }
 
@@ -3875,17 +4703,61 @@
             document.getElementById('createTripModal').classList.remove('active');
         }
 
-        function saveNewTrip(event) {
+        async function saveNewTrip(event) {
             event.preventDefault();
             const name = document.getElementById('tripName').value;
             const date = document.getElementById('tripDate').value;
-            createTrip(name, date);
+            const operatorId = document.getElementById('tripOperator').value;
+            const vehicleName = document.getElementById('tripVehicle').value;
+            
+            console.log('🚀 saveNewTrip - Dati raccolti:', {
+                name, date, operatorId, vehicleName
+            });
+            
+            // Valida i dati obbligatori
+            if (!name || !date) {
+                alert('⚠️ Nome e Data sono obbligatori!');
+                return;
+            }
+            
+            // Crea viaggio con i dati completi
+            const tripData = {
+                name: name,
+                date: date + 'T12:00:00Z',
+                assignedOperatorId: operatorId ? parseInt(operatorId) : null,
+                vehicleName: vehicleName || null,
+                vehicleId: null,
+                notes: null,
+                status: 'planned'
+            };
+            
+            console.log('📝 tripData da inviare:', tripData);
+            
+            // Crea il viaggio e aspetta il completamento
+            try {
+                await createTripFromData(tripData);
+                console.log('✅ Viaggio creato con successo');
+            } catch (error) {
+                console.error('❌ Errore nella creazione:', error);
+                alert('❌ Errore nella creazione: ' + error.message);
+                return;
+            }
+            
             closeCreateTripModal();
-            renderTripsManager();
+            renderTrips();
+            
+            // Sincronizza automaticamente i viaggi dopo la creazione
+            setTimeout(async () => {
+                await forceRefreshTrips();
+            }, 100);
+            
             alert('✅ Viaggio creato con successo!');
         }
 
         function confirmDeleteTrip(tripId) {
+            if (!confirm('Sei sicuro di voler eliminare questo viaggio?')) {
+                return;
+            }
             deleteTrip(tripId);
             renderTripsManager();
             renderOrderTasks();
@@ -3958,7 +4830,10 @@
                             <span style="margin-left:10px;">⏰ ${new Date(order.dateTime).toLocaleTimeString('it-IT', {hour:'2-digit',minute:'2-digit'})}</span>
                         </div>
                     </div>
-                    <button class="btn btn-danger" onclick="removeOrderFromCurrentTrip(${order.id})" style="padding:4px 8px;font-size:11px;">✖</button>
+                    <div style="display:flex;gap:6px;">
+                        <button class="btn btn-primary" onclick="openEditOrderModal(${order.id})" style="padding:4px 8px;font-size:11px;">✏️ Modifica</button>
+                        <button class="btn btn-danger" onclick="removeOrderFromCurrentTrip(${order.id})" style="padding:4px 8px;font-size:11px;">✖</button>
+                    </div>
                 </div>
             `).join('');
         }
@@ -4045,7 +4920,7 @@
             await loadCSVData();
             await loadOrders();
             loadOrderTasks();
-            await loadTrips();
+            await forceRefreshTrips();  // Carica i viaggi dal backend automaticamente
             renderOrderTasks();
             renderCalendar();
             // Admin: assicura che gli ordini 'ritira' siano sincronizzati nel DB e visibili
@@ -4063,6 +4938,7 @@
             } else if (event.key === 'trips') {
                 console.log('🚚 Sincronizzando viaggi da un\'altra pagina...');
                 await loadTrips();
+                renderTrips();
                 renderCalendar();
             } else if (event.key === 'orderTasks') {
                 console.log('✅ Sincronizzando task ordini da un\'altra pagina...');
@@ -4088,6 +4964,37 @@
         </div>
     </div>
 
+    <!-- Modal Modifica Viaggio -->
+    <div id="editTripModal" class="modal">
+        <div class="modal-content">
+            <h2>✏️ Modifica Viaggio</h2>
+            <form id="editTripForm" onsubmit="saveEditedTrip(event)">
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label for="editTripName" style="display: block; margin-bottom: 6px; color: #e0e0e0; font-weight: 600;">Nome Viaggio:</label>
+                    <input type="text" id="editTripName" required placeholder="Es: Giro Mattina" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; box-sizing: border-box;">
+                </div>
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label for="editTripDate" style="display: block; margin-bottom: 6px; color: #e0e0e0; font-weight: 600;">Data:</label>
+                    <input type="date" id="editTripDate" required style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; box-sizing: border-box;">
+                </div>
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label for="editTripOperator" style="display: block; margin-bottom: 6px; color: #e0e0e0; font-weight: 600;">Operatore (opzionale):</label>
+                    <select id="editTripOperator" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; box-sizing: border-box;">
+                        <option value="">-- Non assegnato --</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label for="editTripVehicle" style="display: block; margin-bottom: 6px; color: #e0e0e0; font-weight: 600;">Veicolo (opzionale):</label>
+                    <input type="text" id="editTripVehicle" placeholder="Es: Furgone 1" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; box-sizing: border-box;">
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary">💾 Salva Modifiche</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeEditTripModal()">❌ Annulla</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Modal Gestione Viaggi -->
     <div id="tripsManagerModal" class="modal">
         <div class="modal-content" style="max-width:900px;max-height:80vh;overflow-y:auto;">
@@ -4105,13 +5012,23 @@
         <div class="modal-content">
             <h2>➕ Nuovo Viaggio</h2>
             <form id="createTripForm" onsubmit="saveNewTrip(event)">
-                <div class="form-group">
-                    <label for="tripName">Nome Viaggio:</label>
-                    <input type="text" id="tripName" required placeholder="Es: Giro Mattina">
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label for="tripName" style="display: block; margin-bottom: 6px; color: #e0e0e0; font-weight: 600;">Nome Viaggio:</label>
+                    <input type="text" id="tripName" required placeholder="Es: Giro Mattina" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; box-sizing: border-box;">
                 </div>
-                <div class="form-group">
-                    <label for="tripDate">Data:</label>
-                    <input type="date" id="tripDate" required>
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label for="tripDate" style="display: block; margin-bottom: 6px; color: #e0e0e0; font-weight: 600;">Data:</label>
+                    <input type="date" id="tripDate" required style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; box-sizing: border-box;">
+                </div>
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label for="tripOperator" style="display: block; margin-bottom: 6px; color: #e0e0e0; font-weight: 600;">Operatore (opzionale):</label>
+                    <select id="tripOperator" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; box-sizing: border-box;">
+                        <option value="">-- Non assegnato --</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label for="tripVehicle" style="display: block; margin-bottom: 6px; color: #e0e0e0; font-weight: 600;">Veicolo (opzionale):</label>
+                    <input type="text" id="tripVehicle" placeholder="Es: Furgone 1" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; box-sizing: border-box;">
                 </div>
                 <div class="modal-actions">
                     <button type="submit" class="btn btn-primary">💾 Crea</button>

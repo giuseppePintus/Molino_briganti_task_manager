@@ -219,9 +219,9 @@ router.get('/status', async (req: Request, res: Response) => {
       status: 'running',
       backupsCount: backups.length,
       latestBackup: latestBackup,
-      nasUrl: process.env.NAS_URL || '192.168.1.100',
+      nasUrl: process.env.NAS_URL || '192.168.1.248',
       nasPort: process.env.NAS_PORT || '5000',
-      backupDir: process.env.BACKUP_DIR || './backups',
+      backupDir: process.env.BACKUP_DIR || '/data/molino/backups/database',
       timestamp: new Date().toISOString()
     });
   } catch (error: any) {
@@ -292,7 +292,7 @@ router.post('/settings/path', async (req: Request, res: Response) => {
 router.get('/settings/paths', async (req: Request, res: Response) => {
   try {
     // Percorso interno container: /data/molino/backups/database
-    // Mappato su NAS a: /share/CACHEDEV1_DATA/Container/data/molino/backups/database
+    // Mappato su NAS a: /share/Container/data/molino/backups/database
     // Visibile da Windows: \\NAS71F89C\Container\data\molino\backups\database
     const defaultPath = '/data/molino/backups/database';
     res.json({

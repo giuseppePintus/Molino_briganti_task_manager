@@ -1609,13 +1609,6 @@
                     <p>Nessun task per questo giorno</p>
                 </div>
             </div>
-            
-            <!-- Day Trips Section -->
-            <div id="dayTripsSection" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #4d4d4d; display: none;">
-                <h3 style="font-size: 16px; color: #16a34a; margin-bottom: 15px;">🚚 Viaggi del Giorno</h3>
-                <div id="dayTripsList" style="display: flex; flex-direction: column; gap: 15px;">
-                </div>
-            </div>
         </div>
 
         <!-- My Tasks (Admin Personal Tasks) - Outside main-content for full width -->
@@ -1642,6 +1635,72 @@
     <!-- Edit Orders Modal -->
     <div id="editOrdersModal" class="modal">
         <div class="modal-content" style="max-width: 600px;">
+        </div>
+    </div>
+
+    <!-- Trip Assignment Modal -->
+    <div id="tripAssignmentModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <h2 style="margin-bottom: 20px;">🚚 Gestione Viaggio</h2>
+            
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                <!-- Opzione: Crea nuovo viaggio -->
+                <div style="border: 2px solid #3b82f6; border-radius: 8px; padding: 15px; cursor: pointer; transition: background 0.2s;" 
+                     onclick="selectTripOption('new')" id="tripOption-new">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                        <input type="radio" name="tripOption" value="new" id="radio-new" style="width: 20px; height: 20px;">
+                        <label for="radio-new" style="font-size: 16px; font-weight: 600; cursor: pointer;">🆕 Crea nuovo viaggio</label>
+                    </div>
+                    <div id="newTripFields" style="display: none; margin-top: 15px; padding-left: 30px;">
+                        <div style="margin-bottom: 12px;">
+                            <label style="display: block; margin-bottom: 5px; color: #b0b0b0;">Nome viaggio:</label>
+                            <input type="text" id="newTripName" placeholder="Es: Consegne Centro 09/12" 
+                                   style="width: 100%; padding: 10px; border: 1px solid #4d4d4d; border-radius: 4px; background: #1a1a1a; color: #e0e0e0;">
+                        </div>
+                        <div style="margin-bottom: 12px;">
+                            <label style="display: block; margin-bottom: 5px; color: #b0b0b0;">Automezzo:</label>
+                            <select id="newTripVehicle" style="width: 100%; padding: 10px; border: 1px solid #4d4d4d; border-radius: 4px; background: #1a1a1a; color: #e0e0e0;">
+                                <option value="">-- Seleziona automezzo --</option>
+                            </select>
+                        </div>
+                        <div style="margin-bottom: 12px;">
+                            <label style="display: block; margin-bottom: 5px; color: #b0b0b0;">Operatore:</label>
+                            <select id="newTripOperator" style="width: 100%; padding: 10px; border: 1px solid #4d4d4d; border-radius: 4px; background: #1a1a1a; color: #e0e0e0;">
+                                <option value="">-- Seleziona operatore --</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Opzione: Aggiungi a viaggio esistente -->
+                <div style="border: 2px solid #4d4d4d; border-radius: 8px; padding: 15px; cursor: pointer; transition: background 0.2s;" 
+                     onclick="selectTripOption('existing')" id="tripOption-existing">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                        <input type="radio" name="tripOption" value="existing" id="radio-existing" style="width: 20px; height: 20px;">
+                        <label for="radio-existing" style="font-size: 16px; font-weight: 600; cursor: pointer;">📋 Aggiungi a viaggio esistente</label>
+                    </div>
+                    <div id="existingTripFields" style="display: none; margin-top: 15px; padding-left: 30px;">
+                        <label style="display: block; margin-bottom: 5px; color: #b0b0b0;">Seleziona viaggio:</label>
+                        <select id="existingTripSelect" style="width: 100%; padding: 10px; border: 1px solid #4d4d4d; border-radius: 4px; background: #1a1a1a; color: #e0e0e0;">
+                            <option value="">-- Seleziona viaggio --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Opzione: Sospeso (senza viaggio) -->
+                <div style="border: 2px solid #4d4d4d; border-radius: 8px; padding: 15px; cursor: pointer; transition: background 0.2s;" 
+                     onclick="selectTripOption('pending')" id="tripOption-pending">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <input type="radio" name="tripOption" value="pending" id="radio-pending" style="width: 20px; height: 20px;">
+                        <label for="radio-pending" style="font-size: 16px; font-weight: 600; cursor: pointer;">⏸️ Sospeso (senza viaggio)</label>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 25px;">
+                <button onclick="confirmTripAssignment()" class="btn btn-primary" style="flex: 1;">✅ Conferma</button>
+                <button onclick="closeTripAssignmentModal()" class="btn btn-secondary" style="flex: 1;">❌ Annulla</button>
+            </div>
         </div>
     </div>
 
@@ -1806,9 +1865,36 @@
         }
 
         async function saveOrders() {
-            // Il salvataggio viene gestito per singolo ordine tramite DataSync
-            // Questa funzione è mantenuta per compatibilità
+            // Salva nel localStorage
             localStorage.setItem('orders', JSON.stringify(orders));
+            
+            // Sincronizza ogni ordine al backend via DataSync
+            try {
+                for (const order of orders) {
+                    // Invia l'aggiornamento al backend
+                    const response = await fetch(`/api/orders/${order.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            type: order.type,
+                            clientName: order.clientName,
+                            products: order.products,
+                            tripId: order.tripId || null,
+                            assignedOperatorId: order.assignedOperatorId || null,
+                            dateTime: order.dateTime,
+                            status: order.status,
+                            notes: order.notes
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        console.warn(`⚠️ Errore sincronizzazione ordine ${order.id}:`, response.statusText);
+                    }
+                }
+            } catch (error) {
+                console.warn('⚠️ Errore sincronizzazione ordini al backend:', error);
+                // Non bloccare - continua comunque
+            }
         }
 
         function getTripOrders(tripId) {
@@ -2268,9 +2354,10 @@
         }
 
         // Crea nuovo viaggio e associa un ordine
+        let currentTripAssignmentOrderId = null;
+
         async function createNewTripWithOrder(orderId) {
             console.log('🚀 createNewTripWithOrder chiamato con orderId:', orderId);
-            console.log('📦 orders disponibili:', orders.length, orders.map(o => o.id));
             
             const order = orders.find(o => o.id === orderId);
             if (!order) {
@@ -2279,24 +2366,166 @@
                 return;
             }
 
-            console.log('✅ Ordine trovato:', order);
+            // Memorizza l'orderId per uso successivo
+            currentTripAssignmentOrderId = orderId;
+            
+            // Popola campo nome viaggio con data ordine
             const tripName = `Consegne ${new Date(order.dateTime).toLocaleDateString('it-IT')}`;
-            console.log('📝 Creando viaggio:', tripName);
+            document.getElementById('newTripName').value = tripName;
             
-            const trip = await createNewTrip(tripName, [orderId]);
-            console.log('✅ Viaggio creato:', trip);
+            // Popola dropdown automezzi da impostazioni azienda
+            const companySettings = JSON.parse(localStorage.getItem('companySettings') || '{}');
+            const vehicles = companySettings.vehicles || [];
+            const vehicleSelect = document.getElementById('newTripVehicle');
+            vehicleSelect.innerHTML = '<option value="">-- Seleziona automezzo --</option>';
+            if (vehicles.length > 0) {
+                vehicleSelect.innerHTML += vehicles.map(v => `<option value="${v.name}">${v.icon || '🚐'} ${v.name}</option>`).join('');
+            } else {
+                vehicleSelect.innerHTML += '<option value="" disabled>Nessun automezzo configurato</option>';
+            }
             
-            // Associa l'ordine al viaggio
-            order.tripId = trip.id;
-            await saveOrders();
+            // Popola dropdown operatori
+            const operatorSelect = document.getElementById('newTripOperator');
+            operatorSelect.innerHTML = '<option value="">-- Seleziona operatore --</option>' +
+                allOperators.map(op => `<option value="${op.id}">${op.username}</option>`).join('');
             
-            showAlert('Viaggio creato e ordine aggiunto!', 'success');
+            // Popola dropdown viaggi esistenti della stessa data
+            const orderDate = new Date(order.dateTime).toLocaleDateString('it-IT');
+            const availableTrips = trips.filter(t => {
+                const tripOrders = getTripOrders(t.id);
+                if (tripOrders.length === 0) return false;
+                const firstOrder = tripOrders[0];
+                const tripDate = new Date(firstOrder.dateTime).toLocaleDateString('it-IT');
+                return tripDate === orderDate;
+            });
+            
+            const existingTripSelect = document.getElementById('existingTripSelect');
+            existingTripSelect.innerHTML = '<option value="">-- Seleziona viaggio --</option>';
+            if (availableTrips.length > 0) {
+                existingTripSelect.innerHTML += availableTrips.map(t => 
+                    `<option value="${t.id}">${t.name} (${getTripOrders(t.id).length} ordini)</option>`
+                ).join('');
+            } else {
+                existingTripSelect.innerHTML += '<option value="" disabled>Nessun viaggio disponibile per questa data</option>';
+            }
+            
+            // Apri il modal
+            document.getElementById('tripAssignmentModal').style.display = 'flex';
+        }
+
+        function selectTripOption(option) {
+            // Reset tutti i bordi
+            document.getElementById('tripOption-new').style.borderColor = '#4d4d4d';
+            document.getElementById('tripOption-existing').style.borderColor = '#4d4d4d';
+            document.getElementById('tripOption-pending').style.borderColor = '#4d4d4d';
+            
+            // Nascondi tutti i campi
+            document.getElementById('newTripFields').style.display = 'none';
+            document.getElementById('existingTripFields').style.display = 'none';
+            
+            // Seleziona radio button
+            document.getElementById('radio-' + option).checked = true;
+            
+            // Evidenzia opzione selezionata e mostra campi
+            if (option === 'new') {
+                document.getElementById('tripOption-new').style.borderColor = '#3b82f6';
+                document.getElementById('newTripFields').style.display = 'block';
+            } else if (option === 'existing') {
+                document.getElementById('tripOption-existing').style.borderColor = '#3b82f6';
+                document.getElementById('existingTripFields').style.display = 'block';
+            } else if (option === 'pending') {
+                document.getElementById('tripOption-pending').style.borderColor = '#f59e0b';
+            }
+        }
+
+        async function confirmTripAssignment() {
+            const selectedOption = document.querySelector('input[name="tripOption"]:checked');
+            if (!selectedOption) {
+                showAlert('Seleziona un\'opzione', 'error');
+                return;
+            }
+
+            const order = orders.find(o => o.id === currentTripAssignmentOrderId);
+            if (!order) {
+                showAlert('Ordine non trovato', 'error');
+                return;
+            }
+
+            if (selectedOption.value === 'new') {
+                // Crea nuovo viaggio
+                const tripName = document.getElementById('newTripName').value.trim();
+                const vehicle = document.getElementById('newTripVehicle').value;
+                const operatorId = document.getElementById('newTripOperator').value;
+                
+                if (!tripName) {
+                    showAlert('Inserisci il nome del viaggio', 'error');
+                    return;
+                }
+                
+                const trip = await createNewTrip(tripName, [currentTripAssignmentOrderId]);
+                if (vehicle) trip.vehicle = vehicle;
+                if (operatorId) trip.assignedOperatorId = parseInt(operatorId);
+                
+                order.tripId = trip.id;
+                await saveTrips();
+                await saveOrders();
+                
+                showAlert('Viaggio creato e ordine aggiunto!', 'success');
+                
+            } else if (selectedOption.value === 'existing') {
+                // Aggiungi a viaggio esistente
+                const tripId = parseInt(document.getElementById('existingTripSelect').value);
+                if (!tripId) {
+                    showAlert('Seleziona un viaggio', 'error');
+                    return;
+                }
+                
+                order.tripId = tripId;
+                const trip = trips.find(t => t.id === tripId);
+                if (trip && !trip.sequence.includes(currentTripAssignmentOrderId)) {
+                    trip.sequence.push(currentTripAssignmentOrderId);
+                }
+                
+                await saveTrips();
+                await saveOrders();
+                
+                showAlert('Ordine aggiunto al viaggio!', 'success');
+                
+            } else if (selectedOption.value === 'pending') {
+                // Sospeso (rimuovi tripId)
+                order.tripId = null;
+                await saveOrders();
+                
+                showAlert('Ordine impostato come sospeso', 'success');
+            }
+
+            closeTripAssignmentModal();
             renderCalendar();
             
-            // Aggiorna anche il modal del giorno se aperto
             if (lastViewedDayDate) {
                 showDayTasksModal(lastViewedDayDate);
             }
+        }
+
+        function closeTripAssignmentModal() {
+            document.getElementById('tripAssignmentModal').style.display = 'none';
+            currentTripAssignmentOrderId = null;
+            
+            // Reset form
+            document.getElementById('newTripName').value = '';
+            document.getElementById('newTripVehicle').value = '';
+            document.getElementById('newTripOperator').value = '';
+            document.getElementById('existingTripSelect').value = '';
+            document.querySelectorAll('input[name="tripOption"]').forEach(r => r.checked = false);
+            
+            // Reset bordi
+            document.getElementById('tripOption-new').style.borderColor = '#4d4d4d';
+            document.getElementById('tripOption-existing').style.borderColor = '#4d4d4d';
+            document.getElementById('tripOption-pending').style.borderColor = '#4d4d4d';
+            
+            // Nascondi campi
+            document.getElementById('newTripFields').style.display = 'none';
+            document.getElementById('existingTripFields').style.display = 'none';
         }
 
         // Elimina viaggio (e rimuove associazione da ordini)
@@ -4357,6 +4586,13 @@
                     }
                     
                     showAlert('Task modificato!', 'success');
+                    closeModal();
+                    await loadTasks();
+                    await updateStats();
+                    // Riaggiorna la card del giorno se era aperta
+                    if (lastViewedDayDate) {
+                        showDayTasksModal(lastViewedDayDate);
+                    }
                 } else {
                     // Determina se è un task ricorrente
                     const isRecurring = taskType === 'recurring' && recurrence;
@@ -4389,11 +4625,10 @@
                     }
                     
                     showAlert('Task creato!', 'success');
+                    closeModal();
+                    await loadTasks();
+                    await updateStats();
                 }
-                
-                closeModal();
-                await loadTasks();
-                await updateStats();
             } catch (error) {
                 showAlert('Errore: ' + error.message, 'error');
             }

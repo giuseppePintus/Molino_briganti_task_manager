@@ -307,7 +307,7 @@
       try {
         const token = localStorage.getItem('token');
         const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-        const resp = await fetch(`${API_URL}/settings`, { headers });
+        const resp = await fetch(`${API_URL}/settings/company`, { headers });
         if (resp.ok) {
           const json = await resp.json();
           localStorage.setItem('companySettings', JSON.stringify(json));
@@ -315,6 +315,15 @@
         }
       } catch {}
       try { return JSON.parse(localStorage.getItem('companySettings')) || defaultCompanySettings(); } catch { return defaultCompanySettings(); }
+    }
+
+    // Funzione per ottenere settings da localStorage (senza API per evitare race conditions)
+    function getLocalSettings() {
+      try {
+        const stored = localStorage.getItem('companySettings');
+        if (stored) return JSON.parse(stored);
+      } catch {}
+      return defaultCompanySettings();
     }
 
     async function saveSettings() {
@@ -331,7 +340,7 @@
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         };
         
-        const resp = await fetch(`${API_URL}/settings`, {
+        const resp = await fetch(`${API_URL}/settings/company`, {
           method: 'PUT',
           headers,
           body: JSON.stringify(s)
@@ -428,7 +437,8 @@
       const input = document.getElementById('holidayDate');
       const val = input.value;
       if (!val) return;
-      const s = await loadSettingsAsync();
+      // Usa localStorage per evitare race conditions
+      const s = getLocalSettings();
       s.holidays = Array.from(new Set([...(s.holidays||[]), val]));
       // Salva su localStorage e API
       localStorage.setItem('companySettings', JSON.stringify(s));
@@ -438,7 +448,7 @@
           'Content-Type': 'application/json',
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         };
-        await fetch(`${API_URL}/settings`, {
+        await fetch(`${API_URL}/settings/company`, {
           method: 'PUT',
           headers,
           body: JSON.stringify(s)
@@ -448,11 +458,12 @@
       }
       input.value = '';
       renderHolidays(s.holidays);
-      alert('✅ Giorno festivo aggiunto');
+      alert('✅ Festività aggiunta');
     }
 
     async function removeHoliday(index) {
-      const s = await loadSettingsAsync();
+      // Usa localStorage per evitare race conditions
+      const s = getLocalSettings();
       if (!Array.isArray(s.holidays)) s.holidays = [];
       s.holidays.splice(index, 1);
       // Salva su localStorage e API
@@ -463,7 +474,7 @@
           'Content-Type': 'application/json',
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         };
-        await fetch(`${API_URL}/settings`, {
+        await fetch(`${API_URL}/settings/company`, {
           method: 'PUT',
           headers,
           body: JSON.stringify(s)
@@ -493,7 +504,8 @@
         alert('⚠️ Inserisci il nome dell\'automezzo');
         return;
       }
-      const s = await loadSettingsAsync();
+      // Usa localStorage per evitare race conditions
+      const s = getLocalSettings();
       if (!Array.isArray(s.vehicles)) s.vehicles = [];
       const newId = Math.max(...s.vehicles.map(v => v.id || 0), 0) + 1;
       s.vehicles.push({ id: newId, name: val });
@@ -505,7 +517,7 @@
           'Content-Type': 'application/json',
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         };
-        await fetch(`${API_URL}/settings`, {
+        await fetch(`${API_URL}/settings/company`, {
           method: 'PUT',
           headers,
           body: JSON.stringify(s)
@@ -519,7 +531,8 @@
     }
 
     async function removeVehicle(index) {
-      const s = await loadSettingsAsync();
+      // Usa localStorage per evitare race conditions
+      const s = getLocalSettings();
       if (!Array.isArray(s.vehicles)) s.vehicles = [];
       s.vehicles.splice(index, 1);
       // Salva su localStorage e API
@@ -530,7 +543,7 @@
           'Content-Type': 'application/json',
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         };
-        await fetch(`${API_URL}/settings`, {
+        await fetch(`${API_URL}/settings/company`, {
           method: 'PUT',
           headers,
           body: JSON.stringify(s)

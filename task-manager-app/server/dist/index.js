@@ -89,6 +89,13 @@ if (!fs.existsSync(uploadsDir)) {
 // Middleware
 app.use((0, cors_1.default)());
 app.use(express_1.default.json());
+// Disable caching for all static files
+app.use((req, res, next) => {
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    next();
+});
 // Serve static files
 app.use(express_1.default.static(path_1.default.join(__dirname, '../../public')));
 // Serve uploads da directory persistente (bind mount in produzione)
@@ -120,34 +127,32 @@ app.get('*', (req, res) => {
 // Start server with WebSocket support
 httpServer.listen(PORT, () => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        // Sincronizza database schema usando prisma db push
-        console.log('📦 Synchronizing database schema...');
-        try {
-            const schemaPath = path_1.default.join(__dirname, '../prisma/schema.prisma');
-            yield execAsync(`npx prisma db push --skip-generate --schema="${schemaPath}"`, {
-                cwd: path_1.default.join(__dirname, '../..'),
-                env: Object.assign({}, process.env)
-            });
-            console.log('✅ Database schema synchronized');
-        }
-        catch (err) {
-            console.error('❌ Database schema sync error:', err.message);
-            // Se fallisce, continua comunque - potrebbero essere warnings non critici
-        }
+        // Sincronizza database schema usando prisma db push (DISABLED for testing)
+        // console.log('📦 Synchronizing database schema...');
+        // try {
+        //   const schemaPath = path.join(__dirname, '../prisma/schema.prisma');
+        //   await execAsync(`npx prisma db push --skip-generate --schema="${schemaPath}"`, {
+        //     cwd: path.join(__dirname, '../..'),
+        //     env: { ...process.env }
+        //   });
+        //   console.log('✅ Database schema synchronized');
+        // } catch (err: any) {
+        //   console.error('❌ Database schema sync error:', err.message);
+        //   // Se fallisce, continua comunque - potrebbero essere warnings non critici
+        // }
         yield prisma.$connect();
         console.log('✅ Database connected successfully');
         // Inizializza database con utenti di default se vuoto
         yield (0, databaseInit_1.initializeDatabaseIfEmpty)(prisma);
         // Setup backup middleware DOPO connessione
         (0, backupMiddleware_1.default)(prisma);
-        // Ripristina ultimo backup dal NAS se disponibile
-        try {
-            console.log('🔄 Checking for backups on NAS...');
-            yield backupService_1.default.restoreLatestFromNas();
-        }
-        catch (err) {
-            console.log('ℹ️ No backups available on NAS (first run)');
-        }
+        // Ripristina ultimo backup dal NAS se disponibile (DISABLED for testing)
+        // try {
+        //   console.log('🔄 Checking for backups on NAS...');
+        //   await BackupService.restoreLatestFromNas();
+        // } catch (err) {
+        //   console.log('ℹ️ No backups available on NAS (first run)');
+        // }
         // Attiva backup automatico ogni ora
         backupService_1.default.setupAutoBackup(60);
         // Backup iniziale

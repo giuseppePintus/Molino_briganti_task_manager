@@ -50,6 +50,14 @@ if (!fs.existsSync(uploadsDir)) {
 app.use(cors());
 app.use(express.json());
 
+// Disable caching for all static files
+app.use((req, res, next) => {
+  res.set('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  next();
+});
+
 // Serve static files
 app.use(express.static(path.join(__dirname, '../../public')));
 
@@ -87,19 +95,19 @@ app.get('*', (req, res) => {
 // Start server with WebSocket support
 httpServer.listen(PORT, async () => {
   try {
-    // Sincronizza database schema usando prisma db push
-    console.log('📦 Synchronizing database schema...');
-    try {
-      const schemaPath = path.join(__dirname, '../prisma/schema.prisma');
-      await execAsync(`npx prisma db push --skip-generate --schema="${schemaPath}"`, {
-        cwd: path.join(__dirname, '../..'),
-        env: { ...process.env }
-      });
-      console.log('✅ Database schema synchronized');
-    } catch (err: any) {
-      console.error('❌ Database schema sync error:', err.message);
-      // Se fallisce, continua comunque - potrebbero essere warnings non critici
-    }
+    // Sincronizza database schema usando prisma db push (DISABLED for testing)
+    // console.log('📦 Synchronizing database schema...');
+    // try {
+    //   const schemaPath = path.join(__dirname, '../prisma/schema.prisma');
+    //   await execAsync(`npx prisma db push --skip-generate --schema="${schemaPath}"`, {
+    //     cwd: path.join(__dirname, '../..'),
+    //     env: { ...process.env }
+    //   });
+    //   console.log('✅ Database schema synchronized');
+    // } catch (err: any) {
+    //   console.error('❌ Database schema sync error:', err.message);
+    //   // Se fallisce, continua comunque - potrebbero essere warnings non critici
+    // }
 
     await prisma.$connect();
     console.log('✅ Database connected successfully');
@@ -110,13 +118,13 @@ httpServer.listen(PORT, async () => {
     // Setup backup middleware DOPO connessione
     setupBackupMiddleware(prisma);
 
-    // Ripristina ultimo backup dal NAS se disponibile
-    try {
-      console.log('🔄 Checking for backups on NAS...');
-      await BackupService.restoreLatestFromNas();
-    } catch (err) {
-      console.log('ℹ️ No backups available on NAS (first run)');
-    }
+    // Ripristina ultimo backup dal NAS se disponibile (DISABLED for testing)
+    // try {
+    //   console.log('🔄 Checking for backups on NAS...');
+    //   await BackupService.restoreLatestFromNas();
+    // } catch (err) {
+    //   console.log('ℹ️ No backups available on NAS (first run)');
+    // }
 
     // Attiva backup automatico ogni ora
     BackupService.setupAutoBackup(60);

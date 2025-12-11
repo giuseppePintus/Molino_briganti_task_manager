@@ -20,12 +20,16 @@
             line-height: 1.5;
         }
         
-        /* Header - GRANDE E LEGGIBILE */
+        /* Header - GRANDE E LEGGIBILE - FISSO */
         .header {
             background-color: #2d2d2d;
-            padding: 20px 25px;
+            padding: 15px 25px;
             border-bottom: 3px solid #ea580c;
-            position: relative;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
         }
         
         .header h1 {
@@ -57,14 +61,33 @@
             clear: both;
         }
         
-        /* Operatore loggato - GRANDE E CENTRATO */
+        /* Operatore loggato - GRANDE E CENTRATO - FISSO */
         .user-display-large {
-            background-color: #ea580c;
+            background-color: #334155;
             color: #fff;
             text-align: center;
-            padding: 20px;
+            padding: 20px 20px;
             font-size: 28px;
             font-weight: bold;
+            position: fixed;
+            top: 110px;
+            left: 0;
+            right: 0;
+            z-index: 99;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .user-display-large .left-section {
+            font-size: 24px;
+            color: #ea580c;
+        }
+        
+        .user-display-large .center-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
         }
         
         .user-display-large .user-icon {
@@ -72,9 +95,20 @@
             margin-right: 15px;
         }
         
+        .user-display-large .online {
+            color: #22c55e;
+            font-weight: bold;
+        }
+        
+        .user-display-large .offline {
+            color: #dc2626;
+            font-weight: bold;
+        }
+        
         /* Container - LARGHEZZA PIENA */
         .container {
             padding: 20px;
+            padding-top: 210px;
             max-width: 100%;
             margin: 0 auto;
         }
@@ -354,53 +388,119 @@
         .refresh-btn:active {
             background-color: #555;
         }
+        
+        /* Operator buttons grid */
+        .operator-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .operator-btn {
+            padding: 25px 20px;
+            font-size: 22px;
+            font-weight: bold;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            color: #fff;
+            transition: transform 0.1s, opacity 0.1s;
+        }
+        
+        .operator-btn:active {
+            transform: scale(0.95);
+            opacity: 0.8;
+        }
+        
+        .operator-btn.color-0 { background-color: #ea580c; }
+        .operator-btn.color-1 { background-color: #2563eb; }
+        .operator-btn.color-2 { background-color: #16a34a; }
+        .operator-btn.color-3 { background-color: #8b5cf6; }
+        .operator-btn.color-4 { background-color: #dc2626; }
+        .operator-btn.color-5 { background-color: #0891b2; }
+        .operator-btn.color-6 { background-color: #ca8a04; }
+        .operator-btn.color-7 { background-color: #be185d; }
+        
+        .loading-operators {
+            text-align: center;
+            padding: 40px;
+            color: #888;
+            font-size: 20px;
+        }
+        
+        /* Logo e nome azienda */
+        .company-branding {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        
+        .company-branding img {
+            max-width: 250px;
+            max-height: 140px;
+            margin: 0 auto 15px auto;
+            display: block;
+        }
+        
+        /* Logo header dashboard */
+        .header-logo {
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 15px;
+        }
+        
+        .header-logo img {
+            max-height: 80px;
+            vertical-align: middle;
+        }
     </style>
 </head>
 <body>
+    
     <!-- Login Section -->
     <div id="loginSection">
         <div class="login-container">
-            <h2>🏭 Molino Briganti</h2>
-            <div id="errorMsg" class="error-msg"></div>
-            <form id="loginForm" onsubmit="handleLogin(event)">
-                <div class="form-group">
-                    <label for="username">👤 Username</label>
-                    <input type="text" id="username" name="username" required autocomplete="username">
-                </div>
-                <div class="form-group">
-                    <label for="password">🔒 Password</label>
-                    <input type="password" id="password" name="password" required autocomplete="current-password">
-                </div>
-                <button type="submit" class="btn-login">Accedi</button>
-            </form>
-            <p id="version-op-lite" style="text-align: center; margin-top: 20px; font-size: 18px; color: #666;">Versione Lite v1.0.19</p>
+            <div class="company-branding">
+                <img id="loginLogo" src="images/logo INSEGNA.png" alt="Logo Azienda" style="display: none;">
+            </div>
+            <p style="text-align: center; color: #888; margin-bottom: 20px; font-size: 20px;">Seleziona il tuo nome:</p>
+            <div id="operatorGrid" class="operator-grid">
+                <div class="loading-operators">Caricamento operatori...</div>
+            </div>
+            <p id="version-op-lite" style="text-align: center; margin-top: 30px; font-size: 18px; color: #666;">Versione Lite v1.0.19</p>
         </div>
     </div>
     
     <!-- Dashboard Section -->
     <div id="dashboardSection" style="display: none;">
         <div class="header">
-            <h1>📋 I Miei Task</h1>
-            <div class="user-info">
-                <button class="logout-btn" onclick="handleLogout()">🚪 Esci</button>
+            <span class="header-logo"><img id="dashboardLogo" src="images/logo INSEGNA.png" alt="Logo"></span>
+            <span id="currentDateTime" style="color: #fff; font-size: 24px; font-weight: bold; margin-left: 20px; vertical-align: middle;"></span>
+            <div class="user-info" style="display: flex; align-items: flex-start;">
+                <div style="text-align: center; margin-right: 10px;">
+                    <button class="refresh-btn" onclick="loadTasks()">🔄 Aggiorna</button>
+                    <div style="color: #888; font-size: 12px; margin-top: 4px;">Agg: <span id="lastUpdate">--:--</span></div>
+                </div>
+                <div style="text-align: center;">
+                    <button class="logout-btn" onclick="handleLogout()">🚪 Esci</button>
+                    <div id="logoutCountdown" style="color: #f59e0b; font-size: 12px; margin-top: 4px;">Logout: 1:40</div>
+                </div>
             </div>
             <div class="clear"></div>
         </div>
         
         <!-- OPERATORE LOGGATO - GRANDE E CENTRATO -->
         <div class="user-display-large">
-            <span class="user-icon">👷</span>
-            <span id="userDisplay"></span>
+            <div class="left-section">📅 Task di Oggi</div>
+            <div class="center-section">
+                <span class="user-icon">👷</span>
+                <span id="userDisplay"></span>
+                <span id="connectionStatus" class="online">● Online</span>
+            </div>
+            <div style="width: 150px;"></div>
         </div>
         
         <div class="container">
-            <div class="status-bar">
-                <span id="connectionStatus" class="online">● Online</span>
-                <div class="last-update">Ultimo aggiornamento: <span id="lastUpdate">--:--</span></div>
-                <button class="refresh-btn" onclick="loadTasks()" style="margin-top: 8px;">🔄 Aggiorna</button>
-            </div>
-            
-            <h3 class="section-title">📅 Task di Oggi</h3>
             
             <div id="tasksList">
                 <div class="loading">Caricamento...</div>
@@ -415,9 +515,140 @@
         var currentUser = null;
         var tasks = [];
         var refreshInterval = null;
+        var inactivityTimeout = null;
+        var countdownInterval = null;
+        var visibleCountdownInterval = null;
+        var logoutTimeRemaining = 100; // secondi totali (90s inattività + 10s countdown)
+        var isCountdownActive = false;
+        var INACTIVITY_TIME = 90000; // 1.5 minuti di inattività
+        var COUNTDOWN_TIME = 10; // 10 secondi di countdown prima del logout
+        
+        // Carica impostazioni aziendali (logo e nome)
+        function loadCompanySettings() {
+            var xhr = new XMLHttpRequest();
+            var timeoutId = null;
+            
+            // Timeout di 5 secondi per browser vecchi
+            timeoutId = setTimeout(function() {
+                xhr.abort();
+                applyDefaultBranding();
+            }, 5000);
+            
+            // Usa endpoint pubblico /company invece di / che richiede auth
+            xhr.open('GET', API_URL + '/settings/company', true);
+            
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    clearTimeout(timeoutId);
+                    if (xhr.status === 200) {
+                        try {
+                            var settings = JSON.parse(xhr.responseText);
+                            applyCompanyBranding(settings);
+                        } catch(e) {
+                            console.warn('Errore parsing impostazioni:', e);
+                            applyDefaultBranding();
+                        }
+                    } else {
+                        applyDefaultBranding();
+                    }
+                }
+            };
+            
+            xhr.onerror = function() {
+                clearTimeout(timeoutId);
+                applyDefaultBranding();
+            };
+            
+            try {
+                xhr.send();
+            } catch(e) {
+                clearTimeout(timeoutId);
+                applyDefaultBranding();
+            }
+        }
+        
+        // Fallback se API non disponibile
+        function applyDefaultBranding() {
+            var loginLogo = document.getElementById('loginLogo');
+            var dashboardLogo = document.getElementById('dashboardLogo');
+            
+            // Mostra logo di default
+            if (loginLogo) {
+                loginLogo.src = 'images/logo INSEGNA.png';
+                loginLogo.style.display = 'block';
+            }
+            if (dashboardLogo) {
+                dashboardLogo.src = 'images/logo INSEGNA.png';
+            }
+        }
+        
+        function applyCompanyBranding(settings) {
+            var loginLogo = document.getElementById('loginLogo');
+            var dashboardLogo = document.getElementById('dashboardLogo');
+            
+            // Aggiorna logo
+            if (settings.logoUrl) {
+                var logoSrc = settings.logoUrl;
+                if (logoSrc && logoSrc.indexOf('http') !== 0 && logoSrc.indexOf('data:') !== 0) {
+                    logoSrc = API_URL.replace('/api', '') + '/' + logoSrc;
+                }
+                
+                if (loginLogo) {
+                    loginLogo.src = logoSrc;
+                    loginLogo.style.display = 'block';
+                }
+                if (dashboardLogo) {
+                    dashboardLogo.src = logoSrc;
+                }
+            } else {
+                // Nessun logo configurato, usa default
+                if (loginLogo) {
+                    loginLogo.src = 'images/logo INSEGNA.png';
+                    loginLogo.style.display = 'block';
+                }
+                if (dashboardLogo) {
+                    dashboardLogo.src = 'images/logo INSEGNA.png';
+                }
+            }
+            
+            // Aggiorna titolo pagina
+            if (settings.businessName) {
+                document.title = 'Operatore - ' + settings.businessName;
+            }
+        }
+        
+        // Aggiorna data e ora correnti
+        function updateDateTime() {
+            var now = new Date();
+            var days = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
+            var dayName = days[now.getDay()];
+            var day = now.getDate();
+            var month = now.getMonth() + 1;
+            var hours = now.getHours();
+            var minutes = now.getMinutes();
+            
+            // Formatta con zeri iniziali
+            if (day < 10) day = '0' + day;
+            if (month < 10) month = '0' + month;
+            if (hours < 10) hours = '0' + hours;
+            if (minutes < 10) minutes = '0' + minutes;
+            
+            var dateTimeStr = dayName + ' ' + day + '/' + month + ' - ' + hours + ':' + minutes;
+            var el = document.getElementById('currentDateTime');
+            if (el) {
+                el.textContent = dateTimeStr;
+            }
+        }
         
         // Inizializzazione
         function init() {
+            // Carica subito le impostazioni aziendali
+            loadCompanySettings();
+            
+            // Avvia aggiornamento data/ora
+            updateDateTime();
+            setInterval(updateDateTime, 30000); // Aggiorna ogni 30 secondi
+            
             token = localStorage.getItem('token');
             var userStr = localStorage.getItem('currentUser');
             if (userStr) {
@@ -432,33 +663,60 @@
                 showDashboard();
                 loadTasks();
                 startAutoRefresh();
+                startInactivityTimer();
             } else {
                 showLogin();
+                loadOperators();
             }
         }
         
-        function showLogin() {
-            document.getElementById('loginSection').style.display = 'block';
-            document.getElementById('dashboardSection').style.display = 'none';
-        }
-        
-        function showDashboard() {
-            document.getElementById('loginSection').style.display = 'none';
-            document.getElementById('dashboardSection').style.display = 'block';
-            document.getElementById('userDisplay').textContent = currentUser ? currentUser.username : '';
-        }
-        
-        // Login
-        function handleLogin(event) {
-            event.preventDefault();
-            var username = document.getElementById('username').value;
-            var password = document.getElementById('password').value;
-            var errorMsg = document.getElementById('errorMsg');
-            
-            errorMsg.style.display = 'none';
-            
+        // Carica lista operatori
+        function loadOperators() {
             var xhr = new XMLHttpRequest();
-            xhr.open('POST', API_URL + '/auth/login', true);
+            xhr.open('GET', API_URL + '/auth/operators/public', true);
+            
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        var operators = JSON.parse(xhr.responseText);
+                        renderOperatorButtons(operators);
+                    } else {
+                        document.getElementById('operatorGrid').innerHTML = '<div class="loading-operators">Errore caricamento operatori</div>';
+                    }
+                }
+            };
+            
+            xhr.onerror = function() {
+                document.getElementById('operatorGrid').innerHTML = '<div class="loading-operators">Errore di connessione</div>';
+            };
+            
+            xhr.send();
+        }
+        
+        // Mostra pulsanti operatore
+        function renderOperatorButtons(operators) {
+            var grid = document.getElementById('operatorGrid');
+            
+            if (operators.length === 0) {
+                grid.innerHTML = '<div class="loading-operators">Nessun operatore trovato</div>';
+                return;
+            }
+            
+            var html = '';
+            for (var i = 0; i < operators.length; i++) {
+                var op = operators[i];
+                var colorClass = 'color-' + (i % 8);
+                html += '<button class="operator-btn ' + colorClass + '" onclick="quickLogin(' + op.id + ', \'' + op.username + '\')">' +
+                        '👷 ' + op.username +
+                        '</button>';
+            }
+            grid.innerHTML = html;
+        }
+        
+        // Login veloce senza password
+        function quickLogin(operatorId, username) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', API_URL + '/auth/quick-login', true);
             xhr.setRequestHeader('Content-Type', 'application/json');
             
             xhr.onreadystatechange = function() {
@@ -472,14 +730,91 @@
                         showDashboard();
                         loadTasks();
                         startAutoRefresh();
+                        startInactivityTimer();
                     } else {
-                        errorMsg.textContent = 'Username o password errati';
-                        errorMsg.style.display = 'block';
+                        alert('Errore di accesso');
                     }
                 }
             };
             
-            xhr.send(JSON.stringify({ username: username, password: password }));
+            xhr.send(JSON.stringify({ operatorId: operatorId }));
+        }
+        
+        function showLogin() {
+            document.getElementById('loginSection').style.display = 'block';
+            document.getElementById('dashboardSection').style.display = 'none';
+            stopInactivityTimer();
+            loadOperators();
+        }
+        
+        function showDashboard() {
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('dashboardSection').style.display = 'block';
+            document.getElementById('userDisplay').textContent = currentUser ? currentUser.username : '';
+        }
+        
+        // Aggiorna countdown visibile nell'header
+        function updateVisibleCountdown() {
+            var el = document.getElementById('logoutCountdown');
+            if (!el) return;
+            
+            var mins = Math.floor(logoutTimeRemaining / 60);
+            var secs = logoutTimeRemaining % 60;
+            el.textContent = 'Logout: ' + mins + ':' + (secs < 10 ? '0' : '') + secs;
+            
+            // Cambia colore in base al tempo rimanente
+            if (logoutTimeRemaining <= 10) {
+                el.style.color = '#dc2626'; // Rosso
+            } else if (logoutTimeRemaining <= 30) {
+                el.style.color = '#f59e0b'; // Arancione
+            } else {
+                el.style.color = '#22c55e'; // Verde
+            }
+        }
+        
+        // Inactivity timer
+        function startInactivityTimer() {
+            isCountdownActive = false;
+            logoutTimeRemaining = 100; // Reset a 1:40 (90s + 10s)
+            updateVisibleCountdown();
+            
+            // Avvia countdown visibile ogni secondo
+            if (visibleCountdownInterval) clearInterval(visibleCountdownInterval);
+            visibleCountdownInterval = setInterval(function() {
+                if (logoutTimeRemaining > 0) {
+                    logoutTimeRemaining--;
+                    updateVisibleCountdown();
+                    
+                    if (logoutTimeRemaining <= 0) {
+                        handleLogout();
+                    }
+                }
+            }, 1000);
+            
+            // Aggiungi listener per attività utente
+            document.addEventListener('touchstart', onUserActivity, true);
+            document.addEventListener('touchmove', onUserActivity, true);
+            document.addEventListener('click', onUserActivity, true);
+            document.addEventListener('scroll', onUserActivity, true);
+            document.addEventListener('keydown', onUserActivity, true);
+        }
+        
+        function stopInactivityTimer() {
+            if (inactivityTimeout) clearTimeout(inactivityTimeout);
+            if (countdownInterval) clearInterval(countdownInterval);
+            if (visibleCountdownInterval) clearInterval(visibleCountdownInterval);
+            isCountdownActive = false;
+            document.removeEventListener('touchstart', onUserActivity, true);
+            document.removeEventListener('touchmove', onUserActivity, true);
+            document.removeEventListener('click', onUserActivity, true);
+            document.removeEventListener('scroll', onUserActivity, true);
+            document.removeEventListener('keydown', onUserActivity, true);
+        }
+        
+        function onUserActivity() {
+            // Reset countdown al tocco
+            logoutTimeRemaining = 100; // Reset a 1:40
+            updateVisibleCountdown();
         }
         
         // Logout
@@ -489,12 +824,14 @@
             token = null;
             currentUser = null;
             stopAutoRefresh();
+            stopInactivityTimer();
             showLogin();
         }
         
         // Load tasks
         function loadTasks() {
             if (!token) return;
+            // Non resettare il timer qui - solo le interazioni utente devono resettarlo
             
             var xhr = new XMLHttpRequest();
             xhr.open('GET', API_URL + '/tasks', true);
