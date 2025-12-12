@@ -210,20 +210,27 @@
   function applyBranding(settings) {
     if (!settings) settings = load();
     
-    // Logo: add cache-buster timestamp ONCE on page load
-    // This ensures new logos are loaded without continuous reloads
+    // Logo: update src with custom logoUrl (if different from default) + cache-buster
+    // Applied ONCE on page load to avoid flicker
     if (!window.logoTimestampApplied) {
       window.logoTimestampApplied = true;
       const timestamp = Math.floor(Date.now() / 60000); // Change every minute
       const logoSelectors = ['.header-logo img', '.login-logo img'];
       for (const selector of logoSelectors) {
         const logoImg = document.querySelector(selector);
-        if (logoImg) {
-          // Get current src and add timestamp
-          const currentSrc = logoImg.src;
-          if (currentSrc && !currentSrc.includes('?t=')) {
-            logoImg.src = `${currentSrc}?t=${timestamp}`;
+        if (logoImg && settings.logoUrl) {
+          // Use the logoUrl from settings (which comes from database)
+          let logoSrc = settings.logoUrl;
+          if (logoSrc && !logoSrc.startsWith('http') && !logoSrc.startsWith('data:')) {
+            // If it's a relative path, keep it as-is
+            // The server will serve it from public/ or /uploads/
           }
+          // Add timestamp cache-buster to force reload of changed images
+          if (!logoSrc.includes('?t=')) {
+            logoSrc = `${logoSrc}?t=${timestamp}`;
+          }
+          logoImg.src = logoSrc;
+          logoImg.alt = settings.businessName || 'Logo Azienda';
         }
       }
     }

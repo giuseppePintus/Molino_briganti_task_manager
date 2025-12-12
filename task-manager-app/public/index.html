@@ -1045,16 +1045,20 @@
         }
         
         function applyCompanyBranding(settings) {
-            // Logo: add cache-buster timestamp ONCE on page load
+            // Logo: update src with custom logoUrl (if different from default) + cache-buster
+            // Applied ONCE on page load to avoid flicker
             if (!window.logoTimestampApplied) {
                 window.logoTimestampApplied = true;
                 const logoImg = document.querySelector('.login-logo img');
-                if (logoImg) {
+                if (logoImg && settings.logoUrl) {
                     const timestamp = Math.floor(Date.now() / 60000); // Change every minute
-                    const currentSrc = logoImg.src;
-                    if (currentSrc && !currentSrc.includes('?t=')) {
-                        logoImg.src = `${currentSrc}?t=${timestamp}`;
+                    let logoSrc = settings.logoUrl;
+                    // Add timestamp cache-buster to force reload of changed images
+                    if (!logoSrc.includes('?t=')) {
+                        logoSrc = `${logoSrc}?t=${timestamp}`;
                     }
+                    logoImg.src = logoSrc;
+                    logoImg.alt = settings.businessName || 'Logo Azienda';
                 }
             }
             
