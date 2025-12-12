@@ -220,3 +220,27 @@ npm run build  # Compila TypeScript + include tutto quello che serve
 ```
 
 Se usi `npx tsc` direttamente nel server folder, le modifiche ai file HTML non verranno incluse nel tar e non si vedranno sul server reale!
+
+## 🔄 Sincronizzazione Automatica della Versione
+
+Il server **legge la versione da `package.json`** automaticamente:
+```typescript
+// server/src/index.ts (linea 8)
+const APP_VERSION = packageJson.version || '1.0.0';
+```
+
+**Dopo ogni deploy**, il container avrà package.json aggiornato su `/share/Container/`, ma ha bisogno di copiarlo dentro l'immagine:
+
+```bash
+# Copia il package.json aggiornato dentro il container
+ssh vsc@192.168.1.248 "/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker cp /share/Container/package.json molino-app:/app/package.json"
+
+# Riavvia
+ssh vsc@192.168.1.248 "/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker restart molino-app"
+
+# Verifica versione API
+curl http://192.168.1.248:5000/api/version
+# {"version":"1.0.21","date":"2025-12-12"}
+```
+
+**NOTA**: Questo è un workaround temporaneo. Per una soluzione permanente, serve ricostruire il Dockerfile con un volume bind mount per `/app/package.json`.
