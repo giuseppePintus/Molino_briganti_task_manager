@@ -1,6 +1,6 @@
 # Quick Build e Deploy - Comandi Rapidi
 
-**Versione**: v1.0.21 (Dec 11, 2025 - DB Schema Fix)
+**Versione**: v1.0.21 (Dec 12, 2025 - Logo Cache Fix + DB Schema Fix)
 
 ## 📋 Quick Build Locale (solo compilazione)
 ```powershell
@@ -73,9 +73,32 @@ ssh vsc@192.168.1.248 "/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker 
 ssh vsc@192.168.1.248 "curl -s http://localhost:5000/api/version"
 ```
 
-## 🔧 SOLUZIONI TROVATE (Session 11 Dec 2025)
+## 🔧 SOLUZIONI TROVATE
 
-### ✅ Problema: Trip Creation API Failing with "Foreign key constraint violated"
+### ✅ Problema: Logo non visualizzato su browser con cache azzerata (Session 12 Dec 2025)
+**Causa**: Il src statico dell'immagine non aveva cache-busting, browser caricava dalla cache stale o non trovava il file
+
+**Soluzione Implementata**:
+1. Aggiunto ID `headerLogoImg` al tag img per query DOM consistente
+2. Implementato cache-busting con timestamp: `?t=${Date.now()}`
+3. Nuovo endpoint `/api/logo` che ritorna logo URL con header `Cache-Control: no-cache`
+4. Aggiunto fallback in `loadCompanyBranding()` per gestire errori API
+
+**Come Funziona**:
+```javascript
+// applyCompanyBranding() aggiunge timestamp al logo
+const cacheBustParam = new Date().getTime();
+logoImg.src = `${logoSrc}?t=${cacheBustParam}`;
+// Risultato: images/logo.png?t=1702375298011
+```
+
+**Test**: 
+```bash
+curl -s http://192.168.1.248:5000/api/logo
+# Ritorna: {"logoUrl": "uploads/logo-xxx.png", "updated": "2025-12-12T12:01:38Z"}
+```
+
+### ✅ Problema: Trip Creation API Failing with "Foreign key constraint violated" (Session 11 Dec 2025)
 **Root Cause**: Missing `sequence` TEXT column in Trip table (database schema mismatch with Prisma schema)
 
 **Soluzione Permanente**:
