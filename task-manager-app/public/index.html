@@ -934,7 +934,7 @@
     <div id="loginPage" class="login-container">
         <div class="login-card">
             <div class="login-logo">
-                <img src="images/logo INSEGNA.png" alt="Molino Briganti Logo">
+                <img src="images/logo INSEGNA.png" alt="Molino Briganti Logo" style="display: none">
             </div>
 
             <!-- Tab Navigation -->
@@ -1046,20 +1046,17 @@
         
         function applyCompanyBranding(settings) {
             // Logo: update src with custom logoUrl (if different from default) + cache-buster
-            // Applied ONCE on page load to avoid flicker
-            if (!window.logoTimestampApplied) {
-                window.logoTimestampApplied = true;
-                const logoImg = document.querySelector('.login-logo img');
-                if (logoImg && settings.logoUrl) {
-                    const timestamp = Math.floor(Date.now() / 60000); // Change every minute
-                    let logoSrc = settings.logoUrl;
-                    // Add timestamp cache-buster to force reload of changed images
-                    if (!logoSrc.includes('?t=')) {
-                        logoSrc = `${logoSrc}?t=${timestamp}`;
-                    }
-                    logoImg.src = logoSrc;
-                    logoImg.alt = settings.businessName || 'Logo Azienda';
+            // Applied to ensure updated logos are shown
+            const logoImg = document.querySelector('.login-logo img');
+            if (logoImg && settings.logoUrl) {
+                const timestamp = Math.floor(Date.now() / 60000); // Change every minute
+                let logoSrc = settings.logoUrl;
+                // Add timestamp cache-buster to force reload of changed images
+                if (!logoSrc.includes('?t=')) {
+                    logoSrc = `${logoSrc}?t=${timestamp}`;
                 }
+                logoImg.src = logoSrc;
+                logoImg.alt = settings.businessName || 'Logo Azienda';
             }
             
             // Aggiorna titolo pagina
