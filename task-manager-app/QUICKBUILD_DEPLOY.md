@@ -12,10 +12,10 @@ npx tsc
 ```powershell
 cd C:\Users\manue\Molino_briganti_task_manager\task-manager-app
 
-# 1. Compila TypeScript
-cd server; npx tsc; cd ..
+# 1. Compila TypeScript (IMPORTANTE: usa npm run build, non solo tsc)
+npm run build
 
-# 2. Crea archivio
+# 2. Crea archivio CON i file aggiornati
 tar -czf task-manager-update.tar.gz public server/dist server/prisma package.json
 
 # 3. Upload al NAS
@@ -30,7 +30,7 @@ ssh vsc@192.168.1.248 "/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker 
 
 ## ⚡ Quick Build One-Liner
 ```powershell
-cd C:\Users\manue\Molino_briganti_task_manager\task-manager-app; cd server; npx tsc; cd ..; tar -czf task-manager-update.tar.gz public server/dist server/prisma package.json; scp task-manager-update.tar.gz vsc@192.168.1.248:/share/Container/; ssh vsc@192.168.1.248 "cd /share/Container && tar -xzf task-manager-update.tar.gz && /share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker restart molino-app"; Write-Host "`n✅ DEPLOY COMPLETATO!" -ForegroundColor Green
+cd C:\Users\manue\Molino_briganti_task_manager\task-manager-app; npm run build; tar -czf task-manager-update.tar.gz public server/dist server/prisma package.json; scp task-manager-update.tar.gz vsc@192.168.1.248:/share/Container/; ssh vsc@192.168.1.248 "cd /share/Container && tar -xzf task-manager-update.tar.gz && /share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker restart molino-app"; Write-Host "`n✅ DEPLOY COMPLETATO!" -ForegroundColor Green
 ```
 
 ## 🔧 Comandi Utili NAS
@@ -75,28 +75,33 @@ ssh vsc@192.168.1.248 "curl -s http://localhost:5000/api/version"
 
 ## 🔧 SOLUZIONI TROVATE
 
-### ✅ Problema: Logo non visualizzato su browser con cache azzerata (Session 12 Dec 2025)
-**Causa**: Il src statico dell'immagine non aveva cache-busting, browser caricava dalla cache stale o non trovava il file
+### ✅ Problema: Logo non visualizzato + flicker su browser (Session 12 Dec 2025)
+**Causa**: Funzione `applyCompanyBranding()` modificava continuamente il src del logo con timestamp, causando reload infinito e flicker
 
-**Soluzione Implementata**:
-1. Aggiunto ID `headerLogoImg` al tag img per query DOM consistente
-2. Implementato cache-busting con timestamp: `?t=${Date.now()}`
-3. Nuovo endpoint `/api/logo` che ritorna logo URL con header `Cache-Control: no-cache`
-4. Aggiunto fallback in `loadCompanyBranding()` per gestire errori API
+**Soluzione Implementata** (FINALE):
+1. **DISABILITATA** la modifica dinamica del logo in `applyCompanyBranding()`
+2. Logo resta come HTML statico: `<img src="images/logo INSEGNA.png" id="headerLogoImg">`
+3. Non viene aggiunto nessun timestamp o cache-busting alla query string
 
-**Come Funziona**:
+**Perché Funziona**:
+- Pagina `customers-management.html` (che non aveva mai il problema) usa lo stesso approccio: logo statico senza modifiche dinamiche
+- La modifica dinamica era la CAUSA del flicker, non la soluzione
+- Browser cache funziona correttamente quando non c'è continua modifica di src
+
+**Codice Finale** (admin-dashboard.html, operator-dashboard.html):
 ```javascript
-// applyCompanyBranding() aggiunge timestamp al logo
-const cacheBustParam = new Date().getTime();
-logoImg.src = `${logoSrc}?t=${cacheBustParam}`;
-// Risultato: images/logo.png?t=1702375298011
+function applyCompanyBranding(settings) {
+    // Logo modification DISABLED to prevent flicker
+    // Logo stays static as: <img src="images/logo INSEGNA.png">
+    
+    // Only update other settings (page title)
+    if (settings.businessName) {
+        document.title = settings.businessName + ' - Dashboard';
+    }
+}
 ```
 
-**Test**: 
-```bash
-curl -s http://192.168.1.248:5000/api/logo
-# Ritorna: {"logoUrl": "uploads/logo-xxx.png", "updated": "2025-12-12T12:01:38Z"}
-```
+**Risultato**: Logo visualizzato costantemente senza flicker ✅
 
 ### ✅ Problema: Trip Creation API Failing with "Foreign key constraint violated" (Session 11 Dec 2025)
 **Root Cause**: Missing `sequence` TEXT column in Trip table (database schema mismatch with Prisma schema)
@@ -202,3 +207,16 @@ Get-Process -Name "node" -ErrorAction SilentlyContinue | Stop-Process -Force
 - **Tempo deploy**: ~20 secondi
 - **Archivio size**: ~7 MB
 - **Non serve build Docker**: aggiorniamo solo i file nel container esistente
+
+## ⚠️ IMPORTANTE: npm run build vs npx tsc
+**SBAGLIATO** ❌:
+```powershell
+cd server; npx tsc; cd ..  # Compila solo TypeScript, perde le modifiche agli HTML
+```
+
+**CORRETTO** ✅:
+```powershell
+npm run build  # Compila TypeScript + include tutto quello che serve
+```
+
+Se usi `npx tsc` direttamente nel server folder, le modifiche ai file HTML non verranno incluse nel tar e non si vedranno sul server reale!
