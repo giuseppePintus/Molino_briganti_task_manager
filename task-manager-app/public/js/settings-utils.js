@@ -210,22 +210,9 @@
   function applyBranding(settings) {
     if (!settings) settings = load();
     
-    // Aggiorna logo
-    if (settings.logoUrl) {
-      const logoSelectors = ['.header-logo img', '.login-logo img'];
-      for (const selector of logoSelectors) {
-        const logoImg = document.querySelector(selector);
-        if (logoImg) {
-          let logoSrc = settings.logoUrl;
-          if (logoSrc && !logoSrc.startsWith('http') && !logoSrc.startsWith('data:')) {
-            // Path relativo, costruisci URL completo
-            logoSrc = `${API_URL.replace('/api', '')}/${logoSrc}`;
-          }
-          logoImg.src = logoSrc;
-          logoImg.alt = settings.businessName || 'Logo Azienda';
-        }
-      }
-    }
+    // Logo modification DISABLED to prevent flicker
+    // Logo stays as static HTML: <img src="images/logo INSEGNA.png">
+    // See: QUICKBUILD_DEPLOY.md section "Logo Caching & Flicker Issues"
     
     // Aggiorna titolo pagina se businessName presente
     if (settings.businessName) {

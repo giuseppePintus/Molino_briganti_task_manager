@@ -1045,19 +1045,8 @@
         }
         
         function applyCompanyBranding(settings) {
-            // Aggiorna logo
-            if (settings.logoUrl) {
-                const logoImg = document.querySelector('.login-logo img');
-                if (logoImg) {
-                    // Se il logoUrl è un path relativo (es. "uploads/logo-xxx.png"), costruisci URL completo
-                    let logoSrc = settings.logoUrl;
-                    if (logoSrc && !logoSrc.startsWith('http') && !logoSrc.startsWith('data:')) {
-                        logoSrc = `${API_URL.replace('/api', '')}/${logoSrc}`;
-                    }
-                    logoImg.src = logoSrc;
-                    logoImg.alt = settings.businessName || 'Logo Azienda';
-                }
-            }
+            // Logo modification DISABLED to prevent flicker
+            // Logo stays as static HTML: <img src="images/logo INSEGNA.png">
             
             // Aggiorna titolo pagina
             if (settings.businessName) {
