@@ -2764,20 +2764,8 @@
         }
         
         function applyCompanyBranding(settings) {
-            // Aggiorna logo - carica una sola volta per evitare flicker
-            if (settings.logoUrl && !window.logoLoaded) {
-                const logoImg = document.querySelector('#headerLogoImg');
-                if (logoImg) {
-                    let logoSrc = settings.logoUrl;
-                    if (logoSrc && !logoSrc.startsWith('http') && !logoSrc.startsWith('data:')) {
-                        logoSrc = `${API_URL.replace('/api', '')}/${logoSrc}`;
-                    }
-                    console.log('🔧 Caricando logo da:', logoSrc);
-                    logoImg.src = logoSrc;
-                    logoImg.alt = settings.businessName || 'Logo Azienda';
-                    window.logoLoaded = true;
-                }
-            }
+            // NON modificare il logo per evitare flicker
+            // Il logo statico rimane come definito nel HTML
             
             // Aggiorna titolo pagina
             if (settings.businessName) {
