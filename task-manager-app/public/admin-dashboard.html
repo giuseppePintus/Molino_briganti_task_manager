@@ -1538,7 +1538,7 @@
         <div class="header">
             <div class="header-left">
                 <div class="header-logo">
-                    <img src="images/logo INSEGNA.png" alt="Molino Briganti Logo">
+                    <img id="headerLogoImg" src="images/logo INSEGNA.png?v=" alt="Molino Briganti Logo">
                 </div>
                 <div class="header-title">
                     <h1>📊 Admin Dashboard</h1>
@@ -2760,19 +2760,27 @@
                 }
             } catch (err) {
                 console.warn('⚠️ Errore caricamento impostazioni aziendali:', err);
+                // Fallback: Carica logo di default con cache-busting
+                const logoImg = document.querySelector('#headerLogoImg');
+                if (logoImg) {
+                    const cacheBustParam = new Date().getTime();
+                    logoImg.src = `images/logo INSEGNA.png?t=${cacheBustParam}`;
+                }
             }
         }
         
         function applyCompanyBranding(settings) {
-            // Aggiorna logo
+            // Aggiorna logo con cache-busting
             if (settings.logoUrl) {
-                const logoImg = document.querySelector('.header-logo img');
+                const logoImg = document.querySelector('#headerLogoImg');
                 if (logoImg) {
                     let logoSrc = settings.logoUrl;
                     if (logoSrc && !logoSrc.startsWith('http') && !logoSrc.startsWith('data:')) {
                         logoSrc = `${API_URL.replace('/api', '')}/${logoSrc}`;
                     }
-                    logoImg.src = logoSrc;
+                    // Aggiungi timestamp per cache-busting
+                    const cacheBustParam = new Date().getTime();
+                    logoImg.src = `${logoSrc}?t=${cacheBustParam}`;
                     logoImg.alt = settings.businessName || 'Logo Azienda';
                 }
             }

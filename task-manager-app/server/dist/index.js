@@ -120,6 +120,23 @@ app.get('/api/health', (req, res) => {
 app.get('/api/version', (req, res) => {
     res.json({ version: APP_VERSION, date: new Date().toISOString().split('T')[0] });
 });
+// Logo endpoint - returns logo data with cache-busting headers
+app.get('/api/logo', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const logoSetting = yield prisma.companySettings.findUnique({
+            where: { key: 'logoUrl' }
+        });
+        const logoUrl = (logoSetting === null || logoSetting === void 0 ? void 0 : logoSetting.value) || 'images/logo INSEGNA.png';
+        // Set cache-busting headers
+        res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.set('Pragma', 'no-cache');
+        res.set('Expires', '0');
+        res.json({ logoUrl, updated: new Date().toISOString() });
+    }
+    catch (err) {
+        res.json({ logoUrl: 'images/logo INSEGNA.png', updated: new Date().toISOString() });
+    }
+}));
 // Serve index.html for all other routes (SPA)
 app.get('*', (req, res) => {
     res.sendFile(path_1.default.join(__dirname, '../../public/index.html'));
