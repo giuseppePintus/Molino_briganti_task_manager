@@ -2748,7 +2748,12 @@
                 // Prima prova localStorage per caricamento veloce
                 const cached = localStorage.getItem('companySettings');
                 if (cached) {
-                    applyCompanyBranding(JSON.parse(cached));
+                    const settings = JSON.parse(cached);
+                    applyCompanyBranding(settings);
+                    // Call the global applyBranding from settings-utils to update logo
+                    if (typeof applyBranding === 'function') {
+                        applyBranding(settings);
+                    }
                 }
                 
                 // Poi carica da API per avere dati aggiornati
@@ -2757,6 +2762,10 @@
                     const settings = await resp.json();
                     localStorage.setItem('companySettings', JSON.stringify(settings));
                     applyCompanyBranding(settings);
+                    // Call the global applyBranding from settings-utils to update logo
+                    if (typeof applyBranding === 'function') {
+                        applyBranding(settings);
+                    }
                 }
             } catch (err) {
                 console.warn('⚠️ Errore caricamento impostazioni aziendali:', err);
@@ -2764,9 +2773,6 @@
         }
         
         function applyCompanyBranding(settings) {
-            // NON modificare il logo per evitare flicker
-            // Il logo statico rimane come definito nel HTML
-            
             // Aggiorna titolo pagina
             if (settings.businessName) {
                 document.title = settings.businessName + ' - Admin Dashboard';
