@@ -1045,8 +1045,18 @@
         }
         
         function applyCompanyBranding(settings) {
-            // Logo modification DISABLED to prevent flicker
-            // Logo stays as static HTML: <img src="images/logo INSEGNA.png">
+            // Logo: add cache-buster timestamp ONCE on page load
+            if (!window.logoTimestampApplied) {
+                window.logoTimestampApplied = true;
+                const logoImg = document.querySelector('.login-logo img');
+                if (logoImg) {
+                    const timestamp = Math.floor(Date.now() / 60000); // Change every minute
+                    const currentSrc = logoImg.src;
+                    if (currentSrc && !currentSrc.includes('?t=')) {
+                        logoImg.src = `${currentSrc}?t=${timestamp}`;
+                    }
+                }
+            }
             
             // Aggiorna titolo pagina
             if (settings.businessName) {

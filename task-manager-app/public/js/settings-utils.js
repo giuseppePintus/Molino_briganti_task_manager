@@ -210,9 +210,23 @@
   function applyBranding(settings) {
     if (!settings) settings = load();
     
-    // Logo modification DISABLED to prevent flicker
-    // Logo stays as static HTML: <img src="images/logo INSEGNA.png">
-    // See: QUICKBUILD_DEPLOY.md section "Logo Caching & Flicker Issues"
+    // Logo: add cache-buster timestamp ONCE on page load
+    // This ensures new logos are loaded without continuous reloads
+    if (!window.logoTimestampApplied) {
+      window.logoTimestampApplied = true;
+      const timestamp = Math.floor(Date.now() / 60000); // Change every minute
+      const logoSelectors = ['.header-logo img', '.login-logo img'];
+      for (const selector of logoSelectors) {
+        const logoImg = document.querySelector(selector);
+        if (logoImg) {
+          // Get current src and add timestamp
+          const currentSrc = logoImg.src;
+          if (currentSrc && !currentSrc.includes('?t=')) {
+            logoImg.src = `${currentSrc}?t=${timestamp}`;
+          }
+        }
+      }
+    }
     
     // Aggiorna titolo pagina se businessName presente
     if (settings.businessName) {
