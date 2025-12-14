@@ -41,10 +41,19 @@ router.get('/', async (req: Request, res: Response) => {
     });
     
     // Converti products da JSON string a array
-    const ordersWithProducts = orders.map(order => ({
-      ...order,
-      products: order.products ? JSON.parse(order.products) : []
-    }));
+    const ordersWithProducts = orders.map(order => {
+      let products = [];
+      try {
+        products = order.products ? JSON.parse(order.products) : [];
+      } catch (parseError) {
+        console.warn(`Warning: Invalid products JSON for order ${order.id}:`, order.products);
+        products = [];
+      }
+      return {
+        ...order,
+        products
+      };
+    });
     
     res.json(ordersWithProducts);
   } catch (error: any) {
@@ -79,9 +88,17 @@ router.get('/:id', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Order not found' });
     }
     
+    let products = [];
+    try {
+      products = order.products ? JSON.parse(order.products) : [];
+    } catch (parseError) {
+      console.warn(`Warning: Invalid products JSON for order ${order.id}:`, order.products);
+      products = [];
+    }
+    
     res.json({
       ...order,
-      products: order.products ? JSON.parse(order.products) : []
+      products
     });
   } catch (error: any) {
     console.error('Error fetching order:', error);
@@ -131,9 +148,17 @@ router.post('/', async (req: Request, res: Response) => {
       }
     });
     
+    let parsedProducts = [];
+    try {
+      parsedProducts = order.products ? JSON.parse(order.products) : [];
+    } catch (parseError) {
+      console.warn(`Warning: Invalid products JSON for order ${order.id}:`, order.products);
+      parsedProducts = [];
+    }
+    
     const orderWithProducts = {
       ...order,
-      products: order.products ? JSON.parse(order.products) : []
+      products: parsedProducts
     };
     
     // Notifica WebSocket
@@ -217,9 +242,17 @@ router.put('/:id', async (req: Request, res: Response) => {
       }
     });
     
+    let parsedProducts = [];
+    try {
+      parsedProducts = order.products ? JSON.parse(order.products) : [];
+    } catch (parseError) {
+      console.warn(`Warning: Invalid products JSON for order ${order.id}:`, order.products);
+      parsedProducts = [];
+    }
+    
     const orderWithProducts = {
       ...order,
-      products: order.products ? JSON.parse(order.products) : []
+      products: parsedProducts
     };
     
     // Notifica WebSocket (distinguo se è cambio status o update generico)

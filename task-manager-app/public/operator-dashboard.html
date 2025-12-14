@@ -399,6 +399,7 @@
     <!-- Socket.io Client -->
     <script src="/socket.io/socket.io.js"></script>
     <script src="js/socket-client.js"></script>
+    <script src="js/settings-utils.js"></script>
 </head>
 <body>
     <div class="container">
@@ -575,8 +576,16 @@
         }
         
         function applyCompanyBranding(settings) {
+            // Usa la versione globale da settings-utils.js se disponibile
+            if (window.SettingsUtils && typeof window.SettingsUtils.applyBranding === 'function') {
+                console.log('✅ Using global applyBranding from settings-utils.js');
+                window.SettingsUtils.applyBranding(settings);
+            } else {
+                console.warn('⚠️ settings-utils.js not loaded, using fallback branding');
+            }
+            
             // Aggiorna titolo pagina
-            if (settings.businessName) {
+            if (settings && settings.businessName) {
                 document.title = settings.businessName + ' - Dashboard Operatore';
             }
         }

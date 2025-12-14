@@ -2773,8 +2773,16 @@
         }
         
         function applyCompanyBranding(settings) {
+            // Usa la versione globale da settings-utils.js se disponibile
+            if (window.SettingsUtils && typeof window.SettingsUtils.applyBranding === 'function') {
+                console.log('✅ Using global applyBranding from settings-utils.js');
+                window.SettingsUtils.applyBranding(settings);
+            } else {
+                console.warn('⚠️ settings-utils.js not loaded, using fallback branding');
+            }
+            
             // Aggiorna titolo pagina
-            if (settings.businessName) {
+            if (settings && settings.businessName) {
                 document.title = settings.businessName + ' - Admin Dashboard';
             }
         }
@@ -2846,14 +2854,14 @@
                 today.setHours(0, 0, 0, 0);
                 
                 const tasksToMove = tasks.filter(task => {
-                    // Sposta i task non completati programmati nel passato (inclusi quelli in pausa)
+                    // Sposta i task non completati programmati nel passato o OGGI (finché non sono stati completati)
                     if (task.completed) return false;
                     if (!task.scheduledAt) return false;
                     
                     const taskDate = new Date(task.scheduledAt);
                     taskDate.setHours(0, 0, 0, 0);
                     
-                    return taskDate < today;
+                    return taskDate <= today;
                 });
                 
                 // Per ogni task scaduto, sposta al prossimo giorno lavorativo

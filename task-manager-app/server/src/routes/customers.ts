@@ -1,36 +1,40 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import * as CustomersFile from '../services/customersFile';
 
 const router = Router();
 const prisma = new PrismaClient();
 
 /**
  * GET /api/customers
- * Lista tutti i clienti
+ * Lista tutti i clienti (caricati da file JSON statico)
  */
 router.get('/', async (req: Request, res: Response) => {
   try {
     const { search, active } = req.query;
     
-    const where: any = {};
+    // Carica clienti dal file statico
+    let customers = CustomersFile.loadCustomers();
     
+    // Filtra per stato attivo
     if (active !== undefined) {
-      where.isActive = active === 'true';
+      const isActive = active === 'true';
+      customers = customers.filter(c => c.isActive === isActive);
     }
     
+    // Ricerca
     if (search) {
-      where.OR = [
-        { name: { contains: search as string } },
-        { code: { contains: search as string } },
-        { city: { contains: search as string } },
-        { email: { contains: search as string } }
-      ];
+      const searchLower = (search as string).toLowerCase();
+      customers = customers.filter(c =>
+        c.name.toLowerCase().includes(searchLower) ||
+        (c.code && c.code.toLowerCase().includes(searchLower)) ||
+        (c.city && c.city.toLowerCase().includes(searchLower)) ||
+        (c.email && c.email.toLowerCase().includes(searchLower))
+      );
     }
     
-    const customers = await prisma.customer.findMany({
-      where,
-      orderBy: { name: 'asc' }
-    });
+    // Ordina per nome
+    customers.sort((a, b) => a.name.localeCompare(b.name));
     
     // Aggiungi campi italiani per compatibilità frontend
     const customersWithItalianFields = customers.map(c => ({
@@ -54,27 +58,34 @@ router.get('/', async (req: Request, res: Response) => {
 
 /**
  * GET /api/customers/:id
- * Ottieni singolo cliente
+ * Ottieni singolo cliente (dal file statico)
  */
 router.get('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const customerId = parseInt(id);
     
-    const customer = await prisma.customer.findUnique({
-      where: { id: parseInt(id) },
-      include: {
-        orders: {
-          orderBy: { dateTime: 'desc' },
-          take: 10
-        }
-      }
-    });
+    // Carica dal file statico
+    const customer = CustomersFile.getCustomerById(customerId);
     
     if (!customer) {
       return res.status(404).json({ error: 'Customer not found' });
     }
     
-    res.json(customer);
+    // Aggiungi campi italiani per compatibilità
+    const response = {
+      ...customer,
+      nome: customer.name,
+      indirizzo: customer.address,
+      città: customer.city,
+      telefono: customer.phone,
+      orario_apertura: customer.openingTime,
+      orario_chiusura: customer.closingTime,
+      orario_consegna_inizio: customer.deliveryStartTime,
+      orario_consegna_fine: customer.deliveryEndTime
+    };
+    
+    res.json(response);
   } catch (error: any) {
     console.error('Error fetching customer:', error);
     res.status(500).json({ error: error.message });
@@ -83,7 +94,7 @@ router.get('/:id', async (req: Request, res: Response) => {
 
 /**
  * POST /api/customers
- * Crea nuovo cliente
+ * Crea nuovo cliente (salvato nel file statico)
  * Accetta sia campi inglesi che italiani per compatibilità con frontend
  */
 router.post('/', async (req: Request, res: Response) => {
@@ -113,26 +124,29 @@ router.post('/', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Nome cliente obbligatorio' });
     }
     
-    const customer = await prisma.customer.create({
-      data: {
-        code: code || null,
-        name,
-        address: address || null,
-        city: city || null,
-        province: province || null,
-        cap: cap || null,
-        phone: phone || null,
-        email: email || null,
-        piva: piva || null,
-        cf: cf || null,
-        notes: notes || null,
-        openingTime: openingTime || null,
-        closingTime: closingTime || null,
-        deliveryStartTime: deliveryStartTime || null,
-        deliveryEndTime: deliveryEndTime || null,
-        isActive: true
-      }
+    // Salva nel file statico
+    const customer = CustomersFile.addCustomer({
+      code: code || null,
+      name,
+      address: address || null,
+      city: city || null,
+      province: province || null,
+      cap: cap || null,
+      phone: phone || null,
+      email: email || null,
+      piva: piva || null,
+      cf: cf || null,
+      notes: notes || null,
+      openingTime: openingTime || null,
+      closingTime: closingTime || null,
+      deliveryStartTime: deliveryStartTime || null,
+      deliveryEndTime: deliveryEndTime || null,
+      isActive: true
     });
+    
+    if (!customer) {
+      return res.status(500).json({ error: 'Errore nel salvataggio del cliente' });
+    }
     
     // Restituisci anche con campi italiani per compatibilità frontend
     const response = {
@@ -156,7 +170,7 @@ router.post('/', async (req: Request, res: Response) => {
 
 /**
  * PUT /api/customers/:id
- * Aggiorna cliente
+ * Aggiorna cliente (nel file statico)
  * Accetta sia campi inglesi che italiani per compatibilità
  */
 router.put('/:id', async (req: Request, res: Response) => {
@@ -196,10 +210,12 @@ router.put('/:id', async (req: Request, res: Response) => {
     if (deliveryStartTime !== undefined) updateData.deliveryStartTime = deliveryStartTime;
     if (deliveryEndTime !== undefined) updateData.deliveryEndTime = deliveryEndTime;
     
-    const customer = await prisma.customer.update({
-      where: { id: parseInt(id) },
-      data: updateData
-    });
+    // Aggiorna nel file statico
+    const customer = CustomersFile.updateCustomer(parseInt(id), updateData);
+    
+    if (!customer) {
+      return res.status(404).json({ error: 'Customer not found' });
+    }
     
     // Restituisci con campi italiani per compatibilità
     const response = {
@@ -223,7 +239,7 @@ router.put('/:id', async (req: Request, res: Response) => {
 
 /**
  * DELETE /api/customers/:id
- * Elimina cliente (soft delete - imposta isActive = false)
+ * Elimina cliente dal file statico (soft o hard delete)
  */
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
@@ -232,15 +248,16 @@ router.delete('/:id', async (req: Request, res: Response) => {
     
     if (hard === 'true') {
       // Hard delete - rimuovi completamente
-      await prisma.customer.delete({
-        where: { id: parseInt(id) }
-      });
+      const deleted = CustomersFile.deleteCustomer(parseInt(id));
+      if (!deleted) {
+        return res.status(404).json({ error: 'Customer not found' });
+      }
     } else {
       // Soft delete - imposta isActive = false
-      await prisma.customer.update({
-        where: { id: parseInt(id) },
-        data: { isActive: false }
-      });
+      const customer = CustomersFile.updateCustomer(parseInt(id), { isActive: false });
+      if (!customer) {
+        return res.status(404).json({ error: 'Customer not found' });
+      }
     }
     
     res.json({ success: true, message: 'Customer deleted' });
@@ -252,7 +269,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
 
 /**
  * POST /api/customers/bulk
- * Importa clienti in blocco (per migrazione da CSV)
+ * Importa clienti in blocco da file statico
  */
 router.post('/bulk', async (req: Request, res: Response) => {
   try {
@@ -266,48 +283,45 @@ router.post('/bulk', async (req: Request, res: Response) => {
     let updated = 0;
     let errors = 0;
     
+    const existingCustomers = CustomersFile.loadCustomers();
+    
     for (const c of customers) {
       try {
         // Cerca cliente esistente per codice o nome
         const existing = c.code 
-          ? await prisma.customer.findUnique({ where: { code: c.code } })
-          : await prisma.customer.findFirst({ where: { name: c.name } });
+          ? existingCustomers.find(ec => ec.code === c.code)
+          : existingCustomers.find(ec => ec.name === c.name);
         
         if (existing) {
           // Aggiorna
-          await prisma.customer.update({
-            where: { id: existing.id },
-            data: {
-              name: c.name || existing.name,
-              address: c.address || c.indirizzo || existing.address,
-              city: c.city || c.citta || existing.city,
-              province: c.province || c.provincia || existing.province,
-              cap: c.cap || existing.cap,
-              phone: c.phone || c.telefono || existing.phone,
-              email: c.email || existing.email,
-              piva: c.piva || c.partitaIva || existing.piva,
-              cf: c.cf || c.codiceFiscale || existing.cf,
-              notes: c.notes || c.note || existing.notes
-            }
+          CustomersFile.updateCustomer(existing.id, {
+            name: c.name || existing.name,
+            address: c.address || c.indirizzo || existing.address,
+            city: c.city || c.citta || existing.city,
+            province: c.province || c.provincia || existing.province,
+            cap: c.cap || existing.cap,
+            phone: c.phone || c.telefono || existing.phone,
+            email: c.email || existing.email,
+            piva: c.piva || c.partitaIva || existing.piva,
+            cf: c.cf || c.codiceFiscale || existing.cf,
+            notes: c.notes || c.note || existing.notes
           });
           updated++;
         } else {
           // Crea nuovo
-          await prisma.customer.create({
-            data: {
-              code: c.code || null,
-              name: c.name || c.ragioneSociale || 'Cliente senza nome',
-              address: c.address || c.indirizzo || null,
-              city: c.city || c.citta || null,
-              province: c.province || c.provincia || null,
-              cap: c.cap || null,
-              phone: c.phone || c.telefono || null,
-              email: c.email || null,
-              piva: c.piva || c.partitaIva || null,
-              cf: c.cf || c.codiceFiscale || null,
-              notes: c.notes || c.note || null,
-              isActive: true
-            }
+          CustomersFile.addCustomer({
+            code: c.code || null,
+            name: c.name || c.ragioneSociale || 'Cliente senza nome',
+            address: c.address || c.indirizzo || null,
+            city: c.city || c.citta || null,
+            province: c.province || c.provincia || null,
+            cap: c.cap || null,
+            phone: c.phone || c.telefono || null,
+            email: c.email || null,
+            piva: c.piva || c.partitaIva || null,
+            cf: c.cf || c.codiceFiscale || null,
+            notes: c.notes || c.note || null,
+            isActive: true
           });
           created++;
         }

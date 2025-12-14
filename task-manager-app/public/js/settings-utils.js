@@ -214,9 +214,11 @@
     // Applied to ensure updated logos are shown
     const timestamp = Math.floor(Date.now() / 60000); // Change every minute
     const logoSelectors = ['.header-logo img', '.login-logo img'];
+    let logoFound = false;
     for (const selector of logoSelectors) {
       const logoImg = document.querySelector(selector);
       if (logoImg && settings.logoUrl) {
+        logoFound = true;
         // Use the logoUrl from settings (which comes from database)
         let logoSrc = settings.logoUrl;
         if (logoSrc && !logoSrc.startsWith('http') && !logoSrc.startsWith('data:')) {
@@ -231,7 +233,11 @@
         logoImg.alt = settings.businessName || 'Logo Azienda';
         // Show the logo now that it's been updated
         logoImg.style.display = 'block';
+        console.log('✅ Logo updated:', logoSrc);
       }
+    }
+    if (!logoFound) {
+      console.log('⚠️ Logo element not found with selectors:', logoSelectors);
     }
     
     // Aggiorna titolo pagina se businessName presente

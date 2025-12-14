@@ -454,6 +454,7 @@
             vertical-align: middle;
         }
     </style>
+    <script src="js/settings-utils.js"></script>
 </head>
 <body>
     
@@ -583,36 +584,28 @@
         }
         
         function applyCompanyBranding(settings) {
-            var loginLogo = document.getElementById('loginLogo');
-            var dashboardLogo = document.getElementById('dashboardLogo');
+            // Usa la versione globale da settings-utils.js se disponibile
+            if (window.SettingsUtils && typeof window.SettingsUtils.applyBranding === 'function') {
+                console.log('✅ Using global applyBranding from settings-utils.js');
+                window.SettingsUtils.applyBranding(settings);
+            }
             
-            // Aggiorna logo
-            if (settings.logoUrl) {
+            // Fallback per dashboardLogo (locale)
+            var dashboardLogo = document.getElementById('dashboardLogo');
+            if (settings && settings.logoUrl && dashboardLogo) {
                 var logoSrc = settings.logoUrl;
                 if (logoSrc && logoSrc.indexOf('http') !== 0 && logoSrc.indexOf('data:') !== 0) {
                     logoSrc = API_URL.replace('/api', '') + '/' + logoSrc;
                 }
-                
-                if (loginLogo) {
-                    loginLogo.src = logoSrc;
-                    loginLogo.style.display = 'block';
-                }
-                if (dashboardLogo) {
-                    dashboardLogo.src = logoSrc;
-                }
-            } else {
+                dashboardLogo.src = logoSrc;
+                console.log('✅ Dashboard logo updated (fallback):', logoSrc);
+            } else if (dashboardLogo) {
                 // Nessun logo configurato, usa default
-                if (loginLogo) {
-                    loginLogo.src = 'images/logo INSEGNA.png';
-                    loginLogo.style.display = 'block';
-                }
-                if (dashboardLogo) {
-                    dashboardLogo.src = 'images/logo INSEGNA.png';
-                }
+                dashboardLogo.src = 'images/logo INSEGNA.png';
             }
             
             // Aggiorna titolo pagina
-            if (settings.businessName) {
+            if (settings && settings.businessName) {
                 document.title = 'Operatore - ' + settings.businessName;
             }
         }

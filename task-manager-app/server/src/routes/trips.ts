@@ -40,14 +40,41 @@ router.get('/', async (req: Request, res: Response) => {
     });
     
     // Converti orders.products da JSON string a array e sequence da JSON string a array
-    const tripsWithProducts = trips.map(trip => ({
-      ...trip,
-      sequence: trip.sequence ? JSON.parse(trip.sequence) : [],
-      orders: trip.orders.map(order => ({
-        ...order,
-        products: order.products ? JSON.parse(order.products) : []
-      }))
-    }));
+    const tripsWithProducts = trips.map(trip => {
+      let sequence = [];
+      let orders = trip.orders;
+      
+      try {
+        sequence = trip.sequence ? JSON.parse(trip.sequence) : [];
+      } catch (parseError) {
+        console.warn(`Warning: Invalid sequence JSON for trip ${trip.id}:`, trip.sequence);
+        sequence = [];
+      }
+      
+      try {
+        orders = trip.orders.map(order => {
+          let products = [];
+          try {
+            products = order.products ? JSON.parse(order.products) : [];
+          } catch (parseError) {
+            console.warn(`Warning: Invalid products JSON for order ${order.id}:`, order.products);
+            products = [];
+          }
+          return {
+            ...order,
+            products
+          };
+        });
+      } catch (parseError) {
+        console.warn(`Warning: Error parsing orders for trip ${trip.id}:`, parseError);
+      }
+      
+      return {
+        ...trip,
+        sequence,
+        orders
+      };
+    });
     
     res.json(tripsWithProducts);
   } catch (error: any) {
@@ -82,13 +109,37 @@ router.get('/:id', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Trip not found' });
     }
     
+    let sequence = [];
+    try {
+      sequence = trip.sequence ? JSON.parse(trip.sequence) : [];
+    } catch (parseError) {
+      console.warn(`Warning: Invalid sequence JSON for trip ${trip.id}:`, trip.sequence);
+      sequence = [];
+    }
+    
+    let orders = trip.orders;
+    try {
+      orders = trip.orders.map(order => {
+        let products = [];
+        try {
+          products = order.products ? JSON.parse(order.products) : [];
+        } catch (parseError) {
+          console.warn(`Warning: Invalid products JSON for order ${order.id}:`, order.products);
+          products = [];
+        }
+        return {
+          ...order,
+          products
+        };
+      });
+    } catch (parseError) {
+      console.warn(`Warning: Error parsing orders for trip ${trip.id}:`, parseError);
+    }
+    
     res.json({
       ...trip,
-      sequence: trip.sequence ? JSON.parse(trip.sequence) : [],
-      orders: trip.orders.map(order => ({
-        ...order,
-        products: order.products ? JSON.parse(order.products) : []
-      }))
+      sequence,
+      orders
     });
   } catch (error: any) {
     console.error('Error fetching trip:', error);

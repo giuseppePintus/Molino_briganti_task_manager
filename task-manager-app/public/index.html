@@ -928,6 +928,7 @@
     <!-- Socket.io Client -->
     <script src="/socket.io/socket.io.js"></script>
     <script src="js/socket-client.js"></script>
+    <script src="js/settings-utils.js"></script>
 </head>
 <body>
     <!-- Login Page - Operators Carousel -->
@@ -1045,10 +1046,17 @@
         }
         
         function applyCompanyBranding(settings) {
-            // Logo: update src with custom logoUrl (if different from default) + cache-buster
-            // Applied to ensure updated logos are shown
+            // Usa la versione globale da settings-utils.js se disponibile
+            if (window.SettingsUtils && typeof window.SettingsUtils.applyBranding === 'function') {
+                console.log('✅ Using global applyBranding from settings-utils.js');
+                window.SettingsUtils.applyBranding(settings);
+                return;
+            }
+            
+            // Fallback: aggiorna logo localmente se settings-utils non è disponibile
+            console.warn('⚠️ settings-utils.js not loaded, using fallback branding');
             const logoImg = document.querySelector('.login-logo img');
-            if (logoImg && settings.logoUrl) {
+            if (logoImg && settings && settings.logoUrl) {
                 const timestamp = Math.floor(Date.now() / 60000); // Change every minute
                 let logoSrc = settings.logoUrl;
                 // Add timestamp cache-buster to force reload of changed images
@@ -1057,10 +1065,12 @@
                 }
                 logoImg.src = logoSrc;
                 logoImg.alt = settings.businessName || 'Logo Azienda';
+                logoImg.style.display = 'block'; // ✅ SHOW THE LOGO
+                console.log('✅ Logo updated (fallback):', logoSrc);
             }
             
             // Aggiorna titolo pagina
-            if (settings.businessName) {
+            if (settings && settings.businessName) {
                 document.title = settings.businessName + ' - Task Manager';
             }
         }

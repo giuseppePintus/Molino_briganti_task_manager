@@ -40,6 +40,10 @@ services:
       # Database e backups - Monta il percorso Container del NAS
       # /share/Container/data/molino = \\NAS71F89C\Container\data\molino
       - /share/Container/data/molino:/share/Container/data/molino:rw
+      
+      # Clienti e dati statici - Monta /app/data da percorso NAS
+      # /app/data = \\NAS71F89C\Container\data\molino\static
+      - /share/Container/data/molino/static:/app/data:rw
     
     depends_on:
       - nas-backup-server
