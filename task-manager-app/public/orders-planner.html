@@ -96,12 +96,23 @@
             box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
             margin-bottom: 15px;
             transition: transform 0.2s, box-shadow 0.2s;
+            cursor: move;
         }
 
         .order-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 5px 12px rgba(0, 0, 0, 0.5);
             border-color: #5d5d5d;
+        }
+
+        .order-card.dragging {
+            opacity: 0.5;
+            background: #2d2d2d;
+        }
+
+        .order-card.drag-over {
+            background: #4d5d3d;
+            border: 2px dashed #10b981;
         }
 
         @media (max-width: 768px) {
@@ -747,9 +758,9 @@
         </div>
 
         <!-- Unified Orders Section -->
-        <div class="card">
+        <div class="card" style="border-left: 4px solid #3b82f6;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;flex-wrap:wrap;gap:10px;">
-                <h2 style="display:flex;align-items:center;gap:6px;margin:0;">📋 Ordini <span id="tasksCount" style="font-size:11px;color:#a0a0a0;font-weight:400;"></span></h2>
+                <h2 style="display:flex;align-items:center;gap:6px;margin:0;">📋 Ordini da Assegnare <span id="tasksCount" style="font-size:11px;color:#a0a0a0;font-weight:400;"></span></h2>
                 <button class="btn btn-success" onclick="openCreateTripModal()" style="font-size:12px;padding:6px 12px;">🚐 Crea Viaggio</button>
             </div>
             <div class="orders-grid" id="orderTasksGrid">
@@ -757,7 +768,7 @@
             </div>
         </div>
 
-        <div class="card">
+        <div class="card" style="border-left: 4px solid #38bdf8;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;flex-wrap:wrap;gap:10px;">
                 <h2 style="display:flex;align-items:center;gap:6px;margin:0;">🚐 Viaggi <span id="tripsCount" style="font-size:11px;color:#a0a0a0;font-weight:400;"></span></h2>
                 <button class="btn btn-primary" onclick="forceRefreshTrips()" style="font-size:12px;padding:6px 12px;">🔄 Sincronizza</button>
@@ -840,8 +851,17 @@
                     </div>
 
                     <div class="form-group" style="margin-bottom: 16px;">
-                        <label for="orderDateTime" style="display: block; color: #e0e0e0; margin-bottom: 6px; font-weight: 600;">📅 Data e Orario</label>
-                        <input type="datetime-local" id="orderDateTime" required onchange="updateTripOptions()" style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;">
+                        <label style="display: block; color: #e0e0e0; margin-bottom: 6px; font-weight: 600;">📅 Data e Orario Consegna</label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <div>
+                                <label for="orderDate" style="font-size: 12px; color: #bbb; display: block; margin-bottom: 4px;">Data:</label>
+                                <input type="date" id="orderDate" required onchange="updateTripOptions()" style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;">
+                            </div>
+                            <div>
+                                <label for="orderTime" style="font-size: 12px; color: #bbb; display: block; margin-bottom: 4px;">Orario:</label>
+                                <input type="time" id="orderTime" value="12:00" style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;">
+                            </div>
+                        </div>
                     </div>
                     
                     <!-- Sezione Viaggio -->
@@ -942,6 +962,9 @@
         let token = localStorage.getItem('token') || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
         const API_URL = `http://${window.location.hostname}:${window.location.port || 5000}/api`;
         
+        // Data selezionata nel calendario (usata per filtrare i viaggi)
+        let currentSelectedDate = new Date().toISOString().split('T')[0];
+        
         // Tracking inventario e prenotazioni
         let currentAvailableBatches = [];
         let orderInventoryReservations = {}; // {orderId: {productCode, quantity}}
@@ -1007,13 +1030,13 @@
         }
 
         function populateExistingTrips() {
-            const dateTimeStr = document.getElementById('orderDateTime').value;
-            if (!dateTimeStr) {
+            const orderDate = document.getElementById('orderDate').value;
+            if (!orderDate) {
                 document.getElementById('existingTrip').innerHTML = '<option value="">-- Seleziona prima la data --</option>';
                 return;
             }
 
-            const dateStr = dateTimeStr.split('T')[0]; // YYYY-MM-DD
+            const dateStr = orderDate; // Già in formato YYYY-MM-DD
             
             // Filtra viaggi per data - mostra tutti i viaggi per quella data
             const availableTrips = trips.filter(trip => {
@@ -1534,23 +1557,15 @@
             }
             
             // Filtra solo ordini NON assegnati a un viaggio
-            ordersToShow = ordersToShow.filter(order => {
-                // Un ordine è assegnato se il suo ID è dentro il sequence di un viaggio
-                const isAssignedToTrip = trips.some(trip => {
-                    if (!trip.sequence || !Array.isArray(trip.sequence) || trip.sequence.length === 0) {
-                        return false;
-                    }
-                    // Confronto type-safe: converti entrambi a string
-                    const orderId = String(order.id);
-                    return trip.sequence.some(seqId => String(seqId) === orderId);
-                });
-                return !isAssignedToTrip; // Mostra solo ordini NON assegnati
-            });
+            ordersToShow = ordersToShow.filter(order => !isOrderAssignedToTrip(order.id));
+            
+            // Mostra solo ordini non assegnati
+            let allOrdersToDisplay = ordersToShow;
             
             // Aggiorna contatore
             if (countSpan) {
                 if (showAllOrders) {
-                    countSpan.textContent = `(${ordersToShow.length} totali)`;
+                    countSpan.textContent = `(${allOrdersToDisplay.length} totali)`;
                 } else if (selectedDate) {
                     // Formatta la data selezionata
                     const date = new Date(selectedDate + 'T00:00:00');
@@ -1559,60 +1574,52 @@
                         day: 'numeric', 
                         month: 'short'
                     });
-                    countSpan.textContent = `(${ordersToShow.length} - ${formatted})`;
+                    countSpan.textContent = `(${allOrdersToDisplay.length} - ${formatted})`;
                 } else {
-                    countSpan.textContent = `(${ordersToShow.length} oggi)`;
+                    countSpan.textContent = `(${allOrdersToDisplay.length} oggi)`;
                 }
             }
             
-            if (ordersToShow.length === 0) {
+            if (allOrdersToDisplay.length === 0) {
                 grid.innerHTML = '<p style="color:#808080;grid-column:1/-1;text-align:center;padding:20px;">Nessun ordine ' + (showAllOrders ? '' : 'per oggi') + '</p>';
                 return;
             }
             
             // Sort orders by dateTime
-            ordersToShow.sort((a, b) => {
+            allOrdersToDisplay.sort((a, b) => {
                 if (!a.dateTime && !b.dateTime) return 0;
                 if (!a.dateTime) return 1;
                 if (!b.dateTime) return -1;
                 return new Date(a.dateTime) - new Date(b.dateTime);
             });
             
-            grid.innerHTML = ordersToShow.map(order => {
-                const timeOnly = order.dateTime ? new Date(order.dateTime).toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'}) : 'N/D';
-                const dateOnly = order.dateTime ? new Date(order.dateTime).toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit', year:'numeric'}) : 'N/D';
-                const createdAtTime = order.createdAt ? new Date(order.createdAt).toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'}) : new Date().toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'});
-                const createdAtDate = order.createdAt ? new Date(order.createdAt).toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit', year:'numeric'}) : new Date().toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit', year:'numeric'});
-                const statusLabel = getStatusLabel(order.status);
+            grid.innerHTML = allOrdersToDisplay.map((order, index) => {
+                const fullInfo = getOrderFullInfo(order.id);
+                const statusLabel = getStatusLabel(order.status, order.id);
                 const typeLabel = order.type === 'consegnato' ? 'Consegna' : 'Ritiro';
                 const typeIcon = order.type === 'consegnato' ? '🚚' : '📥';
                 const borderColor = order.type === 'consegnato' ? '#3b82f6' : '#f97316';
-                const statusColor = order.type === 'consegnato' ? '#60a5fa' : '#fb923c';
+                const productsStr = fullInfo?.products?.map(p => `${p.product} (${p.quantity}kg)`).join(' + ') || fullInfo?.product;
+                const lottoStr = order.lotto ? `<p><strong>Lotto:</strong> ${order.lotto}</p>` : '';
+                const posizioneStr = order.posizione ? `<p><strong>Scaffale:</strong> ${order.posizione}</p>` : '';
                 const clientName = getClientName(order);
                 return `
-                    <div class="task-card" style="border-left: 4px solid ${borderColor};">
-                        <div class="task-header">
-                            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-                                <span style="font-size: 32px;">${typeIcon}</span>
-                                <div>
-                                    <div style="font-size: 18px; font-weight: 700; color: #e0e0e0;">${typeLabel}</div>
-                                    <div style="font-size: 14px; color: #a0a0a0; margin-top: 2px;">Cliente: <strong style="color: #e0e0e0;">${clientName}</strong></div>
-                                </div>
-                            </div>
-                            <span class="task-status" style="background: ${borderColor}; color: white; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600;">${statusLabel}</span>
+                    <div class="order-card" 
+                         style="margin-bottom: 10px; border-left: 4px solid ${borderColor};">
+                        <div class="order-header">
+                            <div class="order-title">${clientName} <span style="color: #888; font-size: 12px;">#${index + 1}</span></div>
+                            <div class="order-status ${order.status}">${statusLabel}</div>
                         </div>
-                        <div style="margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px; color: #a0a0a0;">
-                            <div><strong>📦 Prodotti:</strong> ${order.products?.map(p => `${p.product || 'N/D'} (${p.quantity || 0}kg)`).join(' + ') || order.product || 'N/D'}</div>
-                            <div><strong>📊 Quantità Tot:</strong> ${order.products?.reduce((sum, p) => sum + (p.quantity || 0), 0) || order.quantity || 0} kg</div>
-                            <div><strong>⏰ Consegna:</strong> ${dateOnly} • ${timeOnly}</div>
-                            <div><strong>📨 Ricevuto:</strong> ${createdAtDate} • ${createdAtTime}</div>
+                        <div class="order-details" style="font-size: 12px;">
+                            <p><strong>📦 Prodotti:</strong> ${productsStr}</p>
+                            <p><strong>Quantità:</strong> ${fullInfo?.quantity || order.quantity || 0} kg</p>
+                            <p><strong>Tipo:</strong> ${typeLabel}</p>
+                            ${lottoStr}
+                            ${posizioneStr}
                         </div>
-                        ${order.assignedOperatorId ? `<div style="margin-top: 10px; padding: 8px; background: #1a2a1a; border-radius: 6px; font-size: 12px; color: #86efac;"><strong>👤 Operatore:</strong> ${allOperators?.find(op => op.id === order.assignedOperatorId)?.name || 'Non trovato'}</div>` : ''}
-                        ${order.notes ? `<div style="margin-top: 10px; padding: 8px; background: #2d2d2d; border-radius: 6px; font-size: 12px; color: #e0e0e0;"><strong>📝 Note:</strong> ${order.notes}</div>` : ''}
-                        <div class="task-actions" style="display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap;">
-                            <button class="btn btn-primary btn-small" onclick="updateOrderStatus(${order.id}, 'completed')" style="flex: 1; min-width: 100px;">✓ Completa</button>
-                            <button class="btn btn-secondary btn-small" onclick="openEditOrderModal(${order.id})" style="flex: 1; min-width: 100px;">✏️ Modifica</button>
-                            <button class="btn btn-danger btn-small" onclick="deleteOrder(${order.id})" style="flex: 1; min-width: 100px;">🗑️ Elimina</button>
+                        <div class="order-actions" style="display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap;">
+                            <button class="btn btn-secondary btn-small" onclick="openEditOrderModal(${order.id})" style="flex: 1; min-width: 80px; padding: 6px 8px;">✏️ Modifica</button>
+                            <button class="btn btn-danger btn-small" onclick="deleteOrder(${order.id})" style="flex: 1; min-width: 80px; padding: 6px 8px;">🗑️ Elimina</button>
                         </div>
                     </div>
                 `;
@@ -1633,6 +1640,7 @@
                 btn.classList.add('btn-primary');
             }
             renderOrderTasks();
+            renderTrips(); // Aggiorna anche i viaggi
         }
 
         function openAssignTaskModal(taskId) {
@@ -1702,12 +1710,20 @@
         }
 
         // Renderizza le card dei viaggi
-        function renderTrips() {
+        function renderTrips(selectedDate) {
             const grid = document.getElementById('tripsGrid');
             const countSpan = document.getElementById('tripsCount');
             if (!grid) return;
             
-            console.log('🚐 [renderTrips] Inizio renderizzazione. Trips totali:', trips.length, 'showAllOrders:', showAllOrders);
+            // Se non è fornita una data, usa quella corrente
+            if (!selectedDate) {
+                selectedDate = currentSelectedDate || new Date().toISOString().split('T')[0];
+            } else {
+                // Aggiorna la data globale se fornita
+                currentSelectedDate = selectedDate;
+            }
+            
+            console.log('🚐 [renderTrips] Inizio renderizzazione. Trips totali:', trips.length, 'showAllOrders:', showAllOrders, 'selectedDate:', selectedDate);
             
             // Filtra i viaggi in base a showAllOrders o selectedDate
             let tripsToShow = trips;
@@ -1780,6 +1796,15 @@
                     return found;
                 });
                 
+                // Ordina gli ordini secondo la sequenza salvata nel viaggio
+                if (trip.sequence && trip.sequence.length > 0) {
+                    tripOrders.sort((a, b) => {
+                        const indexA = trip.sequence.findIndex(id => String(id) === String(a.id));
+                        const indexB = trip.sequence.findIndex(id => String(id) === String(b.id));
+                        return indexA - indexB;
+                    });
+                }
+                
                 console.log(`🔍 [renderTrips] Trip ${trip.id} (${trip.name}): sequence=${JSON.stringify(trip.sequence)} orders disponibili=${orders.length} ordini trovati=${tripOrders.length}`);
                 if (tripOrders.length > 0) {
                     console.log(`   Ordini: ${tripOrders.map(o => o.id + ' (' + o.client + ')').join(', ')}`);
@@ -1801,17 +1826,28 @@
                 const vehicleName = trip.vehicleName || 'Furgone';
                 
                 // HTML per gli ordini dentro il viaggio
-                const ordersHTML = tripOrders.map(order => {
+                const ordersHTML = tripOrders.map((order, index) => {
                     const fullInfo = getOrderFullInfo(order.id);
                     const cliente = clienti.find(c => c.nome === order.client);
                     const productsStr = fullInfo?.products?.map(p => `${p.product} (${p.quantity}kg)`).join(' + ') || fullInfo?.product;
                     const lottoStr = order.lotto ? `<p><strong>Lotto:</strong> ${order.lotto}</p>` : '';
                     const posizioneStr = order.posizione ? `<p><strong>Scaffale:</strong> ${order.posizione}</p>` : '';
                     return `
-                        <div class="order-card" style="margin-bottom: 10px; border-left: 4px solid #10b981;">
+                        <div class="order-card" 
+                             draggable="true" 
+                             data-trip-id="${trip.id}" 
+                             data-trip-sequence='${JSON.stringify(trip.sequence || [])}' 
+                             data-order-id="${order.id}" 
+                             data-order-index="${index}"
+                             ondragstart="handleOrderDragStart(event)" 
+                             ondragover="handleOrderDragOver(event)" 
+                             ondrop="handleOrderDrop(event)"
+                             ondragleave="handleOrderDragLeave(event)"
+                             ondragend="handleOrderDragEnd(event)"
+                             style="margin-bottom: 10px; border-left: 4px solid #3b82f6;">
                             <div class="order-header">
-                                <div class="order-title">${fullInfo?.client || 'Cliente'}</div>
-                                <div class="order-status ${order.status}">${getStatusLabel(order.status)}</div>
+                                <div class="order-title">${fullInfo?.client || 'Cliente'} <span style="background: #38bdf8; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Tappa ${index + 1}</span></div>
+                                <div class="order-status ${order.status}">${getStatusLabel(order.status, order.id)}</div>
                             </div>
                             <div class="order-details" style="font-size: 12px;">
                                 <p><strong>📦 Prodotti:</strong> ${productsStr}</p>
@@ -1843,7 +1879,7 @@
                         <div style="margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px; color: #a0a0a0;">
                             <div><strong>⏰ Partenza:</strong> ${dateOnly} • ${timeOnly}</div>
                             <div><strong>👤 Operatore:</strong> ${operatorName}</div>
-                            <div><strong>📦 Quantità Tot:</strong> ${tripOrders.reduce((sum, o) => sum + (o.products?.reduce((s, p) => s + (p.quantity || 0), 0) || o.quantity || 0), 0)} kg</div>
+                            <div><strong>📦 Quantità Tot:</strong> ${tripOrders.reduce((sum, o) => sum + (Array.isArray(o.products) ? o.products.reduce((s, p) => s + (p.quantity || 0), 0) : o.quantity || 0), 0)} kg</div>
                             <div><strong>🎯 Destinazioni:</strong> ${tripOrders.length}</div>
                         </div>
                         ${tripOrders.length > 0 ? `
@@ -1863,7 +1899,132 @@
             console.log('✅ [renderTrips] Renderizzazione completata');
         }
 
-        // Analizza CSV
+        // Variabile globale per tracciare il drag
+        let draggedOrderId = null;
+        let draggedTripId = null;
+        let draggedOrderIndex = null;
+
+        function handleOrderDragStart(event) {
+            const tripId = parseInt(event.currentTarget.dataset.tripId);
+            const orderId = parseInt(event.currentTarget.dataset.orderId);
+            const orderIndex = parseInt(event.currentTarget.dataset.orderIndex);
+            
+            draggedOrderId = orderId;
+            draggedTripId = tripId;
+            draggedOrderIndex = orderIndex;
+            
+            event.currentTarget.classList.add('dragging');
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', orderId);
+            
+            console.log(`🎯 [Drag Start] Order ${orderId} from Trip ${tripId}`);
+        }
+
+        function handleOrderDragOver(event) {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'move';
+            const card = event.currentTarget;
+            
+            // Aggiungi classe visiva quando si passa sopra un'altra card
+            if (card.dataset.orderId !== String(draggedOrderId)) {
+                card.classList.add('drag-over');
+            }
+        }
+
+        function handleOrderDragLeave(event) {
+            if (event.currentTarget === event.target) {
+                event.currentTarget.classList.remove('drag-over');
+            }
+        }
+
+        async function handleOrderDrop(event) {
+            event.preventDefault();
+            const targetCard = event.currentTarget;
+            const targetTripId = parseInt(targetCard.dataset.tripId);
+            const targetOrderId = parseInt(targetCard.dataset.orderId);
+            const targetOrderIndex = parseInt(targetCard.dataset.orderIndex);
+            
+            // Solo reordina se è nello stesso viaggio
+            if (draggedTripId !== targetTripId) {
+                console.warn('⚠️ Cannot drag orders between different trips');
+                targetCard.classList.remove('drag-over');
+                return;
+            }
+            
+            if (draggedOrderId === targetOrderId) {
+                targetCard.classList.remove('drag-over');
+                return;
+            }
+            
+            // Estrai la sequenza dal DOM
+            let sequence = [];
+            try {
+                const sequenceStr = targetCard.dataset.tripSequence;
+                sequence = sequenceStr ? JSON.parse(sequenceStr) : [];
+                // Converti tutti gli elementi a numero
+                sequence = sequence.map(id => parseInt(id));
+            } catch (e) {
+                console.error('Error parsing sequence:', e);
+                targetCard.classList.remove('drag-over');
+                return;
+            }
+            
+            // Rimuovi l'ordine trascinato
+            const draggedIndex = sequence.indexOf(draggedOrderId);
+            if (draggedIndex === -1) {
+                console.warn(`⚠️ Order ${draggedOrderId} not found in sequence`);
+                targetCard.classList.remove('drag-over');
+                return;
+            }
+            
+            sequence.splice(draggedIndex, 1);
+            
+            // Inserisci nella nuova posizione
+            let newIndex = targetOrderIndex;
+            if (draggedOrderIndex < targetOrderIndex) {
+                newIndex = targetOrderIndex - 1;
+            }
+            sequence.splice(newIndex, 0, draggedOrderId);
+            
+            // Salva la nuova sequenza nel backend
+            try {
+                const response = await fetch(`${API_URL}/trips/${draggedTripId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        sequence: JSON.stringify(sequence)
+                    })
+                });
+                
+                if (response.ok) {
+                    console.log(`✅ [Drop] Order sequence updated: ${sequence.join(', ')}`);
+                    targetCard.classList.remove('drag-over');
+                    await forceRefreshTrips();
+                } else {
+                    console.error('❌ Error updating trip sequence');
+                    targetCard.classList.remove('drag-over');
+                }
+            } catch (error) {
+                console.error('❌ Error saving sequence:', error);
+                targetCard.classList.remove('drag-over');
+            }
+        }
+
+        function handleOrderDragEnd(event) {
+            event.currentTarget.classList.remove('dragging');
+            
+            // Rimuovi classe drag-over da tutte le card
+            document.querySelectorAll('.order-card').forEach(card => {
+                card.classList.remove('drag-over');
+            });
+            
+            draggedOrderId = null;
+            draggedTripId = null;
+            draggedOrderIndex = null;
+        }
         function parseCSV(text) {
             const lines = text.trim().split('\n');
             const headers = lines[0].split(',');
@@ -2000,6 +2161,15 @@
                     // Salva in localStorage per backup offline
                     localStorage.setItem('trips', JSON.stringify(trips));
                     console.log('✅ [loadTrips] Viaggi caricati da API. Totale:', trips.length);
+                    
+                    // Se non ci sono viaggi oggi, inizializza al primo viaggio disponibile
+                    const todayDate = new Date().toISOString().split('T')[0];
+                    const hasTripsToday = trips.some(t => t.date && t.date.split('T')[0] === todayDate);
+                    if (!hasTripsToday && trips.length > 0) {
+                        const firstTripDate = trips[0].date.split('T')[0];
+                        currentSelectedDate = firstTripDate;
+                        console.log(`📅 [loadTrips] Nessun viaggio oggi. Inizializzazione a primo viaggio: ${firstTripDate}`);
+                    }
                 } else {
                     // Se nessun viaggio dal server, usa localStorage
                     const stored = localStorage.getItem('trips');
@@ -2215,7 +2385,10 @@
             
             // Se c'è una data selezionata dal calendario, preselezionala
             if (selectedDate) {
-                document.getElementById('orderDateTime').value = selectedDate + 'T12:00';
+                // Formato atteso: YYYY-MM-DD da calendario
+                document.getElementById('orderDate').value = selectedDate;
+                document.getElementById('orderTime').value = '12:00';
+                console.log(`📅 [openOrderModal] Data preselezionata: ${selectedDate} ore 12:00`);
             }
             
             // Popola dropdown clienti (usa dati già caricati da CSV/localStorage)
@@ -2358,7 +2531,7 @@
 
             document.getElementById('orderType').value = order.type;
             
-            // Converti ISO string (2025-01-15T14:30:00.000Z) a formato datetime-local (2025-01-15T14:30)
+            // Converti ISO string (2025-01-15T14:30:00.000Z) a campi separati data e ora
             if (order.dateTime) {
                 const dt = new Date(order.dateTime);
                 const year = dt.getFullYear();
@@ -2366,7 +2539,8 @@
                 const day = String(dt.getDate()).padStart(2, '0');
                 const hours = String(dt.getHours()).padStart(2, '0');
                 const minutes = String(dt.getMinutes()).padStart(2, '0');
-                document.getElementById('orderDateTime').value = `${year}-${month}-${day}T${hours}:${minutes}`;
+                document.getElementById('orderDate').value = `${year}-${month}-${day}`;
+                document.getElementById('orderTime').value = `${hours}:${minutes}`;
             }
             
             document.getElementById('orderNotes').value = order.notes || '';
@@ -2650,7 +2824,7 @@
 
         // Visualizza prodotti aggiunti
         function renderOrderProducts() {
-            if (currentOrderProducts.length === 0) {
+            if (!Array.isArray(currentOrderProducts) || currentOrderProducts.length === 0) {
                 document.getElementById('orderProductsTableContainer').style.display = 'none';
                 return;
             }
@@ -3244,13 +3418,21 @@
                 }
                 
                 // Validazione: data e ora obbligatoria
-                const dateTimeInput = document.getElementById('orderDateTime');
-                let rawDateTime = dateTimeInput.value;
-                if (!rawDateTime || !rawDateTime.trim()) {
-                    missingFields.push('Data e Orario');
-                    dateTimeInput.style.border = '2px solid #ef4444';
-                    dateTimeInput.style.boxShadow = '0 0 8px rgba(239, 68, 68, 0.5)';
-                    dateTimeInput.classList.add('field-error');
+                const orderDateInput = document.getElementById('orderDate');
+                const orderTimeInput = document.getElementById('orderTime');
+                
+                if (!orderDateInput.value || !orderDateInput.value.trim()) {
+                    missingFields.push('Data');
+                    orderDateInput.style.border = '2px solid #ef4444';
+                    orderDateInput.style.boxShadow = '0 0 8px rgba(239, 68, 68, 0.5)';
+                    orderDateInput.classList.add('field-error');
+                }
+                
+                if (!orderTimeInput.value || !orderTimeInput.value.trim()) {
+                    missingFields.push('Orario');
+                    orderTimeInput.style.border = '2px solid #ef4444';
+                    orderTimeInput.style.boxShadow = '0 0 8px rgba(239, 68, 68, 0.5)';
+                    orderTimeInput.classList.add('field-error');
                 }
                 
                 if (missingFields.length > 0) {
@@ -3260,20 +3442,25 @@
                 
                 const editingId = orderForm.dataset.editingId;
                 
+                // Combina data e ora in un datetime ISO
+                let rawDateTime = `${orderDateInput.value}T${orderTimeInput.value}`;
+                
                 // Valida/sistema data/ora rispetto a festivi e orari di consegna
-            if (window.SettingsUtils && rawDateTime) {
-                const selectedType = document.getElementById('orderType').value;
-                const dateObj = new Date(rawDateTime);
-                const clamped = (selectedType === 'ritira')
-                    ? window.SettingsUtils.clampToOpeningWindows(dateObj)
-                    : window.SettingsUtils.clampToDeliveryWindows(dateObj);
-                const fmt = fmtLocalDateTime(clamped);
-                if (fmt !== rawDateTime) {
-                    rawDateTime = fmt;
-                    document.getElementById('orderDateTime').value = fmt;
-                    alert('ℹ️ Data/ora adeguata ai giorni/orari aziendali');
+                if (window.SettingsUtils && rawDateTime) {
+                    const selectedType = document.getElementById('orderType').value;
+                    const dateObj = new Date(rawDateTime);
+                    const clamped = (selectedType === 'ritira')
+                        ? window.SettingsUtils.clampToOpeningWindows(dateObj)
+                        : window.SettingsUtils.clampToDeliveryWindows(dateObj);
+                    const fmt = fmtLocalDateTime(clamped);
+                    if (fmt !== rawDateTime) {
+                        rawDateTime = fmt;
+                        // Aggiorna i campi separate di data e orario
+                        document.getElementById('orderDate').value = fmt.split('T')[0];
+                        document.getElementById('orderTime').value = fmt.split('T')[1];
+                        alert('ℹ️ Data/ora adeguata ai giorni/orari aziendali');
+                    }
                 }
-            }
 
             // Calcola quantità totale dai prodotti (nuovo sistema)
             const totalQuantity = currentOrderProducts.reduce((sum, p) => sum + p.quantity, 0);
@@ -3884,6 +4071,17 @@
                 return;
             }
             
+            // Calcola la differenza di giorni tra la vecchia e la nuova data
+            const oldDate = new Date(trip.date);
+            const newDate = new Date(date + 'T12:00:00Z');
+            const daysDiff = Math.floor((newDate - oldDate) / (1000 * 60 * 60 * 24));
+            
+            console.log(`📅 [saveEditedTrip] Cambio data viaggio: da ${oldDate.toDateString()} a ${newDate.toDateString()} (${daysDiff} giorni)`);
+            
+            // PRIMA di cambiare la data, salva gli ordini associati al viaggio (per aggiornarli dopo)
+            const associatedOrdersIds = orders.filter(o => o.tripId === tripId).map(o => o.id);
+            console.log(`📦 [saveEditedTrip] Ordini trovati PRIMA della modifica: ${associatedOrdersIds.join(', ')}`);
+            
             // Aggiorna i dati del viaggio
             trip.name = name;
             trip.date = date + 'T12:00:00Z';
@@ -3902,16 +4100,79 @@
                 return;
             }
             
+            // Se la data è cambiata, aggiorna gli ordini associati al viaggio
+            if (daysDiff !== 0 && associatedOrdersIds.length > 0) {
+                console.log(`🔄 [saveEditedTrip] Aggiornando ${associatedOrdersIds.length} ordini associati al viaggio...`);
+                
+                for (const orderId of associatedOrdersIds) {
+                    const order = orders.find(o => o.id === orderId);
+                    if (order && order.dateTime) {
+                        // Sposta la data dell'ordine dello stesso numero di giorni
+                        const oldOrderDate = new Date(order.dateTime);
+                        const newOrderDate = new Date(oldOrderDate.getTime() + daysDiff * 24 * 60 * 60 * 1000);
+                        const newDateTimeISO = newOrderDate.toISOString();
+                        order.dateTime = newDateTimeISO;
+                        
+                        console.log(`  📦 Ordine ${order.id}: ${oldOrderDate.toDateString()} → ${newOrderDate.toDateString()}`);
+                        
+                        // Salva l'ordine aggiornato
+                        try {
+                            const token = localStorage.getItem('token');
+                            const response = await fetch(`${API_URL}/orders/${order.id}`, {
+                                method: 'PUT',
+                                headers: {
+                                    'Authorization': `Bearer ${token}`,
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    ...order,
+                                    dateTime: newDateTimeISO
+                                })
+                            });
+                            
+                            if (response.ok) {
+                                console.log(`  ✅ Ordine ${order.id} aggiornato con successo`);
+                            } else {
+                                const error = await response.json();
+                                console.error(`  ❌ Errore aggiornamento ordine ${order.id}:`, error);
+                            }
+                        } catch (err) {
+                            console.error(`  ❌ Errore aggiornamento ordine ${order.id}:`, err);
+                        }
+                    }
+                }
+                
+                console.log('✅ Ordini associati aggiornati');
+            }
+            
+            // Aggiorna il filtro del calendario alla nuova data del viaggio
+            console.log(`📅 [saveEditedTrip] Aggiornamento currentSelectedDate da ${currentSelectedDate} a ${date}`);
+            currentSelectedDate = date;
+            
             // Aggiorna l'UI
             closeEditTripModal();
             renderTripsManager();
-            renderTrips();
+            renderTrips(date);
             renderCalendar();
             
             // Sincronizza automaticamente
             setTimeout(async () => {
+                console.log('🔄 [saveEditedTrip] Forzando refresh completo...');
                 await forceRefreshTrips();
-            }, 100);
+                // Ricarica anche gli ordini
+                try {
+                    const loadedOrders = await DataSync.Orders.getAll();
+                    if (loadedOrders && loadedOrders.length > 0) {
+                        orders = loadedOrders;
+                        console.log('✅ Ordini ricaricati da API');
+                        renderTrips(date);
+                        renderCalendar();
+                        renderTripsManager();
+                    }
+                } catch (err) {
+                    console.error('❌ Errore nel refresh degli ordini:', err);
+                }
+            }, 500);
             
             alert('✅ Viaggio modificato con successo!');
         }
@@ -3920,20 +4181,29 @@
         async function updateTripData(trip) {
             try {
                 const token = localStorage.getItem('token');
+                const payload = {
+                    name: trip.name,
+                    date: trip.date,
+                    assignedOperatorId: trip.assignedOperatorId,
+                    vehicleName: trip.vehicleName,
+                    sequence: trip.sequence || []
+                };
+                
+                console.log(`💾 [updateTripData] Inviando al backend:`, {
+                    id: trip.id,
+                    ...payload
+                });
+                
                 const response = await fetch(`${API_URL}/trips/${trip.id}`, {
                     method: 'PUT',
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({
-                        name: trip.name,
-                        date: trip.date,
-                        assignedOperatorId: trip.assignedOperatorId,
-                        vehicleName: trip.vehicleName,
-                        sequence: trip.sequence || []
-                    })
+                    body: JSON.stringify(payload)
                 });
+                
+                console.log(`📡 [updateTripData] Risposta dal backend: status=${response.status}`);
                 
                 if (!response.ok) {
                     const error = await response.json();
@@ -3942,7 +4212,7 @@
                 }
                 
                 const updated = await response.json();
-                console.log('✅ Viaggio aggiornato:', updated);
+                console.log('✅ Viaggio aggiornato dal backend:', updated);
                 
                 // Salva in localStorage
                 await saveTrips();
@@ -3971,6 +4241,15 @@
                     // Salva in localStorage per backup offline
                     localStorage.setItem('trips', JSON.stringify(trips));
                     console.log('📊 [forceRefreshTrips] Trips sincronizzati. Totale:', trips.length);
+                    
+                    // Se non ci sono viaggi oggi, inizializza al primo viaggio disponibile
+                    const todayDate = new Date().toISOString().split('T')[0];
+                    const hasTripsToday = trips.some(t => t.date && t.date.split('T')[0] === todayDate);
+                    if (!hasTripsToday && trips.length > 0) {
+                        const firstTripDate = trips[0].date.split('T')[0];
+                        currentSelectedDate = firstTripDate;
+                        console.log(`📅 [forceRefreshTrips] Nessun viaggio oggi. Inizializzazione a primo viaggio: ${firstTripDate}`);
+                    }
                 } else {
                     // Se nessun viaggio dal server, usa localStorage
                     const stored = localStorage.getItem('trips');
@@ -3979,7 +4258,7 @@
                 }
                 
                 // Renderizza
-                renderTrips();
+                renderTrips(selectedDate); // Passa selectedDate se impostato
                 renderCalendar();
                 updateStats();
             } catch (error) {
@@ -3988,7 +4267,7 @@
                 const stored = localStorage.getItem('trips');
                 trips = stored ? JSON.parse(stored) : [];
                 console.log('⚠️ [forceRefreshTrips] Errore API, fallback a localStorage:', trips.length);
-                renderTrips();
+                renderTrips(selectedDate); // Passa selectedDate se impostato
                 renderCalendar();
                 updateStats();
             }
@@ -4066,13 +4345,13 @@
                 id: order.id,
                 client: getClientName(order),
                 product: order.product || (order.products?.[0]?.product) || 'Prodotto',
-                quantity: order.quantity || (order.products?.reduce((sum, p) => sum + (p.quantity || 0), 0)) || 0,
+                quantity: order.quantity || (Array.isArray(order.products) ? order.products.reduce((sum, p) => sum + (p.quantity || 0), 0) : 0) || 0,
                 notes: order.notes || '',
                 type: order.type || 'ritira',
                 dateTime: order.dateTime || new Date().toISOString(),
                 status: order.status || 'pending',
                 assignedOperatorId: order.assignedOperatorId || null,
-                products: order.products || (order.product ? [{product: order.product, quantity: order.quantity || 0}] : [])
+                products: Array.isArray(order.products) ? order.products : (order.product ? [{product: order.product, quantity: order.quantity || 0}] : [])
             };
 
             // Aggiungi info operatore
@@ -4134,13 +4413,31 @@
             `}).join('');
         }
 
+        // Controlla se un ordine è assegnato a un viaggio
+        function isOrderAssignedToTrip(orderId) {
+            return trips.some(trip => {
+                if (!trip.sequence || !Array.isArray(trip.sequence) || trip.sequence.length === 0) {
+                    return false;
+                }
+                const orderIdStr = String(orderId);
+                return trip.sequence.some(seqId => String(seqId) === orderIdStr);
+            });
+        }
+
         // Ottieni etichetta stato
-        function getStatusLabel(status) {
-            const labels = {
-                'pending': '⏳ Sospeso',
-                'completed': '✓ Completato'
-            };
-            return labels[status] || status;
+        function getStatusLabel(status, orderId) {
+            // Se completato, mostra sempre completato
+            if (status === 'completed') {
+                return '✓ Completato';
+            }
+            
+            // Per pending, verifica se assegnato a un viaggio
+            if (orderId !== undefined && isOrderAssignedToTrip(orderId)) {
+                return '📋 Assegnato';
+            }
+            
+            // Altrimenti è sospeso/da assegnare
+            return '⏳ Da Assegnare';
         }
 
         // Aggiorna statistiche
@@ -4316,6 +4613,13 @@
         // Funzioni per gestire singolo e doppio click nel calendario
         function handleCalendarDayClick(dateStr) {
             selectedDate = dateStr;
+            showAllOrders = false; // Attiva il filtro per la data selezionata
+            const btn = document.getElementById('toggleShowAllBtn2');
+            if (btn) {
+                btn.textContent = '👁️ Visualizza Tutti';
+                btn.classList.remove('btn-secondary');
+                btn.classList.add('btn-primary');
+            }
             if (calendarClickTimer) {
                 clearTimeout(calendarClickTimer);
                 calendarClickTimer = null;
@@ -4326,6 +4630,7 @@
                 calendarClickTimer = setTimeout(() => {
                     showDayOrdersModal(dateStr);
                     renderCalendar();
+                    renderOrderTasks(); // Aggiorna gli ordini con il filtro
                     // Sincronizza automaticamente i viaggi quando clicchi un giorno
                     setTimeout(async () => {
                         await forceRefreshTrips();
@@ -4831,7 +5136,7 @@
                         </div>
                     </div>
                     <div style="display:flex;gap:6px;">
-                        <button class="btn btn-primary" onclick="openEditOrderModal(${order.id})" style="padding:4px 8px;font-size:11px;">✏️ Modifica</button>
+                        <button class="btn btn-secondary" onclick="openEditOrderModal(${order.id})" style="padding:4px 8px;font-size:11px;">✏️ Modifica</button>
                         <button class="btn btn-danger" onclick="removeOrderFromCurrentTrip(${order.id})" style="padding:4px 8px;font-size:11px;">✖</button>
                     </div>
                 </div>
