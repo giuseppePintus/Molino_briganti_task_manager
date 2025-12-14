@@ -8,15 +8,21 @@ cd C:\Users\manue\Molino_briganti_task_manager\task-manager-app\server
 npx tsc
 ```
 
-## 🚀 Quick Build + Deploy NAS (completo)
+## 🚀 Quick Build + Deploy NAS (completo) - ESCLUDE DATI
 ```powershell
 cd C:\Users\manue\Molino_briganti_task_manager\task-manager-app
 
-# 1. Compila TypeScript (IMPORTANTE: usa npm run build, non solo tsc)
+# 1. Compila TypeScript
 npm run build
 
-# 2. Crea archivio CON i file aggiornati
-tar -czf task-manager-update.tar.gz public server/dist server/prisma package.json
+# 2. Crea archivio ESCLUDENDO i dati (ordini, viaggi, task, db, etc)
+tar -czf task-manager-update.tar.gz `
+  --exclude='*.db' `
+  --exclude='*.db-journal' `
+  --exclude='server/prisma/dev.db' `
+  --exclude='server/prisma/prod.db' `
+  --exclude='molino-data/*' `
+  public server/dist server/prisma package.json
 
 # 3. Upload al NAS
 scp task-manager-update.tar.gz vsc@192.168.1.248:/share/Container/
@@ -28,9 +34,9 @@ ssh vsc@192.168.1.248 "cd /share/Container && tar -xzf task-manager-update.tar.g
 ssh vsc@192.168.1.248 "/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker restart molino-app"
 ```
 
-## ⚡ Quick Build One-Liner
+## ⚡ Quick Build One-Liner (ESCLUDE DATI)
 ```powershell
-cd C:\Users\manue\Molino_briganti_task_manager\task-manager-app; npm run build; tar -czf task-manager-update.tar.gz public server/dist server/prisma package.json; scp task-manager-update.tar.gz vsc@192.168.1.248:/share/Container/; ssh vsc@192.168.1.248 "cd /share/Container && tar -xzf task-manager-update.tar.gz && /share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker restart molino-app"; Write-Host "`n✅ DEPLOY COMPLETATO!" -ForegroundColor Green
+cd C:\Users\manue\Molino_briganti_task_manager\task-manager-app; npm run build; tar -czf task-manager-update.tar.gz --exclude='*.db' --exclude='*.db-journal' --exclude='server/prisma/dev.db' --exclude='server/prisma/prod.db' --exclude='molino-data/*' public server/dist server/prisma package.json; scp task-manager-update.tar.gz vsc@192.168.1.248:/share/Container/; ssh vsc@192.168.1.248 "cd /share/Container && tar -xzf task-manager-update.tar.gz && /share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker restart molino-app"; Write-Host "`n✅ DEPLOY COMPLETATO (senza dati)!" -ForegroundColor Green
 ```
 
 ## 🔧 Comandi Utili NAS

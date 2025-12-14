@@ -1,5 +1,5 @@
 # Build stage
-FROM --platform=linux/arm64/v8 node:18 AS builder
+FROM node:18 AS builder
 
 WORKDIR /app
 
@@ -23,7 +23,7 @@ RUN npm run prisma:generate
 RUN npm run build
 
 # Production stage - slimmed down
-FROM --platform=linux/arm64/v8 node:18
+FROM node:18
 
 WORKDIR /app
 

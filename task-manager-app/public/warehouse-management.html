@@ -414,6 +414,9 @@
             <button class="btn btn-codifiche" onclick="goToCodifiche()" data-icon="📋">
                 <span>Codifiche Articoli</span>
             </button>
+            <button class="btn btn-danger" onclick="resetAllInventory()" data-icon="⚠️" style="background: #ff6b6b; color: white;">
+                <span>Azzera Inventario</span>
+            </button>
         </div>
 
         <!-- Statistics Bar -->
@@ -513,6 +516,29 @@
     </div>
 
     <script>
+        // Estrai peso singolo collo dal codice prodotto
+        // Esempi: F-0-5 → 5, F-0-10 → 10, F-00-5 → 5
+        function extractWeightPerCollo(code) {
+            if (!code) return 1; // Default 1 se non trovato
+            
+            // Prova a estrarre l'ultimo numero dal codice
+            // Codici come F-0-5, F-00-10, ecc.
+            const match = code.match(/-(\d+)$/);
+            if (match) {
+                return parseInt(match[1]) || 1;
+            }
+            
+            // Se non trova pattern, ritorna 1
+            return 1;
+        }
+
+        // Calcola il peso totale in kg da numero di colli e peso per collo
+        function calculateTotalWeight(quantita, code) {
+            const quantNum = parseInt(quantita) || 0;
+            const weightPerCollo = extractWeightPerCollo(code);
+            return quantNum * weightPerCollo;
+        }
+
         const API_URL = `http://${window.location.hostname}:${window.location.port || 5000}/api`;
         let token = localStorage.getItem('token');
         let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
@@ -539,6 +565,40 @@
 
         function goToCodifiche() {
             window.location.href = 'codifiche-management.html';
+        }
+
+        async function resetAllInventory() {
+            // Doppia conferma per sicurezza
+            if (!confirm('⚠️ Sei sicuro di voler azzerare TUTTO l\'inventario? Questa azione non può essere annullata!')) {
+                return;
+            }
+            
+            if (!confirm('🚨 ULTIMA CONFERMA: Azzerare tutto l\'inventario?')) {
+                return;
+            }
+
+            try {
+                const token = localStorage.getItem('token');
+                const res = await fetch(`${API_URL}/inventory/reset-all`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!res.ok) throw new Error('Errore nell\'azzeramento');
+
+                const result = await res.json();
+                showAlert(`✅ ${result.updated} articoli azzerati con successo!`, 'success');
+                
+                // Ricarica i dati
+                await refreshInventoryData();
+
+            } catch (error) {
+                console.error('Errore azzeramento inventario:', error);
+                showAlert(`❌ Errore: ${error.message}`, 'error');
+            }
         }
 
         function showAlert(message, type = 'info') {
@@ -706,7 +766,8 @@
                             <th>Codice</th>
                             <th>Lotto</th>
                             <th>Scadenza</th>
-                            <th>Quantità (kg)</th>
+                            <th>Quantità (colli)</th>
+                            <th>Peso (kg)</th>
                             <th>Annotazioni</th>
                         </tr>
                     </thead>
@@ -721,6 +782,7 @@
                 const scadenza = article.inventory?.expiry || article.scadenza || article.expiry || '-';
                 const quantita = article.inventory?.currentStock || article.quantita || article.quantity || '0';
                 const annotazioni = article.inventory?.notes || article.annotazioni || article.notes || '-';
+                const totalKg = calculateTotalWeight(quantita, codice);
 
                 html += `
                     <tr>
@@ -730,6 +792,7 @@
                         <td>${lotto}</td>
                         <td>${scadenza}</td>
                         <td style="text-align: right; font-weight: 600;">${quantita}</td>
+                        <td style="text-align: right; font-weight: 600; color: #2563eb;">${totalKg} kg</td>
                         <td>${annotazioni}</td>
                     </tr>
                 `;

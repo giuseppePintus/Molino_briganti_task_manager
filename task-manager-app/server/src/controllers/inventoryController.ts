@@ -199,6 +199,24 @@ export class InventoryController {
   }
 
   /**
+   * Azzera tutto l'inventario
+   */
+  static async resetAllInventory(req: Request, res: Response) {
+    try {
+      const userId = (req as any).user?.id;
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Non autorizzato' });
+      }
+
+      const result = await InventoryService.resetAllInventory();
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  /**
    * Ottiene articoli in allarme
    */
   static async getArticlesOnAlert(req: Request, res: Response) {

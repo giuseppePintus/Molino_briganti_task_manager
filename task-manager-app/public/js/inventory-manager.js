@@ -1,6 +1,30 @@
 const API_BASE = 'http://localhost:5000/api';
 let currentEditingArticle = null;
 
+// Estrai peso singolo collo dal codice prodotto
+// Esempi: F-0-5 → 5, F-0-10 → 10, F-00-5 → 5
+function extractWeightPerCollo(code) {
+    if (!code) return 1; // Default 1 se non trovato
+    
+    // Prova a estrarre l'ultimo numero dal codice
+    // Codici come F-0-5, F-00-10, ecc.
+    const match = code.match(/-(\d+)$/);
+    if (match) {
+        return parseInt(match[1]) || 1;
+    }
+    
+    // Se non trova pattern, ritorna 1
+    return 1;
+}
+
+// Calcola il peso totale in kg da numero di colli e peso per collo
+// quantita = numero di colli, weightPerCollo = kg per collo
+function calculateTotalWeight(quantita, code) {
+    const quantNum = parseInt(quantita) || 0;
+    const weightPerCollo = extractWeightPerCollo(code);
+    return quantNum * weightPerCollo;
+}
+
 // Inizializzazione
 document.addEventListener('DOMContentLoaded', () => {
     setupTabNavigation();
@@ -52,12 +76,14 @@ async function loadDashboard() {
 
         // Calcola statistiche
         let totalArticles = articles.length;
-        let totalItems = 0;
+        let totalItems = 0; // In kg
         let criticalCount = 0;
 
         articles.forEach(article => {
             if (article.inventory) {
-                totalItems += article.inventory.currentStock;
+                // Converti colli a kg usando il peso nel codice
+                const totalKg = calculateTotalWeight(article.inventory.currentStock, article.code);
+                totalItems += totalKg;
                 if (article.inventory.currentStock < article.inventory.minimumStock) {
                     criticalCount++;
                 }
@@ -72,7 +98,7 @@ async function loadDashboard() {
 
         // Aggiorna UI
         document.getElementById('totalArticles').textContent = totalArticles;
-        document.getElementById('totalItems').textContent = totalItems;
+        document.getElementById('totalItems').textContent = Math.round(totalItems);
         document.getElementById('alertsCount').textContent = alerts.length;
         document.getElementById('criticalItems').textContent = criticalCount;
 
@@ -81,13 +107,15 @@ async function loadDashboard() {
         if (alerts.length === 0) {
             alertsHTML = '<div class="alert alert-success">✓ Nessun allarme attivo</div>';
         } else {
-            alertsHTML = alerts.map(alert => `
+            alertsHTML = alerts.map(alert => {
+                const totalKg = calculateTotalWeight(alert.currentStock, alert.article.code);
+                return `
                 <div class="alert alert-warning">
                     <strong>${alert.article.name}</strong><br>
-                    Stock attuale: ${alert.currentStock} ${alert.article.unit} | Minimo: ${alert.minimumStock} ${alert.article.unit}
+                    Stock attuale: ${alert.currentStock} colli (${totalKg} kg) | Minimo: ${alert.minimumStock} colli
                     <button class="btn-secondary" onclick="resolveAlert(${alert.id})" style="margin-left: auto;">Risolvi</button>
                 </div>
-            `).join('');
+            `}).join('');
         }
 
         document.getElementById('alertsList').innerHTML = alertsHTML;
@@ -115,8 +143,9 @@ async function loadAllArticles() {
                 '<th>Codice</th>' +
                 '<th>Nome</th>' +
                 '<th>Categoria</th>' +
-                '<th>Quantità</th>' +
-                '<th>Minimo</th>' +
+                '<th>Quantità (colli)</th>' +
+                '<th>Peso (kg)</th>' +
+                '<th>Minimo (colli)</th>' +
                 '<th>Scaffale</th>' +
                 '<th>Stato</th>' +
                 '<th>Azioni</th>' +
@@ -124,6 +153,8 @@ async function loadAllArticles() {
 
             articles.forEach(article => {
                 const inv = article.inventory;
+                const colli = inv?.currentStock || 0;
+                const totalKg = calculateTotalWeight(colli, article.code);
                 const status = inv && inv.currentStock < inv.minimumStock ? 'ALLARME' : 'OK';
                 const statusClass = inv && inv.currentStock < inv.minimumStock ? 'stock-critical' : 'stock-ok';
 
@@ -132,7 +163,8 @@ async function loadAllArticles() {
                         <td><strong>${article.code}</strong></td>
                         <td>${article.name}</td>
                         <td>${article.category || '-'}</td>
-                        <td>${inv?.currentStock || 0}</td>
+                        <td>${colli}</td>
+                        <td><strong>${totalKg} kg</strong></td>
                         <td>${inv?.minimumStock || 0}</td>
                         <td>${inv?.shelfPosition || '-'}</td>
                         <td><span class="stock-badge ${statusClass}">${status}</span></td>
@@ -169,8 +201,9 @@ async function searchArticles() {
             '<th>Codice</th>' +
             '<th>Nome</th>' +
             '<th>Categoria</th>' +
-            '<th>Quantità</th>' +
-            '<th>Minimo</th>' +
+            '<th>Quantità (colli)</th>' +
+            '<th>Peso (kg)</th>' +
+            '<th>Minimo (colli)</th>' +
             '<th>Scaffale</th>' +
             '<th>Stato</th>' +
             '<th>Azioni</th>' +
@@ -178,6 +211,8 @@ async function searchArticles() {
 
         articles.forEach(article => {
             const inv = article.inventory;
+            const colli = inv?.currentStock || 0;
+            const totalKg = calculateTotalWeight(colli, article.code);
             const status = inv && inv.currentStock < inv.minimumStock ? 'ALLARME' : 'OK';
             const statusClass = inv && inv.currentStock < inv.minimumStock ? 'stock-critical' : 'stock-ok';
 
@@ -186,7 +221,8 @@ async function searchArticles() {
                     <td><strong>${article.code}</strong></td>
                     <td>${article.name}</td>
                     <td>${article.category || '-'}</td>
-                    <td>${inv?.currentStock || 0}</td>
+                    <td>${colli}</td>
+                    <td><strong>${totalKg} kg</strong></td>
                     <td>${inv?.minimumStock || 0}</td>
                     <td>${inv?.shelfPosition || '-'}</td>
                     <td><span class="stock-badge ${statusClass}">${status}</span></td>
@@ -448,6 +484,40 @@ async function exportInventory() {
 
     } catch (error) {
         console.error('Errore export:', error);
+        showMessage(`Errore: ${error.message}`, 'danger');
+    }
+}
+
+// Azzera tutto l'inventario
+async function resetAllInventory() {
+    // Conferma doppia per sicurezza
+    if (!confirm('⚠️ Sei sicuro di voler azzerare TUTTO l\'inventario? Questa azione non può essere annullata!')) {
+        return;
+    }
+    
+    if (!confirm('🚨 ULTIMA CONFERMA: Azzerare tutto l\'inventario?')) {
+        return;
+    }
+
+    try {
+        const token = getToken();
+        const res = await fetch(`${API_BASE}/inventory/reset-all`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!res.ok) throw new Error('Errore nell\'azzeramento');
+
+        const result = await res.json();
+        showMessage(`✅ ${result.updated} articoli azzerati con successo!`, 'success');
+        loadAllArticles();
+        loadDashboard();
+
+    } catch (error) {
+        console.error('Errore azzeramento inventario:', error);
         showMessage(`Errore: ${error.message}`, 'danger');
     }
 }

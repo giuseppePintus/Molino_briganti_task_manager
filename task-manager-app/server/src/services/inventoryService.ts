@@ -130,13 +130,12 @@ export class InventoryService {
             importedCount++;
             console.log(`✅ Importato articolo ${i}: ${codice} (${nome}) - Quantita: ${quantita}`);
           } else if (article.inventory) {
-            // Se articolo esiste, aggiorna l'inventario
-            const newStock = (article.inventory.currentStock || 0) + quantita;
-            console.log(`📦 Update inventario ${i}: currentStock=${article.inventory.currentStock}, adding=${quantita}, newStock=${newStock}`);
+            // Se articolo esiste, SOSTITUISCI l'inventario (non aggiungere)
+            console.log(`📦 Update inventario ${i}: currentStock=${article.inventory.currentStock}, new=${quantita}`);
             await prisma.inventory.update({
               where: { id: article.inventory.id },
               data: {
-                currentStock: newStock,
+                currentStock: quantita,
                 shelfPosition: posizione,
                 batch: lotto,
                 expiry: scadenza,
@@ -144,7 +143,7 @@ export class InventoryService {
               }
             });
             updatedCount++;
-            console.log(`🔄 Aggiornato articolo ${i}: ${codice} - Quantita aggiunta: ${quantita}`);
+            console.log(`🔄 Aggiornato articolo ${i}: ${codice} - Quantita sostituita: ${quantita}`);
           } else {
             console.warn(`⚠️ Riga ${i} (${codice}): Articolo trovato ma senza inventory record`);
             skippedCount++;
@@ -626,6 +625,30 @@ export class InventoryService {
       return { success: true, reserved, currentStock };
     } catch (error) {
       throw new Error(`Errore consumo inventario: ${error}`);
+    }
+  }
+
+  /**
+   * Azzera tutto l'inventario (tutte le quantità a 0)
+   */
+  static async resetAllInventory() {
+    try {
+      const result = await prisma.inventory.updateMany({
+        data: {
+          currentStock: 0,
+          reserved: 0
+        }
+      });
+
+      console.log(`✅ Inventario azzerato: ${result.count} articoli aggiornati`);
+
+      return {
+        success: true,
+        updated: result.count,
+        message: `Azzerato inventario per ${result.count} articoli`
+      };
+    } catch (error) {
+      throw new Error(`Errore azzeramento inventario: ${error}`);
     }
   }
 }

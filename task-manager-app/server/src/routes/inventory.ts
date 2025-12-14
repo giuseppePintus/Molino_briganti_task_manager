@@ -57,6 +57,7 @@ router.get('/articles/:id', InventoryController.getArticleDetail);
 router.post('/stock/update', InventoryController.updateStock);
 router.post('/stock/reduce', InventoryController.reduceStockForOrder);
 router.post('/stock/set-minimum', InventoryController.setMinimumStock);
+router.post('/reset-all', InventoryController.resetAllInventory);
 
 // Gestione posizioni scaffali
 router.post('/shelf-position', InventoryController.updateShelfPosition);
