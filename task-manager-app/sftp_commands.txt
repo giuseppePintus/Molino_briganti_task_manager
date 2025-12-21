@@ -1,0 +1,2 @@
+put public.zip /nas/molino/app/public.zip
+bye

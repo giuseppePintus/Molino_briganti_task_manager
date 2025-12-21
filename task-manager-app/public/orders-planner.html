@@ -385,7 +385,7 @@
             }
 
             .stat-number {
-                font-size: 11px;
+                font-size: 13px;
             }
 
             .stat-label {
@@ -405,7 +405,7 @@
             }
 
             .stat-number {
-                font-size: 10px;
+                font-size: 13px;
             }
 
             .stat-label {
@@ -517,7 +517,7 @@
             .calendar-day {
                 min-height: 35px;
                 padding: 3px;
-                font-size: 9px;
+                font-size: 13px;
             }
             
         }
@@ -760,7 +760,7 @@
         <!-- Unified Orders Section -->
         <div class="card" style="border-left: 4px solid #3b82f6;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;flex-wrap:wrap;gap:10px;">
-                <h2 style="display:flex;align-items:center;gap:6px;margin:0;">📋 Ordini da Assegnare <span id="tasksCount" style="font-size:11px;color:#a0a0a0;font-weight:400;"></span></h2>
+                <h2 style="display:flex;align-items:center;gap:6px;margin:0;">📋 Ordini da Assegnare <span id="tasksCount" style="font-size: 13px;color:#a0a0a0;font-weight:400;"></span></h2>
                 <button class="btn btn-success" onclick="openCreateTripModal()" style="font-size:12px;padding:6px 12px;">🚐 Crea Viaggio</button>
             </div>
             <div class="orders-grid" id="orderTasksGrid">
@@ -770,7 +770,7 @@
 
         <div class="card" style="border-left: 4px solid #38bdf8;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;flex-wrap:wrap;gap:10px;">
-                <h2 style="display:flex;align-items:center;gap:6px;margin:0;">🚐 Viaggi <span id="tripsCount" style="font-size:11px;color:#a0a0a0;font-weight:400;"></span></h2>
+                <h2 style="display:flex;align-items:center;gap:6px;margin:0;">🚐 Viaggi <span id="tripsCount" style="font-size: 13px;color:#a0a0a0;font-weight:400;"></span></h2>
                 <button class="btn btn-primary" onclick="forceRefreshTrips()" style="font-size:12px;padding:6px 12px;">🔄 Sincronizza</button>
             </div>
             <div class="orders-grid" id="tripsGrid">
@@ -819,15 +819,15 @@
                             <label style="display: block; color: #86efac; margin-bottom: 10px; font-weight: 600; font-size: 13px;">🔄 Quantità (Conversione automatica)</label>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                                 <div>
-                                    <label style="font-size: 11px; color: #bbb; display: block; margin-bottom: 4px;">Colli</label>
+                                    <label style="font-size: 13px; color: #bbb; display: block; margin-bottom: 4px;">Colli</label>
                                     <input type="number" id="orderColli" min="1" step="1" placeholder="Colli" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #4d4d4d; border-radius: 6px; color: #fff; -moz-appearance: textfield;" oninput="colliToKgAuto()" onwheel="event.preventDefault();">
                                 </div>
                                 <div>
-                                    <label style="font-size: 11px; color: #bbb; display: block; margin-bottom: 4px;">Peso (kg)</label>
+                                    <label style="font-size: 13px; color: #bbb; display: block; margin-bottom: 4px;">Peso (kg)</label>
                                     <input type="number" id="orderQuantity" min="1" step="1" placeholder="Peso (kg)" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; -moz-appearance: textfield;" oninput="kgToColliAuto()" onwheel="event.preventDefault();">
                                 </div>
                             </div>
-                            <div style="margin-top: 8px; font-size: 11px; color: #888;">
+                            <div style="margin-top: 8px; font-size: 13px; color: #888;">
                                 <span id="conversionInfo">Seleziona un articolo per la conversione</span>
                             </div>
                         </div>
@@ -1946,7 +1946,7 @@
                              ondragend="handleOrderDragEnd(event)"
                              style="margin-bottom: 10px; border-left: 4px solid #3b82f6;">
                             <div class="order-header">
-                                <div class="order-title">${fullInfo?.client || 'Cliente'} <span style="background: #38bdf8; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Tappa ${index + 1}</span></div>
+                                <div class="order-title">${fullInfo?.client || 'Cliente'} <span style="background: #38bdf8; color: white; padding: 2px 8px; border-radius: 4px; font-size: 13px; font-weight: 600;">Tappa ${index + 1}</span></div>
                                 <div class="order-status ${order.status}">${getStatusLabel(order.status, order.id)}</div>
                             </div>
                             <div class="order-details" style="font-size: 12px;">
@@ -1975,8 +1975,20 @@
                     `;
                 }).join('');
                 
+                // Calcola totali per il viaggio
+                const tripTotalKg = tripOrders.reduce((sum, o) => sum + (Array.isArray(o.products) ? o.products.reduce((s, p) => s + (p.quantity || 0), 0) : o.quantity || 0), 0);
+                const tripTotalColli = tripOrders.reduce((sum, o) => {
+                    if (Array.isArray(o.products)) {
+                        return sum + o.products.reduce((s, p) => {
+                            const weight = extractWeightPerCollo(p.product || '');
+                            return s + Math.round(p.quantity / weight);
+                        }, 0);
+                    }
+                    return sum;
+                }, 0);
+                
                 return `
-                    <div class="task-card" style="border-left: 4px solid #38bdf8;">
+                    <div class="task-card" style="border-left: 4px solid ${tripOrders.length === 0 ? '#6b7280' : '#38bdf8'};">
                         <div class="task-header">
                             <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
                                 <span style="font-size: 32px;">🚐</span>
@@ -1985,12 +1997,12 @@
                                     <div style="font-size: 14px; color: #a0a0a0; margin-top: 2px;">Viaggio: <strong style="color: #38bdf8;">${vehicleName}</strong></div>
                                 </div>
                             </div>
-                            <span class="task-status" style="background: #38bdf8; color: white; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600;">${tripOrders.length} ordini</span>
+                            <span class="task-status" style="background: ${tripOrders.length === 0 ? '#6b7280' : '#38bdf8'}; color: white; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600;">${tripOrders.length === 0 ? 'Vuoto' : tripOrders.length + ' ordini'}</span>
                         </div>
                         <div style="margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px; color: #a0a0a0;">
                             <div><strong>⏰ Partenza:</strong> ${dateOnly} • ${timeOnly}</div>
                             <div><strong>👤 Operatore:</strong> ${operatorName}</div>
-                            <div><strong>📦 Quantità Tot:</strong> ${tripOrders.reduce((sum, o) => sum + (Array.isArray(o.products) ? o.products.reduce((s, p) => s + (p.quantity || 0), 0) : o.quantity || 0), 0)} kg</div>
+                            <div><strong>📦 Quantità Tot:</strong> ${tripTotalColli > 0 ? tripTotalColli + ' colli • ' : ''}${tripTotalKg} kg</div>
                             <div><strong>🎯 Destinazioni:</strong> ${tripOrders.length}</div>
                         </div>
                         ${tripOrders.length > 0 ? `
@@ -1998,7 +2010,7 @@
                                 <div style="font-weight: 700; color: #38bdf8; margin-bottom: 10px;">📋 Ordini del Viaggio:</div>
                                 ${ordersHTML}
                             </div>
-                        ` : '<div style="margin-top: 10px; padding: 8px; background: #2a1a1a; border-radius: 6px; color: #a0a0a0; font-size: 12px;">Nessun ordine assegnato</div>'}
+                        ` : '<div style="margin-top: 10px; padding: 8px; background: #2a1a1a; border-radius: 6px; color: #a0a0a0; font-size: 12px;">⚠️ Nessun ordine assegnato</div>'}
                         <div class="task-actions" style="display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap;">
                             <button class="btn btn-primary btn-small" onclick="openEditTripModal(${trip.id})" style="flex: 1; min-width: 100px;">✏️ Modifica</button>
                             <button class="btn btn-secondary btn-small" onclick="printTrip(${trip.id})" style="flex: 1; min-width: 100px;">🖨️ Stampa</button>
@@ -2961,7 +2973,7 @@
                                         <div style="font-size: 12px; color: #999; margin-top: 4px;">
                                             Scadenza: ${batch.expiry || 'N/A'} | Disponibile: <span style="color: #86efac;">${residual.toFixed(1)} kg</span>
                                         </div>
-                                        <div style="font-size: 11px; color: #fbbf24; margin-top: 4px;">
+                                        <div style="font-size: 13px; color: #fbbf24; margin-top: 4px;">
                                             → Assegnerà: ${willAssign.toFixed(1)} kg
                                         </div>
                                     </div>
@@ -3051,18 +3063,18 @@
 
             tbody.innerHTML = currentOrderProducts.map((product, idx) => {
                 // Se il prodotto ha un lotto selezionato, mostralo
-                let batchesDisplay = '<span style="color: #999; font-size: 10px;">-</span>';
+                let batchesDisplay = '<span style="color: #999; font-size: 13px;">-</span>';
                 
                 if (product.batch) {
                     // Il lotto è stato selezionato durante l'aggiunta
-                    batchesDisplay = `<span style="display: inline-block; background: #2d5a3d; padding: 2px 6px; margin: 2px; border-radius: 3px; font-size: 10px; color: #86efac;">${product.batch}</span>`;
+                    batchesDisplay = `<span style="display: inline-block; background: #2d5a3d; padding: 2px 6px; margin: 2px; border-radius: 3px; font-size: 13px; color: #86efac;">${product.batch}</span>`;
                 } else {
                     // Fallback: cerca i lotti disponibili
                     const article = articoli.find(a => a.codice === product.product);
                     if (article) {
                         const batches = (currentAvailableBatches || []).filter(b => b.articolo === article.codice);
                         if (batches.length > 0) {
-                            batchesDisplay = batches.map(b => `<span style="display: inline-block; background: #3a6b7a; padding: 2px 6px; margin: 2px; border-radius: 3px; font-size: 10px;">${b.batch}</span>`).join('');
+                            batchesDisplay = batches.map(b => `<span style="display: inline-block; background: #3a6b7a; padding: 2px 6px; margin: 2px; border-radius: 3px; font-size: 13px;">${b.batch}</span>`).join('');
                         }
                     }
                 }
@@ -3078,7 +3090,7 @@
                                 return `${colli} colli • ${kg.toFixed(1)} kg`;
                             })()}
                         </td>
-                        <td style="padding: 8px; text-align: center; font-size: 11px;">${batchesDisplay}</td>
+                        <td style="padding: 8px; text-align: center; font-size: 13px;">${batchesDisplay}</td>
                         <td style="padding: 8px; text-align: center;">
                             <button type="button" onclick="openEditProductModal(${idx})" style="background: #0066cc; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 12px; margin-right: 4px;">✏️ Modifica</button>
                             <button type="button" onclick="removeProductFromOrder(${idx})" style="background: #dc2626; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 12px;">🗑️ Rimuovi</button>
@@ -3221,7 +3233,7 @@
                     <div style="display: grid; grid-template-columns: 1fr auto; gap: 10px;">
                         <div>
                             <div style="color: #a0d4ff; font-weight: bold; margin-bottom: 4px;">🏷️ Lotto: ${batch.batch}</div>
-                            <div style="color: #999; font-size: 11px;">
+                            <div style="color: #999; font-size: 13px;">
                                 Disponibile: <span style="color: #86efac; font-weight: bold;">${(batch.quantityKg || 0).toFixed(1)} kg</span>
                             </div>
                         </div>
@@ -3517,7 +3529,7 @@
                 <tr style="border-bottom: 1px solid #4d4d4d;">
                     <td style="padding: 8px; color: #e0e0e0;">
                         <div style="font-weight: 600;">${batch.batch}</div>
-                        <div style="font-size: 11px; color: #a0a0a0;">
+                        <div style="font-size: 13px; color: #a0a0a0;">
                             Scad: ${batch.expiry || 'N/A'} | Pos: ${batch.shelfPosition || 'N/A'}
                         </div>
                     </td>
@@ -5580,7 +5592,7 @@
                         <strong>${getClientName(order)}</strong> - ${order.product} (${order.quantity}kg)
                         <span style="color:#a0a0a0;margin-left:8px;">${new Date(order.dateTime).toLocaleTimeString('it-IT', {hour:'2-digit',minute:'2-digit'})}</span>
                     </div>
-                    <button class="btn btn-primary" onclick="addOrderToCurrentTrip(${order.id})" style="padding:4px 8px;font-size:11px;">➕ Aggiungi</button>
+                    <button class="btn btn-primary" onclick="addOrderToCurrentTrip(${order.id})" style="padding:4px 8px;font-size: 13px;">➕ Aggiungi</button>
                 </div>
             `).join('');
         }
@@ -5597,8 +5609,8 @@
             container.innerHTML = tripOrders.map((order, index) => `
                 <div style="display:flex;align-items:center;padding:10px;background:#3d3d3d;margin-bottom:8px;border-radius:4px;border-left:4px solid #16a34a;">
                     <div style="display:flex;flex-direction:column;gap:6px;margin-right:10px;">
-                        <button class="btn btn-secondary" onclick="moveOrderUp(${tripId}, ${index})" ${index === 0 ? 'disabled' : ''} style="padding:2px 6px;font-size:10px;">▲</button>
-                        <button class="btn btn-secondary" onclick="moveOrderDown(${tripId}, ${index})" ${index === tripOrders.length - 1 ? 'disabled' : ''} style="padding:2px 6px;font-size:10px;">▼</button>
+                        <button class="btn btn-secondary" onclick="moveOrderUp(${tripId}, ${index})" ${index === 0 ? 'disabled' : ''} style="padding:2px 6px;font-size: 13px;">▲</button>
+                        <button class="btn btn-secondary" onclick="moveOrderDown(${tripId}, ${index})" ${index === tripOrders.length - 1 ? 'disabled' : ''} style="padding:2px 6px;font-size: 13px;">▼</button>
                     </div>
                     <div style="flex:1;">
                         <div style="font-weight:600;font-size:14px;margin-bottom:4px;color:#16a34a;">#${index + 1} - ${getClientName(order)}</div>
@@ -5608,8 +5620,8 @@
                         </div>
                     </div>
                     <div style="display:flex;gap:6px;">
-                        <button class="btn btn-secondary" onclick="openEditOrderModal(${order.id})" style="padding:4px 8px;font-size:11px;">✏️ Modifica</button>
-                        <button class="btn btn-danger" onclick="removeOrderFromCurrentTrip(${order.id})" style="padding:4px 8px;font-size:11px;">✖</button>
+                        <button class="btn btn-secondary" onclick="openEditOrderModal(${order.id})" style="padding:4px 8px;font-size: 13px;">✏️ Modifica</button>
+                        <button class="btn btn-danger" onclick="removeOrderFromCurrentTrip(${order.id})" style="padding:4px 8px;font-size: 13px;">✖</button>
                     </div>
                 </div>
             `).join('');
@@ -5846,3 +5858,4 @@
     </div>
 </body>
 </html>
+

@@ -851,12 +851,12 @@
         .modal-actions .btn {
             padding: 6px 10px;
             min-height: 16px;
-            font-size: 11px;
+            font-size: 13px;
             flex: 0 1 auto;
         }
 
         .modal-actions .btn::before {
-            font-size: 11px;
+            font-size: 13px;
         }
 
         .modal-actions .btn span {
@@ -1173,7 +1173,7 @@
             }
 
             .quick-actions .btn span {
-                font-size: 10px !important;
+                font-size: 13px !important;
                 text-align: center !important;
                 line-height: 1.2 !important;
             }
@@ -1219,7 +1219,7 @@
             .header .btn-danger {
                 width: auto;
                 min-height: auto;
-                font-size: 11px;
+                font-size: 13px;
                 padding: 6px 10px;
                 gap: 4px;
             }
@@ -1229,7 +1229,7 @@
             }
 
             .header .btn-danger span {
-                font-size: 10px;
+                font-size: 13px;
             }
 
             .quick-actions {
@@ -1242,21 +1242,21 @@
                 width: 100%;
                 padding: 3px 6px;
                 gap: 3px;
-                font-size: 9px;
+                font-size: 13px;
                 min-height: 16px;
             }
 
             .quick-actions .btn::before {
-                font-size: 10px;
+                font-size: 13px;
             }
 
             .quick-actions .btn span {
-                font-size: 10px;
+                font-size: 13px;
                 line-height: 1;
             }
 
             .btn::before {
-                font-size: 10px;
+                font-size: 13px;
             }
 
             .btn span {
@@ -1508,7 +1508,7 @@
             display: inline-flex;
             align-items: center;
             gap: 5px;
-            font-size: 11px;
+            font-size: 13px;
             color: #888;
             margin-left: 10px;
         }
@@ -1732,6 +1732,7 @@
         // Sistema viaggi (sincronizzato con orders-planner)
         let trips = [];
         let orders = [];
+        let operators = [];
         
         // Clienti e articoli per il modal di modifica ordine
         let clienti = [];
@@ -1889,7 +1890,7 @@
                 return d.toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
             };
             
-            let html = '<div style="margin-top: 8px; padding: 8px; background: #252525; border-radius: 4px; font-size: 11px;">';
+            let html = '<div style="margin-top: 8px; padding: 8px; background: #252525; border-radius: 4px; font-size: 13px;">';
             html += '<div style="color: #888; margin-bottom: 4px; font-weight: bold;">📜 Storico:</div>';
             
             if (order.createdAt) {
@@ -1911,15 +1912,19 @@
 
         async function loadTripsFromPlanner() {
             try {
+                console.log('🔄 Caricamento trips e ordini via DataSync...');
                 trips = await DataSync.loadTrips();
                 orders = await DataSync.loadOrders();
+                console.log('✅ Dati caricati - Trips:', trips.length, 'Orders:', orders.length);
+                console.log('📊 Orders:', orders);
             } catch (error) {
-                console.error('Errore caricamento dati:', error);
+                console.error('❌ Errore caricamento dati:', error);
                 // Fallback a localStorage
                 const storedTrips = localStorage.getItem('trips');
                 const storedOrders = localStorage.getItem('orders');
                 trips = storedTrips ? JSON.parse(storedTrips) : [];
                 orders = storedOrders ? JSON.parse(storedOrders) : [];
+                console.log('🔄 Fallback localStorage - Trips:', trips.length, 'Orders:', orders.length);
             }
         }
 
@@ -2351,7 +2356,7 @@
                                         <div style="font-size: 12px; color: #999; margin-top: 4px;">
                                             Scadenza: ${batch.expiry || 'N/A'} | Disponibile: <span style="color: #86efac;">${residual.toFixed(1)} kg</span>
                                         </div>
-                                        <div style="font-size: 11px; color: #fbbf24; margin-top: 4px;">
+                                        <div style="font-size: 13px; color: #fbbf24; margin-top: 4px;">
                                             → Assegnerà: ${willAssign.toFixed(1)} kg
                                         </div>
                                     </div>
@@ -2436,17 +2441,17 @@
             const totalQty = currentOrderProducts.reduce((sum, p) => sum + p.quantity, 0);
 
             tbody.innerHTML = currentOrderProducts.map((product, idx) => {
-                let batchesDisplay = '<span style="color: #999; font-size: 10px;">-</span>';
+                let batchesDisplay = '<span style="color: #999; font-size: 13px;">-</span>';
                 
                 if (product.batch) {
-                    batchesDisplay = `<span style="display: inline-block; background: #2d5a3d; padding: 2px 6px; margin: 2px; border-radius: 3px; font-size: 10px; color: #86efac;">${product.batch}</span>`;
+                    batchesDisplay = `<span style="display: inline-block; background: #2d5a3d; padding: 2px 6px; margin: 2px; border-radius: 3px; font-size: 13px; color: #86efac;">${product.batch}</span>`;
                 }
 
                 return `
                     <tr style="border-bottom: 1px solid #4d4d4d;">
                         <td style="padding: 8px; text-align: left; color: #e0e0e0;">${product.product}</td>
                         <td style="padding: 8px; text-align: right; color: #a0d4ff;">${product.quantity.toFixed(1)} kg</td>
-                        <td style="padding: 8px; text-align: center; font-size: 11px;">${batchesDisplay}</td>
+                        <td style="padding: 8px; text-align: center; font-size: 13px;">${batchesDisplay}</td>
                         <td style="padding: 8px; text-align: center;">
                             <button type="button" style="background: #dc2626; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 12px;" onclick="removeProductFromOrder(${idx})">🗑️ Rimuovi</button>
                         </td>
@@ -2625,7 +2630,7 @@
                                             const colli = Math.round((p.quantity || 0) / weight);
                                             return `${p.product || 'N/D'} (${colli} colli • ${p.quantity || 0}kg)`;
                                         }).join(' + ') || order.product || 'N/D'}
-                                        <button onclick="removeOrderFromTrip(${tripId}, ${order.id})" style="float: right; background: #dc2626; color: white; border: none; padding: 2px 8px; border-radius: 2px; font-size: 11px; cursor: pointer;" title="Rimuovi ordine">✕ Rimuovi</button>
+                                        <button onclick="removeOrderFromTrip(${tripId}, ${order.id})" style="float: right; background: #dc2626; color: white; border: none; padding: 2px 8px; border-radius: 2px; font-size: 13px; cursor: pointer;" title="Rimuovi ordine">✕ Rimuovi</button>
                                     </div>
                                 `).join('') : '<div style="color: #888; padding: 10px;">Nessun ordine nel viaggio</div>'}
                             </div>
@@ -3161,19 +3166,20 @@
                     fetch(`${API_URL}/auth/admins/public`)
                 ]);
                 
-                const operators = operatorsRes.ok ? await operatorsRes.json() : [];
+                const ops = operatorsRes.ok ? await operatorsRes.json() : [];
                 const admins = adminsRes.ok ? await adminsRes.json() : [];
                 
                 // Aggiungi role field
-                const opsWithRole = operators.map(op => ({ ...op, role: 'slave' }));
+                const opsWithRole = ops.map(op => ({ ...op, role: 'slave' }));
                 const adminsWithRole = admins.map(a => ({ ...a, role: 'master' }));
                 
                 // Combina: admin prima, poi operatori, entrambi alfabetici
                 const sortedAdmins = adminsWithRole.sort((a, b) => a.username.localeCompare(b.username));
                 const sortedOps = opsWithRole.sort((a, b) => a.username.localeCompare(b.username));
-                allOperators = [...sortedAdmins, ...sortedOps];
+                operators = [...sortedAdmins, ...sortedOps];
+                allOperators = operators;
                 
-                console.log('✅ Operatori/Admin caricati:', allOperators.length);
+                console.log('✅ Operatori/Admin caricati:', operators.length);
             } catch (error) {
                 console.error('Errore caricamento operatori:', error);
             }
@@ -3237,12 +3243,14 @@
 
         async function loadTasks() {
             try {
+                console.log('🔄 Caricamento tasks dall\'API:', `${API_URL}/tasks`);
                 const response = await fetch(`${API_URL}/tasks`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (!response.ok) throw new Error('Errore caricamento task');
                 
                 allTasks = await response.json();
+                console.log('✅ Tasks caricati:', allTasks.length, allTasks);
                 
                 // Auto-sposta i task scaduti al prossimo giorno lavorativo
                 await moveOverdueTasksToNextWorkday(allTasks);
@@ -3253,6 +3261,7 @@
                 });
                 if (response2.ok) {
                     allTasks = await response2.json();
+                    console.log('✅ Tasks ricaricati dopo spostamento:', allTasks.length);
                 }
                 
                 renderTasks();
@@ -3270,8 +3279,11 @@
             // Get today's date in YYYY-MM-DD format
             const today = new Date().toISOString().split('T')[0];
             
-            // Filter trips for today
-            let todayTrips = trips.filter(trip => trip.date === today);
+            // Filter trips for today OR without a specific date
+            let todayTrips = trips.filter(trip => {
+                if (!trip.date) return true; // Mostra anche i viaggi senza data
+                return trip.date === today;
+            });
 
             // Se in modalità "Task Operatori", filtra solo i viaggi con ordini assegnati
             if (currentViewMode === 'operatorTasks') {
@@ -3308,60 +3320,72 @@
                     clientOrders[client].push(order);
                 });
                 
-                // Verifica se tutti gli ordini sono assegnati
-                const allAssigned = tripOrders.every(order => order.assignedOperator?.id);
-                const statusColor = trip.acceptedAt ? '#16a34a' : '#ea580c';
-                const statusText = trip.acceptedAt ? '✅ Accettato' : '⏳ In attesa';
+                // Calcola totali colli
+                const tripTotalColli = tripOrders.reduce((sum, o) => {
+                    return sum + (getOrderTotalColli(o) || 0);
+                }, 0);
+                
+                const tripTotalKg = Object.values(totals).reduce((sum, qty) => sum + qty, 0);
+                
+                // Ottieni il nome dell'operatore
+                let operatorName = 'Non assegnato';
+                if (trip.assignedOperatorId) {
+                    const foundOperator = allOperators?.find(op => op.id === trip.assignedOperatorId);
+                    if (foundOperator) {
+                        operatorName = foundOperator.name || foundOperator.username || 'Non assegnato';
+                    }
+                }
+                
+                // Formatta data e ora
+                const dateObj = trip.date instanceof Date ? trip.date : (trip.date ? new Date(trip.date) : null);
+                const timeOnly = dateObj ? dateObj.toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'}) : 'N/D';
+                const dateOnly = dateObj ? dateObj.toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit', year:'numeric'}) : 'N/D';
+                
+                // HTML per gli ordini dentro il viaggio
+                const ordersHTML = tripOrders.map((order, index) => {
+                    const fullInfo = getOrderFullInfo(order.id);
+                    const productsStr = fullInfo?.products?.map(p => {
+                        const weight = extractWeightPerCollo(p.product || '');
+                        const colli = Math.round(p.quantity / weight);
+                        return `${p.product} (${colli} colli • ${p.quantity}kg)`;
+                    }).join(' + ') || fullInfo?.product;
+                    return `
+                        <div style="margin-bottom: 10px; padding: 10px; background: #1a1a1a; border-left: 4px solid #3b82f6; border-radius: 4px;">
+                            <div style="font-weight: 600; color: #38bdf8; margin-bottom: 6px;">${fullInfo?.client || 'Cliente'} <span style="background: #38bdf8; color: white; padding: 2px 6px; border-radius: 3px; font-size: 13px;">Tappa ${index + 1}</span></div>
+                            <p style="margin: 4px 0; color: #a0a0a0; font-size: 13px;"><strong>📦 Prodotti:</strong> ${productsStr}</p>
+                            <p style="margin: 4px 0; color: #a0a0a0; font-size: 13px;"><strong>Tipo:</strong> ${order.type === 'consegnato' ? '📦 Consegnato' : '🏪 Ritira Cliente'}</p>
+                        </div>
+                    `;
+                }).join('');
                 
                 return `
-                    <div class="task-card" style="border-left: 4px solid #38bdf8;">
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-                            <div style="flex: 1;">
-                                <h3 style="margin: 0; color: #38bdf8; font-size: 1.1em;">${trip.name || 'Viaggio senza nome'}</h3>
-                                <div style="font-size: 0.85em; color: #999; margin-top: 3px;">🚛 ${vehicleName}</div>
+                    <div class="task-card" style="border-left: 4px solid ${tripOrders.length === 0 ? '#6b7280' : '#38bdf8'};">
+                        <div class="task-header">
+                            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                                <span style="font-size: 32px;">🚐</span>
+                                <div>
+                                    <div style="font-size: 18px; font-weight: 700; color: #e0e0e0;">${trip.name || 'Senza nome'}</div>
+                                    <div style="font-size: 14px; color: #a0a0a0; margin-top: 2px;">Viaggio: <strong style="color: #38bdf8;">${vehicleName}</strong></div>
+                                </div>
                             </div>
                             <div style="display: flex; gap: 8px; align-items: center;">
-                                <span style="background: ${statusColor}; color: #fff; padding: 4px 10px; border-radius: 12px; font-size: 0.85em; font-weight: bold;">${statusText}</span>
-                                <span style="color: #999; font-size: 0.9em; font-weight: bold;">${tripOrders.length} ordini</span>
+                                <span style="background: ${trip.acceptedAt ? '#16a34a' : '#ea580c'}; color: white; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 600;">${trip.acceptedAt ? '✅ Accettato' : '⏳ In attesa'}</span>
+                                <span style="background: ${tripOrders.length === 0 ? '#6b7280' : '#38bdf8'}; color: white; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 600;">${tripOrders.length === 0 ? 'Vuoto' : tripOrders.length + ' ordini'}</span>
                             </div>
                         </div>
-                        
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
-                            <div style="background: #2d2d2d; padding: 8px; border-radius: 4px; border-left: 3px solid ${allAssigned ? '#16a34a' : '#ea580c'};">
-                                <div style="font-size: 0.85em; color: #999;">Assegnati</div>
-                                <div style="font-size: 1.1em; font-weight: bold; color: #e0e0e0;">${tripOrders.filter(o => o.assignedOperator?.id).length}/${tripOrders.length}</div>
-                            </div>
-                            <div style="background: #2d2d2d; padding: 8px; border-radius: 4px; border-left: 3px solid #3b82f6;">
-                                <div style="font-size: 0.85em; color: #999;">Clienti</div>
-                                <div style="font-size: 1.1em; font-weight: bold; color: #e0e0e0;">${Object.keys(clientOrders).length}</div>
-                            </div>
+                        <div style="margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px; color: #a0a0a0;">
+                            <div><strong>⏰ Partenza:</strong> ${dateOnly} • ${timeOnly}</div>
+                            <div><strong>👤 Operatore:</strong> ${operatorName}</div>
+                            <div><strong>📦 Quantità Tot:</strong> ${tripTotalColli > 0 ? tripTotalColli + ' colli • ' : ''}${tripTotalKg} kg</div>
+                            <div><strong>🎯 Destinazioni:</strong> ${tripOrders.length}</div>
                         </div>
-                        
-                        <div style="margin-bottom: 12px;">
-                            <strong style="color: #ccc; font-size: 0.95em;">📍 Clienti:</strong>
-                            <div style="margin-top: 6px;">
-                                ${Object.entries(clientOrders).map(([client, orders]) => `
-                                    <div style="color: #999; font-size: 0.9em; padding: 4px 0; padding-left: 8px; border-left: 2px solid #3b82f6;">
-                                        <div style="font-weight: 500; color: #ccc;">${client}</div>
-                                        <div style="font-size: 0.85em; color: #777;">${orders.length} ordine${orders.length > 1 ? 'i' : ''}</div>
-                                    </div>
-                                `).join('')}
+                        ${tripOrders.length > 0 ? `
+                            <div style="margin-top: 15px; padding: 12px; background: #1a2a2a; border-radius: 6px;">
+                                <div style="font-weight: 700; color: #38bdf8; margin-bottom: 10px;">📋 Ordini del Viaggio:</div>
+                                ${ordersHTML}
                             </div>
-                        </div>
-
-                        <div style="background: rgba(37, 99, 235, 0.1); padding: 10px; border-radius: 4px; margin-bottom: 12px;">
-                            <strong style="color: #38bdf8; font-size: 0.95em;">📊 Totali Prodotti:</strong>
-                            <div style="margin-top: 8px;">
-                                ${Object.entries(totals).map(([product, quantity]) => `
-                                    <div style="display: flex; justify-content: space-between; color: #ccc; font-size: 0.9em; padding: 3px 0;">
-                                        <span>${product}</span>
-                                        <span style="font-weight: bold; color: #38bdf8;">${quantity} kg</span>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-
-                        <div class="task-actions" style="margin-top: 12px;">
+                        ` : '<div style="margin-top: 10px; padding: 8px; background: #2a1a1a; border-radius: 6px; color: #a0a0a0; font-size: 13px;">⚠️ Nessun ordine assegnato</div>'}
+                        <div class="task-actions" style="display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap;">
                             <button class="btn btn-success btn-small" onclick="acceptTrip(${trip.id})" style="background: #22c55e;">✅ Accetta</button>
                             <button class="btn btn-primary btn-small" onclick="openAssignTripModal(${trip.id})" style="background: #0ea5e9;">👤 Assegna</button>
                             <button class="btn btn-primary btn-small" onclick="openEditTripModal(${trip.id})" style="background: #3b82f6;">✏️ Modifica Viaggio</button>
@@ -3476,7 +3500,7 @@
                     ? 'border-left: 4px solid #ef4444; background: #3d2626;' 
                     : '';
                 const overdueLabel = isOverdue 
-                    ? `<span style="background: #dc2626; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-left: 8px;">⚠️ SCADUTO ${daysOverdue}${daysOverdue === 1 ? ' giorno' : ' giorni'}</span>`
+                    ? `<span style="background: #dc2626; color: white; padding: 4px 8px; border-radius: 4px; font-size: 13px; font-weight: bold; margin-left: 8px;">⚠️ SCADUTO ${daysOverdue}${daysOverdue === 1 ? ' giorno' : ' giorni'}</span>`
                     : '';
                 // NOTE: visualizza note filtrate e leggibili
                 let noteHtml = '';
@@ -3503,7 +3527,7 @@
                                 }
                                 if (testo.length > 0) {
                                     const autorePart = autore ? `<strong>${autore}:</strong> ` : '';
-                                    return `<div style=\\"margin: 4px 0; font-size: 11px; color: #b0b0b0;\\\">${autorePart}${testo}</div>`;
+                                    return `<div style=\\"margin: 4px 0; font-size: 13px; color: #b0b0b0;\\\">${autorePart}${testo}</div>`;
                                 }
                                 return '';
                             }).join('') + `</div>`;
@@ -3550,8 +3574,8 @@
                             </div>
                             ${firstTask.description ? `<p style="margin: 5px 0; font-size: 12px; color: #a0a0a0;">${firstTask.description}</p>` : ''}
                             <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
-                                ${firstTask.estimatedMinutes ? `<span style="background: #2d2d2d; padding: 3px 8px; border-radius: 3px; font-size: 11px; color: #b0b0b0;">⏱️ ${firstTask.estimatedMinutes} min</span>` : ''}
-                                ${firstTask.priority ? `<span style="background: #2d2d2d; padding: 3px 8px; border-radius: 3px; font-size: 11px; color: #b0b0b0;">${formatPriority(firstTask.priority)}</span>` : ''}
+                                ${firstTask.estimatedMinutes ? `<span style="background: #2d2d2d; padding: 3px 8px; border-radius: 3px; font-size: 13px; color: #b0b0b0;">⏱️ ${firstTask.estimatedMinutes} min</span>` : ''}
+                                ${firstTask.priority ? `<span style="background: #2d2d2d; padding: 3px 8px; border-radius: 3px; font-size: 13px; color: #b0b0b0;">${formatPriority(firstTask.priority)}</span>` : ''}
                                 <button class="btn btn-primary" data-icon="✏️" onclick="openEditTaskModal(${firstTask.id})" style="padding: 6px 10px; font-size: 14px; min-height: auto; gap: 4px;"><span style="font-size: 14px;">Modifica</span></button>
                             </div>
                         </div>
@@ -5589,15 +5613,38 @@
         }
 
         function showDayTasksModal(dateStr) {
+            console.log('🔍 showDayTasksModal called with:', dateStr);
+            console.log('📊 allTasks disponibili:', allTasks.length);
+            console.log('📦 orders disponibili:', orders.length);
+            
+            // Verifica che gli elementi del DOM esistono
+            const dayTasksCard = document.getElementById('dayTasksCard');
+            const dayTasksList = document.getElementById('dayTasksList');
+            const dayTasksTitle = document.getElementById('dayTasksTitle');
+            
+            if (!dayTasksCard || !dayTasksList || !dayTasksTitle) {
+                console.error('❌ Elementi DOM mancanti!');
+                console.error('  dayTasksCard:', !!dayTasksCard);
+                console.error('  dayTasksList:', !!dayTasksList);
+                console.error('  dayTasksTitle:', !!dayTasksTitle);
+                return;
+            }
+            
             // Salva la data visualizzata
             lastViewedDayDate = dateStr;
             
             // Filtra i task per il giorno selezionato
             // ESCLUDI i task con titolo "ritiro -" perché sono mostrati nella sezione Ritiri separata
             let dayTasks = allTasks.filter(task => {
-                if (!task.scheduledAt) return false;
-                if (task.scheduledAt.split('T')[0] !== dateStr) return false;
-                // Escludi i task di ritiro (sono già mostrati nella sezione Ritiri)
+                // Mostra task con data corrispondente
+                if (task.scheduledAt && task.scheduledAt.split('T')[0] === dateStr) return true;
+                return false;
+            });
+            
+            // Separa i task senza data (non schedulati)
+            let unscheduledTasks = allTasks.filter(task => {
+                if (task.scheduledAt) return false;  // Ha una data
+                // Escludi i task di ritiro
                 if (task.title && task.title.toLowerCase().startsWith('ritiro -')) return false;
                 return true;
             });
@@ -5633,11 +5680,6 @@
                 // Mostra solo i task degli operatori e non completati
                 dayTasks = dayTasks.filter(t => t.assignedOperator?.id !== currentUser.id && t.assignedOperator?.id && !t.completed);
             }
-
-            // Aggiorna la card del giorno
-            const dayTasksCard = document.getElementById('dayTasksCard');
-            const dayTasksList = document.getElementById('dayTasksList');
-            const dayTasksTitle = document.getElementById('dayTasksTitle');
 
             // Format date for display
             const date = new Date(dateStr + 'T00:00:00');
@@ -5688,7 +5730,7 @@
                             </div>
                             <span style="font-weight: bold; color: #ff9800; font-size: 16px;">${totalTasks}</span>
                             <span style="color: #b0b0b0; font-size: 12px;">Task</span>
-                            ${unassignedTasks > 0 ? `<span style="color: #888; font-size: 11px;">(${unassignedTasks} da assegnare)</span>` : ''}
+                            ${unassignedTasks > 0 ? `<span style="color: #888; font-size: 13px;">(${unassignedTasks} da assegnare)</span>` : ''}
                         </div>
                     `;
                 }
@@ -5724,19 +5766,38 @@
                     summaryHtml += `
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <div style="position: relative; width: 24px; height: 24px;">
-                                <div style="position: absolute; top: 0; right: 0; width: 0; height: 0; border-style: solid; border-width: 0 18px 18px 0; border-color: transparent #38bdf8 transparent transparent; border-radius: 0 4px 0 0;"></div>
+                                <div style="position: absolute; top: 0; right: 0; width: 0; height: 0; border-style: solid; border-width: 0 18px 18px 0; border-color: transparent #0066ff transparent transparent; border-radius: 0 4px 0 0;"></div>
                             </div>
-                            <span style="font-weight: bold; color: #38bdf8; font-size: 16px;">${summaryDayTrips.length}</span>
+                            <span style="font-weight: bold; color: #0066ff; font-size: 16px;">${summaryDayTrips.length}</span>
                             <span style="color: #b0b0b0; font-size: 12px;">Consegne</span>
                         </div>
                     `;
+                }
+
+                // Viaggi - Azzurro
+                if (trips.length > 0) {
+                    const tripsForDay = trips.filter(t => t.date && new Date(t.date).toLocaleDateString('it-IT') === dateStr);
+                    if (tripsForDay.length > 0) {
+                        summaryHtml += `
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <div style="position: relative; width: 24px; height: 24px;">
+                                    <div style="position: absolute; top: 0; right: 0; width: 0; height: 0; border-style: solid; border-width: 0 18px 18px 0; border-color: transparent #38bdf8 transparent transparent; border-radius: 0 4px 0 0;"></div>
+                                </div>
+                                <span style="font-weight: bold; color: #38bdf8; font-size: 16px;">${tripsForDay.length}</span>
+                                <span style="color: #b0b0b0; font-size: 12px;">Viaggi</span>
+                            </div>
+                        `;
+                    }
                 }
                 
                 summaryHtml += `</div>`;
             }
 
-            if (dayTasks.length === 0 && summaryDayTrips.length === 0 && dayRitiroOrders.length === 0 && dayUnassignedPickupOrders.length === 0) {
-                dayTasksList.innerHTML = '<div class="empty-state"><p>Nessun task o ordine per questo giorno</p></div>';
+            if (dayTasks.length === 0 && summaryDayTrips.length === 0 && dayRitiroOrders.length === 0 && dayUnassignedPickupOrders.length === 0 && unscheduledTasks.length === 0) {
+                console.log('ℹ️ Nessun dato per la data:', dateStr);
+                console.log('  - allTasks:', allTasks.length, 'dayTasks:', dayTasks.length);
+                console.log('  - orders:', orders.length, 'summaryDayTrips:', summaryDayTrips.length);
+                dayTasksList.innerHTML = '<div class="empty-state" style="text-align: center; padding: 30px; color: #999;"><p>📭 Nessun task o ordine per questo giorno</p></div>';
                 dayTasksCard.style.display = 'block';
                 return;
             }
@@ -5768,7 +5829,7 @@
                             };
                             
                             // Costruisci la timeline
-                            let timelineHtml = '<div style="margin-top: 8px; padding: 8px; background: #252525; border-radius: 4px; font-size: 11px;">';
+                            let timelineHtml = '<div style="margin-top: 8px; padding: 8px; background: #252525; border-radius: 4px; font-size: 13px;">';
                             timelineHtml += '<div style="color: #888; margin-bottom: 4px; font-weight: bold;">📜 Storico:</div>';
                             
                             if (task.createdAt) {
@@ -5794,7 +5855,7 @@
                                         <div style="flex: 1;">
                                             <h4 style="margin: 0 0 4px 0; color: #fff;">${task.title}</h4>
                                             <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 4px;">
-                                                <span style="background: ${statusColor}; color: white; padding: 2px 8px; border-radius: 3px; font-size: 11px;">${statusIcon} ${status}</span>
+                                                <span style="background: ${statusColor}; color: white; padding: 2px 8px; border-radius: 3px; font-size: 13px;">${statusIcon} ${status}</span>
                                                 ${operatorInfo}
                                             </div>
                                             ${task.description ? `<p style="margin: 4px 0; color: #a0a0a0; font-size: 13px;">${task.description}</p>` : ''}
@@ -5819,52 +5880,149 @@
                 `;
             }
             
+            // ============ CARD TASK SENZA DATA ============
+            if (unscheduledTasks.length > 0 && dayTasks.length === 0 && summaryDayTrips.length === 0 && dayRitiroOrders.length === 0 && dayUnassignedPickupOrders.length === 0) {
+                // Mostra i task non schedulati solo se non ci sono altre cose per il giorno
+                contentHtml += `
+                    <div style="background: #2d3d2d; border: 1px solid #4d6d4d; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <h3 style="margin: 0; color: #86efac; font-size: 16px;">📭 Task Senza Data (${unscheduledTasks.length})</h3>
+                            <span style="font-size: 12px; color: #666;">Clicca su una data per assegnare</span>
+                        </div>
+                        ${unscheduledTasks.map(task => {
+                            const status = task.completed ? 'Completato' : (task.paused ? 'In Pausa' : (task.acceptedAt ? 'Accettato' : 'In Sospeso'));
+                            const statusIcon = task.completed ? '✅' : (task.paused ? '⏸️' : (task.acceptedAt ? '👍' : '📋'));
+                            const statusColor = task.completed ? '#10b981' : (task.paused ? '#f59e0b' : (task.acceptedAt ? '#3b82f6' : '#8b5cf6'));
+                            const operatorInfo = task.assignedOperator 
+                                ? `<span style="color: #10b981; font-size: 12px;">👤 ${task.assignedOperator.username}</span>`
+                                : `<span style="color: #f59e0b; font-size: 12px;">👤 Non assegnato</span>`;
+                            
+                            return `
+                                <div style="background: #1a1a1a; border-left: 3px solid #86efac; padding: 12px; margin: 8px 0; border-radius: 4px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                                        <div style="flex: 1;">
+                                            <h4 style="margin: 0 0 4px 0; color: #fff;">${task.title}</h4>
+                                            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 4px;">
+                                                <span style="background: ${statusColor}; color: white; padding: 2px 8px; border-radius: 3px; font-size: 13px;">${statusIcon} ${status}</span>
+                                                ${operatorInfo}
+                                            </div>
+                                            ${task.description ? `<p style="margin: 4px 0; color: #a0a0a0; font-size: 13px;">${task.description}</p>` : ''}
+                                        </div>
+                                    </div>
+                                    <div style="margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap;">
+                                        <button class="btn btn-primary btn-small" onclick="openEditTaskModal(${task.id})" style="background: #3b82f6; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">✏️ Modifica</button>
+                                        <button class="btn btn-secondary btn-small" onclick="handleDeleteTask(${task.id})" style="background: #6b7280; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">🗑️ Rimuovi</button>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+            }
+            
             // ============ CARD CONSEGNE (CON VIAGGIO) ============
-            const ordersForFiltering = orders.filter(o => o.type === 'consegnato');
-            const allTripsWithOrders = trips.filter(trip => {
-                if (!trip.sequence || trip.sequence.length === 0) return false;
-                return ordersForFiltering.some(o => trip.sequence.includes(o.id));
-            }).filter(trip => {
-                const tripOrders = getTripOrders(trip.id);
-                return tripOrders.some(o => o.dateTime?.split('T')[0] === dateStr);
+            // Mostra TUTTI i viaggi per la data selezionata (inclusi quelli senza ordini)
+            const allTripsForDate = trips.filter(trip => {
+                if (!trip.date) return false;
+                // Converti trip.date se è un oggetto Date
+                const tripDateStr = trip.date instanceof Date 
+                    ? trip.date.toISOString().split('T')[0]
+                    : (typeof trip.date === 'string' ? trip.date.split('T')[0] : null);
+                return tripDateStr === dateStr;
             });
 
-            if (allTripsWithOrders.length > 0) {
+            if (allTripsForDate.length > 0) {
                 contentHtml += `
                     <div style="background: #1a2332; border: 1px solid #38bdf8; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                            <h3 style="margin: 0; color: #38bdf8; font-size: 16px;">� Viaggi (${allTripsWithOrders.length})</h3>
+                            <h3 style="margin: 0; color: #38bdf8; font-size: 16px;">🚐 Viaggi (${allTripsForDate.length})</h3>
                         </div>
-                        ${allTripsWithOrders.map(trip => {
-                            const tripOrders = getTripOrders(trip.id).filter(o => o.dateTime?.split('T')[0] === dateStr);
-                            return `
-                                <div style="background: #0f1621; border-left: 4px solid #38bdf8; padding: 12px; margin: 8px 0; border-radius: 4px;">
-                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                        <h4 style="margin: 0; color: #38bdf8; font-size: 14px;">📍 ${trip?.name || 'Viaggio'}</h4>
-                                        <div style="display: flex; gap: 4px;">
-                                            <button onclick="openEditTripModal(${trip.id})" style="background: #3b82f6; color: white; border: none; padding: 2px 6px; border-radius: 2px; font-size: 11px; cursor: pointer;">✏️</button>
-                                            ${trip?.assignedOperatorId ? `<span style="background: #10b981; color: white; padding: 2px 6px; border-radius: 2px; font-size: 11px;">👤 Assegnato</span>` : `<button onclick="openAssignTripModal(${trip.id})" style="background: #0ea5e9; color: white; border: none; padding: 2px 6px; border-radius: 2px; font-size: 11px; cursor: pointer;">👤 Assegna</button>`}
-                                        </div>
+                        ${allTripsForDate.map(trip => {
+                            // Prendi gli ordini del viaggio per questa data specifica
+                            const tripOrders = getTripOrders(trip.id).filter(o => {
+                                if (!o.dateTime) return false;
+                                return o.dateTime.split('T')[0] === dateStr;
+                            });
+                            
+                            // Info viaggio
+                            const vehicleName = trip.vehicleName || 'Furgone';
+                            const operatorInfo = allOperators?.find(op => op.id === trip.assignedOperatorId);
+                            const operatorName = operatorInfo?.name || operatorInfo?.username || 'Non assegnato';
+                            
+                            // Data/ora
+                            const dateObj = trip.date instanceof Date ? trip.date : (trip.date ? new Date(trip.date) : null);
+                            const dateOnly = dateObj ? dateObj.toLocaleDateString('it-IT') : 'N/D';
+                            const timeOnly = dateObj ? dateObj.toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'}) : 'N/D';
+                            
+                            // Calcola totali
+                            const tripTotalKg = tripOrders.reduce((sum, o) => {
+                                if (Array.isArray(o.products)) {
+                                    return sum + o.products.reduce((s, p) => s + (p.quantity || 0), 0);
+                                }
+                                return sum + (o.quantity || 0);
+                            }, 0);
+                            
+                            const tripTotalColli = tripOrders.reduce((sum, o) => {
+                                if (Array.isArray(o.products)) {
+                                    return sum + o.products.reduce((s, p) => {
+                                        const weight = extractWeightPerCollo(p.product || '');
+                                        return s + Math.round(p.quantity / weight);
+                                    }, 0);
+                                }
+                                return sum;
+                            }, 0);
+                            
+                            // HTML ordini
+                            const ordersHTML = tripOrders.map(order => {
+                                const fullInfo = getOrderFullInfo(order.id);
+                                const productsStr = fullInfo?.products?.map(p => {
+                                    const weight = extractWeightPerCollo(p.product || '');
+                                    const colli = Math.round(p.quantity / weight);
+                                    return `${p.product} (${colli} colli • ${p.quantity}kg)`;
+                                }).join(' + ') || fullInfo?.product || 'N/D';
+                                
+                                return `
+                                    <div style="background: #252525; padding: 8px; margin: 4px 0; border-left: 3px solid #38bdf8; border-radius: 4px; font-size: 12px;">
+                                        <strong>${fullInfo?.client || order.customer?.name || 'Cliente'}</strong>
+                                        <div style="color: #a0a0a0; margin-top: 2px;">📦 ${productsStr}</div>
+                                        <div style="color: #a0a0a0; margin-top: 2px;">Quantità: ${fullInfo?.quantity || 0} kg</div>
                                     </div>
-                                    ${tripOrders.map(order => {
-                                        const fullInfo = getOrderFullInfo(order.id);
-                                        const operatorName = fullInfo?.operator?.name || 'Non assegnato';
-                                        const timelineHtml = getOrderTimelineHtml(order);
-                                        return `
-                                        <div style="background: #081116; padding: 8px; margin: 6px 0; border-radius: 3px; border-left: 2px solid #0ea5e9;">
-                                            <p style="margin: 0 0 2px 0; color: #a0d4ff; font-size: 12px;"><strong>${fullInfo?.client || 'Cliente'}</strong></p>
-                                            <p style="margin: 0 0 2px 0; color: #7dd3fc; font-size: 11px;">📦 ${fullInfo?.products?.map(p => `${p.product || 'N/D'} (${p.quantity || 0}kg)`).join(' + ') || fullInfo?.product || 'N/D'} </p>
-                                            ${fullInfo?.operator ? `<p style="margin: 0 0 2px 0; color: #7dd3fc; font-size: 11px;">👤 ${operatorName}</p>` : ''}
-                                            <p style="margin: 0 0 2px 0; color: #7dd3fc; font-size: 11px;">📅 ${order.dateTime ? new Date(order.dateTime).toLocaleString('it-IT') : 'N/D'}</p>
-                                            ${fullInfo?.notes ? `<p style="margin: 0 0 2px 0; color: #7dd3fc; font-size: 10px;">📝 ${fullInfo.notes}</p>` : ''}
-                                            ${timelineHtml}
-                                            <div style="margin-top: 4px; display: flex; gap: 4px; flex-wrap: wrap;">
-                                                <button onclick="openEditDeliveryOrderModal(${order.id})" style="background: #3b82f6; color: white; border: none; padding: 2px 6px; border-radius: 2px; font-size: 11px; cursor: pointer;" title="Modifica">✏️ Modifica</button>
-                                                <button onclick="handleDeleteTask(${order.id})" style="background: #6b7280; color: white; border: none; padding: 2px 6px; border-radius: 2px; font-size: 11px; cursor: pointer;" title="Rimuovi">🗑️ Rimuovi</button>
+                                `;
+                            }).join('');
+                            
+                            return `
+                                <div style="background: #0f1824; border: 1px solid #38bdf8; border-radius: 6px; padding: 12px; margin-bottom: 10px;">
+                                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                                        <span style="font-size: 28px;">🚐</span>
+                                        <div>
+                                            <div style="font-size: 16px; font-weight: 600; color: #38bdf8;">${trip.name || 'Senza nome'}</div>
+                                            <div style="font-size: 12px; color: #a0a0a0; margin-top: 2px;">
+                                                <span style="background: ${tripOrders.length === 0 ? '#6b7280' : '#38bdf8'}; color: white; padding: 2px 6px; border-radius: 3px; margin-right: 8px;">
+                                                    ${tripOrders.length === 0 ? '⚠️ Vuoto' : tripOrders.length + ' ordini'}
+                                                </span>
                                             </div>
                                         </div>
-                                    `;
-                                    }).join('')}
+                                    </div>
+                                    
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; color: #a0a0a0; margin-bottom: 8px;">
+                                        <div><strong>⏰ Partenza:</strong> ${dateOnly} • ${timeOnly}</div>
+                                        <div><strong>👤 Operatore:</strong> ${operatorName}</div>
+                                        <div><strong>📦 Quantità Tot:</strong> ${tripTotalColli > 0 ? tripTotalColli + ' colli • ' : ''}${tripTotalKg} kg</div>
+                                        <div><strong>🎯 Destinazioni:</strong> ${tripOrders.length}</div>
+                                    </div>
+                                    
+                                    ${tripOrders.length > 0 ? `
+                                        <div style="margin: 8px 0; padding: 8px; background: #1a2a2a; border-radius: 4px;">
+                                            <div style="font-weight: 600; color: #38bdf8; margin-bottom: 6px; font-size: 12px;">📋 Ordini:</div>
+                                            ${ordersHTML}
+                                        </div>
+                                    ` : '<div style="padding: 6px; background: #2a1a1a; border-radius: 4px; color: #a0a0a0; font-size: 11px;">⚠️ Nessun ordine assegnato per questo giorno</div>'}
+                                    
+                                    <div style="display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap;">
+                                        <button class="btn btn-primary btn-small" onclick="openEditTripModal(${trip.id})" style="background: #3b82f6; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 11px; flex: 1; min-width: 60px;">✏️ Modifica</button>
+                                        <button class="btn btn-secondary btn-small" onclick="printTrip(${trip.id})" style="background: #6b7280; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 11px; flex: 1; min-width: 60px;">🖨️ Stampa</button>
+                                        <button class="btn btn-danger btn-small" onclick="deleteTrip(${trip.id})" style="background: #dc2626; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 11px; flex: 1; min-width: 60px;">🗑️ Elimina</button>
+                                    </div>
                                 </div>
                             `;
                         }).join('')}
@@ -5884,12 +6042,17 @@
                         ${pendingOrders.map(order => {
                             const fullInfo = getOrderFullInfo(order.id);
                             const timelineHtml = getOrderTimelineHtml(order);
+                            const productsHtml = fullInfo?.products?.map(p => {
+                                const weight = extractWeightPerCollo(p.product || '');
+                                const colli = Math.round(p.quantity / weight);
+                                return `${p.product || 'N/D'} (${colli} colli • ${p.quantity}kg)`;
+                            }).join(' + ') || fullInfo?.product || 'N/D';
                             return `
                             <div style="background: #0f1a1f; border-left: 3px solid #3b82f6; padding: 12px; margin: 8px 0; border-radius: 4px;">
                                 <h4 style="margin: 0 0 4px 0; color: #fff;">${fullInfo?.client || 'Cliente'}</h4>
-                                <p style="margin: 4px 0; color: #93c5fd; font-size: 13px;"><strong>📦 ${fullInfo?.products?.map(p => `${p.product || 'N/D'} (${p.quantity || 0}kg)`).join(' + ') || fullInfo?.product || 'N/D'}</strong></p>
+                                <p style="margin: 4px 0; color: #93c5fd; font-size: 13px;"><strong>📦 ${productsHtml}</strong></p>
                                 <p style="margin: 4px 0; color: #93c5fd; font-size: 12px;">📅 ${order.dateTime ? new Date(order.dateTime).toLocaleString('it-IT') : 'N/D'}</p>
-                                ${fullInfo?.notes ? `<p style="margin: 4px 0; color: #93c5fd; font-size: 11px;">📝 ${fullInfo.notes}</p>` : ''}
+                                ${fullInfo?.notes ? `<p style="margin: 4px 0; color: #93c5fd; font-size: 13px;">📝 ${fullInfo.notes}</p>` : ''}
                                 ${timelineHtml}
                                 <div style="margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap;">
                                     <button class="btn btn-info btn-small" onclick="createNewTripWithOrder(${order.id})" style="background: #0ea5e9; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">🆕 Nuovo viaggio</button>
@@ -5918,7 +6081,11 @@
                                     <h4 style="margin: 0 0 4px 0; color: #fff;">${trip.name}</h4>
                                     <p style="margin: 4px 0; color: #7dd3fc; font-size: 12px;"><strong>📦 Ordini:</strong> ${tripOrders.length}</p>
                                     <div style="background: #081116; padding: 8px; margin: 6px 0; border-radius: 3px; max-height: 80px; overflow-y: auto;">
-                                        ${tripOrders.map(o => `<div style="color: #7dd3fc; font-size: 11px; padding: 2px 0;">• ${o.client} - ${o.product} (${o.quantity})</div>`).join('')}
+                                        ${tripOrders.map(o => {
+                                            const weight = extractWeightPerCollo(o.product || '');
+                                            const colli = Math.round(o.quantity / weight);
+                                            return `<div style="color: #7dd3fc; font-size: 13px; padding: 2px 0;">• ${o.client} - ${o.product} (${colli} colli • ${o.quantity}kg)</div>`;
+                                        }).join('')}
                                     </div>
                                     <div style="margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap;">
                                         <button class="btn btn-info btn-small" onclick="openAssignTripModal(${trip.id})" style="background: #0ea5e9; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">👤 Assegna</button>
@@ -5949,7 +6116,7 @@
                                 <h4 style="margin: 0 0 4px 0; color: #fff;">${fullInfo?.client || 'Cliente'}</h4>
                                 <p style="margin: 4px 0; color: #86efac; font-size: 13px;"><strong>📦 ${fullInfo?.products?.map(p => `${p.product || 'N/D'} (${p.quantity || 0}kg)`).join(' + ') || fullInfo?.product || 'N/D'}</strong></p>
                                 <p style="margin: 4px 0; color: #86efac; font-size: 12px;">📅 ${order.dateTime ? new Date(order.dateTime).toLocaleString('it-IT') : 'N/D'}</p>
-                                ${fullInfo?.notes ? `<p style="margin: 4px 0; color: #86efac; font-size: 11px;">📝 ${fullInfo.notes}</p>` : ''}
+                                ${fullInfo?.notes ? `<p style="margin: 4px 0; color: #86efac; font-size: 13px;">📝 ${fullInfo.notes}</p>` : ''}
                                 ${timelineHtml}
                                 <div style="margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap;">
                                     <button class="btn btn-info btn-small" onclick="openAssignOrderModal(${order.id})" style="background: #0ea5e9; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">👤 Assegna</button>
@@ -5968,9 +6135,9 @@
                             <div style="background: #1a1410; border-left: 3px solid #f59e0b; padding: 12px; margin: 8px 0; border-radius: 4px;">
                                 <h4 style="margin: 0 0 4px 0; color: #fff;">${fullInfo?.client || 'Cliente'}</h4>
                                 <p style="margin: 4px 0; color: #fbbf24; font-size: 13px;"><strong>📦 ${fullInfo?.products?.map(p => `${p.product || 'N/D'} (${p.quantity || 0}kg)`).join(' + ') || fullInfo?.product || 'N/D'}</strong></p>
-                                ${fullInfo?.operator ? `<p style="margin: 4px 0; color: #fbbf24; font-size: 11px;">👤 ${operatorName}</p>` : ''}
+                                ${fullInfo?.operator ? `<p style="margin: 4px 0; color: #fbbf24; font-size: 13px;">👤 ${operatorName}</p>` : ''}
                                 <p style="margin: 4px 0; color: #fbbf24; font-size: 12px;">📅 ${order.dateTime ? new Date(order.dateTime).toLocaleString('it-IT') : 'N/D'}</p>
-                                ${fullInfo?.notes ? `<p style="margin: 4px 0; color: #fbbf24; font-size: 11px;">📝 ${fullInfo.notes}</p>` : ''}
+                                ${fullInfo?.notes ? `<p style="margin: 4px 0; color: #fbbf24; font-size: 13px;">📝 ${fullInfo.notes}</p>` : ''}
                                 ${timelineHtml}
                                 <div style="margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap;">
                                     <button class="btn btn-primary btn-small" onclick="openEditOrderModal(${order.id})" style="background: #3b82f6; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">✏️ Modifica</button>
@@ -6254,7 +6421,9 @@
                                                     const weight = extractWeightPerCollo(p.product);
                                                     const prodColli = Math.round(p.quantity / weight);
                                                     const shelfPos = p.batchData?.shelfPosition || p.batch || '—';
-                                                    return `<div style="padding: 8px; margin: 4px 0; background: #f3e8ff; border: 2px solid #8b5cf6; border-radius: 4px; font-weight: bold; color: #6d28d9; font-size: 16px;">${p.product} (${prodColli} colli • ${p.quantity}kg) <span style="color: #666; font-size: 14px;">📍 ${shelfPos}</span></div>`;
+                                                    const batchNumber = p.batchData?.batch || p.lotto || '—';
+                                                    const expiryDate = p.batchData?.expiry || p.scadenza || '—';
+                                                    return `<div style="padding: 8px; margin: 4px 0; background: #f3e8ff; border: 2px solid #8b5cf6; border-radius: 4px; font-weight: bold; color: #6d28d9; font-size: 16px;">${p.product} (${prodColli} colli • ${p.quantity}kg) <span style="color: #666; font-size: 14px;">📍 ${shelfPos} • 📦 Lotto: ${batchNumber} • 📅 Scad: ${expiryDate}</span></div>`;
                                                 }).join('');
                                             }
                                         }
@@ -6267,7 +6436,7 @@
                                         <strong>#${index + 1} - ${getClientName(order)}</strong>
                                         <p style="margin-top: 10px; margin-bottom: 5px;"><strong style="color: #333;">📦 PRODOTTI:</strong></p>
                                         ${productsHTML}
-                                        <p style="margin-top: 10px;"><strong>Colli Totali:</strong> ${colli} colli • <strong style="color: #8b5cf6;">${kg} kg</strong></p>
+                                        <p style="margin-top: 10px;"><strong>Quantità Totali:</strong> ${colli} colli • <strong style="color: #8b5cf6;">${kg} kg</strong></p>
                                         <p><strong>Data/Ora:</strong> ${new Date(order.dateTime).toLocaleString('it-IT')}</p>
                                         <p><strong>Note:</strong> ${order.notes || '—'}</p>
                                     </div>
@@ -6745,6 +6914,8 @@
 
 </body>
 </html>
+
+
 
 
 
