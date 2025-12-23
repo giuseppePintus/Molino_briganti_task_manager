@@ -491,11 +491,11 @@ async function exportInventory() {
 // Azzera tutto l'inventario
 async function resetAllInventory() {
     // Conferma doppia per sicurezza
-    if (!confirm('⚠️ Sei sicuro di voler azzerare TUTTO l\'inventario? Questa azione non può essere annullata!')) {
+    if (!confirm('⚠️ Sei sicuro di voler ELIMINARE TUTTO l\'inventario? Questa azione non può essere annullata!')) {
         return;
     }
     
-    if (!confirm('🚨 ULTIMA CONFERMA: Azzerare tutto l\'inventario?')) {
+    if (!confirm('🚨 ULTIMA CONFERMA: Eliminare completamente l\'inventario?')) {
         return;
     }
 
@@ -509,15 +509,15 @@ async function resetAllInventory() {
             }
         });
 
-        if (!res.ok) throw new Error('Errore nell\'azzeramento');
+        if (!res.ok) throw new Error('Errore nell\'eliminazione');
 
         const result = await res.json();
-        showMessage(`✅ ${result.updated} articoli azzerati con successo!`, 'success');
+        showMessage(`✅ ${result.updated} articoli eliminati con successo!`, 'success');
         loadAllArticles();
         loadDashboard();
 
     } catch (error) {
-        console.error('Errore azzeramento inventario:', error);
+        console.error('Errore eliminazione inventario:', error);
         showMessage(`Errore: ${error.message}`, 'danger');
     }
 }

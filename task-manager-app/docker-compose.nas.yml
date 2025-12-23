@@ -28,10 +28,10 @@ services:
       - DEFAULT_MASTER_PASS=masterpass
       
       # Backup - PERCORSI PERSISTENTI SUL NAS
-      - BACKUP_DIR=/data/molino/backups
+      - BACKUP_DIR=/data/molino/backups/database
       - NAS_URL=${NAS_URL:-localhost}
       - NAS_PORT=${NAS_PORT:-5001}
-      - NAS_PATH=/data/molino/backups
+      - NAS_PATH=/data/molino/backups/database
     
     volumes:
       # Database e backups - Bind mount a percorso host/NAS (persistente)

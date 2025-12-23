@@ -585,7 +585,15 @@
             transition: all 0.2s;
             font-size: 18px;
             color: #b0b0b0;
-            overflow: hidden;
+            overflow: visible;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .calendar-day strong {
+            text-align: center;
+            width: 100%;
         }
 
         .calendar-day:hover {
@@ -1575,7 +1583,6 @@
                     </button>
                 </div>
             </div>
-            <button class="btn btn-tasks" data-icon="📝🔄" onclick="openCreateTaskOrRecurrenceModal()"><span>Gestione Task / Ricorrenze</span></button>
             <button class="btn btn-customers btn-small-mobile" data-icon="👨‍💼" onclick="window.location.href='customers-management.html'"><span>Gestione Clienti</span></button>
             <button class="btn btn-planner" data-icon="📦" onclick="window.location.href='orders-planner.html'"><span>Planner Ordini</span></button>
             <button class="btn btn-warehouse" data-icon="🏭" onclick="window.location.href='warehouse-management.html'"><span>Gestione Magazzino</span></button>
@@ -1584,11 +1591,14 @@
         <!-- Calendar -->
         <div class="card" style="padding: 12px;">
             <div class="calendar-header">
-                <button class="btn btn-secondary calendar-btn-operators" onclick="toggleOperatorTasks()" id="toggleTasksBtn">👁️ I Miei Task</button>
+                <button class="btn btn-secondary calendar-btn-operators" onclick="toggleOperatorTasks()" id="toggleTasksBtn">👁️ Task Operatori</button>
                 <button class="btn btn-primary calendar-btn-prev" onclick="previousMonth()">◀</button>
                 <h4 id="calendarMonthYear" class="calendar-title"></h4>
                 <button class="btn btn-primary calendar-btn-next" onclick="nextMonth()">▶</button>
                 <button class="btn btn-secondary calendar-btn-toggle" onclick="toggleCalendarView()" id="toggleCalendarBtn">📅 Mese</button>
+            </div>
+            <div style="padding: 10px; background: rgba(255, 255, 255, 0.05); border-radius: 6px; margin-bottom: 12px; font-size: 13px; color: #9ca3af; border-left: 3px solid #3b82f6;">
+                Clicca su un giorno per visualizzare/gestire i task • Doppio clic per creare un nuovo task o ricorrenza
             </div>
             <div id="calendarContainer" class="calendar-container">
                 <!-- Calendar will be generated here -->
@@ -1712,7 +1722,7 @@
         let allOperators = [];
         let allAssignees = []; // Operatori + Admin
         let allTasks = [];
-        let currentViewMode = 'myTasks'; // 'myTasks' o 'operatorTasks'
+        let currentViewMode = 'operatorTasks'; // 'myTasks' o 'operatorTasks'
         let mobileComfortMode = (localStorage.getItem('mobileComfortMode') || 'false') === 'true';
         let lastViewedDayDate = null; // Memorizza l'ultima data del giorno visualizzato
         
@@ -2605,63 +2615,167 @@
                 showAlert('Viaggio non trovato', 'error');
                 return;
             }
-
-            const tripOrders = getTripOrders(tripId);
-            const modalHTML = `
-                <div id="editTripModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 3000;">
-                    <div style="background: #1a1a1a; border-radius: 8px; padding: 30px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; border: 1px solid #444;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                            <h2 style="margin: 0; color: #fff;">✏️ Modifica Viaggio</h2>
-                            <button onclick="document.getElementById('editTripModal').remove();" style="background: none; border: none; color: #999; font-size: 24px; cursor: pointer; padding: 0; width: 30px; height: 30px;" title="Chiudi">×</button>
-                        </div>
-
-                        <div style="margin-bottom: 15px;">
-                            <label style="display: block; color: #bbb; margin-bottom: 5px; font-size: 12px;"><strong>Nome Viaggio:</strong></label>
-                            <input type="text" id="editTripName" value="${trip.name || ''}" style="width: 100%; padding: 10px; background: #2a2a2a; border: 1px solid #444; border-radius: 4px; color: #fff;">
-                        </div>
-
-                        <div style="margin-bottom: 15px;">
-                            <label style="display: block; color: #bbb; margin-bottom: 5px; font-size: 12px;"><strong>Ordini nel viaggio (${tripOrders.length}):</strong></label>
-                            <div style="background: #2a2a2a; border: 1px solid #444; border-radius: 4px; padding: 10px; max-height: 200px; overflow-y: auto;">
-                                ${tripOrders.length > 0 ? tripOrders.map((order, idx) => `
-                                    <div style="padding: 8px; border-bottom: 1px solid #444; color: #a0a0a0; font-size: 13px;">
-                                        <strong>${getClientName(order)}</strong> - ${order.products?.map(p => {
-                                            const weight = extractWeightPerCollo(p.product || '');
-                                            const colli = Math.round((p.quantity || 0) / weight);
-                                            return `${p.product || 'N/D'} (${colli} colli • ${p.quantity || 0}kg)`;
-                                        }).join(' + ') || order.product || 'N/D'}
-                                        <button onclick="removeOrderFromTrip(${tripId}, ${order.id})" style="float: right; background: #dc2626; color: white; border: none; padding: 2px 8px; border-radius: 2px; font-size: 13px; cursor: pointer;" title="Rimuovi ordine">✕ Rimuovi</button>
-                                    </div>
-                                `).join('') : '<div style="color: #888; padding: 10px;">Nessun ordine nel viaggio</div>'}
-                            </div>
-                        </div>
-
-                        <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                            <button onclick="document.getElementById('editTripModal').remove();" style="background: #6b7280; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">Annulla</button>
-                            <button onclick="saveEditedTrip(${tripId})" style="background: #22c55e; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">💾 Salva</button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            
+            // Salva l'ID del viaggio in modifica
+            window.editingTripId = tripId;
+            
+            // Popola i campi del modal con i dati attuali
+            document.getElementById('editTripName').value = trip.name;
+            document.getElementById('editTripDate').valueAsDate = new Date(trip.date);
+            
+            // Popola l'orario
+            const tripDateTime = new Date(trip.date);
+            const tripHours = String(tripDateTime.getHours()).padStart(2, '0');
+            const tripMinutes = String(tripDateTime.getMinutes()).padStart(2, '0');
+            document.getElementById('editTripTime').value = `${tripHours}:${tripMinutes}`;
+            
+            // Popola select operatori
+            const operatorSelect = document.getElementById('editTripOperator');
+            operatorSelect.innerHTML = '<option value="">-- Non assegnato --</option>';
+            if (allOperators && allOperators.length > 0) {
+                allOperators.forEach(op => {
+                    const option = document.createElement('option');
+                    option.value = op.id;
+                    option.textContent = op.name || op.username;
+                    if (trip.assignedOperatorId === op.id) {
+                        option.selected = true;
+                    }
+                    operatorSelect.appendChild(option);
+                });
+            }
+            if (trip.assignedOperatorId && !operatorSelect.value) {
+                operatorSelect.value = trip.assignedOperatorId;
+            }
+            
+            // Popola select veicoli
+            const vehicleSelect = document.getElementById('editTripVehicle');
+            const companySettings = JSON.parse(localStorage.getItem('companySettings') || '{}');
+            const vehicles = companySettings.vehicles || [];
+            
+            if (vehicles.length > 0 && vehicleSelect.tagName === 'INPUT') {
+                const newSelect = document.createElement('select');
+                newSelect.id = 'editTripVehicle';
+                newSelect.style.cssText = 'width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; box-sizing: border-box;';
+                newSelect.innerHTML = '<option value="">-- Non assegnato --</option>' + 
+                    vehicles.map(v => {
+                        const vehicleName = typeof v === 'string' ? v : (v.name || v.nome || '');
+                        const selected = trip.vehicleName === vehicleName ? 'selected' : '';
+                        return `<option value="${vehicleName}" ${selected}>${vehicleName}</option>`;
+                    }).join('');
+                vehicleSelect.replaceWith(newSelect);
+            } else if (vehicleSelect.tagName === 'SELECT') {
+                vehicleSelect.value = trip.vehicleName || '';
+            } else {
+                vehicleSelect.value = trip.vehicleName || '';
+            }
+            
+            // Mostra il modal
+            document.getElementById('editTripModal').classList.add('active');
+        }
+        
+        function closeEditTripModal() {
+            document.getElementById('editTripModal').classList.remove('active');
         }
 
         // Salva viaggio modificato
-        async function saveEditedTrip(tripId) {
+        async function saveEditedTrip(event) {
+            if (event) {
+                event.preventDefault();
+            }
+            const tripId = window.editingTripId;
+            if (!tripId) return;
+            
             const trip = trips.find(t => t.id === tripId);
             if (!trip) return;
-
-            const newName = document.getElementById('editTripName').value;
-
-            try {
-                await DataSync.updateTrip(tripId, { name: newName });
-            } catch (error) {
-                console.warn('⚠️ Errore aggiornamento viaggio API:', error);
+            
+            const name = document.getElementById('editTripName').value;
+            const date = document.getElementById('editTripDate').value;
+            const time = document.getElementById('editTripTime').value;
+            const operatorId = document.getElementById('editTripOperator').value;
+            const vehicleSelect = document.getElementById('editTripVehicle');
+            const vehicleName = vehicleSelect.tagName === 'SELECT' ? vehicleSelect.value : vehicleSelect.value;
+            
+            if (!name || !date) {
+                alert('⚠️ Nome e Data sono obbligatori!');
+                return;
             }
+            
+            // Combina data e ora in formato ISO
+            const timeToUse = time || '12:00';
+            const dateTimeString = `${date}T${timeToUse}:00Z`;
+            
+            // Calcola la differenza di giorni tra la vecchia e la nuova data
+            const oldDate = new Date(trip.date);
+            const newDate = new Date(dateTimeString);
+            const daysDiff = Math.floor((newDate - oldDate) / (1000 * 60 * 60 * 24));
 
-            trip.name = newName;
+            console.log(`📅 [saveEditedTrip] Cambio data viaggio: da ${oldDate.toDateString()} a ${newDate.toDateString()} (${daysDiff} giorni)`);
+            
+            // PRIMA di cambiare la data, salva gli ordini associati al viaggio (per aggiornarli dopo)
+            const associatedOrdersIds = orders.filter(o => o.tripId === tripId).map(o => o.id);
+            console.log(`📦 [saveEditedTrip] Ordini trovati PRIMA della modifica: ${associatedOrdersIds.join(', ')}`);
+            
+            // Aggiorna i dati del viaggio
+            trip.name = name;
+            trip.date = dateTimeString;
+            trip.assignedOperatorId = operatorId ? parseInt(operatorId) : null;
+            trip.vehicleName = vehicleName || null;
+            
+            console.log('💾 [saveEditedTrip] Salvando viaggio:', { name, date, operatorId: trip.assignedOperatorId, vehicleName: trip.vehicleName });
+            
+            // Salva nel backend e aspetta il completamento
+            try {
+                await DataSync.updateTrip(tripId, trip);
+                console.log('✅ [saveEditedTrip] Viaggio salvato con successo');
+            } catch (error) {
+                console.error('❌ [saveEditedTrip] Errore nel salvataggio:', error);
+                alert('❌ Errore nel salvataggio: ' + error.message);
+                return;
+            }
+            
+            // Se la data è cambiata, aggiorna gli ordini associati al viaggio
+            if (daysDiff !== 0 && associatedOrdersIds.length > 0) {
+                console.log(`🔄 [saveEditedTrip] Aggiornando ${associatedOrdersIds.length} ordini associati al viaggio...`);
+                
+                for (const orderId of associatedOrdersIds) {
+                    const order = orders.find(o => o.id === orderId);
+                    if (order && order.dateTime) {
+                        // Sposta la data dell'ordine dello stesso numero di giorni
+                        const oldOrderDate = new Date(order.dateTime);
+                        const newOrderDate = new Date(oldOrderDate.getTime() + daysDiff * 24 * 60 * 60 * 1000);
+                        const newDateTimeISO = newOrderDate.toISOString();
+                        order.dateTime = newDateTimeISO;
+                        
+                        console.log(`  📦 Ordine ${order.id}: ${oldOrderDate.toDateString()} → ${newOrderDate.toDateString()}`);
+                        
+                        // Salva l'ordine aggiornato
+                        try {
+                            const token = localStorage.getItem('token');
+                            const response = await fetch(`${API_URL}/orders/${order.id}`, {
+                                method: 'PUT',
+                                headers: {
+                                    'Authorization': `Bearer ${token}`,
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify(order)
+                            });
+                            
+                            if (response.ok) {
+                                console.log(`  ✅ Ordine ${order.id} aggiornato con successo`);
+                            } else {
+                                const error = await response.json();
+                                console.error(`  ❌ Errore aggiornamento ordine ${order.id}:`, error);
+                            }
+                        } catch (err) {
+                            console.error(`  ❌ Errore aggiornamento ordine ${order.id}:`, err);
+                        }
+                    }
+                }
+                console.log('✅ Ordini associati aggiornati');
+            }
+            
             await saveTrips();
-            document.getElementById('editTripModal').remove();
+            closeEditTripModal();
             showAlert('Viaggio salvato!', 'success');
             renderCalendar();
             // Aggiorna il modal del giorno se aperto
@@ -3721,6 +3835,9 @@
         async function renderCalendar() {
             const container = document.getElementById('calendarContainer');
             
+            // DEBUG
+            console.log('renderCalendar - currentViewMode:', currentViewMode, 'currentUser:', currentUser?.id, currentUser?.name);
+            
             // Filtra i task in base al view mode attivo
             let tasksToDisplay = allTasks;
             
@@ -3766,6 +3883,7 @@
                 const isHoliday = (window.SettingsUtils && window.SettingsUtils.isHolidayDate) ? window.SettingsUtils.isHolidayDate(date) : false;
                 const dayColor = (dayOfWeek === 0 || isHoliday) ? 'color: #ef4444;' : '';
                 
+                // Per la visualizzazione, escludi i task di ritiro
                 let dayTasks = tasksToDisplay.filter(task => {
                     if (!task.scheduledAt) return false;
                     const taskDateStr = task.scheduledAt.split('T')[0];
@@ -3801,23 +3919,55 @@
                     });
                 }
                 
-                const unassignedTasks = dayTasks.filter(t => !t.assignedOperator?.id).length;
-                const totalTasks = dayTasks.length;
-                const assignedTasks = totalTasks - unassignedTasks;
+                // Conta sia i task non assegnati che quelli assegnati all'admin nel contesto attuale
+                // Conteggio diverso in base alla modalità di visualizzazione
+                let taskCountToDisplay = 0;
+                if (currentViewMode === 'myTasks') {
+                    // In modalità "I Miei Task": conta task non assegnati + task dell'admin
+                    taskCountToDisplay = dayTasks.filter(t => !t.assignedOperator?.id || t.assignedOperator?.id === currentUser.id).length;
+                } else if (currentViewMode === 'operatorTasks') {
+                    // In modalità "Task Operatori": conta task assegnati agli operatori (NON all'admin)
+                    taskCountToDisplay = dayTasks.filter(t => t.assignedOperator?.id && t.assignedOperator?.id !== currentUser.id).length;
+                }
                 
-                // Controlla ordini di consegna per questo giorno (senza operatore assegnato)
-                const dayDeliveryOrders = orders.filter(order => {
+                const unassignedTasks = taskCountToDisplay;
+                                
+                const totalTasks = dayTasks.length;
+                const assignedTasks = totalTasks - (currentViewMode === 'myTasks' ? unassignedTasks : totalTasks - unassignedTasks);
+                
+                // Controlla ordini di consegna per questo giorno
+                let dayDeliveryOrders = orders.filter(order => {
                     if (order.type !== 'consegnato') return false;
                     if (!order.dateTime) return false;
                     if (order.dateTime.split('T')[0] !== dateStr) return false;
-                    return !order.assignedOperatorId;
+                    
+                    // Controlla se l'ordine è assegnato a un viaggio
+                    const orderTrip = trips.find(t => t.sequence && Array.isArray(t.sequence) && t.sequence.some(id => String(id) === String(order.id)));
+                    
+                    // In modalità "I Miei Task": mostra ordini non in viaggio + ordini in viaggio assegnato a me
+                    if (currentViewMode === 'myTasks') {
+                        // Se l'ordine è in un viaggio assegnato ad un altro operatore, escludilo
+                        if (orderTrip && orderTrip.assignedOperatorId && orderTrip.assignedOperatorId !== currentUser.id) {
+                            return false;
+                        }
+                        return !orderTrip || !orderTrip.assignedOperatorId || orderTrip.assignedOperatorId === currentUser.id;
+                    } else {
+                        // In modalità "Task Operatori": mostra tutti gli ordini in viaggio (di qualunque operatore)
+                        return !!orderTrip;
+                    }
                 });
                 
                 // Controlla viaggi per questo giorno
-                const dayTrips = trips.filter(trip => {
+                let dayTrips = trips.filter(trip => {
                     if (!trip.date) return false;
                     return trip.date?.startsWith(dateStr);
                 });
+                
+                // In modalità "I Miei Task", escludi i viaggi assegnati ad altri operatori
+                if (currentViewMode === 'myTasks') {
+                    dayTrips = dayTrips.filter(trip => !trip.assignedOperatorId || trip.assignedOperatorId === currentUser.id);
+                }
+                
                 const hasTrips = dayTrips.length > 0;
                 
                 // Controlla ordini di ritiro NON assegnati per questo giorno
@@ -3850,6 +4000,13 @@
                     deliveryCountHtml = `<div style="position: absolute; top: 0; right: 0; width: 0; height: 0; border-style: solid; border-width: 0 22px 22px 0; border-color: transparent #2563eb transparent transparent; border-radius: 0 4px 0 0; z-index: 20;"></div><div style="position: absolute; top: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 25; border: 2px solid #2563eb; border-radius: 3px; padding: 2px 4px; background: transparent;">${dayDeliveryOrders.length}</div>`;
                 }
                 
+                // Task non assegnati: triangolo arancione + numero in basso a sinistra
+                if (unassignedTasks > 0) {
+                    unassignedCountHtml = `<div style="position: absolute; bottom: 0; left: 0; width: 0; height: 0; border-style: solid; border-width: 18px 0 0 18px; border-color: transparent transparent transparent #ff9800; border-radius: 0 0 0 4px; z-index: 20;"></div><div style="position: absolute; bottom: 8px; left: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 30; border: 2px solid #ff9800; border-radius: 3px; padding: 2px 4px; background: transparent;">${unassignedTasks}</div>`;
+                } else if (dateStr === '2025-12-22') {
+                    console.log(`[renderCalendarWeek] Day 22 - unassignedTasks = 0. viewMode: ${currentViewMode}. Deliveries: ${dayDeliveryOrders.length}, Pickups: ${dayUnassignedPickupOrders.length}, Trips: ${dayTrips.length}`);
+                }
+                
                 // Ritiri: triangolo verde + numero in basso a destra
                 if (dayUnassignedPickupOrders.length > 0) {
                     unassignedPickupHtml = `<div style="position: absolute; bottom: 0; right: 0; width: 0; height: 0; border-style: solid; border-width: 0 0 22px 22px; border-color: transparent transparent #16a34a transparent; border-radius: 0 0 4px 0; z-index: 20;"></div><div style="position: absolute; bottom: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 25; border: 2px solid #16a34a; border-radius: 3px; padding: 2px 4px; background: transparent;">${dayUnassignedPickupOrders.length}</div>`;
@@ -3857,10 +4014,10 @@
                 
                 // Viaggi: triangolo azzurro + numero in alto a sinistra
                 if (dayTrips.length > 0) {
-                    tripCountHtml = `<div style="position: absolute; top: 0; left: 0; width: 0; height: 0; border-style: solid; border-width: 22px 22px 0 0; border-color: #38bdf8 transparent transparent transparent; border-radius: 4px 0 0 0; z-index: 20;"></div><div style="position: absolute; top: 8px; left: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 25; border: 2px solid #38bdf8; border-radius: 3px; padding: 2px 4px; background: transparent;">${dayTrips.length}</div>`;
+                    tripCountHtml = `<div style="position: absolute; top: 0; left: 0; width: 0; height: 0; border-style: solid; border-width: 22px 22px 0 0; border-color: #38bdf8 transparent transparent transparent; border-radius: 4px 0 0 0; z-index: 20;"></div><div style="position: absolute; top: 8px; left: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 30; border: 2px solid #38bdf8; border-radius: 3px; padding: 2px 4px; background: transparent;">${dayTrips.length}</div>`;
                 }
                 
-                html += `<div class="calendar-day ${hasTasksClass} ${hasUnassignedClass} ${hasTripsClass} ${hasUnassignedPickupsClass} ${isTodayClass} ${isSelectedClass}" style="cursor: pointer; position: relative; ${dayColor}" onclick="handleCalendarDayClick('${dateStr}')"><strong>${date.getDate()}</strong>${deliveryCountHtml}${unassignedPickupHtml}${tripCountHtml}</div>`;
+                html += `<div class="calendar-day ${hasTasksClass} ${hasUnassignedClass} ${hasTripsClass} ${hasUnassignedPickupsClass} ${isTodayClass} ${isSelectedClass}" style="cursor: pointer; position: relative; ${dayColor}" onclick="handleCalendarDayClick('${dateStr}')"><strong>${date.getDate()}</strong>${unassignedCountHtml}${deliveryCountHtml}${unassignedPickupHtml}${tripCountHtml}</div>`;
             }
             
             container.innerHTML = html;
@@ -3952,7 +4109,7 @@
                     });
                 }
                 
-                // Conta ricorrenze che cadono in questo giorno
+                // Conta ricorrenze che cadono in questo giorno PRIMA di usarle nel conteggio di unassignedTasks
                 const dayRecurrences = tasksToDisplay.filter(task => {
                     if (!task.recurring || !task.recurrenceType || !task.scheduledAt) return false;
                     
@@ -3990,26 +4147,57 @@
                     return false;
                 });
                 
-                // Conta task da assegnare (non assegnati)
-                const unassignedTasks = dayTasks.filter(t => !t.assignedOperator?.id).length +
-                                       dayRecurrences.filter(t => !t.assignedOperator?.id).length;
+                // Conta sia i task non assegnati che quelli assegnati all'admin DOPO il filtro view mode
+                const allDayTasks = dayTasks.concat(dayRecurrences);
+                
+                // Conteggio diverso in base alla modalità di visualizzazione
+                let taskCountToDisplay = 0;
+                if (currentViewMode === 'myTasks') {
+                    // In modalità "I Miei Task": conta task non assegnati + task dell'admin
+                    taskCountToDisplay = allDayTasks.filter(t => !t.assignedOperator?.id || t.assignedOperator?.id === currentUser.id).length;
+                } else if (currentViewMode === 'operatorTasks') {
+                    // In modalità "Task Operatori": conta task assegnati agli operatori (NON all'admin)
+                    taskCountToDisplay = allDayTasks.filter(t => t.assignedOperator?.id && t.assignedOperator?.id !== currentUser.id).length;
+                }
+                
+                const unassignedTasks = taskCountToDisplay;
                 
                 const totalTasks = dayTasks.length + dayRecurrences.length;
-                const assignedTasks = totalTasks - unassignedTasks;
+                const assignedTasks = totalTasks - (currentViewMode === 'myTasks' ? unassignedTasks : totalTasks - unassignedTasks);
                 
-                // Controlla ordini di consegna per questo giorno (senza operatore assegnato)
-                const dayDeliveryOrders = orders.filter(order => {
+                // Controlla ordini di consegna per questo giorno
+                let dayDeliveryOrders = orders.filter(order => {
                     if (order.type !== 'consegnato') return false;
                     if (!order.dateTime) return false;
                     if (order.dateTime.split('T')[0] !== dateStr) return false;
-                    return !order.assignedOperatorId;
+                    
+                    // Controlla se l'ordine è assegnato a un viaggio
+                    const orderTrip = trips.find(t => t.sequence && Array.isArray(t.sequence) && t.sequence.some(id => String(id) === String(order.id)));
+                    
+                    // In modalità "I Miei Task": mostra ordini non in viaggio + ordini in viaggio assegnato a me
+                    if (currentViewMode === 'myTasks') {
+                        // Se l'ordine è in un viaggio assegnato ad un altro operatore, escludilo
+                        if (orderTrip && orderTrip.assignedOperatorId && orderTrip.assignedOperatorId !== currentUser.id) {
+                            return false;
+                        }
+                        return !orderTrip || !orderTrip.assignedOperatorId || orderTrip.assignedOperatorId === currentUser.id;
+                    } else {
+                        // In modalità "Task Operatori": mostra tutti gli ordini in viaggio (di qualunque operatore)
+                        return !!orderTrip;
+                    }
                 });
                 
                 // Controlla viaggi per questo giorno
-                const dayTrips = trips.filter(trip => {
+                let dayTrips = trips.filter(trip => {
                     if (!trip.date) return false;
                     return trip.date?.startsWith(dateStr);
                 });
+                
+                // In modalità "I Miei Task", escludi i viaggi assegnati ad altri operatori
+                if (currentViewMode === 'myTasks') {
+                    dayTrips = dayTrips.filter(trip => !trip.assignedOperatorId || trip.assignedOperatorId === currentUser.id);
+                }
+                
                 const hasTrips = dayTrips.length > 0;
                 
                 const hasTasksClass = totalTasks > 0 ? 'has-tasks' : '';
@@ -4045,12 +4233,17 @@
                     unassignedPickupHtml = `<div style="position: absolute; bottom: 0; right: 0; width: 0; height: 0; border-style: solid; border-width: 0 0 22px 22px; border-color: transparent transparent #16a34a transparent; border-radius: 0 0 4px 0; z-index: 20;"></div><div style="position: absolute; bottom: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 25; border: 2px solid #16a34a; border-radius: 3px; padding: 2px 4px; background: transparent;">${dayUnassignedPickupOrders.length}</div>`;
                 }
                 
-                // Viaggi: triangolo azzurro + numero in alto a sinistra
-                if (dayTrips.length > 0) {
-                    tripCountHtml = `<div style="position: absolute; top: 0; left: 0; width: 0; height: 0; border-style: solid; border-width: 22px 22px 0 0; border-color: #38bdf8 transparent transparent transparent; border-radius: 4px 0 0 0; z-index: 20;"></div><div style="position: absolute; top: 8px; left: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 25; border: 2px solid #38bdf8; border-radius: 3px; padding: 2px 4px; background: transparent;">${dayTrips.length}</div>`;
+                // Task non assegnati: triangolo arancione + numero in basso a sinistra
+                if (unassignedTasks > 0) {
+                    unassignedCountHtml = `<div style="position: absolute; bottom: 0; left: 0; width: 0; height: 0; border-style: solid; border-width: 18px 0 0 18px; border-color: transparent transparent transparent #ff9800; border-radius: 0 0 0 4px; z-index: 20;"></div><div style="position: absolute; bottom: 8px; left: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 30; border: 2px solid #ff9800; border-radius: 3px; padding: 2px 4px; background: transparent;">${unassignedTasks}</div>`;
                 }
                 
-                html += `<div class="calendar-day ${hasTasksClass} ${hasUnassignedClass} ${hasTripsClass} ${isTodayClass} ${isSelectedClass}" style="${dayColor}; cursor: pointer; position: relative;" onclick="handleCalendarDayClick('${dateForClick}')"><strong>${day}</strong>${deliveryCountHtml}${unassignedPickupHtml}${tripCountHtml}</div>`;
+                // Viaggi: triangolo azzurro + numero in alto a sinistra
+                if (dayTrips.length > 0) {
+                    tripCountHtml = `<div style="position: absolute; top: 0; left: 0; width: 0; height: 0; border-style: solid; border-width: 22px 22px 0 0; border-color: #38bdf8 transparent transparent transparent; border-radius: 4px 0 0 0; z-index: 20;"></div><div style="position: absolute; top: 8px; left: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 30; border: 2px solid #38bdf8; border-radius: 3px; padding: 2px 4px; background: transparent;">${dayTrips.length}</div>`;
+                }
+                
+                html += `<div class="calendar-day ${hasTasksClass} ${hasUnassignedClass} ${hasTripsClass} ${isTodayClass} ${isSelectedClass}" style="${dayColor}; cursor: pointer; position: relative;" onclick="handleCalendarDayClick('${dateForClick}')"><strong>${day}</strong>${unassignedCountHtml}${deliveryCountHtml}${unassignedPickupHtml}${tripCountHtml}</div>`;
             }
             
             container.innerHTML = html;
@@ -5345,11 +5538,11 @@
             if (currentViewMode === 'myTasks') {
                 // Passa a Task Operatori
                 currentViewMode = 'operatorTasks';
-                btn.textContent = '👁️ I Miei Task';
+                btn.textContent = '👁️ Task Operatori';
             } else {
                 // Passa a I Miei Task
                 currentViewMode = 'myTasks';
-                btn.textContent = '👁️ Task Operatori';
+                btn.textContent = '👁️ I Miei Task';
             }
             
             // Aggiorna il calendario con i task filtrati
@@ -5867,10 +6060,10 @@
                                     <div style="margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap;">
                                         <button class="btn btn-primary btn-small" onclick="openEditTaskModal(${task.id})" style="background: #3b82f6; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">✏️ Modifica</button>
                                         ${!task.assignedOperator ? `<button class="btn btn-info btn-small" onclick="openAssignTaskModal(${task.id})" style="background: #0ea5e9; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">👤 Assegna</button>` : ''}
-                                        ${!task.assignedOperator && !task.acceptedAt ? `<button class="btn btn-success btn-small" onclick="handleTaskStatusChange(${task.id}, 'accept')" style="background: #22c55e; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">👍 Accetta</button>` : ''}
+                                        ${task.assignedOperator && !task.acceptedAt ? `<button class="btn btn-success btn-small" onclick="handleTaskStatusChange(${task.id}, 'accept')" style="background: #22c55e; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">👍 Accetta</button>` : ''}
                                         ${task.acceptedAt && !task.completed && !task.paused ? `<button class="btn btn-success btn-small" onclick="handleTaskStatusChange(${task.id}, 'complete')" style="background: #22c55e; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">✅ Completa</button>` : ''}
-                                        ${task.paused ? `<button class="btn btn-warning btn-small" onclick="handleTaskStatusChange(${task.id}, 'resume')" style="background: #f59e0b; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">▶️ Riprendi</button>` : ''}
                                         ${task.acceptedAt && !task.completed && !task.paused ? `<button class="btn btn-warning btn-small" onclick="handleTaskStatusChange(${task.id}, 'pause')" style="background: #f59e0b; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">⏸️ Pausa</button>` : ''}
+                                        ${task.paused ? `<button class="btn btn-warning btn-small" onclick="handleTaskStatusChange(${task.id}, 'resume')" style="background: #f59e0b; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">▶️ Riprendi</button>` : ''}
                                         <button class="btn btn-secondary btn-small" onclick="handleDeleteTask(${task.id})" style="background: #6b7280; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">🗑️ Rimuovi</button>
                                     </div>
                                 </div>
@@ -5922,7 +6115,7 @@
             
             // ============ CARD CONSEGNE (CON VIAGGIO) ============
             // Mostra TUTTI i viaggi per la data selezionata (inclusi quelli senza ordini)
-            const allTripsForDate = trips.filter(trip => {
+            let allTripsForDate = trips.filter(trip => {
                 if (!trip.date) return false;
                 // Converti trip.date se è un oggetto Date
                 const tripDateStr = trip.date instanceof Date 
@@ -5930,6 +6123,16 @@
                     : (typeof trip.date === 'string' ? trip.date.split('T')[0] : null);
                 return tripDateStr === dateStr;
             });
+            
+            // In modalità "I Miei Task", escludi i viaggi assegnati ad altri operatori
+            if (currentViewMode === 'myTasks') {
+                allTripsForDate = allTripsForDate.filter(trip => {
+                    // Mostra il viaggio se:
+                    // - NON è assegnato a un operatore, oppure
+                    // - È assegnato all'admin attuale
+                    return !trip.assignedOperatorId || trip.assignedOperatorId === currentUser.id;
+                });
+            }
 
             if (allTripsForDate.length > 0) {
                 contentHtml += `
@@ -6056,7 +6259,7 @@
                                 ${timelineHtml}
                                 <div style="margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap;">
                                     <button class="btn btn-info btn-small" onclick="createNewTripWithOrder(${order.id})" style="background: #0ea5e9; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">🆕 Nuovo viaggio</button>
-                                    <button class="btn btn-primary btn-small" onclick="openEditDeliveryOrderModal(${order.id})" style="background: #06b6d4; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">✏️ Modifica</button>
+                                    <button class="btn btn-primary btn-small" onclick="openEditDeliveryOrderModal(${order.id})" style="background: #3b82f6; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">✏️ Modifica</button>
                                     <button class="btn btn-secondary btn-small" onclick="handleDeleteTask(${order.id})" style="background: #6b7280; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">🗑️ Rimuovi</button>
                                 </div>
                             </div>
@@ -6089,7 +6292,7 @@
                                     </div>
                                     <div style="margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap;">
                                         <button class="btn btn-info btn-small" onclick="openAssignTripModal(${trip.id})" style="background: #0ea5e9; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">👤 Assegna</button>
-                                        <button class="btn btn-primary btn-small" onclick="openEditTripModal(${trip.id})" style="background: #06b6d4; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">✏️ Modifica</button>
+                                        <button class="btn btn-primary btn-small" onclick="openEditTripModal(${trip.id})" style="background: #3b82f6; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">✏️ Modifica</button>
                                         <button class="btn btn-secondary btn-small" onclick="handleDeleteTrip(${trip.id})" style="background: #6b7280; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">🗑️</button>
                                     </div>
                                 </div>
@@ -6226,81 +6429,6 @@
                 showAlert('Viaggio assegnato con successo!', 'success');
             } catch (error) {
                 showAlert('Errore nell\'assegnazione: ' + error.message, 'error');
-            }
-        }
-
-        function openEditTripModal(tripId) {
-            const trip = trips.find(t => t.id === tripId);
-            if (!trip) return;
-
-            const modal = document.getElementById('taskModal');
-            const content = modal.querySelector('.modal-content');
-
-            // Carica le impostazioni aziendali per i veicoli
-            let settings = {};
-            try {
-                settings = JSON.parse(localStorage.getItem('companySettings') || '{}');
-            } catch (e) {}
-
-            const vehicles = settings.vehicles || [];
-
-            content.innerHTML = `
-                <h2>✏️ Modifica Viaggio</h2>
-                <form onsubmit="handleEditTrip(event, ${tripId})">
-                    <div class="form-group">
-                        <label>Nome Viaggio *</label>
-                        <input type="text" id="editTripName" value="${trip.name || ''}" required style="width: 100%; padding: 10px; border: 1px solid #4d4d4d; border-radius: 6px; background: #3d3d3d; color: #e0e0e0;">
-                    </div>
-                    <div class="form-group">
-                        <label>Data *</label>
-                        <input type="date" id="editTripDate" value="${trip.date || ''}" required style="width: 100%; padding: 10px; border: 1px solid #4d4d4d; border-radius: 6px; background: #3d3d3d; color: #e0e0e0;">
-                    </div>
-                    <div class="form-group">
-                        <label>Automezzo *</label>
-                        <select id="editTripVehicle" required style="width: 100%; padding: 10px; border: 1px solid #4d4d4d; border-radius: 6px; background: #3d3d3d; color: #e0e0e0;">
-                            <option value="">-- Seleziona Automezzo --</option>
-                            ${vehicles.map(v => `<option value="${v.id}" ${trip.vehicle === v.id ? 'selected' : ''}>${v.name}</option>`).join('')}
-                        </select>
-                    </div>
-                    <div style="display: flex; gap: 10px; margin-top: 20px;">
-                        <button type="submit" class="btn btn-success" style="flex: 1;">✅ Salva</button>
-                        <button type="button" class="btn btn-danger" style="flex: 1;" onclick="closeModal();">❌ Annulla</button>
-                    </div>
-                </form>
-            `;
-            modal.classList.add('active');
-        }
-
-        async function handleEditTrip(event, tripId) {
-            event.preventDefault();
-            
-            const name = document.getElementById('editTripName').value;
-            const date = document.getElementById('editTripDate').value;
-            const vehicle = document.getElementById('editTripVehicle').value;
-
-            if (!name || !date || !vehicle) {
-                showAlert('Compila tutti i campi', 'error');
-                return;
-            }
-
-            try {
-                const trip = trips.find(t => t.id === tripId);
-                if (!trip) return;
-
-                trip.name = name;
-                trip.date = date;
-                trip.vehicle = vehicle;
-
-                await saveTrips();
-                closeModal();
-                showAlert('Viaggio aggiornato con successo!', 'success');
-                // Aggiorna la vista
-                renderCalendar();
-                if (lastViewedDayDate) {
-                    showDayTasksModal(lastViewedDayDate);
-                }
-            } catch (error) {
-                showAlert('Errore nell\'aggiornamento: ' + error.message, 'error');
             }
         }
 
@@ -6525,7 +6653,10 @@
                             <input type="text" value="${order.notes || ''}" data-trip="${tripId}" data-index="${index}" data-field="notes" style="width: 100%; padding: 8px; border: 1px solid #4d4d4d; border-radius: 4px; background: #2d2d2d; color: #e0e0e0; font-size: 0.9em;">
                         </div>
                     </div>
-                    <button type="button" class="btn btn-danger btn-small" onclick="removeOrderFromTrip(${tripId}, ${index})" style="margin-top: 8px; width: 100%; background: #dc2626;">🗑️ Rimuovi Ordine</button>
+                    <div style="display: flex; gap: 8px; margin-top: 8px;">
+                        <button type="button" class="btn btn-secondary" onclick="openEditOrderModal(${order.id})" style="flex: 1; padding: 6px 8px; background: #3b82f6; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 0.85em;">✏️ Modifica</button>
+                        <button type="button" class="btn btn-danger btn-small" onclick="removeOrderFromTrip(${tripId}, ${index})" style="flex: 1; background: #dc2626;">🗑️ Rimuovi Ordine</button>
+                    </div>
                 </div>
             `).join('');
 
@@ -6909,6 +7040,41 @@
                 <button type="button" onclick="closeOrderModal()" style="background: #6b7280; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-weight: 600;">❌ Annulla</button>
                 <button type="button" onclick="document.getElementById('orderForm').dispatchEvent(new Event('submit', {cancelable: true}))" style="background: #3b82f6; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-weight: 600;">💾 Salva</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Modal Modifica Viaggio -->
+    <div id="editTripModal" class="modal">
+        <div class="modal-content">
+            <h2>✏️ Modifica Viaggio</h2>
+            <form id="editTripForm" onsubmit="saveEditedTrip(event)">
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label for="editTripName" style="display: block; margin-bottom: 6px; color: #e0e0e0; font-weight: 600;">Nome Viaggio:</label>
+                    <input type="text" id="editTripName" required placeholder="Es: Giro Mattina" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; box-sizing: border-box;">
+                </div>
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label for="editTripDate" style="display: block; margin-bottom: 6px; color: #e0e0e0; font-weight: 600;">Data:</label>
+                    <input type="date" id="editTripDate" required style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; box-sizing: border-box;">
+                </div>
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label for="editTripTime" style="display: block; margin-bottom: 6px; color: #e0e0e0; font-weight: 600;">Orario (opzionale):</label>
+                    <input type="time" id="editTripTime" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; box-sizing: border-box;">
+                </div>
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label for="editTripOperator" style="display: block; margin-bottom: 6px; color: #e0e0e0; font-weight: 600;">Operatore (opzionale):</label>
+                    <select id="editTripOperator" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; box-sizing: border-box;">
+                        <option value="">-- Non assegnato --</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label for="editTripVehicle" style="display: block; margin-bottom: 6px; color: #e0e0e0; font-weight: 600;">Veicolo (opzionale):</label>
+                    <input type="text" id="editTripVehicle" placeholder="Es: Furgone 1" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; box-sizing: border-box;">
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary">💾 Salva Modifiche</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeEditTripModal()">❌ Annulla</button>
+                </div>
+            </form>
         </div>
     </div>
 

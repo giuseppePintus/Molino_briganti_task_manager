@@ -82,7 +82,7 @@ export async function createTablesIfNotExist(prisma: PrismaClient) {
     await prisma.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS "Article" (
         "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-        "code" TEXT NOT NULL UNIQUE,
+        "code" TEXT NOT NULL,
         "name" TEXT NOT NULL,
         "description" TEXT,
         "category" TEXT,

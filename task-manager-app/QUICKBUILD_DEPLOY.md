@@ -126,7 +126,7 @@ function applyCompanyBranding(settings) {
 3. Ricrea container CON environment variable DATABASE_URL:
    ```bash
    ssh vsc@192.168.1.248 "/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker rm molino-app"
-   ssh vsc@192.168.1.248 "/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker run -d --name molino-app -p 5000:5000 -e DATABASE_URL='file:/app/server/prisma/data/tasks.db' -e NODE_ENV='production' -v /share/Container/public:/app/public -v /share/Container/server/dist:/app/server/dist -v /share/Container/server/prisma:/app/server/prisma -v /share/Container/data/molino/backups/database:/data/molino/backups/database --restart always task-manager-nas:1.0.18"
+   ssh vsc@192.168.1.248 "/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker run -d --name molino-app -p 5000:5000 -e DATABASE_URL='file:/app/server/prisma/data/tasks.db' -e NODE_ENV='production' -e BACKUP_DIR='/share/Container/data/molino/backups/database' -v /share/Container/public:/app/public -v /share/Container/server/dist:/app/server/dist -v /share/Container/server/prisma:/app/server/prisma -v /share/Container/data/molino:/share/Container/data/molino --restart always task-manager-nas:1.0.18"
    ```
 
 **Quick Fix Script** (se la colonna manca nel DB esistente):

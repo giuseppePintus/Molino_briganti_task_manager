@@ -81,7 +81,7 @@ model TaskNote {
 // Modelli per gestione magazzino
 model Article {
   id                Int       @id @default(autoincrement())
-  code              String    @unique  // es. F-0-SP35-5
+  code              String    // es. F-0-SP35-5 (NON univoco: stesso articolo può essere in più posizioni)
   name              String    // es. FARINA 0 SP35 da 5 kg
   description       String?
   category          String?   // Categoria (es. FARINE, SEMOLE, MANGIMI, ecc.)

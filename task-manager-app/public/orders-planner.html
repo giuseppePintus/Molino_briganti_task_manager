@@ -442,7 +442,19 @@
             font-size: 18px;
             color: #b0b0b0;
             position: relative;
-            overflow: hidden;
+            overflow: visible;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 6px;
+        }
+        
+        .calendar-day strong {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 24px;
+            min-height: 24px;
         }
 
         .calendar-day:hover {
@@ -737,11 +749,7 @@
             </div>
         </div>
 
-        <!-- Planner Actions moved below stats -->
-        <div class="planner-actions">
-            <button class="btn btn-success" onclick="window.location.href='customers-management.html'">👥 Nuovo Cliente</button>
-            <button class="btn btn-success" onclick="openOrderModal()">➕ Nuovo Ordine</button>
-        </div>
+        <!-- Planner Actions removed -->
 
         <!-- Calendar -->
         <div class="card" style="padding: 12px;">
@@ -751,6 +759,9 @@
                 <h4 id="calendarMonthYear" class="calendar-title"></h4>
                 <button class="btn btn-primary calendar-btn-next" onclick="nextPeriod()">▶</button>
                 <button class="btn btn-secondary calendar-btn-toggle" onclick="toggleCalendarView()" id="toggleCalendarBtn">🗓️ Settimana</button>
+            </div>
+            <div style="padding: 10px; background: rgba(255, 255, 255, 0.05); border-radius: 6px; margin-bottom: 12px; font-size: 13px; color: #9ca3af; border-left: 3px solid #3b82f6;">
+                Clicca su un giorno per visualizzare/gestire gli ordini • Doppio clic per creare un nuovo ordine
             </div>
             <div id="calendarContainer" class="calendar-container">
                 <!-- Calendar will be generated here -->
@@ -795,9 +806,12 @@
                 <form id="orderForm" onsubmit="saveOrder(event)">
                     <div class="form-group" style="margin-bottom: 16px;">
                         <label for="orderClient" style="display: block; color: #e0e0e0; margin-bottom: 6px; font-weight: 600;">👤 Cliente</label>
-                        <select id="orderClient" required onchange="updateClientInfo()" style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;">
-                            <option value="">-- Seleziona Cliente --</option>
-                        </select>
+                        <div style="display: grid; grid-template-columns: 1fr auto; gap: 8px;">
+                            <select id="orderClient" required onchange="updateClientInfo()" style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;">
+                                <option value="">-- Seleziona Cliente --</option>
+                            </select>
+                            <button type="button" onclick="openNewClientModal()" style="padding: 12px 14px; background: #86efac; color: #000; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; min-width: 120px;">➕ Nuovo</button>
+                        </div>
                         <div id="clientHoursInfo" style="margin-top: 8px; font-size: 12px; color: #86efac; display: none;"></div>
                     </div>
 
@@ -919,7 +933,90 @@
         </div>
     </div>
 
-    <!-- Modal per Modificare/Visualizzare Prodotto -->
+    <!-- Client Modal - Identico a customers-management.html -->
+    <div id="newClientModal" class="modal">
+        <div class="modal-content" style="padding: 0; border-radius: 12px; border: 2px solid #86efac; max-width: 600px;">
+            <!-- Header con colore -->
+            <div style="background: rgba(134, 239, 172, 0.2); padding: 20px; border-bottom: 1px solid #86efac;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h2 style="margin: 0; color: #86efac; font-size: 20px;">👥 Nuovo Cliente</h2>
+                    <button type="button" onclick="closeNewClientModal()" style="background: none; border: none; color: #999; font-size: 28px; cursor: pointer; padding: 0; line-height: 1;" title="Chiudi">×</button>
+                </div>
+            </div>
+            
+            <!-- Body scrollabile -->
+            <div style="padding: 20px; max-height: 60vh; overflow-y: auto;">
+                <form id="newClientForm" onsubmit="saveNewClient(event)">
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <label for="newClientName" style="display: block; color: #e0e0e0; margin-bottom: 6px; font-weight: 600;">Nome Azienda *</label>
+                        <input type="text" id="newClientName" required placeholder="Es. Azienda XYZ" style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;">
+                    </div>
+                    
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <label for="newClientEmail" style="display: block; color: #e0e0e0; margin-bottom: 6px; font-weight: 600;">Email *</label>
+                        <input type="email" id="newClientEmail" required placeholder="Es. info@azienda.it" style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;">
+                    </div>
+                    
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <label for="newClientPhone" style="display: block; color: #e0e0e0; margin-bottom: 6px; font-weight: 600;">Telefono *</label>
+                        <input type="tel" id="newClientPhone" required placeholder="Es. 0123456789" style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;">
+                    </div>
+                    
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <label for="newClientAddress" style="display: block; color: #e0e0e0; margin-bottom: 6px; font-weight: 600;">Indirizzo *</label>
+                        <input type="text" id="newClientAddress" required placeholder="Es. Via Roma 123" style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;">
+                    </div>
+                    
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <label for="newClientCity" style="display: block; color: #e0e0e0; margin-bottom: 6px; font-weight: 600;">Città *</label>
+                        <input type="text" id="newClientCity" required placeholder="Es. Milano" style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;">
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <label style="display: block; color: #e0e0e0; margin-bottom: 6px; font-weight: 600;">Orario Apertura Mattina *</label>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="time" id="newClientOpenMorningStart" required placeholder="Es. 08:00" style="flex: 1; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;" onchange="syncNewClientDeliveryHours()">
+                            <span style="color: #a0a0a0;">alle</span>
+                            <input type="time" id="newClientOpenMorningEnd" required placeholder="Es. 13:00" style="flex: 1; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;" onchange="syncNewClientDeliveryHours()">
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <label style="display: block; color: #e0e0e0; margin-bottom: 6px; font-weight: 600;">Orario Apertura Pomeriggio (opzionale)</label>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="time" id="newClientOpenAfternoonStart" placeholder="Es. 15:00" style="flex: 1; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;" onchange="syncNewClientDeliveryHours()">
+                            <span style="color: #a0a0a0;">alle</span>
+                            <input type="time" id="newClientOpenAfternoonEnd" placeholder="Es. 19:00" style="flex: 1; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;" onchange="syncNewClientDeliveryHours()">
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <label style="display: block; color: #e0e0e0; margin-bottom: 6px; font-weight: 600;">Finestra Consegne Mattina *</label>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="time" id="newClientDeliveryMorningStart" required placeholder="Es. 08:00" style="flex: 1; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;">
+                            <span style="color: #a0a0a0;">alle</span>
+                            <input type="time" id="newClientDeliveryMorningEnd" required placeholder="Es. 12:00" style="flex: 1; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;">
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <label style="display: block; color: #e0e0e0; margin-bottom: 6px; font-weight: 600;">Finestra Consegne Pomeriggio (opzionale)</label>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="time" id="newClientDeliveryAfternoonStart" placeholder="Es. 15:00" style="flex: 1; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;">
+                            <span style="color: #a0a0a0;">alle</span>
+                            <input type="time" id="newClientDeliveryAfternoonEnd" placeholder="Es. 18:00" style="flex: 1; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Footer con azioni -->
+            <div style="padding: 16px 20px; background: #252525; border-top: 1px solid #444; display: flex; gap: 12px; justify-content: flex-end;">
+                <button type="button" onclick="closeNewClientModal()" style="background: #6b7280; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-weight: 600;">❌ Annulla</button>
+                <button type="button" onclick="document.getElementById('newClientForm').dispatchEvent(new Event('submit', {cancelable: true}))" style="background: #86efac; color: #000; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-weight: 600;">💾 Salva</button>
+            </div>
+        </div>
+    </div>
     <div id="editProductModal" class="modal">
         <div class="modal-content" style="max-width: 500px;">
             <div class="modal-header">
@@ -999,6 +1096,16 @@
                              '';
             console.log('🔍 getClientName:', { orderId: order.id, clientName, orderCustomer: order.customer, orderClientName: order.clientName, orderClient: order.client });
             return clientName;
+        }
+
+        // Trova il tripId di un ordine cercando nella sequence dei viaggi
+        function findTripIdForOrder(orderId) {
+            const trip = trips.find(t => 
+                t.sequence && 
+                Array.isArray(t.sequence) && 
+                t.sequence.some(id => id === orderId || String(id) === String(orderId))
+            );
+            return trip ? trip.id : null;
         }
 
         // Helper per ottenere il nome del primo prodotto
@@ -1968,7 +2075,7 @@
                                 ${posizioneStr}
                             </div>
                             <div class="order-actions" style="display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap;">
-                                <button class="btn btn-secondary btn-small" onclick="openEditOrderModal(${order.id})" style="flex: 1; min-width: 80px; padding: 6px 8px;">✏️ Modifica</button>
+                                <button class="btn btn-secondary btn-small" onclick="openEditOrderModal(${order.id})" style="flex: 1; min-width: 80px; padding: 6px 8px; background: #3b82f6; color: white; border: none; border-radius: 3px; cursor: pointer;">✏️ Modifica</button>
                                 <button class="btn btn-danger btn-small" onclick="deleteOrder(${order.id})" style="flex: 1; min-width: 80px; padding: 6px 8px;">🗑️ Elimina</button>
                             </div>
                         </div>
@@ -2008,6 +2115,11 @@
                         ${tripOrders.length > 0 ? `
                             <div style="margin-top: 15px; padding: 12px; background: #1a2a2a; border-radius: 6px;">
                                 <div style="font-weight: 700; color: #38bdf8; margin-bottom: 10px;">📋 Ordini del Viaggio:</div>
+                                ${tripOrders.length > 1 ? `
+                                    <div style="margin-bottom: 10px; padding: 8px; background: #2a2a3a; border-left: 3px solid #38bdf8; border-radius: 4px; font-size: 12px; color: #9ca3af;">
+                                        💡 Trascina gli ordini per cambiargli l'ordine di consegna
+                                    </div>
+                                ` : ''}
                                 ${ordersHTML}
                             </div>
                         ` : '<div style="margin-top: 10px; padding: 8px; background: #2a1a1a; border-radius: 6px; color: #a0a0a0; font-size: 12px;">⚠️ Nessun ordine assegnato</div>'}
@@ -2699,8 +2811,12 @@
             if (order.type === 'consegnato') {
                 tripSection.style.display = 'block';
                 
+                // Determina il tripId: prima dall'ordine, poi cercando nella sequence dei viaggi
+                let currentTripId = order.tripId || findTripIdForOrder(order.id);
+                console.log(`🔍 [openEditOrderModal] Order ${order.id}: tripId=${order.tripId}, found tripId=${currentTripId}`);
+                
                 // Determina quale opzione è selezionata
-                if (order.tripId) {
+                if (currentTripId) {
                     // Ordine associato a viaggio
                     document.getElementById('tripOptions').value = 'existing';
                     document.getElementById('existingTripFields').style.display = 'block';
@@ -2711,7 +2827,7 @@
                     setTimeout(() => {
                         const existingTripSelect = document.getElementById('existingTrip');
                         if (existingTripSelect) {
-                            existingTripSelect.value = order.tripId;
+                            existingTripSelect.value = currentTripId;
                         }
                     }, 100);
                 } else {
@@ -2783,6 +2899,97 @@
         // Chiudi modal ordine
         function closeOrderModal() {
             document.getElementById('orderModal').classList.remove('active');
+        }
+
+        // Apri modal nuovo cliente
+        function openNewClientModal() {
+            document.getElementById('newClientModal').classList.add('active');
+        }
+
+        // Chiudi modal nuovo cliente
+        function closeNewClientModal() {
+            document.getElementById('newClientModal').classList.remove('active');
+            document.getElementById('newClientForm').reset();
+        }
+
+        // Sincronizza orari di consegna con orari di apertura per nuovo cliente
+        function syncNewClientDeliveryHours() {
+            const morningStart = document.getElementById('newClientOpenMorningStart').value;
+            const morningEnd = document.getElementById('newClientOpenMorningEnd').value;
+            const afternoonStart = document.getElementById('newClientOpenAfternoonStart').value;
+            const afternoonEnd = document.getElementById('newClientOpenAfternoonEnd').value;
+            
+            if (!document.getElementById('newClientDeliveryMorningStart').value && morningStart) {
+                document.getElementById('newClientDeliveryMorningStart').value = morningStart;
+            }
+            if (!document.getElementById('newClientDeliveryMorningEnd').value && morningEnd) {
+                document.getElementById('newClientDeliveryMorningEnd').value = morningEnd;
+            }
+            if (!document.getElementById('newClientDeliveryAfternoonStart').value && afternoonStart) {
+                document.getElementById('newClientDeliveryAfternoonStart').value = afternoonStart;
+            }
+            if (!document.getElementById('newClientDeliveryAfternoonEnd').value && afternoonEnd) {
+                document.getElementById('newClientDeliveryAfternoonEnd').value = afternoonEnd;
+            }
+        }
+
+        // Salva nuovo cliente
+        async function saveNewClient(event) {
+            event.preventDefault();
+            
+            const newClient = {
+                nome: document.getElementById('newClientName').value.trim(),
+                email: document.getElementById('newClientEmail').value.trim(),
+                telefono: document.getElementById('newClientPhone').value.trim(),
+                indirizzo: document.getElementById('newClientAddress').value.trim(),
+                città: document.getElementById('newClientCity').value.trim(),
+                orario_apertura_mattina_inizio: document.getElementById('newClientOpenMorningStart').value,
+                orario_apertura_mattina_fine: document.getElementById('newClientOpenMorningEnd').value,
+                orario_apertura_pomeriggio_inizio: document.getElementById('newClientOpenAfternoonStart').value,
+                orario_apertura_pomeriggio_fine: document.getElementById('newClientOpenAfternoonEnd').value,
+                orario_consegna_mattina_inizio: document.getElementById('newClientDeliveryMorningStart').value,
+                orario_consegna_mattina_fine: document.getElementById('newClientDeliveryMorningEnd').value,
+                orario_consegna_pomeriggio_inizio: document.getElementById('newClientDeliveryAfternoonStart').value,
+                orario_consegna_pomeriggio_fine: document.getElementById('newClientDeliveryAfternoonEnd').value
+            };
+
+            try {
+                // Salva cliente via API
+                const response = await fetch('/api/customers', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newClient)
+                });
+
+                if (response.ok) {
+                    const savedClient = await response.json();
+                    console.log('✅ Nuovo cliente creato:', savedClient);
+                    
+                    // Aggiungi il nuovo cliente alla lista
+                    clienti.push(savedClient);
+                    
+                    // Aggiorna la select del cliente
+                    const select = document.getElementById('orderClient');
+                    const option = document.createElement('option');
+                    option.value = savedClient.id;
+                    option.textContent = savedClient.nome;
+                    select.appendChild(option);
+                    
+                    // Seleziona il nuovo cliente
+                    select.value = savedClient.id;
+                    updateClientInfo();
+                    
+                    // Chiudi il modal
+                    closeNewClientModal();
+                    
+                    alert('✅ Cliente creato con successo!');
+                } else {
+                    alert('❌ Errore nel salvataggio del cliente');
+                }
+            } catch (error) {
+                console.error('❌ Errore:', error);
+                alert('❌ Errore nel salvataggio del cliente: ' + error.message);
+            }
         }
 
         // Aggiorna informazioni cliente (orari)
@@ -3092,7 +3299,7 @@
                         </td>
                         <td style="padding: 8px; text-align: center; font-size: 13px;">${batchesDisplay}</td>
                         <td style="padding: 8px; text-align: center;">
-                            <button type="button" onclick="openEditProductModal(${idx})" style="background: #0066cc; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 12px; margin-right: 4px;">✏️ Modifica</button>
+                            <button type="button" onclick="openEditProductModal(${idx})" style="background: #3b82f6; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 12px; margin-right: 4px;">✏️ Modifica</button>
                             <button type="button" onclick="removeProductFromOrder(${idx})" style="background: #dc2626; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 12px;">🗑️ Rimuovi</button>
                         </td>
                     </tr>
@@ -3775,6 +3982,8 @@
             const tripOption = document.getElementById('tripOptions') ? document.getElementById('tripOptions').value : '';
             const orderType = document.getElementById('orderType').value;
             
+            console.log(`📝 [saveOrder] Order type: ${orderType}, tripOption: ${tripOption}`);
+            
             if (orderType === 'consegnato') {
                 if (tripOption === 'new') {
                     // Crea nuovo viaggio nel database
@@ -3828,8 +4037,10 @@
                     // Usa viaggio esistente
                     tripId = parseInt(document.getElementById('existingTrip')?.value || 0);
                     if (!tripId) tripId = null;
+                    console.log(`✅ [saveOrder] Using existing trip, tripId: ${tripId}`);
                 }
                 // Se tripOption === 'pending', tripId rimane null (sospeso)
+                console.log(`✅ [saveOrder] Final tripId: ${tripId}`);
             }
             
             const orderData = {
@@ -3847,15 +4058,23 @@
                 // Modifica ordine esistente
                 const order = orders.find(o => o.id == editingId);
                 if (order) {
+                    // Determina il tripId corrente dell'ordine (dal database o dalla sequence)
+                    const currentOrderTripId = order.tripId || findTripIdForOrder(order.id);
+                    console.log(`🔄 [saveOrder] Editing mode. Order tripId: ${currentOrderTripId}, new tripId: ${orderData.tripId}`);
                     // Se il viaggio è cambiato, aggiorna i viaggi
-                    if (orderData.tripId !== order.tripId) {
+                    if (orderData.tripId !== currentOrderTripId) {
+                        console.log(`✏️ [saveOrder] Trip changed. Removing from old trip and adding to new trip`);
                         // Rimuovi da viaggio vecchio
-                        if (order.tripId) {
-                            const oldTrip = trips.find(t => t.id === order.tripId);
+                        if (currentOrderTripId) {
+                            const oldTrip = trips.find(t => t.id === currentOrderTripId);
+                            console.log(`🔍 [saveOrder] Looking for old trip ${currentOrderTripId}:`, oldTrip);
                             if (oldTrip) {
                                 // Assicura che sequence esista e sia un array
                                 if (!oldTrip.sequence) oldTrip.sequence = [];
-                                oldTrip.sequence = oldTrip.sequence.filter(id => id !== editingId);
+                                const oldSequence = [...oldTrip.sequence];
+                                // Filter type-safe: confronta come stringhe
+                                oldTrip.sequence = oldTrip.sequence.filter(id => String(id) !== String(editingId));
+                                console.log(`📝 [saveOrder] Old trip sequence: ${oldSequence.join(',')} → ${oldTrip.sequence.join(',')} (removed ${editingId})`);
                                 const oldTripUpdate = {
                                     id: oldTrip.id,
                                     name: oldTrip.name,
@@ -3867,16 +4086,20 @@
                                     status: oldTrip.status,
                                     notes: oldTrip.notes
                                 };
+                                console.log(`📤 [saveOrder] Updating old trip ${oldTrip.id}:`, oldTripUpdate);
                                 await DataSync.updateTrip(oldTrip.id, oldTripUpdate);
+                                console.log(`✅ [saveOrder] Old trip updated`);
                             }
                         }
                         // Aggiungi a viaggio nuovo
                         if (orderData.tripId) {
                             const newTrip = trips.find(t => t.id === orderData.tripId);
+                            console.log(`🔍 [saveOrder] Looking for new trip ${orderData.tripId}:`, newTrip);
                             if (newTrip) {
                                 // Assicura che sequence esista
                                 if (!newTrip.sequence) newTrip.sequence = [];
-                                if (!newTrip.sequence.includes(editingId)) {
+                                // Check type-safe: confronta come stringhe
+                                if (!newTrip.sequence.some(id => String(id) === String(editingId))) {
                                     newTrip.sequence.push(editingId);
                                     const newTripUpdate = {
                                         id: newTrip.id,
@@ -3889,17 +4112,22 @@
                                         status: newTrip.status,
                                         notes: newTrip.notes
                                     };
+                                    console.log(`📤 [saveOrder] Adding order ${editingId} to trip ${newTrip.id}. New sequence: ${newTrip.sequence.join(',')}`);
                                     await DataSync.updateTrip(newTrip.id, newTripUpdate);
+                                    console.log(`✅ [saveOrder] New trip updated`);
                                 }
                             }
                         }
                     }
                     
                     // Aggiorna ordine nel backend
+                    console.log(`📤 [saveOrder] Updating order ${editingId} with tripId=${orderData.tripId}:`, orderData);
                     const updatedOrder = await DataSync.updateOrder(editingId, orderData);
                     if (updatedOrder) {
+                        console.log(`✅ [saveOrder] Order updated from backend:`, updatedOrder);
                         Object.assign(order, updatedOrder);
                     } else {
+                        console.log(`⚠️ [saveOrder] Backend returned null, using local orderData`);
                         Object.assign(order, orderData);
                     }
                     
@@ -3926,7 +4154,7 @@
                         }
                         saveOrderTasks();
                     }
-                    console.log('✏️ Ordine modificato e salvato:', order.client);
+                    console.log(`✏️ [saveOrder] Order modified and saved: ${order.client} (tripId=${order.tripId})`);
                 }
             } else {
                 // Nuovo ordine - PRENOTA L'INVENTARIO per tutti i prodotti
@@ -4474,6 +4702,12 @@
             document.getElementById('editTripName').value = trip.name;
             document.getElementById('editTripDate').valueAsDate = new Date(trip.date);
             
+            // Popola l'orario
+            const tripDateTime = new Date(trip.date);
+            const tripHours = String(tripDateTime.getHours()).padStart(2, '0');
+            const tripMinutes = String(tripDateTime.getMinutes()).padStart(2, '0');
+            document.getElementById('editTripTime').value = `${tripHours}:${tripMinutes}`;
+            
             // Popola select operatori
             const operatorSelect = document.getElementById('editTripOperator');
             operatorSelect.innerHTML = '<option value="">-- Non assegnato --</option>';
@@ -4533,6 +4767,7 @@
             
             const name = document.getElementById('editTripName').value;
             const date = document.getElementById('editTripDate').value;
+            const time = document.getElementById('editTripTime').value;
             const operatorId = document.getElementById('editTripOperator').value;
             const vehicleSelect = document.getElementById('editTripVehicle');
             const vehicleName = vehicleSelect.tagName === 'SELECT' ? vehicleSelect.value : vehicleSelect.value;
@@ -4542,9 +4777,13 @@
                 return;
             }
             
+            // Combina data e ora in formato ISO
+            const timeToUse = time || '12:00';
+            const dateTimeString = `${date}T${timeToUse}:00Z`;
+            
             // Calcola la differenza di giorni tra la vecchia e la nuova data
             const oldDate = new Date(trip.date);
-            const newDate = new Date(date + 'T12:00:00Z');
+            const newDate = new Date(dateTimeString);
             const daysDiff = Math.floor((newDate - oldDate) / (1000 * 60 * 60 * 24));
             
             console.log(`📅 [saveEditedTrip] Cambio data viaggio: da ${oldDate.toDateString()} a ${newDate.toDateString()} (${daysDiff} giorni)`);
@@ -4555,7 +4794,7 @@
             
             // Aggiorna i dati del viaggio
             trip.name = name;
-            trip.date = date + 'T12:00:00Z';
+            trip.date = dateTimeString;
             trip.assignedOperatorId = operatorId ? parseInt(operatorId) : null;
             trip.vehicleName = vehicleName || null;
             
@@ -5314,9 +5553,9 @@
                     pickupCountHtml = `<div style="position: absolute; bottom: 0; right: 0; width: 0; height: 0; border-style: solid; border-width: 0 0 22px 22px; border-color: transparent transparent #16a34a transparent; border-radius: 0 0 4px 0; z-index: 20;"></div><div style="position: absolute; bottom: 8px; right: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 25; border: 2px solid #16a34a; border-radius: 3px; padding: 2px 4px;">${dayPickupOrders.length}</div>`;
                 }
                 
-                // Viaggi: box arancione in alto a sinistra
+                // Viaggi: triangolo azzurro + box azzurro in alto a sinistra
                 if (dayTrips.length > 0) {
-                    tripCountHtml = `<div style="position: absolute; top: 8px; left: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 20; border: 2px solid #ff9800; border-radius: 3px; padding: 2px 4px;">${dayTrips.length}</div>`;
+                    tripCountHtml = `<div style="position: absolute; top: 0; left: 0; width: 0; height: 0; border-style: solid; border-width: 22px 22px 0 0; border-color: #38bdf8 transparent transparent transparent; border-radius: 4px 0 0 0; z-index: 20;"></div><div style="position: absolute; top: 8px; left: 8px; font-size: 18px; color: #ffffff; font-weight: bold; z-index: 25; border: 2px solid #38bdf8; border-radius: 3px; padding: 2px 4px; background: transparent;">${dayTrips.length}</div>`;
                 }
 
                 html += `<div class="calendar-day ${hasOrdersClass} ${hasUnassignedClass} ${hasTripsClass} ${isTodayClass} ${isSelectedClass}" style="${dayColor}; cursor: pointer; position: relative;" onclick="handleCalendarDayClick('${dateStr}')" ondblclick=""><strong>${day}</strong>${deliveryCountHtml}${pickupCountHtml}${tripCountHtml}</div>`;
@@ -5450,6 +5689,12 @@
             document.getElementById('createTripForm').reset();
             document.getElementById('tripDate').valueAsDate = new Date();
             
+            // Popola l'orario con l'ora corrente
+            const now = new Date();
+            const nowHours = String(now.getHours()).padStart(2, '0');
+            const nowMinutes = String(now.getMinutes()).padStart(2, '0');
+            document.getElementById('tripTime').value = `${nowHours}:${nowMinutes}`;
+            
             // Popola select operatori
             const operatorSelect = document.getElementById('tripOperator');
             operatorSelect.innerHTML = '<option value="">-- Non assegnato --</option>';
@@ -5496,11 +5741,12 @@
             event.preventDefault();
             const name = document.getElementById('tripName').value;
             const date = document.getElementById('tripDate').value;
+            const time = document.getElementById('tripTime').value;
             const operatorId = document.getElementById('tripOperator').value;
             const vehicleName = document.getElementById('tripVehicle').value;
             
             console.log('🚀 saveNewTrip - Dati raccolti:', {
-                name, date, operatorId, vehicleName
+                name, date, time, operatorId, vehicleName
             });
             
             // Valida i dati obbligatori
@@ -5509,10 +5755,14 @@
                 return;
             }
             
+            // Combina data e ora in formato ISO
+            const timeToUse = time || '12:00';
+            const dateTimeString = `${date}T${timeToUse}:00Z`;
+            
             // Crea viaggio con i dati completi
             const tripData = {
                 name: name,
-                date: date + 'T12:00:00Z',
+                date: dateTimeString,
                 assignedOperatorId: operatorId ? parseInt(operatorId) : null,
                 vehicleName: vehicleName || null,
                 vehicleId: null,
@@ -5620,7 +5870,7 @@
                         </div>
                     </div>
                     <div style="display:flex;gap:6px;">
-                        <button class="btn btn-secondary" onclick="openEditOrderModal(${order.id})" style="padding:4px 8px;font-size: 13px;">✏️ Modifica</button>
+                        <button class="btn btn-secondary" onclick="openEditOrderModal(${order.id})" style="padding:4px 8px;font-size: 13px;background: #3b82f6;color: white;border: none;border-radius: 3px;cursor: pointer;">✏️ Modifica</button>
                         <button class="btn btn-danger" onclick="removeOrderFromCurrentTrip(${order.id})" style="padding:4px 8px;font-size: 13px;">✖</button>
                     </div>
                 </div>
@@ -5767,6 +6017,10 @@
                     <input type="date" id="editTripDate" required style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; box-sizing: border-box;">
                 </div>
                 <div class="form-group" style="margin-bottom: 16px;">
+                    <label for="editTripTime" style="display: block; margin-bottom: 6px; color: #e0e0e0; font-weight: 600;">Orario (opzionale):</label>
+                    <input type="time" id="editTripTime" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; box-sizing: border-box;">
+                </div>
+                <div class="form-group" style="margin-bottom: 16px;">
                     <label for="editTripOperator" style="display: block; margin-bottom: 6px; color: #e0e0e0; font-weight: 600;">Operatore (opzionale):</label>
                     <select id="editTripOperator" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; box-sizing: border-box;">
                         <option value="">-- Non assegnato --</option>
@@ -5808,6 +6062,10 @@
                 <div class="form-group" style="margin-bottom: 16px;">
                     <label for="tripDate" style="display: block; margin-bottom: 6px; color: #e0e0e0; font-weight: 600;">Data:</label>
                     <input type="date" id="tripDate" required style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; box-sizing: border-box;">
+                </div>
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label for="tripTime" style="display: block; margin-bottom: 6px; color: #e0e0e0; font-weight: 600;">Orario (opzionale):</label>
+                    <input type="time" id="tripTime" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; box-sizing: border-box;">
                 </div>
                 <div class="form-group" style="margin-bottom: 16px;">
                     <label for="tripOperator" style="display: block; margin-bottom: 6px; color: #e0e0e0; font-weight: 600;">Operatore (opzionale):</label>

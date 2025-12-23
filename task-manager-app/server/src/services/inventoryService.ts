@@ -60,7 +60,13 @@ export class InventoryService {
       const headers = this.parseCSVLine(lines[0]);
       console.log('📋 Headers:', headers);
       console.log('📈 Numero di colonne:', headers.length);
-      
+
+      // AZZERA IL DATABASE PRIMA DI IMPORTARE
+      console.log('🧹 Pulizia inventario precedente...');
+      await prisma.inventory.deleteMany({});
+      await prisma.article.deleteMany({});
+      console.log('✅ Inventario azzerato');
+
       let importedCount = 0;
       let updatedCount = 0;
       let skippedCount = 0;
@@ -91,63 +97,52 @@ export class InventoryService {
         const quantita = parseInt(String(data['Quantita']).trim()) || 0;
         const annotazioni = data['Annotazioni'] ? String(data['Annotazioni']).trim() : '';
 
-        if (!codice || codice === '') {
+        // Salta righe completamente vuote
+        if (!posizione || posizione === '') {
           skippedCount++;
-          continue; // Salta righe vuote
+          console.log(`⏭️ Riga ${i} saltata: posizione vuota`);
+          continue;
         }
 
         try {
-          // Ricerca articolo per codice
-          let article = await prisma.article.findFirst({
-            where: { code: codice },
-            include: { inventory: true }
-          });
-
-          if (!article) {
-            // Se articolo non esiste, crealo
-            const createData = {
-              code: codice,
-              name: nome || 'Sconosciuto',
-              category: this.getCategoryFromCode(codice),
-              unit: 'kg',
-              inventory: {
-                create: {
-                  currentStock: quantita,
-                  minimumStock: 5,
-                  reserved: 0,
-                  shelfPosition: posizione,
-                  batch: lotto,
-                  expiry: scadenza,
-                  notes: annotazioni
-                }
-              }
-            };
-            console.log(`📦 Data creazione articolo ${i}:`, JSON.stringify(createData));
-            article = await prisma.article.create({
-              data: createData,
-              include: { inventory: true }
-            });
-            importedCount++;
-            console.log(`✅ Importato articolo ${i}: ${codice} (${nome}) - Quantita: ${quantita}`);
-          } else if (article.inventory) {
-            // Se articolo esiste, SOSTITUISCI l'inventario (non aggiungere)
-            console.log(`📦 Update inventario ${i}: currentStock=${article.inventory.currentStock}, new=${quantita}`);
-            await prisma.inventory.update({
-              where: { id: article.inventory.id },
-              data: {
+          // Crea sempre nuovo articolo (il database è stato azzerato all'inizio)
+          // Usa un codice univoco: se codice è vuoto, usa EMPTY-{posizione}
+          // Altrimenti usa il codice fornito (che potrebbe apparire più volte in posizioni diverse)
+          const finalCode = codice || `EMPTY-${posizione}`;
+          
+          // IMPORTANTE: Se una posizione ha più articoli, codifichiamo la posizione in modo univoco
+          // aggiungendo il codice articolo. Questo permette di avere più articoli nella stessa
+          // posizione shelf, rappresentati come posizioni diverse nel database (posizione+codice)
+          const shelfPositionKey = `${posizione}-${finalCode}`;
+          
+          // Crea un nome univoco per il database aggiungendo posizione se necessario
+          // In modo da garantire che articoli con lo stesso codice in posizioni diverse siano distinti
+          const uniqueKey = `${finalCode}@${posizione}`;
+          
+          const createData = {
+            code: finalCode, // Codice dell'articolo (può ripetersi in posizioni diverse)
+            name: nome || (codice ? 'Sconosciuto' : `Posizione ${posizione}`),
+            category: codice ? this.getCategoryFromCode(codice) : 'Varia',
+            unit: 'kg',
+            inventory: {
+              create: {
                 currentStock: quantita,
-                shelfPosition: posizione,
+                minimumStock: 5,
+                reserved: 0,
+                shelfPosition: shelfPositionKey, // Posizione codificata: posizione-codicearticolo
                 batch: lotto,
                 expiry: scadenza,
                 notes: annotazioni
               }
-            });
-            updatedCount++;
-            console.log(`🔄 Aggiornato articolo ${i}: ${codice} - Quantita sostituita: ${quantita}`);
-          } else {
-            console.warn(`⚠️ Riga ${i} (${codice}): Articolo trovato ma senza inventory record`);
-            skippedCount++;
-          }
+            }
+          };
+          console.log(`📦 Data creazione articolo ${i} (${uniqueKey}):`, JSON.stringify(createData));
+          const article = await prisma.article.create({
+            data: createData,
+            include: { inventory: true }
+          });
+          importedCount++;
+          console.log(`✅ Importato articolo ${i}: ${codice || 'VUOTO'} (${nome}) @${posizione} - Quantita: ${quantita}`);
         } catch (err: any) {
           console.error(`❌ Errore import riga ${i} (${codice}):`, err.message || err);
           console.error(`   Stack:`, err.stack);
@@ -629,26 +624,25 @@ export class InventoryService {
   }
 
   /**
-   * Azzera tutto l'inventario (tutte le quantità a 0)
+   * Elimina tutto l'inventario (cancella tutti gli articoli e i dati associati)
    */
   static async resetAllInventory() {
     try {
-      const result = await prisma.inventory.updateMany({
-        data: {
-          currentStock: 0,
-          reserved: 0
-        }
-      });
+      // Prima elimina tutti gli inventory items (che a cascata elimina gli alerts)
+      const inventoryResult = await prisma.inventory.deleteMany({});
+      
+      // Poi elimina tutti gli articoli
+      const articlesResult = await prisma.article.deleteMany({});
 
-      console.log(`✅ Inventario azzerato: ${result.count} articoli aggiornati`);
+      console.log(`✅ Inventario eliminato: ${articlesResult.count} articoli cancellati`);
 
       return {
         success: true,
-        updated: result.count,
-        message: `Azzerato inventario per ${result.count} articoli`
+        updated: articlesResult.count,
+        message: `Inventario pulito: ${articlesResult.count} articoli eliminati`
       };
     } catch (error) {
-      throw new Error(`Errore azzeramento inventario: ${error}`);
+      throw new Error(`Errore eliminazione inventario: ${error}`);
     }
   }
 }

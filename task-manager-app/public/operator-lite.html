@@ -568,12 +568,37 @@
             }
         }
         
-        // Fallback se API non disponibile
+        // Fallback se API non disponibile - carica da localStorage
         function applyDefaultBranding() {
             var loginLogo = document.getElementById('loginLogo');
             var dashboardLogo = document.getElementById('dashboardLogo');
             
-            // Mostra logo di default
+            // Prova a caricare da localStorage come fallback
+            try {
+                var stored = localStorage.getItem('companySettings');
+                if (stored) {
+                    var settings = JSON.parse(stored);
+                    if (settings.logoUrl) {
+                        var logoSrc = settings.logoUrl;
+                        if (logoSrc && logoSrc.indexOf('http') !== 0 && logoSrc.indexOf('data:') !== 0) {
+                            logoSrc = API_URL.replace('/api', '') + '/' + logoSrc;
+                        }
+                        if (loginLogo) {
+                            loginLogo.src = logoSrc;
+                            loginLogo.style.display = 'block';
+                        }
+                        if (dashboardLogo) {
+                            dashboardLogo.src = logoSrc;
+                        }
+                        console.log('✅ Logo loaded from localStorage:', logoSrc);
+                        return;
+                    }
+                }
+            } catch(e) {
+                console.warn('⚠️ Failed to load from localStorage:', e);
+            }
+            
+            // Se localStorage non ha nulla, usa default
             if (loginLogo) {
                 loginLogo.src = 'images/logo INSEGNA.png';
                 loginLogo.style.display = 'block';
@@ -581,6 +606,7 @@
             if (dashboardLogo) {
                 dashboardLogo.src = 'images/logo INSEGNA.png';
             }
+            console.log('ℹ️ Using default logo');
         }
         
         function applyCompanyBranding(settings) {

@@ -757,6 +757,23 @@
                 return;
             }
 
+            // Funzione per ordinare le posizioni alfabeticamente (A1.1, A1.2, A2.1, etc.)
+            function sortByPosition(a, b) {
+                let posA = (a.inventory?.shelfPosition || a.posizione || a.position || '').toString();
+                let posB = (b.inventory?.shelfPosition || b.posizione || b.position || '').toString();
+                
+                // Estrai solo la posizione reale (parte prima del "-") se contiene codifica
+                // Es: "A1.1-F-0-5" -> "A1.1"
+                posA = posA.includes('-') ? posA.split('-')[0] : posA;
+                posB = posB.includes('-') ? posB.split('-')[0] : posB;
+                
+                // Confronto alfabetico standard (A1.1 < A1.2 < A2.1 < B1.1, etc.)
+                return posA.localeCompare(posB, undefined, { numeric: true });
+            }
+
+            // Ordina gli articoli per posizione
+            const sortedArticles = [...articles].sort(sortByPosition);
+
             let html = `
                 <table>
                     <thead>
@@ -774,8 +791,11 @@
                     <tbody>
             `;
 
-            articles.forEach(article => {
+            sortedArticles.forEach(article => {
                 const posizione = article.inventory?.shelfPosition || article.posizione || article.position || '-';
+                // Estrai solo la posizione reale (parte prima del "-") se contiene codifica articolo
+                // Es: "A1.1-F-0-5" -> "A1.1"
+                const displayPosition = posizione.includes('-') ? posizione.split('-')[0] : posizione;
                 const nome = article.name || article.nome || '-';
                 const codice = article.code || article.codice || '-';
                 const lotto = article.inventory?.batch || article.lotto || article.batch || '-';
@@ -786,7 +806,7 @@
 
                 html += `
                     <tr>
-                        <td>${posizione}</td>
+                        <td>${displayPosition}</td>
                         <td>${nome}</td>
                         <td>${codice}</td>
                         <td>${lotto}</td>

@@ -28,7 +28,7 @@ services:
       - DEFAULT_MASTER_USER=master
       - DEFAULT_MASTER_PASS=masterpass
       
-      # Backup - PERCORSI INTERNI AL CONTAINER
+      # Backup - PERCORSI PERSISTENTI SUL NAS
       # Container: /share/Container/data/molino → Host NAS: /share/Container/data/molino  
       # Windows Explorer: \\NAS71F89C\Container\data\molino\backups\database
       - BACKUP_DIR=/share/Container/data/molino/backups/database
@@ -37,7 +37,7 @@ services:
       - NAS_PATH=/share/Container/data/molino/backups/database
     
     volumes:
-      # Database e backups - Monta il percorso Container del NAS
+      # Database e backups - Percorso persistente sul NAS
       # /share/Container/data/molino = \\NAS71F89C\Container\data\molino
       - /share/Container/data/molino:/share/Container/data/molino:rw
       

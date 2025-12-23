@@ -221,7 +221,7 @@ router.get('/status', async (req: Request, res: Response) => {
       latestBackup: latestBackup,
       nasUrl: process.env.NAS_URL || '192.168.1.248',
       nasPort: process.env.NAS_PORT || '5000',
-      backupDir: process.env.BACKUP_DIR || '/data/molino/backups/database',
+      backupDir: process.env.BACKUP_DIR || '/share/Container/data/molino/backups/database',
       timestamp: new Date().toISOString()
     });
   } catch (error: any) {
