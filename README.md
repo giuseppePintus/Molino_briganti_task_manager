@@ -1,6 +1,8 @@
 # 🏭 Molino Briganti - Task Manager & Warehouse System
 
-**Status**: ✅ **PRODUCTION READY** (v1.0.0 - 24 Novembre 2025)
+**Status**: ✅ **PRODUCTION READY** (v1.0.0 - 24 Dicembre 2025)
+
+> **🎉 NEW**: CSV Ibrido Dinamico + Sync NAS implementato! Leggi [START_HERE.txt](./task-manager-app/START_HERE.txt)
 
 ---
 

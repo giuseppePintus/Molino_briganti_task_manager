@@ -73,7 +73,7 @@ ssh vsc@192.168.1.248 "/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker 
 ssh vsc@192.168.1.248 "/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker logs -f molino-app"
 
 # Ricrea container (se eliminato accidentalmente)
-ssh vsc@192.168.1.248 "/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker run -d --name molino-app -p 5000:5000 -v /share/Container/public:/app/public -v /share/Container/server/dist:/app/server/dist -v /share/Container/server/prisma:/app/server/prisma -v /share/Container/package.json:/app/package.json task-manager-nas:1.0.18"
+ssh vsc@192.168.1.248 "/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker run -d --name molino-app -p 5000:5000 -v /share/Container/public:/app/public -v /share/Container/server/dist:/app/server/dist -v /share/Container/server/prisma:/app/server/prisma -v /share/Container/data/molino:/data/molino -e NODE_ENV=production -e PORT=5000 --restart unless-stopped task-manager-nas:1.0.18"
 
 # Verifica versione via API
 ssh vsc@192.168.1.248 "curl -s http://localhost:5000/api/version"

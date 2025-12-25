@@ -1,64 +1,27 @@
-# Build stage
-FROM node:18 AS builder
+# Ibrido Dockerfile - node_modules dentro l'immagine, dist/ via bind mount
+FROM node:18-alpine
 
 WORKDIR /app
 
-# Copia SOLO package files PRIMA per sfruttare la cache layer npm install
+# Copia package.json e package-lock.json
 COPY package*.json ./
 
-# Install dependencies with BuildKit cache mount (MOLTO più veloce su rebuild)
-RUN --mount=type=cache,target=/root/.npm \
-    npm install --legacy-peer-deps --audit=false --prefer-offline
+# Installa SOLO le dipendenze di production
+RUN npm install --production
 
-# Crea directory per la build
-RUN mkdir -p /app/server /app/client
+# Copia public/ (statico, necessario per servire HTML)
+COPY public/ public/
 
-# Copia il resto del codice (layer instabile - cambia spesso)
-COPY . .
+# Copia .env se esiste
+COPY .env* ./ || true
 
-# Genera Prisma client (scarica i binari per l'architettura ARM64)
-RUN npm run prisma:generate
+# NON copiamo dist/ - sarà montato via bind mount durante il run
 
-# Build TypeScript (layer finale - recompila solo se codice cambia)
-RUN npm run build
-
-# Production stage - slimmed down
-FROM node:18
-
-WORKDIR /app
-
-# Crea directory per runtime (singolo RUN = singolo layer)
-RUN mkdir -p /app/server /app/client /app/public /app/backups /app/server/prisma/data && \
-    chmod -R 755 /app/backups /app/server/prisma/data
-
-# Copia package.json per riferimento
-COPY package*.json ./
-
-# Copia node_modules da builder (layer reusabile se package.json non cambia)
-COPY --from=builder /app/node_modules ./node_modules
-
-# Copia artefatti compilati da builder in singolo COPY (riduce layer)
-COPY --from=builder /app/server/dist ./server/dist
-COPY --from=builder /app/server/src ./server/src
-COPY --from=builder /app/server/prisma ./server/prisma
-COPY --from=builder /app/public ./public
-
-# Copia .env per Docker
-COPY .env.docker ./server/.env
-
-# Crea directory per backups nel bind mount
-RUN mkdir -p /data/molino/backups
-
-# Esponi porta
 EXPOSE 5000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:5000/api/health')"
+  CMD node -e "require('http').get('http://localhost:5000/api/health', (r) => r.statusCode === 200 ? process.exit(0) : process.exit(1)).on('error', () => process.exit(1))"
 
-# Copia script di startup
-COPY docker-start.sh /start.sh
-RUN chmod +x /start.sh
-
-# Comando di startup
-CMD ["/start.sh"]
+# Avvia il server (dist/ sarà disponibile dal bind mount)
+CMD ["node", "dist/index.js"]
