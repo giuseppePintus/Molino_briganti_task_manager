@@ -1,21 +1,40 @@
 # Ibrido Dockerfile - node_modules dentro l'immagine, dist/ via bind mount
-FROM node:18-alpine
+FROM node:20-slim
 
 WORKDIR /app
+
+# Installa dipendenze per moduli nativi (come canvas) su Debian
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    libcairo2-dev \
+    libpango1.0-dev \
+    libjpeg-dev \
+    libgif-dev \
+    librsvg2-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copia package.json e package-lock.json
 COPY package*.json ./
 
+# Copia schema prisma
+COPY server/prisma/ ./prisma/
+
 # Installa SOLO le dipendenze di production
-RUN npm install --production
+RUN npm install --omit=dev
+
+# Installa prisma temporaneamente per la generazione
+RUN npm install prisma
+
+# Genera il client Prisma per l'architettura corrente
+RUN npx prisma generate
 
 # Copia public/ (statico, necessario per servire HTML)
 COPY public/ public/
 
-# Copia .env se esiste
-COPY .env* ./ || true
-
-# NON copiamo dist/ - sarà montato via bind mount durante il run
+# Copia il codice compilato (dist)
+COPY server/dist/ dist/
 
 EXPOSE 5000
 

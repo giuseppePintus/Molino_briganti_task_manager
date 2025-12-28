@@ -39,11 +39,17 @@ Thumbs.db
 # Backup & data directories
 backups/
 build-nas-*/
+molino-data/
 *.backup
 *.tmp
 *.sql
 *.tar
+*.tar.gz
 molino-*.tar
+container-station-data/
+.streams/
+@upload_cache/
+@Recently-Snapshot/
 
 # Documentation
 *.md
