@@ -14,9 +14,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthController = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
-const client_1 = require("@prisma/client");
+const prisma_1 = __importDefault(require("../lib/prisma"));
 const User_1 = require("../models/User");
-const prisma = new client_1.PrismaClient();
 class AuthController {
     login(req, res) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -26,7 +25,7 @@ class AuthController {
                     return res.status(400).json({ message: 'Username and password required' });
                 }
                 console.log(`🔐 Login attempt: username="${username}"`);
-                const user = yield prisma.user.findUnique({ where: { username } });
+                const user = yield prisma_1.default.user.findUnique({ where: { username } });
                 if (!user) {
                     console.log(`❌ User not found: ${username}`);
                     return res.status(401).json({ message: 'Invalid credentials' });
@@ -57,7 +56,7 @@ class AuthController {
                 if (!req.user || req.user.role !== 'master') {
                     return res.status(403).json({ message: 'Only master can list operators' });
                 }
-                const operators = yield prisma.user.findMany({
+                const operators = yield prisma_1.default.user.findMany({
                     where: { role: 'slave' },
                     select: { id: true, username: true, role: true, createdAt: true, image: true },
                     orderBy: { username: 'asc' },
@@ -76,7 +75,7 @@ class AuthController {
                 if (!req.user || req.user.role !== 'master') {
                     return res.status(403).json({ message: 'Only master can list admins' });
                 }
-                const admins = yield prisma.user.findMany({
+                const admins = yield prisma_1.default.user.findMany({
                     where: { role: 'master', id: { not: req.user.id } },
                     select: { id: true, username: true, role: true, createdAt: true, image: true },
                     orderBy: { username: 'asc' },
@@ -95,7 +94,7 @@ class AuthController {
                 if (!req.user || req.user.role !== 'master') {
                     return res.status(403).json({ message: 'Only master can list users' });
                 }
-                const users = yield prisma.user.findMany({
+                const users = yield prisma_1.default.user.findMany({
                     where: {
                         OR: [
                             { role: 'slave' },
@@ -124,12 +123,12 @@ class AuthController {
                     return res.status(400).json({ message: 'Username and password required' });
                 }
                 // Check if user already exists
-                const existingUser = yield prisma.user.findUnique({ where: { username } });
+                const existingUser = yield prisma_1.default.user.findUnique({ where: { username } });
                 if (existingUser) {
                     return res.status(400).json({ message: 'Username already exists' });
                 }
                 const passwordHash = yield (0, User_1.hashPassword)(password);
-                const user = yield prisma.user.create({
+                const user = yield prisma_1.default.user.create({
                     data: {
                         username,
                         passwordHash,
@@ -159,12 +158,12 @@ class AuthController {
                     return res.status(400).json({ message: 'Username and password required' });
                 }
                 // Check if user already exists
-                const existingUser = yield prisma.user.findUnique({ where: { username } });
+                const existingUser = yield prisma_1.default.user.findUnique({ where: { username } });
                 if (existingUser) {
                     return res.status(400).json({ message: 'Username already exists' });
                 }
                 const passwordHash = yield (0, User_1.hashPassword)(password);
-                const user = yield prisma.user.create({
+                const user = yield prisma_1.default.user.create({
                     data: {
                         username,
                         passwordHash,
@@ -194,7 +193,7 @@ class AuthController {
                     return res.status(400).json({ message: 'User ID required' });
                 }
                 // Check if operator exists
-                const operator = yield prisma.user.findUnique({
+                const operator = yield prisma_1.default.user.findUnique({
                     where: { id: operatorId }
                 });
                 if (!operator) {
@@ -204,16 +203,16 @@ class AuthController {
                     return res.status(400).json({ message: 'Cannot delete yourself' });
                 }
                 // First, unassign any tasks assigned to this operator
-                yield prisma.task.updateMany({
+                yield prisma_1.default.task.updateMany({
                     where: { assignedOperatorId: operatorId },
                     data: { assignedOperatorId: null }
                 });
                 // Delete any notes created by this operator
-                yield prisma.taskNote.deleteMany({
+                yield prisma_1.default.taskNote.deleteMany({
                     where: { userId: operatorId }
                 });
                 // Delete the operator/admin
-                yield prisma.user.delete({
+                yield prisma_1.default.user.delete({
                     where: { id: operatorId }
                 });
                 res.json({
@@ -230,7 +229,7 @@ class AuthController {
     getPublicOperators(req, res) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                const operators = yield prisma.user.findMany({
+                const operators = yield prisma_1.default.user.findMany({
                     where: { role: 'slave' },
                     select: {
                         id: true,
@@ -251,7 +250,7 @@ class AuthController {
     getPublicAdmins(req, res) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                const admins = yield prisma.user.findMany({
+                const admins = yield prisma_1.default.user.findMany({
                     where: { role: 'master' },
                     select: {
                         id: true,
@@ -276,7 +275,7 @@ class AuthController {
                 if (!operatorId) {
                     return res.status(400).json({ message: 'Operator ID required' });
                 }
-                const operator = yield prisma.user.findUnique({
+                const operator = yield prisma_1.default.user.findUnique({
                     where: { id: parseInt(operatorId) }
                 });
                 if (!operator) {
@@ -310,7 +309,7 @@ class AuthController {
                     return res.status(400).json({ message: 'Operator ID required' });
                 }
                 // Check if operator exists
-                const existingOperator = yield prisma.user.findUnique({
+                const existingOperator = yield prisma_1.default.user.findUnique({
                     where: { id: operatorId }
                 });
                 if (!existingOperator) {
@@ -319,7 +318,7 @@ class AuthController {
                 if (existingOperator.role !== 'slave') {
                     return res.status(400).json({ message: 'Only slave users can be updated' });
                 }
-                const operator = yield prisma.user.update({
+                const operator = yield prisma_1.default.user.update({
                     where: { id: operatorId },
                     data: { image: image || null }
                 });
@@ -346,7 +345,7 @@ class AuthController {
                     return res.status(400).json({ message: 'User ID required' });
                 }
                 // Check if operator exists
-                const existingOperator = yield prisma.user.findUnique({
+                const existingOperator = yield prisma_1.default.user.findUnique({
                     where: { id: operatorId }
                 });
                 if (!existingOperator) {
@@ -359,7 +358,7 @@ class AuthController {
                 if (image !== undefined) {
                     updateData.image = image || null;
                 }
-                const operator = yield prisma.user.update({
+                const operator = yield prisma_1.default.user.update({
                     where: { id: operatorId },
                     data: updateData
                 });
@@ -370,6 +369,73 @@ class AuthController {
             }
             catch (err) {
                 const errorMsg = err instanceof Error ? err.message : 'Internal server error';
+                res.status(500).json({ message: errorMsg });
+            }
+        });
+    }
+    seedDefaultUsers(req, res) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                console.log('🌱 Seed endpoint called');
+                // Controlla se ci sono già utenti
+                const userCount = yield prisma_1.default.user.count();
+                if (userCount > 0) {
+                    return res.json({ message: 'Database already has users', userCount });
+                }
+                console.log('🔄 Creating default users...');
+                // Hash delle password
+                const adminHash = yield (0, User_1.hashPassword)('123');
+                const operatorHash = yield (0, User_1.hashPassword)('operator123');
+                // Crea admin Manuel
+                const admin1 = yield prisma_1.default.user.create({
+                    data: {
+                        username: 'Manuel',
+                        passwordHash: adminHash,
+                        role: 'master',
+                        image: null,
+                    },
+                });
+                // Crea admin Lucia
+                const admin2 = yield prisma_1.default.user.create({
+                    data: {
+                        username: 'Admin Lucia',
+                        passwordHash: adminHash,
+                        role: 'master',
+                        image: null,
+                    },
+                });
+                // Crea operatore Paolo
+                const op1 = yield prisma_1.default.user.create({
+                    data: {
+                        username: 'Operatore Paolo',
+                        passwordHash: operatorHash,
+                        role: 'slave',
+                        image: null,
+                    },
+                });
+                // Crea operatore Sara
+                const op2 = yield prisma_1.default.user.create({
+                    data: {
+                        username: 'Operatore Sara',
+                        passwordHash: operatorHash,
+                        role: 'slave',
+                        image: null,
+                    },
+                });
+                console.log('✅ Default users created:', [admin1.username, admin2.username, op1.username, op2.username]);
+                res.json({
+                    message: 'Default users created successfully',
+                    users: [
+                        { username: admin1.username, role: admin1.role },
+                        { username: admin2.username, role: admin2.role },
+                        { username: op1.username, role: op1.role },
+                        { username: op2.username, role: op2.role },
+                    ],
+                });
+            }
+            catch (err) {
+                const errorMsg = err instanceof Error ? err.message : 'Internal server error';
+                console.error('❌ Seed error:', errorMsg);
                 res.status(500).json({ message: errorMsg });
             }
         });

@@ -1,10 +1,9 @@
 import { Router } from 'express';
 import { Request, Response } from 'express';
 import { authMiddleware } from '../middleware/auth';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // Default company settings
 const defaultSettings = {

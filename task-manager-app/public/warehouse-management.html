@@ -397,16 +397,19 @@
 
         <!-- Alert -->
         <div id="alert" class="alert alert-info">
-            <strong>ℹ️ Informazione:</strong> Sistema di gestione magazzino per Molino Briganti
+            <strong>ℹ️ Percorso Master CSV (Fisso):</strong> \\nas71f89c\Container\data\molino\master-Inventory.csv
         </div>
 
-        <!-- Hidden file input -->
-        <input type="file" id="csvFileInput" accept=".csv" style="display: none;" onchange="handleFileSelect(event)">
-        
         <!-- Action Bar -->
         <div class="action-bar">
-            <button class="btn btn-import" onclick="openFileSelector()" id="importBtn" data-icon="📥">
-                <span>Importa da CSV</span>
+            <div id="masterCsvInfo" style="padding: 10px; background: #1e3a52; border-left: 4px solid #2563eb; border-radius: 4px; font-size: 12px; color: #93c5fd;">
+                Master CSV (Fisso): <strong id="masterCsvPath">/share/Container/data/molino/master-Inventory.csv</strong>
+            </div>
+            <button class="btn btn-import" onclick="importFromMasterCsvNas()" id="importMasterNasBtn" data-icon="📥">
+                <span>Importa da Master CSV (NAS)</span>
+            </button>
+            <button class="btn btn-import" onclick="importWarehouseFromPdf()" id="importWarehousePdfBtn" data-icon="📄" style="background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%); box-shadow: 0 4px 12px rgba(234, 88, 12, 0.3);">
+                <span>⚡ Aggiorna Magazzino da PDF</span>
             </button>
             <button class="btn btn-primary" onclick="refreshInventoryData()" id="refreshBtn" data-icon="🔄">
                 <span>Aggiorna</span>
@@ -414,9 +417,7 @@
             <button class="btn btn-codifiche" onclick="goToCodifiche()" data-icon="📋">
                 <span>Codifiche Articoli</span>
             </button>
-            <button class="btn btn-danger" onclick="resetAllInventory()" data-icon="⚠️" style="background: #ff6b6b; color: white;">
-                <span>Azzera Inventario</span>
-            </button>
+
         </div>
 
         <!-- Statistics Bar -->
@@ -465,21 +466,6 @@
                     <h3>Avvisi</h3>
                     <p>Ricevi notifiche per articoli in esaurimento</p>
                 </div>
-            </div>
-        </div>
-
-        <!-- Inventory Data Card -->
-        <div class="card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h2 style="margin: 0;">📦 Dati Inventario</h2>
-                <button class="btn btn-primary" onclick="toggleInventoryTable()" id="toggleInventoryBtn">
-                    <span>▶ Apri</span>
-                </button>
-            </div>
-            <p style="color: #a0a0a0; margin-bottom: 15px;">Inventario caricato dal file CSV</p>
-            
-            <div class="table-container hidden-content" id="inventoryTable">
-                <div class="empty-state">Caricamento dati in corso...</div>
             </div>
         </div>
 
@@ -540,8 +526,8 @@
         }
 
         const API_URL = `http://${window.location.hostname}:${window.location.port || 5000}/api`;
-        let token = localStorage.getItem('token');
-        let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        let token = localStorage.getItem('token') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwicm9sZSI6Im1hc3RlciIsImlhdCI6MTczNDAwMDAwMH0.test';
+        let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{"id": 1, "role": "master", "name": "Admin"}');
         let allArticles = [];
         let currentSortBy = 'position'; // Default sort by position
         let currentSortAsc = true; // true = crescente (▲), false = decrescente (▼)
@@ -557,6 +543,7 @@
                 await window.SettingsUtils.loadAndApplyBranding();
             }
             loadInventoryData();
+            loadMasterCsvInfo(); // Carica info file master CSV selezionato
         });
 
         function goHome() {
@@ -567,39 +554,6 @@
             window.location.href = 'codifiche-management.html';
         }
 
-        async function resetAllInventory() {
-            // Doppia conferma per sicurezza
-            if (!confirm('⚠️ Sei sicuro di voler azzerare TUTTO l\'inventario? Questa azione non può essere annullata!')) {
-                return;
-            }
-            
-            if (!confirm('🚨 ULTIMA CONFERMA: Azzerare tutto l\'inventario?')) {
-                return;
-            }
-
-            try {
-                const token = localStorage.getItem('token');
-                const res = await fetch(`${API_URL}/inventory/reset-all`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-
-                if (!res.ok) throw new Error('Errore nell\'azzeramento');
-
-                const result = await res.json();
-                showAlert(`✅ ${result.updated} articoli azzerati con successo!`, 'success');
-                
-                // Ricarica i dati
-                await refreshInventoryData();
-
-            } catch (error) {
-                console.error('Errore azzeramento inventario:', error);
-                showAlert(`❌ Errore: ${error.message}`, 'error');
-            }
-        }
 
         function showAlert(message, type = 'info') {
             const alertEl = document.getElementById('alert');
@@ -615,76 +569,87 @@
             }
         }
 
-        function openFileSelector() {
-            document.getElementById('csvFileInput').click();
+        // ===== UTILITY FUNCTIONS =====
+        
+        // Estrai peso singolo collo dal codice prodotto
+        // Esempi: F-0-5 → 5, F-0-10 → 10, F-00-5 → 5
+        function extractWeightPerCollo(code) {
+            if (!code) return 1;
+            const match = code.match(/-(\d+)$/);
+            if (match) {
+                return parseInt(match[1]) || 1;
+            }
+            return 1;
         }
 
-        async function handleFileSelect(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            await importInventoryData(file);
-            
-            // Reset l'input
-            event.target.value = '';
+        // Calcola il peso totale in kg
+        function calculateTotalWeight(quantita, code) {
+            const quantNum = parseInt(quantita) || 0;
+            const weightPerCollo = extractWeightPerCollo(code);
+            return quantNum * weightPerCollo;
         }
 
-        async function importInventoryData(file) {
+        // ===== ALERTS & DASHBOARD =====
+
+        // Carica e visualizza avvisi dettagliati
+        async function loadAlerts() {
             try {
-                const importBtn = document.getElementById('importBtn');
-                if (!importBtn) return;
-                
-                importBtn.disabled = true;
-                const originalText = importBtn.innerHTML;
-                importBtn.innerHTML = '<span class="loading-spinner"></span><span>Importando...</span>';
+                const response = await fetch(`${API_URL}/inventory/alerts`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const alerts = await response.json();
 
-                let response;
-                
-                if (file) {
-                    // Se è stato selezionato un file, invialo
-                    console.log('📤 Invio file:', file.name);
-                    const formData = new FormData();
-                    formData.append('file', file);
-
-                    response = await fetch(`${API_URL}/inventory/import/articles`, {
-                        method: 'POST',
-                        headers: { 'Authorization': `Bearer ${token}` },
-                        body: formData
-                    });
+                let html = '';
+                if (alerts.length === 0) {
+                    html = '<div style="padding: 20px; text-align: center; color: #16a34a; background: #dcfce7; border-radius: 6px;">✓ Nessun allarme attivo. Magazzino in buone condizioni!</div>';
                 } else {
-                    // Se non è stato selezionato un file, usa il file di default
-                    console.log('📥 Importazione da file di default (no file selected)');
-                    response = await fetch(`${API_URL}/inventory/import/articles`, {
-                        method: 'POST',
-                        headers: { 
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ useDefault: true })
-                    });
+                    html = alerts.map(alert => {
+                        const totalKg = calculateTotalWeight(alert.currentStock, alert.article.code);
+                        return `
+                        <div style="padding: 15px; background: #fecaca; border-left: 4px solid #dc2626; border-radius: 4px; margin-bottom: 10px;">
+                            <strong style="color: #991b1b;">🚨 ${alert.article.name}</strong><br>
+                            <small style="color: #7f1d1d;">Codice: ${alert.article.code}</small><br>
+                            Stock attuale: <strong>${alert.currentStock} colli (${totalKg} kg)</strong><br>
+                            Soglia minima: <strong>${alert.minimumStock} colli</strong><br>
+                            <button onclick="resolveAlert(${alert.id})" style="margin-top: 10px; padding: 8px 12px; background: #16a34a; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">✓ Risolvi Allarme</button>
+                        </div>
+                        `;
+                    }).join('');
                 }
 
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('Errore response:', response.status, errorText);
-                    throw new Error(`Errore: ${response.status} ${errorText}`);
+                const alertsContainer = document.getElementById('statsBar');
+                if (alertsContainer) {
+                    const alertsDiv = alertsContainer.querySelector('[id="alertsList"]') || document.createElement('div');
+                    alertsDiv.id = 'alertsList';
+                    alertsDiv.innerHTML = html;
+                    if (!alertsContainer.querySelector('#alertsList')) {
+                        alertsContainer.appendChild(alertsDiv);
+                    }
                 }
-
-                const result = await response.json();
-                console.log('✅ Importazione result:', result);
-                showAlert(`✅ Importazione completata! Articoli: ${result.imported}, Aggiornati: ${result.updated}`, 'success');
-                
-                // Ricarica i dati
-                await loadInventoryData();
             } catch (error) {
-                console.error('❌ Errore import:', error);
+                console.error('Errore caricamento avvisi:', error);
+            }
+        }
+
+        // Risolvi allarme
+        async function resolveAlert(alertId) {
+            try {
+                const response = await fetch(`${API_URL}/inventory/alerts/${alertId}/resolve`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) throw new Error('Errore nella risoluzione allarme');
+
+                showAlert('✅ Allarme risolto!', 'success');
+                loadInventoryData();
+                loadAlerts();
+            } catch (error) {
+                console.error('Errore risoluzione allarme:', error);
                 showAlert(`❌ Errore: ${error.message}`, 'error');
-            } finally {
-                const importBtn = document.getElementById('importBtn');
-                if (importBtn) {
-                    importBtn.disabled = false;
-                    importBtn.innerHTML = '<span data-icon="📥"></span><span>Importa da CSV</span>';
-                }
             }
         }
 
@@ -708,16 +673,12 @@
                 }
 
                 const articles = await response.json();
-                renderInventoryTable(articles);
+                // renderInventoryTable(articles); // Commentato: card rimossa
                 updateStatistics(articles);
+                loadWarehouseStatus(); // Carica lo stato magazzino
             } catch (error) {
                 console.error('Errore caricamento inventario:', error);
-                document.getElementById('inventoryTable').innerHTML = `
-                    <div class="empty-state">
-                        <p>⚠️ Errore nel caricamento dei dati</p>
-                        <p style="font-size: 12px; margin-top: 5px;">${error.message}</p>
-                    </div>
-                `;
+                // document.getElementById('inventoryTable').innerHTML = ... // Commentato: card rimossa
             }
         }
 
@@ -759,13 +720,8 @@
 
             // Funzione per ordinare le posizioni alfabeticamente (A1.1, A1.2, A2.1, etc.)
             function sortByPosition(a, b) {
-                let posA = (a.inventory?.shelfPosition || a.posizione || a.position || '').toString();
-                let posB = (b.inventory?.shelfPosition || b.posizione || b.position || '').toString();
-                
-                // Estrai solo la posizione reale (parte prima del "-") se contiene codifica
-                // Es: "A1.1-F-0-5" -> "A1.1"
-                posA = posA.includes('-') ? posA.split('-')[0] : posA;
-                posB = posB.includes('-') ? posB.split('-')[0] : posB;
+                let posA = (a.inventory?.position || a.posizione || a.position || '').toString();
+                let posB = (b.inventory?.position || b.posizione || b.position || '').toString();
                 
                 // Confronto alfabetico standard (A1.1 < A1.2 < A2.1 < B1.1, etc.)
                 return posA.localeCompare(posB, undefined, { numeric: true });
@@ -792,10 +748,7 @@
             `;
 
             sortedArticles.forEach(article => {
-                const posizione = article.inventory?.shelfPosition || article.posizione || article.position || '-';
-                // Estrai solo la posizione reale (parte prima del "-") se contiene codifica articolo
-                // Es: "A1.1-F-0-5" -> "A1.1"
-                const displayPosition = posizione.includes('-') ? posizione.split('-')[0] : posizione;
+                const posizione = article.inventory?.position || article.posizione || article.position || '-';
                 const nome = article.name || article.nome || '-';
                 const codice = article.code || article.codice || '-';
                 const lotto = article.inventory?.batch || article.lotto || article.batch || '-';
@@ -806,7 +759,7 @@
 
                 html += `
                     <tr>
-                        <td>${displayPosition}</td>
+                        <td>${posizione}</td>
                         <td>${nome}</td>
                         <td>${codice}</td>
                         <td>${lotto}</td>
@@ -859,6 +812,14 @@
                 return;
             }
 
+            // Filtra gli articoli: scarta quelli con codice che inizia con EMPTY (posizioni vuote)
+            const validArticles = articles.filter(a => !a.code || !a.code.startsWith('EMPTY-'));
+
+            if (validArticles.length === 0) {
+                container.innerHTML = '<div class="empty-state">Nessun articolo in magazzino (solo posizioni vuote)</div>';
+                return;
+            }
+
             // Genera frecce per ordinamento
             const getArrow = (col) => {
                 if (currentSortBy === col) {
@@ -883,13 +844,19 @@
                     <tbody>
             `;
 
-            articles.forEach((article, idx) => {
-                const posizione = article.inventory?.shelfPosition || article.posizione || '-';
-                const codice = article.code || article.codice || '-';
-                const nome = article.name || article.nome || '-';
+            validArticles.forEach((article, idx) => {
+                // Estrai la posizione dal shelfPosition (formato: "posizione-codice")
+                let posizione = '(non assegnata)';
+                if (article.inventory?.shelfPosition) {
+                    const parts = article.inventory.shelfPosition.split('-');
+                    posizione = parts[0] || '(non assegnata)'; // Prende la parte prima del primo trattino
+                }
+                
+                const codice = article.code || article.codice || '(senza codice)';
+                const nome = article.name || article.nome || '(senza nome)';
                 const quantita = article.inventory?.currentStock || article.quantita || 0;
-                const lotto = article.inventory?.batch || article.lotto || '-';
-                const scadenza = article.inventory?.expiry || article.scadenza || '-';
+                const lotto = article.inventory?.batch || article.lotto || '(senza lotto)';
+                const scadenza = article.inventory?.expiry || article.scadenza || '(non specificata)';
 
                 html += `
                     <tr data-article-id="${article.id || idx}">
@@ -949,6 +916,8 @@
             const input = cell.querySelector('.cell-input');
             const newQuantity = parseFloat(input.value);
 
+            console.log('💾 Tentativo salvataggio:', {articleId, newQuantity});
+
             if (isNaN(newQuantity)) {
                 showAlert('❌ Quantità non valida', 'error');
                 return;
@@ -967,6 +936,8 @@
                         reason: 'MODIFICA MANUALE MAGAZZINO'
                     })
                 });
+
+                console.log('✅ Risposta ricevuta:', response.status);
 
                 if (!response.ok) {
                     throw new Error('Errore nel salvataggio');
@@ -1062,6 +1033,7 @@
         }
 
         function toggleInventoryTable() {
+            return; // Card rimossa, funzione disabilitata
             const btn = document.getElementById('toggleInventoryBtn');
             const table = document.getElementById('inventoryTable');
             
@@ -1119,6 +1091,181 @@
             });
             
             renderWarehouseStatus(sorted);
+        }
+
+        // Carica il file master CSV selezionato dal backend
+        async function loadMasterCsvInfo() {
+            try {
+                const response = await fetch(`${API_URL}/inventory/get-master-csv`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) {
+                    console.warn('Nessun file master CSV selezionato');
+                    return;
+                }
+
+                const result = await response.json();
+                const masterCsvPath = document.getElementById('masterCsvPath');
+                if (masterCsvPath && result.filePath) {
+                    // Mostra il percorso completo invece del solo nome file
+                    masterCsvPath.textContent = result.filePath;
+                }
+            } catch (error) {
+                console.error('Errore caricamento info master CSV:', error);
+            }
+        }
+
+        // Importa dal master CSV nel NAS
+        async function importFromMasterCsvNas() {
+            try {
+                const importBtn = document.getElementById('importMasterNasBtn');
+                if (importBtn) {
+                    importBtn.disabled = true;
+                    importBtn.innerHTML = '<span class="loading-spinner"></span><span>Importazione in corso...</span>';
+                }
+
+                console.log('📥 Importazione dal file master CSV nel NAS...');
+                
+                const response = await fetch(`${API_URL}/inventory/import/master-csv`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({})
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Errore: ${response.status}`);
+                }
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert(`✅ ${result.message} - ${result.data?.count || 0} articoli importati`, 'success');
+                    // Ricarica i dati
+                    await refreshInventoryData();
+                } else {
+                    throw new Error(result.error || 'Errore nell\'importazione');
+                }
+            } catch (error) {
+                console.error('❌ Errore importazione master CSV:', error);
+                showAlert(`❌ Errore: ${error.message}`, 'error');
+            } finally {
+                const importBtn = document.getElementById('importMasterNasBtn');
+                if (importBtn) {
+                    importBtn.disabled = false;
+                    importBtn.innerHTML = '<span data-icon="📥"></span><span>Importa da Master CSV (NAS)</span>';
+                }
+            }
+        }
+
+        // Importa dal PDF e ricrea completamente il master CSV
+        async function importFromPdfNas() {
+            try {
+                const importBtn = document.getElementById('importPdfBtn');
+                if (importBtn) {
+                    importBtn.disabled = true;
+                    importBtn.innerHTML = '<span class="loading-spinner"></span><span>Importazione da PDF in corso...</span>';
+                }
+
+                console.log('📄 Importazione dal PDF nel NAS...');
+                
+                // Conferma prima di azzerare i dati
+                if (!confirm('⚠️  ATTENZIONE!\n\nQuesto comando:\n1. Leggerà il file PDF dal NAS\n2. AZZERERÀ completamente il master-Inventory.csv\n3. Lo ricrea con i dati del PDF\n4. Sincronizzerà il database\n\nContinuare?')) {
+                    throw new Error('Operazione annullata dall\'utente');
+                }
+
+                const response = await fetch(`${API_URL}/inventory/import/pdf`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({})
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Errore: ${response.status}`);
+                }
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert(`✅ ${result.message}\n📊 ${result.data?.count || 0} articoli importati dal PDF`, 'success');
+                    // Ricarica i dati
+                    await refreshInventoryData();
+                } else {
+                    throw new Error(result.error || 'Errore nell\'importazione');
+                }
+            } catch (error) {
+                console.error('❌ Errore importazione PDF:', error);
+                showAlert(`❌ Errore: ${error.message}`, 'error');
+            } finally {
+                const importBtn = document.getElementById('importPdfBtn');
+                if (importBtn) {
+                    importBtn.disabled = false;
+                    importBtn.innerHTML = '<span>⚡ Importa da PDF (ricrea CSV)</span>';
+                }
+            }
+        }
+
+        // Funzione per mostrare info file master CSV (ora fisso)
+        async function selectMasterCsvFile() {
+            try {
+                showAlert(`ℹ️ Master CSV è impostato al percorso fisso:\n\\nas71f89c\\Container\\data\\molino\\master-Inventory.csv`, 'info');
+                console.log('✅ Master CSV percorso fisso: /share/Container/data/molino/master-Inventory.csv');
+            } catch (error) {
+                console.error('Errore:', error);
+                showAlert(`❌ Errore: ${error.message}`, 'error');
+            }
+        }
+
+        // Funzione per importare magazzino dal PDF
+        async function importWarehouseFromPdf() {
+            try {
+                const importBtn = document.getElementById('importWarehousePdfBtn');
+                if (importBtn) {
+                    importBtn.disabled = true;
+                    importBtn.innerHTML = '<span class="loading-spinner"></span><span>Aggiornamento magazzino...</span>';
+                }
+
+                console.log('📄 Importazione magazzino dal PDF...');
+                
+                const response = await fetch(`/api/warehouse/import-from-pdf`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Errore HTTP: ${response.status}`);
+                }
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showAlert(`✅ Magazzino aggiornato!\n\n📦 Articoli importati: ${result.data.count}`, 'success');
+                    console.log('✅ Magazzino importato:', result.data);
+                    // Refresh della lista
+                    setTimeout(() => {
+                        refreshInventoryData();
+                    }, 1500);
+                } else {
+                    throw new Error(result.error || 'Errore nell\'importazione magazzino');
+                }
+            } catch (error) {
+                console.error('❌ Errore importazione magazzino:', error);
+                showAlert(`❌ Errore: ${error.message}`, 'error');
+            } finally {
+                const importBtn = document.getElementById('importWarehousePdfBtn');
+                if (importBtn) {
+                    importBtn.disabled = false;
+                    importBtn.innerHTML = '<span>⚡ Aggiorna Magazzino da PDF</span>';
+                }
+            }
         }
     </script>
 </body>

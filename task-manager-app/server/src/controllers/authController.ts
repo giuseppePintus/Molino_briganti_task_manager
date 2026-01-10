@@ -1,9 +1,7 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma';
 import { hashPassword, comparePassword } from '../models/User';
-
-const prisma = new PrismaClient();
 
 export class AuthController {
     async login(req: Request, res: Response) {
@@ -399,6 +397,80 @@ export class AuthController {
             });
         } catch (err: unknown) {
             const errorMsg = err instanceof Error ? err.message : 'Internal server error';
+            res.status(500).json({ message: errorMsg });
+        }
+    }
+
+    async seedDefaultUsers(req: Request, res: Response) {
+        try {
+            console.log('🌱 Seed endpoint called');
+            
+            // Controlla se ci sono già utenti
+            const userCount = await prisma.user.count();
+            if (userCount > 0) {
+                return res.json({ message: 'Database already has users', userCount });
+            }
+
+            console.log('🔄 Creating default users...');
+
+            // Hash delle password
+            const adminHash = await hashPassword('123');
+            const operatorHash = await hashPassword('operator123');
+
+            // Crea admin Manuel
+            const admin1 = await prisma.user.create({
+                data: {
+                    username: 'Manuel',
+                    passwordHash: adminHash,
+                    role: 'master',
+                    image: null,
+                },
+            });
+
+            // Crea admin Lucia
+            const admin2 = await prisma.user.create({
+                data: {
+                    username: 'Admin Lucia',
+                    passwordHash: adminHash,
+                    role: 'master',
+                    image: null,
+                },
+            });
+
+            // Crea operatore Paolo
+            const op1 = await prisma.user.create({
+                data: {
+                    username: 'Operatore Paolo',
+                    passwordHash: operatorHash,
+                    role: 'slave',
+                    image: null,
+                },
+            });
+
+            // Crea operatore Sara
+            const op2 = await prisma.user.create({
+                data: {
+                    username: 'Operatore Sara',
+                    passwordHash: operatorHash,
+                    role: 'slave',
+                    image: null,
+                },
+            });
+
+            console.log('✅ Default users created:', [admin1.username, admin2.username, op1.username, op2.username]);
+
+            res.json({
+                message: 'Default users created successfully',
+                users: [
+                    { username: admin1.username, role: admin1.role },
+                    { username: admin2.username, role: admin2.role },
+                    { username: op1.username, role: op1.role },
+                    { username: op2.username, role: op2.role },
+                ],
+            });
+        } catch (err: unknown) {
+            const errorMsg = err instanceof Error ? err.message : 'Internal server error';
+            console.error('❌ Seed error:', errorMsg);
             res.status(500).json({ message: errorMsg });
         }
     }

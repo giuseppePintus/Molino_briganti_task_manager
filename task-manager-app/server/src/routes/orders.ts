@@ -1,9 +1,8 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma';
 import { socketService } from '../services/socketService';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 /**
  * GET /api/orders

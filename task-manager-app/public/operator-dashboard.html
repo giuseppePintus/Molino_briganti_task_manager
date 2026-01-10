@@ -26,6 +26,7 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: #1a1a1a;
             color: #e0e0e0;
+            font-size: 18px;
         }
 
         /* Scrollbar styling */
@@ -438,6 +439,26 @@
                 </div>
             </div>
         </div>
+
+        <!-- Orders Section -->
+        <div class="card" id="ordersSection" style="display: none;">
+            <h2>📦 Ordini di Ritiro</h2>
+            <div id="ordersList" class="task-list">
+                <div class="empty-state">
+                    <p>Nessun ordine disponibile</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trips Section -->
+        <div class="card" id="tripsSection" style="display: none;">
+            <h2>🚐 Viaggi Programmati</h2>
+            <div id="tripsList" class="task-list">
+                <div class="empty-state">
+                    <p>Nessun viaggio disponibile</p>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Task Details Modal -->
@@ -456,6 +477,8 @@
         let token = localStorage.getItem('token');
         let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
         let allTasks = [];
+        let allOrders = [];
+        let allTrips = [];
 
         // Check authorization
         window.addEventListener('load', () => {
@@ -609,6 +632,8 @@
                 
                 allTasks = await response.json();
                 renderTasks();
+                await loadOrders();
+                await loadTrips();
             } catch (error) {
                 showAlert('Errore: ' + error.message, 'error');
             }
@@ -1068,6 +1093,479 @@
         function closeModal() {
             const modal = document.getElementById('taskModal');
             if (modal) modal.classList.remove('active');
+        }
+
+        async function loadOrders() {
+            try {
+                const response = await fetch(`${API_URL}/orders`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) throw new Error('Errore caricamento ordini');
+                
+                allOrders = await response.json();
+                renderOrders();
+            } catch (error) {
+                console.error('Errore caricamento ordini:', error);
+            }
+        }
+
+        function renderOrders() {
+            const ordersSection = document.getElementById('ordersSection');
+            const ordersList = document.getElementById('ordersList');
+
+            // Calcola la data limite (oggi + 5 giorni)
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const fiveDaysLater = new Date(today);
+            fiveDaysLater.setDate(fiveDaysLater.getDate() + 5);
+
+            // Filtra gli ordini dei prossimi 5 giorni assegnati a me
+            const ordersIn5Days = allOrders.filter(o => {
+                if (!o.scheduledDate) return false;
+                const orderDate = new Date(o.scheduledDate);
+                orderDate.setHours(0, 0, 0, 0);
+                return orderDate >= today && orderDate <= fiveDaysLater && 
+                       (o.assignedOperatorId === currentUser.id || (o.assignedOperator && o.assignedOperator.id === currentUser.id));
+            });
+
+            if (ordersIn5Days.length === 0) {
+                ordersSection.style.display = 'none';
+                return;
+            }
+
+            ordersSection.style.display = 'block';
+
+            // Ordina gli ordini per data
+            ordersIn5Days.sort((a, b) => new Date(a.scheduledDate) - new Date(b.scheduledDate));
+
+            ordersList.innerHTML = ordersIn5Days.map(order => {
+                const statusClass = order.completed ? 'completed' : '';
+                const statusText = order.completed ? '✓ Completato' : (order.accepted ? 'Accettato' : 'Disponibile');
+                const statusBgColor = order.accepted ? '#1e3a4d' : '#3d3d3d';
+                const statusColor = order.accepted ? '#7dd3fc' : '#a0a0a0';
+                
+                return `
+                    <div class="task-card ${statusClass}">
+                        <div class="task-header">
+                            <div class="task-title">${order.customerName || 'Ordine ' + order.id}</div>
+                            <span style="font-size: 12px; background: ${statusBgColor}; color: ${statusColor}; padding: 4px 8px; border-radius: 4px;">${statusText}</span>
+                        </div>
+                        ${order.address ? `<p class="task-description">📍 ${order.address}</p>` : ''}
+                        <div class="task-meta">
+                            ${order.scheduledDate ? `<span class="meta-tag">📅 ${new Date(order.scheduledDate).toLocaleString('it-IT', { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>` : ''}
+                            ${order.quantity ? `<span class="meta-tag">📦 ${order.quantity} pz</span>` : ''}
+                        </div>
+                        ${!order.completed && !order.accepted ? `<button class="btn btn-success btn-small" onclick="handleAcceptOrder(${order.id})">👍 Accetta</button>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function handleAcceptOrder(orderId) {
+            try {
+                const response = await fetch(`${API_URL}/orders/${orderId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ accepted: true })
+                });
+
+                if (!response.ok) throw new Error('Errore accettazione ordine');
+
+                showAlert('✅ Ordine accettato!', 'success');
+                await loadOrders();
+            } catch (error) {
+                showAlert('Errore: ' + error.message, 'error');
+            }
+        }
+
+        async function loadTrips() {
+            try {
+                const response = await fetch(`${API_URL}/trips`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) throw new Error('Errore caricamento viaggi');
+                
+                allTrips = await response.json();
+                renderTrips();
+            } catch (error) {
+                console.error('Errore caricamento viaggi:', error);
+            }
+        }
+
+        function extractWeightPerCollo(code) {
+            if (!code) return 1;
+            const match = code.match(/-(\d+)$/);
+            return parseInt(match ? match[1] : 1) || 1;
+        }
+
+        function getOrderTotalColli(order) {
+            if (!order) return 0;
+            try {
+                if (order.products) {
+                    const prods = typeof order.products === 'string' ? JSON.parse(order.products) : order.products;
+                    if (Array.isArray(prods) && prods.length > 0) {
+                        return prods.reduce((sum, p) => {
+                            const weight = extractWeightPerCollo(p.product);
+                            const colli = Math.round(p.quantity / weight);
+                            return sum + colli;
+                        }, 0);
+                    }
+                }
+            } catch (e) {}
+            if (order.product) {
+                const weight = extractWeightPerCollo(order.product);
+                return Math.round((order.quantity || 0) / weight);
+            }
+            return 0;
+        }
+
+        function calculateTripTotals(orders) {
+            const totals = {};
+            if (!orders || !Array.isArray(orders)) return totals;
+            
+            orders.forEach(order => {
+                try {
+                    if (order.products) {
+                        const prods = typeof order.products === 'string' ? JSON.parse(order.products) : order.products;
+                        if (Array.isArray(prods)) {
+                            prods.forEach(p => {
+                                const product = p.product || 'unknown';
+                                const qty = parseFloat(p.quantity) || 0;
+                                totals[product] = (totals[product] || 0) + qty;
+                            });
+                        }
+                    }
+                } catch (e) {}
+            });
+            
+            return totals;
+        }
+
+        function renderTrips() {
+            const tripsSection = document.getElementById('tripsSection');
+            const tripsList = document.getElementById('tripsList');
+
+            // Calcola la data limite (oggi + 5 giorni)
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const fiveDaysLater = new Date(today);
+            fiveDaysLater.setDate(fiveDaysLater.getDate() + 5);
+
+            // Filtra i viaggi dei prossimi 5 giorni assegnati a me
+            const tripsIn5Days = allTrips.filter(t => {
+                if (!t.date) return false;
+                const tripDate = new Date(t.date);
+                tripDate.setHours(0, 0, 0, 0);
+                return tripDate >= today && tripDate <= fiveDaysLater && 
+                       (t.assignedOperatorId === currentUser.id || (t.assignedOperator && t.assignedOperator.id === currentUser.id));
+            });
+
+            if (tripsIn5Days.length === 0) {
+                tripsSection.style.display = 'none';
+                return;
+            }
+
+            tripsSection.style.display = 'block';
+
+            // Ordina i viaggi per data
+            tripsIn5Days.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            tripsList.innerHTML = tripsIn5Days.map(trip => {
+                // Determina lo stato basandosi su acceptedAt
+                const acceptanceStatus = trip.acceptedAt ? 'Accettato' : 'In attesa';
+                const acceptanceBgColor = trip.acceptedAt ? '#16a34a' : '#ea580c';
+                
+                const statusClass = trip.completed ? 'completed' : (trip.status === 'in_progress' ? 'in_progress' : '');
+                const statusText = trip.completed ? '✓ Completato' : (trip.status === 'in_progress' ? 'In corso' : 'Programmato');
+                const statusBgColor = trip.status === 'in_progress' ? '#ea580c' : (trip.completed ? '#166534' : '#3d3d3d');
+                const statusColor = trip.status === 'in_progress' ? '#fed7aa' : (trip.completed ? '#bbf7d0' : '#a0a0a0');
+                
+                let buttons = '';
+                if (!trip.completed) {
+                    if (!trip.accepted) {
+                        buttons += `<button class="btn btn-success btn-small" style="margin-right: 8px;" onclick="handleAcceptTrip(${trip.id})">👍 Accetta</button>`;
+                    }
+                    if (!trip.printed) {
+                        buttons += `<button class="btn btn-primary btn-small" onclick="handlePrintTrip(${trip.id})">🖨️ Stampa</button>`;
+                    }
+                }
+                
+                // Calcola totali e destinazioni
+                let tripTotalColli = 0;
+                let tripTotalKg = 0;
+                let destinationCount = 0;
+                
+                if (trip.orders && trip.orders.length > 0) {
+                    destinationCount = trip.orders.length;
+                    const totals = calculateTripTotals(trip.orders);
+                    tripTotalColli = trip.orders.reduce((sum, o) => {
+                        return sum + (getOrderTotalColli(o) || 0);
+                    }, 0);
+                    tripTotalKg = Object.keys(totals).reduce((sum, key) => {
+                        return sum + totals[key];
+                    }, 0);
+                }
+                
+                // Formatta data e ora
+                let dateOnly = 'N/D';
+                let timeOnly = 'N/D';
+                if (trip.date) {
+                    const dateObj = new Date(trip.date);
+                    dateOnly = dateObj.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                    timeOnly = dateObj.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+                }
+                
+                // Dettagli ordini con clienti e articoli
+                let ordersDetails = '';
+                if (trip.orders && trip.orders.length > 0) {
+                    ordersDetails = `<div style="margin-top: 15px; border-top: 1px solid #444; padding-top: 10px; font-size: 17px;">`;
+                    trip.orders.forEach(order => {
+                        const customerName = order.customer ? order.customer.name : order.clientName;
+                        ordersDetails += `<div style="margin-bottom: 14px;">`;
+                        ordersDetails += `<div style="font-weight: bold; color: #7dd3fc; font-size: 17px;">👤 ${customerName || 'Cliente sconosciuto'}</div>`;
+                        
+                        if (order.products && Array.isArray(order.products) && order.products.length > 0) {
+                            ordersDetails += `<div style="margin-left: 14px; font-size: 16px;">`;
+                            order.products.forEach(prod => {
+                                const prodName = typeof prod === 'string' ? prod : prod.product;
+                                const quantity = prod.quantity || 1;
+                                const unit = prod.unit || 'pz';
+                                const position = prod.position || '';
+                                
+                                ordersDetails += `📦 ${prodName} - ${quantity} ${unit}`;
+                                if (position) {
+                                    ordersDetails += ` <span style="color: #a78bfa;">[Pos: ${position}]</span>`;
+                                }
+                                ordersDetails += `<br/>`;
+                            });
+                            ordersDetails += `</div>`;
+                        }
+                        ordersDetails += `</div>`;
+                    });
+                    ordersDetails += `</div>`;
+                }
+                
+                return `
+                    <div class="task-card ${statusClass}">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
+                            <span style="font-size: 28px;">🚐</span>
+                            <div style="flex: 1;">
+                                <div style="font-size: 18px; font-weight: 700; color: #e0e0e0;">${trip.name || 'Viaggio'}</div>
+                                <div style="font-size: 14px; color: #a0a0a0; margin-top: 2px;">Viaggio: <strong style="color: #38bdf8;">${trip.vehicleName || 'Non assegnato'}</strong></div>
+                            </div>
+                            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                                <span style="background: ${acceptanceBgColor}; color: white; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; white-space: nowrap;">${acceptanceStatus === 'Accettato' ? '✅ Accettato' : '⏳ In attesa'}</span>
+                                <span style="background: #38bdf8; color: white; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; white-space: nowrap;">${destinationCount} ordini</span>
+                            </div>
+                        </div>
+                        <div style="margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px; color: #a0a0a0;">
+                            <div><strong>⏰ Partenza:</strong> ${dateOnly} • ${timeOnly}</div>
+                            <div><strong>📦 Quantità Tot:</strong> ${tripTotalColli > 0 ? tripTotalColli + ' colli • ' : ''}${tripTotalKg} kg</div>
+                            <div><strong>🎯 Destinazioni:</strong> ${destinationCount}</div>
+                        </div>
+                        ${ordersDetails}
+                        ${buttons ? `<div style="margin-top: 12px;">${buttons}</div>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function handleAcceptTrip(tripId) {
+            try {
+                const response = await fetch(`${API_URL}/trips/${tripId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ accepted: true })
+                });
+
+                if (!response.ok) throw new Error('Errore accettazione viaggio');
+
+                showAlert('✅ Viaggio accettato!', 'success');
+                await loadTrips();
+            } catch (error) {
+                showAlert('❌ Errore: ' + error.message, 'error');
+            }
+        }
+
+        function printTrip(tripId) {
+            const trip = allTrips.find(t => t.id === tripId);
+            if (!trip) {
+                showAlert('❌ Viaggio non trovato', 'error');
+                return;
+            }
+
+            const tripOrders = trip.orders || [];
+            let operatorName = 'Non assegnato';
+            if (trip.assignedOperator) {
+                operatorName = trip.assignedOperator.name || trip.assignedOperator.username || 'Non assegnato';
+            }
+
+            // Calcola totali
+            const totals = {};
+            tripOrders.forEach(order => {
+                try {
+                    if (order.products) {
+                        const prods = typeof order.products === 'string' ? JSON.parse(order.products) : order.products;
+                        if (Array.isArray(prods)) {
+                            prods.forEach(p => {
+                                const product = p.product || 'unknown';
+                                const qty = parseFloat(p.quantity) || 0;
+                                totals[product] = (totals[product] || 0) + qty;
+                            });
+                        }
+                    }
+                } catch (e) {}
+            });
+
+            // Crea HTML per la stampa
+            let printHTML = `
+                <html>
+                    <head>
+                        <meta charset="UTF-8">
+                        <title>Stampa Viaggio - ${trip.name}</title>
+                        <style>
+                            body { font-family: Arial, sans-serif; margin: 20px; color: #333; }
+                            .header { border-bottom: 3px solid #38bdf8; padding-bottom: 15px; margin-bottom: 20px; }
+                            .header h1 { margin: 0; color: #38bdf8; font-size: 24px; }
+                            .header p { margin: 5px 0; color: #666; }
+                            .details { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+                            .detail-box { padding: 10px; background: #f5f5f5; border-radius: 4px; }
+                            .detail-label { font-weight: bold; color: #38bdf8; font-size: 12px; }
+                            .detail-value { font-size: 16px; margin-top: 5px; }
+                            .orders-section { margin: 20px 0; }
+                            .orders-section h2 { color: #38bdf8; border-bottom: 2px solid #38bdf8; padding-bottom: 10px; }
+                            .order-item { padding: 12px; margin: 8px 0; background: #f9f9f9; border-left: 4px solid #38bdf8; border-radius: 4px; }
+                            .order-item strong { color: #333; }
+                            .order-item p { margin: 5px 0; color: #666; font-size: 14px; }
+                            .product-item { padding: 8px; margin: 4px 0; background: #fff9e6; border: 2px solid #38bdf8; border-radius: 4px; font-weight: bold; color: #0066cc; font-size: 16px; }
+                            .totals { margin-top: 20px; padding: 15px; background: #e8f4f8; border-radius: 6px; border: 2px solid #38bdf8; }
+                            .totals h3 { color: #38bdf8; margin-top: 0; }
+                            .total-row { display: flex; justify-content: space-between; padding: 5px 0; }
+                            .no-print { padding-top: 20px; text-align: center; color: #999; font-size: 12px; }
+                            .no-print button { padding: 10px 20px; margin: 0 5px; background: #38bdf8; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; }
+                            .no-print button:hover { background: #2ba8d8; }
+                            @media print { body { margin: 0; } .no-print { display: none; } }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="header">
+                            <h1>🚚 ${trip.name}</h1>
+                            <p>Stampa Viaggio • ${new Date(trip.date).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                        </div>
+
+                        <div class="details">
+                            <div class="detail-box">
+                                <div class="detail-label">📅 DATA VIAGGIO</div>
+                                <div class="detail-value">${new Date(trip.date).toLocaleDateString('it-IT')}</div>
+                            </div>
+                            <div class="detail-box">
+                                <div class="detail-label">⏰ ORA PARTENZA</div>
+                                <div class="detail-value">${trip.date.split('T')[1]?.slice(0, 5) || 'Non specificata'}</div>
+                            </div>
+                            <div class="detail-box">
+                                <div class="detail-label">👤 OPERATORE</div>
+                                <div class="detail-value">${operatorName}</div>
+                            </div>
+                            <div class="detail-box">
+                                <div class="detail-label">🚐 VEICOLO</div>
+                                <div class="detail-value">${trip.vehicleName || 'Non specificato'}</div>
+                            </div>
+                        </div>
+
+                        ${tripOrders.length > 0 ? `
+                            <div class="orders-section">
+                                <h2>📋 ORDINI DEL VIAGGIO (${tripOrders.length})</h2>
+                                ${tripOrders.map((order, index) => {
+                                    let colli = 0;
+                                    let kg = 0;
+                                    let productsHTML = '';
+                                    
+                                    try {
+                                        if (order.products) {
+                                            const prods = typeof order.products === 'string' ? JSON.parse(order.products) : order.products;
+                                            if (Array.isArray(prods)) {
+                                                prods.forEach(p => {
+                                                    const weight = extractWeightPerCollo(p.product);
+                                                    const prodColli = Math.round(p.quantity / weight);
+                                                    colli += prodColli;
+                                                    kg += parseFloat(p.quantity) || 0;
+                                                    productsHTML += `<div class="product-item">${p.product} (${prodColli} colli • ${p.quantity}kg)</div>`;
+                                                });
+                                            }
+                                        }
+                                    } catch (e) {}
+                                    
+                                    const clientName = order.customer ? order.customer.name : (order.clientName || 'Cliente sconosciuto');
+                                    return `
+                                    <div class="order-item">
+                                        <strong>#${index + 1} - ${clientName}</strong>
+                                        <p style="margin-top: 10px; margin-bottom: 5px;"><strong style="color: #333;">📦 PRODOTTI:</strong></p>
+                                        ${productsHTML}
+                                        <p style="margin-top: 10px;"><strong>Colli Totali:</strong> ${colli} colli • <strong style="color: #38bdf8;">${kg} kg</strong></p>
+                                    </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        ` : '<p style="color: #999; font-style: italic;">Nessun ordine assegnato</p>'}\n
+                        <div class="totals">
+                            <h3>📊 TOTALI PRODOTTI</h3>
+                            ${Object.entries(totals).length > 0 
+                                ? Object.entries(totals).map(([product, qty]) => {
+                                    const weight = extractWeightPerCollo(product);
+                                    const colli = Math.round(qty / weight);
+                                    return `<div class="total-row"><span><strong>${product}</strong></span><span style="color: #38bdf8; font-weight: bold;">${colli} colli • ${qty.toFixed(1)} kg</span></div>`;
+                                }).join('')
+                                : '<p style="color: #999;">Nessun prodotto</p>'}\n                            ${(() => {
+                                const totalKg = Object.values(totals).reduce((a,b) => a+b, 0);
+                                const totalColli = Object.entries(totals).reduce((sum, [product, qty]) => {
+                                    const weight = extractWeightPerCollo(product);
+                                    return sum + Math.round(qty / weight);
+                                }, 0);
+                                return `<div class="total-row" style="border-top: 1px solid #38bdf8; padding-top: 10px; margin-top: 10px; font-weight: bold; font-size: 16px;"><span>TOTALE</span><span style="color: #38bdf8;">${totalColli} colli • ${totalKg.toFixed(1)} kg</span></div>`;
+                            })()}
+                        </div>
+
+                        <div class="no-print">
+                            <p>Stampato il ${new Date().toLocaleString('it-IT')}</p>
+                            <button onclick="window.print()">🖨️ Stampa</button>
+                            <button onclick="window.close()">❌ Chiudi</button>
+                        </div>
+                    </body>
+                </html>
+            `;
+
+            // Apri in nuova finestra per la stampa
+            const printWindow = window.open('', 'PrintTrip', 'height=800,width=900');
+            printWindow.document.write(printHTML);
+            printWindow.document.close();
+        }
+
+        async function handlePrintTrip(tripId) {
+            try {
+                const response = await fetch(`${API_URL}/trips/${tripId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ accepted: true, printed: true })
+                });
+
+                if (!response.ok) throw new Error('Errore stampa viaggio');
+
+                showAlert('🖨️ Viaggio stampato e accettato!', 'success');
+                // Apri documento di stampa
+                printTrip(tripId);
+                await loadTrips();
+            } catch (error) {
+                showAlert('❌ Errore: ' + error.message, 'error');
+            }
         }
 
         function handleLogout() {

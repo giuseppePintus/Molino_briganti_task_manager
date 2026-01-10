@@ -457,26 +457,11 @@
                 });
 
                 if (!response.ok) {
-                    console.warn('API backup non disponibile, usando mock data');
-                    // Se l'endpoint non esiste, usa mock data
-                    const mockBackups = [
-                        {
-                            id: '1',
-                            filename: 'backup_2025-11-22_14-30.db',
-                            createdAt: new Date().toISOString(),
-                            size: 5242880 // 5MB
-                        },
-                        {
-                            id: '2',
-                            filename: 'backup_2025-11-21_10-00.db',
-                            createdAt: new Date(Date.now() - 86400000).toISOString(),
-                            size: 5120000
-                        }
-                    ];
-                    renderBackupList(mockBackups);
-                    updateBackupSelect(mockBackups);
-                    updateStats(mockBackups);
-                    showAlert('ℹ️ Endpoint backup non disponibile, visualizzazione in modalità demo', 'info');
+                    console.error('❌ API backup non disponibile');
+                    renderBackupList([]);
+                    updateBackupSelect([]);
+                    updateStats([]);
+                    showAlert('❌ API non disponibile', 'error');
                     return;
                 }
 
@@ -626,25 +611,50 @@
             const backupSelect = document.getElementById('backupSelect');
             const backupFilename = backupSelect.value;
             if (!backupFilename) {
-                showAlert('Seleziona un backup da ripristinare', 'error');
+                showAlert('⚠️ Seleziona un backup da ripristinare', 'error');
                 return;
             }
 
-            if (!confirm('⚠️ Questo sovrascriverà tutti i dati attuali. Continuare?')) return;
+            if (!confirm('⚠️ ATTENZIONE: Questo sovrascriverà tutti i dati attuali con quelli del backup selezionato. Continuare?')) return;
+
+            // Mostra stato di caricamento
+            const restoreBtn = document.querySelector('button[onclick="restoreBackup()"]');
+            const originalBtnContent = restoreBtn.innerHTML;
+            restoreBtn.disabled = true;
+            restoreBtn.innerHTML = '<span>⏳</span> <span>Ripristino in corso...</span>';
+            
+            showAlert('⏳ Ripristino in corso... Attendere prego.', 'info');
 
             try {
                 const encodedFilename = encodeURIComponent(backupFilename);
+                console.log(`Inizio ripristino backup: ${backupFilename}`);
+                
                 const response = await fetch(`${API_URL}/backup/restore/${encodedFilename}`, {
                     method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
                 });
 
-                if (!response.ok) throw new Error('Errore ripristino backup');
+                const result = await response.json();
 
-                showAlert('✅ Backup ripristinato con successo! La pagina si ricaricherà...', 'success');
-                setTimeout(() => location.reload(), 2000);
+                if (!response.ok) {
+                    throw new Error(result.error || 'Errore durante il ripristino');
+                }
+
+                console.log('Ripristino completato:', result);
+                showAlert('✅ Backup ripristinato con successo! Il sistema si sta riavviando...', 'success');
+                
+                // Attendi un po' di più per permettere al server di stabilizzarsi
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 3000);
             } catch (error) {
-                showAlert('Errore: ' + error.message, 'error');
+                console.error('Errore ripristino:', error);
+                showAlert('❌ Errore: ' + error.message, 'error');
+                restoreBtn.disabled = false;
+                restoreBtn.innerHTML = originalBtnContent;
             }
         }
 

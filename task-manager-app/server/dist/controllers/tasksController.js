@@ -8,11 +8,13 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TasksController = void 0;
-const client_1 = require("@prisma/client");
+const prisma_1 = __importDefault(require("../lib/prisma"));
 const socketService_1 = require("../services/socketService");
-const prisma = new client_1.PrismaClient();
 // Priority to color mapping
 const priorityColors = {
     'LOW': '#10B981', // green
@@ -30,7 +32,7 @@ class TasksController {
                 let tasks;
                 if (req.user.role === 'master') {
                     // Master sees all tasks
-                    tasks = yield prisma.task.findMany({
+                    tasks = yield prisma_1.default.task.findMany({
                         include: {
                             assignedOperator: { select: { id: true, username: true, role: true } },
                             createdBy: { select: { id: true, username: true } },
@@ -42,7 +44,7 @@ class TasksController {
                 }
                 else {
                     // Slave sees only assigned tasks
-                    tasks = yield prisma.task.findMany({
+                    tasks = yield prisma_1.default.task.findMany({
                         where: { assignedOperatorId: req.user.id },
                         include: {
                             assignedOperator: { select: { id: true, username: true, role: true } },
@@ -76,7 +78,7 @@ class TasksController {
                 const taskColor = priorityColors[taskPriority];
                 // Se non c'è ricorrenza, crea un task singolo
                 if (!recurrenceType) {
-                    const newTask = yield prisma.task.create({
+                    const newTask = yield prisma_1.default.task.create({
                         data: {
                             title,
                             description: description || null,
@@ -136,7 +138,7 @@ class TasksController {
                 // Crea le istanze ricorrenti
                 const createdTasks = [];
                 for (const instanceDate of instanceDates) {
-                    const task = yield prisma.task.create({
+                    const task = yield prisma_1.default.task.create({
                         data: {
                             title,
                             description: description || null,
@@ -193,7 +195,7 @@ class TasksController {
                 }
                 if (assignedOperatorId !== undefined) {
                     // Se viene assegnato un operatore (da null a un valore), imposta assignedAt
-                    const currentTask = yield prisma.task.findUnique({ where: { id: parseInt(id) } });
+                    const currentTask = yield prisma_1.default.task.findUnique({ where: { id: parseInt(id) } });
                     if (assignedOperatorId && (!(currentTask === null || currentTask === void 0 ? void 0 : currentTask.assignedOperatorId) || currentTask.assignedOperatorId !== assignedOperatorId)) {
                         updateData.assignedAt = new Date();
                     }
@@ -240,7 +242,7 @@ class TasksController {
                     updateData.color = priorityColors[priority];
                 }
                 console.log(`DEBUG: updateData to be saved:`, updateData);
-                const updatedTask = yield prisma.task.update({
+                const updatedTask = yield prisma_1.default.task.update({
                     where: { id: parseInt(id) },
                     data: updateData,
                     include: {
@@ -268,7 +270,7 @@ class TasksController {
                 }
                 const { id } = req.params;
                 const taskId = parseInt(id);
-                yield prisma.task.delete({ where: { id: taskId } });
+                yield prisma_1.default.task.delete({ where: { id: taskId } });
                 // Notifica WebSocket
                 socketService_1.socketService.notifyTaskDeleted(taskId);
                 res.status(204).send();
@@ -288,12 +290,12 @@ class TasksController {
                 const { id } = req.params;
                 const { note, actualMinutes, markCompleted } = req.body;
                 // Verify task exists
-                const task = yield prisma.task.findUnique({ where: { id: parseInt(id) } });
+                const task = yield prisma_1.default.task.findUnique({ where: { id: parseInt(id) } });
                 if (!task) {
                     return res.status(404).json({ message: 'Task not found' });
                 }
                 // Add note
-                const newNote = yield prisma.taskNote.create({
+                const newNote = yield prisma_1.default.taskNote.create({
                     data: {
                         taskId: parseInt(id),
                         userId: req.user.id,
@@ -307,7 +309,7 @@ class TasksController {
                 if (markCompleted) {
                     // If operator marks task complete, it goes back to admin task (unassigned)
                     if (req.user.role === 'slave') {
-                        yield prisma.task.update({
+                        yield prisma_1.default.task.update({
                             where: { id: parseInt(id) },
                             data: {
                                 completed: true,
@@ -324,7 +326,7 @@ class TasksController {
                     }
                     else {
                         // Master can mark tasks directly as completed
-                        yield prisma.task.update({
+                        yield prisma_1.default.task.update({
                             where: { id: parseInt(id) },
                             data: {
                                 completed: true,
@@ -347,7 +349,7 @@ class TasksController {
         return __awaiter(this, void 0, void 0, function* () {
             try {
                 const { id } = req.params;
-                const notes = yield prisma.taskNote.findMany({
+                const notes = yield prisma_1.default.taskNote.findMany({
                     where: { taskId: parseInt(id) },
                     include: {
                         user: { select: { id: true, username: true } },
@@ -370,7 +372,7 @@ class TasksController {
                 }
                 const { id } = req.params;
                 // Check if operator already has an active task
-                const activeTask = yield prisma.task.findFirst({
+                const activeTask = yield prisma_1.default.task.findFirst({
                     where: {
                         assignedOperatorId: req.user.id,
                         completed: false,
@@ -384,7 +386,7 @@ class TasksController {
                     });
                 }
                 // Verify task exists and is assigned to this operator
-                const task = yield prisma.task.findUnique({ where: { id: parseInt(id) } });
+                const task = yield prisma_1.default.task.findUnique({ where: { id: parseInt(id) } });
                 if (!task) {
                     return res.status(404).json({ message: 'Task not found' });
                 }
@@ -392,7 +394,7 @@ class TasksController {
                     return res.status(403).json({ message: 'Task not assigned to you' });
                 }
                 // Accept task
-                const acceptedTask = yield prisma.task.update({
+                const acceptedTask = yield prisma_1.default.task.update({
                     where: { id: parseInt(id) },
                     data: {
                         acceptedAt: new Date(),
@@ -425,7 +427,7 @@ class TasksController {
                 }
                 const { id } = req.params;
                 // Verify task exists and is assigned to this operator
-                const task = yield prisma.task.findUnique({ where: { id: parseInt(id) } });
+                const task = yield prisma_1.default.task.findUnique({ where: { id: parseInt(id) } });
                 if (!task) {
                     return res.status(404).json({ message: 'Task not found' });
                 }
@@ -433,7 +435,7 @@ class TasksController {
                     return res.status(403).json({ message: 'Task not assigned to you' });
                 }
                 // Pause task
-                const pausedTask = yield prisma.task.update({
+                const pausedTask = yield prisma_1.default.task.update({
                     where: { id: parseInt(id) },
                     data: {
                         paused: true,
@@ -464,7 +466,7 @@ class TasksController {
                 }
                 const { id } = req.params;
                 // Verify task exists and is assigned to this operator
-                const task = yield prisma.task.findUnique({ where: { id: parseInt(id) } });
+                const task = yield prisma_1.default.task.findUnique({ where: { id: parseInt(id) } });
                 if (!task) {
                     return res.status(404).json({ message: 'Task not found' });
                 }
@@ -472,7 +474,7 @@ class TasksController {
                     return res.status(403).json({ message: 'Task not assigned to you' });
                 }
                 // Resume task
-                const resumedTask = yield prisma.task.update({
+                const resumedTask = yield prisma_1.default.task.update({
                     where: { id: parseInt(id) },
                     data: {
                         paused: false,
@@ -503,7 +505,7 @@ class TasksController {
                 }
                 const { id } = req.params;
                 // Verify task exists and is assigned to this operator
-                const task = yield prisma.task.findUnique({ where: { id: parseInt(id) } });
+                const task = yield prisma_1.default.task.findUnique({ where: { id: parseInt(id) } });
                 if (!task) {
                     return res.status(404).json({ message: 'Task not found' });
                 }
@@ -563,7 +565,7 @@ class TasksController {
                     newDate.setDate(newDate.getDate() + 1);
                 }
                 // Postpone task
-                const postponedTask = yield prisma.task.update({
+                const postponedTask = yield prisma_1.default.task.update({
                     where: { id: parseInt(id) },
                     data: {
                         scheduledAt: newDate,
@@ -593,12 +595,12 @@ class TasksController {
                 }
                 const { id } = req.params;
                 // Verify task exists
-                const task = yield prisma.task.findUnique({ where: { id: parseInt(id) } });
+                const task = yield prisma_1.default.task.findUnique({ where: { id: parseInt(id) } });
                 if (!task) {
                     return res.status(404).json({ message: 'Task not found' });
                 }
                 // Reset task to suspended state (only remove acceptance and completion)
-                const resetTask = yield prisma.task.update({
+                const resetTask = yield prisma_1.default.task.update({
                     where: { id: parseInt(id) },
                     data: {
                         acceptedAt: null,
@@ -637,7 +639,7 @@ class TasksController {
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
                 // Trova tutti i task schedulati prima di oggi che non sono completati
-                const overdueTasks = yield prisma.task.findMany({
+                const overdueTasks = yield prisma_1.default.task.findMany({
                     where: {
                         scheduledAt: { lt: today },
                         completed: false,
@@ -656,7 +658,7 @@ class TasksController {
                     const originalDate = new Date(task.scheduledAt);
                     const newScheduledAt = new Date(today);
                     newScheduledAt.setHours(originalDate.getHours(), originalDate.getMinutes(), 0, 0);
-                    const updatedTask = yield prisma.task.update({
+                    const updatedTask = yield prisma_1.default.task.update({
                         where: { id: task.id },
                         data: { scheduledAt: newScheduledAt },
                         include: {

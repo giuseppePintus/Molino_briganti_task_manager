@@ -1,0 +1,5 @@
+-- AddColumn trip fields
+ALTER TABLE "Trip" ADD COLUMN "accepted" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "Trip" ADD COLUMN "acceptedAt" DATETIME;
+ALTER TABLE "Trip" ADD COLUMN "printed" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "Trip" ADD COLUMN "printedAt" DATETIME;

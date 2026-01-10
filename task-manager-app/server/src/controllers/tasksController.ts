@@ -1,8 +1,6 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma';
 import { socketService } from '../services/socketService';
-
-const prisma = new PrismaClient();
 
 // Priority to color mapping
 const priorityColors: { [key: string]: string } = {

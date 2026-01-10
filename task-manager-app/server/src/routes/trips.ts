@@ -1,8 +1,7 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 /**
  * GET /api/trips
@@ -72,6 +71,10 @@ router.get('/', async (req: Request, res: Response) => {
       return {
         ...trip,
         sequence,
+        accepted: trip.accepted !== undefined ? trip.accepted : false,
+        acceptedAt: trip.acceptedAt || null,
+        printed: trip.printed !== undefined ? trip.printed : false,
+        printedAt: trip.printedAt || null,
         orders
       };
     });
@@ -217,8 +220,12 @@ router.put('/:id', async (req: Request, res: Response) => {
       vehicleName,
       sequence,
       status,
+      accepted,
+      printed,
       notes 
     } = req.body;
+    
+    console.log('🔵 PUT /trips/:id called with id=%s, accepted=%s', id, accepted);
     
     const updateData: any = {};
     
@@ -229,6 +236,23 @@ router.put('/:id', async (req: Request, res: Response) => {
     if (vehicleName !== undefined) updateData.vehicleName = vehicleName;
     if (sequence !== undefined) updateData.sequence = Array.isArray(sequence) ? JSON.stringify(sequence) : sequence;
     if (notes !== undefined) updateData.notes = notes;
+    if (accepted !== undefined) {
+      updateData.accepted = accepted;
+      if (accepted) {
+        updateData.acceptedAt = new Date();
+      }
+    }
+    if (printed !== undefined) {
+      updateData.printed = printed;
+      if (printed) {
+        updateData.printedAt = new Date();
+        // Se viene stampato, marca anche come accettato
+        updateData.accepted = true;
+        if (!updateData.acceptedAt) {
+          updateData.acceptedAt = new Date();
+        }
+      }
+    }
     if (status !== undefined) {
       updateData.status = status;
       if (status === 'in_progress') {
@@ -237,6 +261,8 @@ router.put('/:id', async (req: Request, res: Response) => {
         updateData.completedAt = new Date();
       }
     }
+    
+    console.log('🟡 updateData:', updateData);
     
     const trip = await prisma.trip.update({
       where: { id: parseInt(id) },
@@ -251,9 +277,15 @@ router.put('/:id', async (req: Request, res: Response) => {
       }
     });
     
+    console.log('🟢 Trip updated successfully - id=%s, accepted=%s, acceptedAt=%s', trip.id, trip.accepted, trip.acceptedAt);
+    
     res.json({
       ...trip,
       sequence: trip.sequence ? JSON.parse(trip.sequence) : [],
+      accepted: trip.accepted !== undefined ? trip.accepted : false,
+      acceptedAt: trip.acceptedAt || null,
+      printed: trip.printed !== undefined ? trip.printed : false,
+      printedAt: trip.printedAt || null,
       orders: trip.orders.map(order => ({
         ...order,
         products: order.products ? JSON.parse(order.products) : []

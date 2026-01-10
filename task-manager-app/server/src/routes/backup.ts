@@ -1,10 +1,14 @@
 import express, { Router, Request, Response } from 'express';
 import BackupService from '../services/backupService';
+import { authMiddleware, requireMaster } from '../middleware/auth';
 import * as fs from 'fs';
 import * as path from 'path';
 
 const router = Router();
-const BACKUP_DIR = process.env.BACKUP_DIR || './backups';
+
+// Applica middleware di autenticazione a tutte le rotte backup
+router.use(authMiddleware);
+router.use(requireMaster);
 
 /**
  * GET /api/backup/list
@@ -60,7 +64,7 @@ router.post('/upload', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Missing X-Backup-Name header' });
     }
 
-    const backupPath = path.join(BACKUP_DIR, backupName);
+    const backupPath = path.join(BackupService.getBackupDir(), backupName);
     const writeStream = fs.createWriteStream(backupPath);
 
     req.pipe(writeStream);
@@ -100,7 +104,7 @@ router.get('/download/:filename', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Invalid filename' });
     }
 
-    const backupPath = path.join(BACKUP_DIR, filename);
+    const backupPath = path.join(BackupService.getBackupDir(), filename);
     
     if (!fs.existsSync(backupPath)) {
       return res.status(404).json({ error: 'Backup not found' });
@@ -128,7 +132,7 @@ router.post('/restore/:filename', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Invalid filename' });
     }
 
-    const backupPath = path.join(BACKUP_DIR, filename);
+    const backupPath = path.join(BackupService.getBackupDir(), filename);
     
     if (!fs.existsSync(backupPath)) {
       return res.status(404).json({ error: 'Backup not found' });
@@ -183,7 +187,7 @@ router.delete('/:filename', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Invalid filename' });
     }
 
-    const backupPath = path.join(BACKUP_DIR, filename);
+    const backupPath = path.join(BackupService.getBackupDir(), filename);
     
     if (!fs.existsSync(backupPath)) {
       return res.status(404).json({ error: 'Backup not found' });

@@ -92,12 +92,20 @@ export async function createTablesIfNotExist(prisma: PrismaClient) {
       )
     `);
 
+    // Rimuovi eventuale indice univoco su Article.code che impedisce duplicati in posizioni diverse
+    try {
+      await prisma.$executeRawUnsafe(`DROP INDEX IF EXISTS "Article_code_key"`);
+    } catch (e) {
+      // Ignora se non esiste
+    }
+
     await prisma.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS "Inventory" (
         "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
         "articleId" INTEGER NOT NULL UNIQUE,
         "currentStock" INTEGER NOT NULL DEFAULT 0,
         "minimumStock" INTEGER NOT NULL DEFAULT 0,
+        "position" TEXT,
         "shelfPosition" TEXT,
         "lastUpdated" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         "notes" TEXT,
@@ -213,11 +221,45 @@ export async function createTablesIfNotExist(prisma: PrismaClient) {
         "startedAt" DATETIME,
         "completedAt" DATETIME,
         "notes" TEXT,
+        "accepted" BOOLEAN NOT NULL DEFAULT 0,
+        "acceptedAt" DATETIME,
+        "printed" BOOLEAN NOT NULL DEFAULT 0,
+        "printedAt" DATETIME,
         "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         CONSTRAINT "Trip_assignedOperatorId_fkey" FOREIGN KEY ("assignedOperatorId") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE
       )
     `);
+
+    // Aggiungi colonne mancanti ai Trip se non esistono (migration per DB vecchi)
+    try {
+      await prisma.$executeRawUnsafe(`
+        ALTER TABLE "Trip" ADD COLUMN "accepted" BOOLEAN NOT NULL DEFAULT 0
+      `);
+    } catch (e) {
+      // La colonna potrebbe già esistere, ignora l'errore
+    }
+    try {
+      await prisma.$executeRawUnsafe(`
+        ALTER TABLE "Trip" ADD COLUMN "acceptedAt" DATETIME
+      `);
+    } catch (e) {
+      // La colonna potrebbe già esistere, ignora l'errore
+    }
+    try {
+      await prisma.$executeRawUnsafe(`
+        ALTER TABLE "Trip" ADD COLUMN "printed" BOOLEAN NOT NULL DEFAULT 0
+      `);
+    } catch (e) {
+      // La colonna potrebbe già esistere, ignora l'errore
+    }
+    try {
+      await prisma.$executeRawUnsafe(`
+        ALTER TABLE "Trip" ADD COLUMN "printedAt" DATETIME
+      `);
+    } catch (e) {
+      // La colonna potrebbe già esistere, ignora l'errore
+    }
 
     // Aggiungi colonna assignedOperatorId se non esiste (migration per DB vecchi)
     try {
@@ -296,6 +338,17 @@ export async function createTablesIfNotExist(prisma: PrismaClient) {
     try {
       await prisma.$executeRawUnsafe(`
         ALTER TABLE "Inventory" ADD COLUMN "expiry" TEXT
+      `);
+    } catch (error: any) {
+      if (!error.message.includes('already exists') && !error.message.includes('duplicate')) {
+        console.log('Note:', error.message);
+      }
+    }
+
+    // Aggiungi colonna "position" se manca in Inventory
+    try {
+      await prisma.$executeRawUnsafe(`
+        ALTER TABLE "Inventory" ADD COLUMN "position" TEXT
       `);
     } catch (error: any) {
       if (!error.message.includes('already exists') && !error.message.includes('duplicate')) {

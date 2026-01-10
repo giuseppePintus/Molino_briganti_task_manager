@@ -1,20 +1,66 @@
 import * as dotenv from 'dotenv';
 import path from 'path';
+import * as fs from 'fs';
 
 // Load environment variables from server/.env
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
 // Load version from package.json
-const packageJson = require('../../package.json');
-const APP_VERSION = packageJson.version || '1.0.0';
+let APP_VERSION = '1.0.0';
+try {
+  // In production (dist/index.js), package.json is one level up
+  // In development (src/index.ts), package.json is two levels up
+  const paths = [
+    path.join(__dirname, '../package.json'),
+    path.join(__dirname, '../../package.json')
+  ];
+  
+  for (const p of paths) {
+    if (fs.existsSync(p)) {
+      const pkg = JSON.parse(fs.readFileSync(p, 'utf-8'));
+      APP_VERSION = pkg.version || '1.0.0';
+      break;
+    }
+  }
+} catch (e) {
+  console.warn('⚠️ Errore caricamento versione:', e);
+}
+
+// Check if compiled files have been updated since last boot
+// This allows live reload when dist files are updated
+const bootMarkerFile = path.join(__dirname, '.boot-marker');
+const inventoryServiceFile = path.join(__dirname, './services/inventoryService.js');
+
+if (fs.existsSync(inventoryServiceFile)) {
+  const inventoryMtime = fs.statSync(inventoryServiceFile).mtime.getTime();
+  const currentTime = Date.now();
+  const timeDiff = (currentTime - inventoryMtime) / 1000; // in seconds
+  
+  if (fs.existsSync(bootMarkerFile)) {
+    const bootMarkerMtime = fs.statSync(bootMarkerFile).mtime.getTime();
+    const timeSinceBoot = (currentTime - bootMarkerMtime) / 1000;
+    
+    if (inventoryMtime > bootMarkerMtime) {
+      console.log(`🔄 RILEVATO: Codice compilato aggiornato (${Math.round(timeSinceBoot)}s fa)`);
+      console.log(`   File: inventoryService.js è stato rigenerato`);
+      console.log(`   ⚠️  Cache Node.js potrebbe essere stantio - esecuzione con nuovo codice`);
+    }
+  }
+}
+
+// Update boot marker
+try {
+  fs.writeFileSync(bootMarkerFile, Date.now().toString(), 'utf-8');
+} catch (e) {
+  console.warn('⚠️ Non riesco a scrivere boot marker:', e);
+}
 
 import express from 'express';
 import cors from 'cors';
 import http from 'http';
-import { PrismaClient } from '@prisma/client';
+
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import * as fs from 'fs';
 import tasksRoutes from './routes/tasks';
 import authRoutes from './routes/auth';
 import backupRoutes from './routes/backup';
@@ -25,15 +71,17 @@ import uploadRoutes, { UPLOAD_DIR } from './routes/upload';
 import ordersRoutes from './routes/orders';
 import tripsRoutes from './routes/trips';
 import customersRoutes from './routes/customers';
+import debugRoutes from './routes/debug';
 import setupBackupMiddleware from './middleware/backupMiddleware';
 import BackupService from './services/backupService';
+import prisma from './lib/prisma';
 import { initializeDatabaseIfEmpty } from './services/databaseInit';
 import { socketService } from './services/socketService';
+// WarehouseService imported lazily in endpoints to avoid sqlite3 dependency issue
 
 const execAsync = promisify(exec);
 const app = express();
 const httpServer = http.createServer(app);
-const prisma = new PrismaClient();
 const PORT = process.env.PORT || 5000;
 
 // Inizializza WebSocket
@@ -59,7 +107,9 @@ app.use((req, res, next) => {
 });
 
 // Serve static files
-app.use(express.static(path.join(__dirname, '../../public')));
+const publicPath = path.join(process.cwd(), 'public');
+console.log(`📁 Public directory: ${publicPath}`);
+app.use(express.static(publicPath));
 
 // Serve uploads da directory persistente (bind mount in produzione)
 app.use('/uploads', express.static(UPLOAD_DIR));
@@ -76,10 +126,89 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/orders', ordersRoutes);
 app.use('/api/trips', tripsRoutes);
 app.use('/api/customers', customersRoutes);
+app.use('/api/debug', debugRoutes);
+
+// Inline endpoint - Import warehouse from PDF
+app.post('/api/warehouse/import-from-pdf', async (req, res) => {
+  try {
+    console.log('📄 [INLINE] Warehouse PDF import requested');
+    const result = await (require('./services/warehouseService').WarehouseService).importFromPdf();
+    res.json({
+      success: true,
+      message: 'Warehouse imported successfully',
+      data: result
+    });
+  } catch (error: any) {
+    console.error('❌ [INLINE] Warehouse import error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Inline endpoint - Get warehouse articles
+app.get('/api/warehouse/articles', async (req, res) => {
+  try {
+    const articles = await (require('./services/warehouseService').WarehouseService).getAllArticles();
+    res.json({
+      success: true,
+      data: articles
+    });
+  } catch (error: any) {
+    console.error('❌ [INLINE] Get warehouse articles error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Force reload of modules (emergency restart without killing process)
+app.post('/api/admin/reload-modules', (req, res) => {
+  try {
+    console.log('🔄 Ricaricamento forzato moduli...');
+    
+    // Pulisci la cache dei moduli per i servizi principali
+    const modulesToReload = [
+      require.cache[require.resolve('./services/inventoryService.js')],
+      require.cache[require.resolve('./routes/inventory.js')],
+      require.cache[require.resolve('./controllers/inventoryController.js')]
+    ];
+    
+    for (const moduleKey in require.cache) {
+      if (moduleKey.includes('services/inventoryService') || 
+          moduleKey.includes('routes/inventory') ||
+          moduleKey.includes('controllers/inventoryController')) {
+        delete require.cache[moduleKey];
+      }
+    }
+    
+    console.log('✅ Moduli ricaricati dalla cache');
+    res.json({ 
+      success: true, 
+      message: 'Moduli ricaricati con successo',
+      timestamp: new Date().toISOString()
+    });
+  } catch (err: any) {
+    console.error('❌ Errore reload moduli:', err.message);
+    res.status(500).json({ 
+      success: false, 
+      error: err.message 
+    });
+  }
+});
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', version: APP_VERSION });
+  res.json({ 
+    status: 'ok', 
+    version: APP_VERSION,
+    time: new Date().toISOString(),
+    node: process.version,
+    platform: process.platform,
+    arch: process.arch
+  });
 });
 
 // Version endpoint
@@ -108,42 +237,46 @@ app.get('/api/logo', async (req, res) => {
 
 // Serve index.html for all other routes (SPA)
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../../public/index.html'));
+  res.sendFile(path.join(process.cwd(), 'public/index.html'));
 });
 
 // Start server with WebSocket support
-httpServer.listen(PORT, async () => {
+// Ascolta su tutte le interfacce (0.0.0.0) per essere accessibile da rete
+httpServer.listen(PORT, undefined, async () => {
   try {
-    // Sincronizza database schema usando prisma db push (DISABLED for testing)
-    // console.log('📦 Synchronizing database schema...');
-    // try {
-    //   const schemaPath = path.join(__dirname, '../prisma/schema.prisma');
-    //   await execAsync(`npx prisma db push --skip-generate --schema="${schemaPath}"`, {
-    //     cwd: path.join(__dirname, '../..'),
-    //     env: { ...process.env }
-    //   });
-    //   console.log('✅ Database schema synchronized');
-    // } catch (err: any) {
-    //   console.error('❌ Database schema sync error:', err.message);
-    //   // Se fallisce, continua comunque - potrebbero essere warnings non critici
-    // }
-
+    console.log('🚀 Starting server...');
+    
+    // Connessione Prisma
     await prisma.$connect();
     console.log('✅ Database connected successfully');
+
+    // Aggiungi i campi mancanti a Trip se non esistono
+    console.log('🔧 Checking Trip table schema...');
+    try {
+      const fieldsToAdd = [
+        ['accepted', 'BOOLEAN NOT NULL DEFAULT 0'],
+        ['acceptedAt', 'DATETIME'],
+        ['printed', 'BOOLEAN NOT NULL DEFAULT 0'],
+        ['printedAt', 'DATETIME']
+      ];
+
+      for (const [fieldName, fieldType] of fieldsToAdd) {
+        try {
+          await prisma.$executeRawUnsafe(`ALTER TABLE "Trip" ADD COLUMN "${fieldName}" ${fieldType}`);
+          console.log(`✅ Added column: ${fieldName}`);
+        } catch (err: any) {
+          // Silently ignore
+        }
+      }
+    } catch (err: any) {
+      console.warn('⚠️  Error checking Trip columns:', err.message);
+    }
 
     // Inizializza database con utenti di default se vuoto
     await initializeDatabaseIfEmpty(prisma);
 
-    // Setup backup middleware DOPO connessione
+    // Setup backup middleware
     setupBackupMiddleware(prisma);
-
-    // Ripristina ultimo backup dal NAS se disponibile (DISABLED for testing)
-    // try {
-    //   console.log('🔄 Checking for backups on NAS...');
-    //   await BackupService.restoreLatestFromNas();
-    // } catch (err) {
-    //   console.log('ℹ️ No backups available on NAS (first run)');
-    // }
 
     // Attiva backup automatico ogni ora
     BackupService.setupAutoBackup(60);

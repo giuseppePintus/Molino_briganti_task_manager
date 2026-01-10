@@ -1,9 +1,9 @@
 /* Shared button styles across the site (except quick-actions which have page overrides) */
 .btn {
-  padding: 8px 14px;
+  padding: 10px 16px;
   border: none;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: 17px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s;
@@ -50,8 +50,8 @@
 
 /* Size helpers */
 .btn-small {
-  padding: 6px 12px;
-  font-size: 12px;
+  padding: 8px 14px;
+  font-size: 15px;
 }
 
 /* Shared header styles (align with admin dashboard) */

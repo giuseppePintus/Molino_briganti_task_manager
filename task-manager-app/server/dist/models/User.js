@@ -15,10 +15,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.User = void 0;
 exports.hashPassword = hashPassword;
 exports.comparePassword = comparePassword;
-const client_1 = require("@prisma/client");
+const prisma_1 = __importDefault(require("../lib/prisma"));
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
-const prisma = new client_1.PrismaClient();
-exports.User = prisma.user;
+exports.User = prisma_1.default.user;
 function hashPassword(password) {
     return __awaiter(this, void 0, void 0, function* () {
         return bcryptjs_1.default.hash(password, 10);

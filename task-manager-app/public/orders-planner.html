@@ -769,10 +769,9 @@
         </div>
 
         <!-- Unified Orders Section -->
-        <div class="card" style="border-left: 4px solid #3b82f6;">
+        <div class="card" id="orderTasksCard" style="border-left: 4px solid #3b82f6;display:none;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;flex-wrap:wrap;gap:10px;">
                 <h2 style="display:flex;align-items:center;gap:6px;margin:0;">📋 Ordini da Assegnare <span id="tasksCount" style="font-size: 13px;color:#a0a0a0;font-weight:400;"></span></h2>
-                <button class="btn btn-success" onclick="openCreateTripModal()" style="font-size:12px;padding:6px 12px;">🚐 Crea Viaggio</button>
             </div>
             <div class="orders-grid" id="orderTasksGrid">
                 <!-- Orders will appear here -->
@@ -1021,7 +1020,6 @@
         <div class="modal-content" style="max-width: 500px;">
             <div class="modal-header">
                 <h2>✏️ Modifica Prodotto</h2>
-                <button type="button" class="close-btn" onclick="closeEditProductModal()">✕</button>
             </div>
             <div class="modal-body">
                 <div style="background: #2d2d2d; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
@@ -1750,7 +1748,8 @@
             // Mostra solo ordini non assegnati
             let allOrdersToDisplay = ordersToShow;
             
-            // Aggiorna contatore
+            // Aggiorna contatore e visibilità card
+            const orderTasksCard = document.getElementById('orderTasksCard');
             if (countSpan) {
                 if (showAllOrders) {
                     countSpan.textContent = `(${allOrdersToDisplay.length} totali)`;
@@ -1766,6 +1765,11 @@
                 } else {
                     countSpan.textContent = `(${allOrdersToDisplay.length} oggi)`;
                 }
+            }
+            
+            // Mostra/nascondi card in base a ordini disponibili
+            if (orderTasksCard) {
+                orderTasksCard.style.display = allOrdersToDisplay.length > 0 ? 'block' : 'none';
             }
             
             if (allOrdersToDisplay.length === 0) {
@@ -1800,7 +1804,6 @@
                          style="margin-bottom: 10px; border-left: 4px solid ${borderColor};">
                         <div class="order-header">
                             <div class="order-title">${clientName} <span style="color: #888; font-size: 12px;">#${index + 1}</span></div>
-                            <div class="order-status ${order.status}">${statusLabel}</div>
                         </div>
                         <div class="order-details" style="font-size: 12px;">
                             <p><strong>📦 Prodotti:</strong> ${productsStr}</p>
@@ -2035,7 +2038,9 @@
                     const productsStr = fullInfo?.products?.map(p => {
                         const weight = extractWeightPerCollo(p.product || '');
                         const colli = Math.round(p.quantity / weight);
-                        return `${p.product} (${colli} colli • ${p.quantity}kg)`;
+                        const shelfPos = p.batchData?.shelfPosition || p.batch || '—';
+                        const lotto = p.batchData?.batch || p.lotto || '—';
+                        return `${p.product} (${colli} colli • ${p.quantity}kg) <span style="color: #38bdf8; font-size: 11px;">[📍${shelfPos} | 📦${lotto}]</span>`;
                     }).join(' + ') || fullInfo?.product;
                     const lottoStr = order.lotto ? `<p><strong>Lotto:</strong> ${order.lotto}</p>` : '';
                     const posizioneStr = order.posizione ? `<p><strong>Scaffale:</strong> ${order.posizione}</p>` : '';
@@ -2054,7 +2059,6 @@
                              style="margin-bottom: 10px; border-left: 4px solid #3b82f6;">
                             <div class="order-header">
                                 <div class="order-title">${fullInfo?.client || 'Cliente'} <span style="background: #38bdf8; color: white; padding: 2px 8px; border-radius: 4px; font-size: 13px; font-weight: 600;">Tappa ${index + 1}</span></div>
-                                <div class="order-status ${order.status}">${getStatusLabel(order.status, order.id)}</div>
                             </div>
                             <div class="order-details" style="font-size: 12px;">
                                 <p><strong>📦 Prodotti:</strong> ${productsStr}</p>
@@ -2106,9 +2110,33 @@
                             </div>
                             <span class="task-status" style="background: ${tripOrders.length === 0 ? '#6b7280' : '#38bdf8'}; color: white; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600;">${tripOrders.length === 0 ? 'Vuoto' : tripOrders.length + ' ordini'}</span>
                         </div>
-                        <div style="margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px; color: #a0a0a0;">
+                        <div style="margin-top: 12px; display: grid; grid-template-columns: 1fr; gap: 12px; font-size: 13px; color: #a0a0a0;">
                             <div><strong>⏰ Partenza:</strong> ${dateOnly} • ${timeOnly}</div>
-                            <div><strong>👤 Operatore:</strong> ${operatorName}</div>
+                            <div>
+                                <div><strong>👤 Operatore:</strong> ${operatorName}</div>
+                                <div style="margin-top: 6px; padding: 8px; border-left: 3px solid ${trip.completed ? '#10b981' : (trip.acceptedAt ? '#f59e0b' : '#94a3b8')}; border-radius: 4px;">
+                                    <div style="display: flex; flex-direction: column; gap: 4px; font-size: 12px;">
+                                        ${!trip.acceptedAt ? `
+                                            <div style="display: flex; align-items: center; gap: 6px; color: #fca5a5;">
+                                                <span>⏳</span>
+                                                <strong>Attesa di accettazione</strong>
+                                            </div>
+                                        ` : (trip.completed ? `
+                                            <div style="display: flex; align-items: center; gap: 6px; color: #86efac;">
+                                                <span>✅</span>
+                                                <strong>Completato</strong>
+                                                <span style="color: #cbd5e1; font-size: 11px;">${trip.completedAt ? new Date(trip.completedAt).toLocaleString('it-IT').split(' ')[0] : ''}</span>
+                                            </div>
+                                        ` : `
+                                            <div style="display: flex; align-items: center; gap: 6px; color: #fbbf24;">
+                                                <span>👍</span>
+                                                <strong>Accettato</strong>
+                                                <span style="color: #cbd5e1; font-size: 11px;">${trip.acceptedAt ? new Date(trip.acceptedAt).toLocaleString('it-IT').split(' ')[0] : ''}</span>
+                                            </div>
+                                        `)}
+                                    </div>
+                                </div>
+                            </div>
                             <div><strong>📦 Quantità Tot:</strong> ${tripTotalColli > 0 ? tripTotalColli + ' colli • ' : ''}${tripTotalKg} kg</div>
                             <div><strong>🎯 Destinazioni:</strong> ${tripOrders.length}</div>
                         </div>
@@ -2123,7 +2151,10 @@
                                 ${ordersHTML}
                             </div>
                         ` : '<div style="margin-top: 10px; padding: 8px; background: #2a1a1a; border-radius: 6px; color: #a0a0a0; font-size: 12px;">⚠️ Nessun ordine assegnato</div>'}
+                        
                         <div class="task-actions" style="display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap;">
+                            ${!trip.acceptedAt ? `<button class="btn btn-success btn-small" onclick="acceptTrip(${trip.id})" style="background: #22c55e; flex: 1; min-width: 80px;">✅ Accetta</button>` : ''}
+                            ${trip.acceptedAt && !trip.completed ? `<button class="btn btn-warning btn-small" onclick="completeTrip(${trip.id})" style="background: #16a34a; flex: 1; min-width: 80px;">🏁 Completato</button>` : ''}
                             <button class="btn btn-primary btn-small" onclick="openEditTripModal(${trip.id})" style="flex: 1; min-width: 100px;">✏️ Modifica</button>
                             <button class="btn btn-secondary btn-small" onclick="printTrip(${trip.id})" style="flex: 1; min-width: 100px;">🖨️ Stampa</button>
                             <button class="btn btn-danger btn-small" onclick="deleteTrip(${trip.id})" style="flex: 1; min-width: 100px;">🗑️ Elimina</button>
@@ -2133,6 +2164,73 @@
             }).join('');
             
             console.log('✅ [renderTrips] Renderizzazione completata');
+        }
+
+        // Funzione per accettare un viaggio
+        async function acceptTrip(tripId) {
+            try {
+                const trip = trips.find(t => t.id === tripId);
+                if (!trip) return;
+                
+                trip.acceptedAt = new Date().toISOString();
+                await saveTrips();
+                showAlert('✅ Viaggio accettato!', 'success');
+                renderTrips(); // Ricarica la visualizzazione
+            } catch (error) {
+                showAlert('Errore nell\'accettazione: ' + error.message, 'error');
+            }
+        }
+        
+        // Funzione per completare un viaggio
+        async function completeTrip(tripId) {
+            try {
+                const trip = trips.find(t => t.id === tripId);
+                if (!trip) return;
+
+                // Ottieni gli ordini del viaggio
+                const tripOrders = getTripOrders(tripId);
+                
+                // Consuma i prodotti dall'inventario
+                for (const order of tripOrders) {
+                    try {
+                        const fullInfo = getOrderFullInfo(order.id);
+                        if (fullInfo && fullInfo.products) {
+                            for (const product of fullInfo.products) {
+                                // Chiama API per consumare il prodotto
+                                const response = await fetch(`${API_URL}/inventory/consume`, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Authorization': `Bearer ${token}`
+                                    },
+                                    body: JSON.stringify({
+                                        code: product.product,
+                                        quantity: product.quantity
+                                    })
+                                });
+                                
+                                if (!response.ok) {
+                                    console.warn(`Avviso: Impossibile consumare ${product.product}`, await response.text());
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('Errore durante il consumo prodotto:', e);
+                        // Continua comunque - non interrompere il completamento del viaggio
+                    }
+                }
+
+                // Marca il viaggio come completato
+                trip.completed = true;
+                trip.completedAt = new Date().toISOString();
+                trip.completedBy = currentUser.id;
+
+                await saveTrips();
+                showAlert('✅ Viaggio completato e prodotti scaricati dall\'inventario!', 'success');
+                renderTrips(); // Ricarica la visualizzazione
+            } catch (error) {
+                showAlert('Errore nel completamento: ' + error.message, 'error');
+            }
         }
 
         // Variabile globale per tracciare il drag
@@ -2289,27 +2387,22 @@
         // Carica dati da localStorage e file CSV
         async function loadCSVData() {
             try {
-                // Carica clienti da localStorage
+                // Carica clienti da API
                 try {
                     const stored = localStorage.getItem('customers');
                     if (stored) {
                         clienti = JSON.parse(stored);
                         console.log('Clienti caricati da localStorage:', clienti.length);
                     } else {
-                        // Fallback a CSV se non c'è localStorage
-                        const csvResponse = await fetch('data/clienti.csv');
-                        const csvText = await csvResponse.text();
-                        clienti = parseCSV(csvText);
-                        console.log('Clienti caricati da CSV (fallback):', clienti.length);
+                        clienti = [];
+                        console.log('Nessun cliente in memoria');
                     }
                 } catch (error) {
-                    console.error('Errore caricamento clienti, fallback a CSV:', error);
-                    const csvResponse = await fetch('data/clienti.csv');
-                    const csvText = await csvResponse.text();
-                    clienti = parseCSV(csvText);
+                    console.error('Errore caricamento clienti:', error);
+                    clienti = [];
                 }
 
-                // Carica articoli PRIMA dall'API inventory, poi fallback a localStorage/CSV
+                // Carica articoli PRIMA dall'API inventory
                 try {
                     const inventoryResponse = await fetch(`${API_URL}/inventory/articles`, {
                         headers: { 'Authorization': `Bearer ${token}` }
@@ -2663,11 +2756,13 @@
             if (articoli.length > 0) {
                 console.log('🔍 first articolo:', articoli[0]);
             }
-            const optionsHTML = articoli.map(a => {
-                const cod = a.codice || a.nome || '???';
-                const desc = a.descrizione || a.nome || '???';
-                return `<option value="${cod}">${cod} - ${desc}</option>`;
-            }).join('');
+            const optionsHTML = articoli
+                .filter(a => !(a.codice || a.nome || '').startsWith('EMPTY-'))
+                .map(a => {
+                    const cod = a.codice || a.nome || '???';
+                    const desc = a.descrizione || a.nome || '???';
+                    return `<option value="${cod}">${cod} - ${desc}</option>`;
+                }).join('');
             productSelect.innerHTML = '<option value="">-- Seleziona Articolo --</option>' + optionsHTML;
 
             document.getElementById('orderModal').classList.add('active');
@@ -2780,7 +2875,9 @@
             // Popola dropdown articoli (usa dati già caricati da CSV/localStorage)
             const productSelect = document.getElementById('orderProduct');
             productSelect.innerHTML = '<option value="">-- Seleziona Articolo --</option>' +
-                articoli.map(a => `<option value="${a.codice || a.nome}">${a.codice || a.nome} - ${a.descrizione || a.nome}</option>`).join('');
+                articoli
+                    .filter(a => !(a.codice || a.nome || '').startsWith('EMPTY-'))
+                    .map(a => `<option value="${a.codice || a.nome}">${a.codice || a.nome} - ${a.descrizione || a.nome}</option>`).join('');
 
             // Carica prodotti dell'ordine
             if (order.products && order.products.length > 0) {
@@ -3269,21 +3366,15 @@
             const totalQty = currentOrderProducts.reduce((sum, p) => sum + p.quantity, 0);
 
             tbody.innerHTML = currentOrderProducts.map((product, idx) => {
-                // Se il prodotto ha un lotto selezionato, mostralo
+                // Mostra il lotto con la scadenza
                 let batchesDisplay = '<span style="color: #999; font-size: 13px;">-</span>';
                 
                 if (product.batch) {
-                    // Il lotto è stato selezionato durante l'aggiunta
-                    batchesDisplay = `<span style="display: inline-block; background: #2d5a3d; padding: 2px 6px; margin: 2px; border-radius: 3px; font-size: 13px; color: #86efac;">${product.batch}</span>`;
-                } else {
-                    // Fallback: cerca i lotti disponibili
-                    const article = articoli.find(a => a.codice === product.product);
-                    if (article) {
-                        const batches = (currentAvailableBatches || []).filter(b => b.articolo === article.codice);
-                        if (batches.length > 0) {
-                            batchesDisplay = batches.map(b => `<span style="display: inline-block; background: #3a6b7a; padding: 2px 6px; margin: 2px; border-radius: 3px; font-size: 13px;">${b.batch}</span>`).join('');
-                        }
-                    }
+                    // Usa i dati del batch salvati al momento dell'aggiunta
+                    const scadenza = product.batchData ? product.batchData.expiry : '';
+                    const batchLabel = scadenza ? `${product.batch} (${scadenza})` : product.batch;
+                    
+                    batchesDisplay = `<span style="display: inline-block; background: #2d5a3d; padding: 2px 6px; margin: 2px; border-radius: 3px; font-size: 13px; color: #86efac;">${batchLabel}</span>`;
                 }
 
                 return `
@@ -3299,7 +3390,6 @@
                         </td>
                         <td style="padding: 8px; text-align: center; font-size: 13px;">${batchesDisplay}</td>
                         <td style="padding: 8px; text-align: center;">
-                            <button type="button" onclick="openEditProductModal(${idx})" style="background: #3b82f6; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 12px; margin-right: 4px;">✏️ Modifica</button>
                             <button type="button" onclick="removeProductFromOrder(${idx})" style="background: #dc2626; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 12px;">🗑️ Rimuovi</button>
                         </td>
                     </tr>
@@ -3323,21 +3413,53 @@
 
             if (!product) return;
 
-            // Popola il select con gli articoli disponibili
+            // Popola il select con gli articoli disponibili (formato: codice - descrizione)
             const selectElement = document.getElementById('editProductName');
-            selectElement.innerHTML = articoli.map(a => `
-                <option value="${a.codice}" ${a.codice === product.product ? 'selected' : ''}>${a.descrizione}</option>
+            selectElement.innerHTML = articoli
+                .filter(a => !(a.codice || a.nome || '').startsWith('EMPTY-'))
+                .map(a => `
+                <option value="${a.codice}" ${a.codice === product.product ? 'selected' : ''}>${a.codice} - ${a.descrizione}</option>
             `).join('');
 
-            // Imposta la quantità (senza decimali)
-            document.getElementById('editProductQuantity').value = parseInt(product.quantity);
-            document.getElementById('editProductColli').value = '';
+            // Estrai peso per collo per calcolare i colli da kg
+            const weightPerCollo = extractWeightPerCollo(product.product);
+            const quantityKg = parseInt(product.quantity);
+            const quantityColli = Math.round(quantityKg / weightPerCollo);
+
+            // Imposta la quantità (colli e kg)
+            document.getElementById('editProductQuantity').value = quantityKg;
+            document.getElementById('editProductColli').value = quantityColli > 0 ? quantityColli : '';
 
             // Aggiorna info conversione
             updateEditConversionInfo();
 
-            // Visualizza i lotti disponibili
-            renderEditProductBatches(product.product);
+            // Carica i lotti disponibili per l'articolo
+            (async () => {
+                try {
+                    if (token) {
+                        const response = await fetch(`${API_URL}/inventory/batches?code=${product.product}`, {
+                            headers: { 
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json'
+                            }
+                        });
+
+                        if (response.ok) {
+                            currentAvailableBatches = await response.json();
+                        } else {
+                            currentAvailableBatches = [];
+                        }
+                    } else {
+                        currentAvailableBatches = [];
+                    }
+                } catch (error) {
+                    console.error('❌ Errore caricamento lotti:', error);
+                    currentAvailableBatches = [];
+                }
+                
+                // Visualizza i lotti disponibili
+                renderEditProductBatches(product.product);
+            })();
 
             // Mostra il modal
             const modal = document.getElementById('editProductModal');
@@ -3394,22 +3516,19 @@
         // Aggiorna info conversione quando cambia l'articolo nel modal
         function updateEditConversionInfo() {
             const productSelect = document.getElementById('editProductName');
-            const colliInput = document.getElementById('editProductColli');
-            const kgInput = document.getElementById('editProductQuantity');
             const infoSpan = document.getElementById('editConversionInfo');
             
             const productCode = productSelect.value;
             if (!productCode) {
                 infoSpan.textContent = 'Seleziona un articolo per la conversione';
-                colliInput.value = '';
-                kgInput.value = '';
                 return;
             }
             
             const weightPerCollo = extractWeightPerCollo(productCode);
             infoSpan.textContent = `1 collo = ${weightPerCollo}kg`;
-            colliInput.value = '';
-            kgInput.value = '';
+            
+            // Carica i lotti per il nuovo articolo selezionato
+            renderEditProductBatches(productCode);
         }
 
         // Chiudi il modal di modifica prodotto
@@ -3428,10 +3547,19 @@
                 return;
             }
 
-            const batches = currentAvailableBatches?.filter(b => b.articolo === article.codice) || [];
+            const batchesList = document.getElementById('editProductBatchesList');
+            
+            // Se currentAvailableBatches non è ancora caricato, mostra un messaggio
+            if (!currentAvailableBatches || currentAvailableBatches.length === 0) {
+                batchesList.innerHTML = '<p style="color: #999;">Caricamento lotti...</p>';
+                return;
+            }
+
+            // currentAvailableBatches è già filtrato per il codice articolo dall'API
+            const batches = currentAvailableBatches || [];
 
             if (batches.length === 0) {
-                document.getElementById('editProductBatchesList').innerHTML = '<p style="color: #999;">Nessun lotto disponibile</p>';
+                batchesList.innerHTML = '<p style="color: #999;">Nessun lotto disponibile per questo articolo</p>';
                 return;
             }
 
@@ -3439,16 +3567,19 @@
                 <div style="background: #0d2d3d; padding: 10px; margin-bottom: 8px; border-radius: 4px; border-left: 3px solid #a0d4ff;">
                     <div style="display: grid; grid-template-columns: 1fr auto; gap: 10px;">
                         <div>
-                            <div style="color: #a0d4ff; font-weight: bold; margin-bottom: 4px;">🏷️ Lotto: ${batch.batch}</div>
+                            <div style="color: #a0d4ff; font-weight: bold; margin-bottom: 4px;">🏷️ Lotto: ${batch.batch || batch.lotto || 'N/A'}</div>
                             <div style="color: #999; font-size: 13px;">
-                                Disponibile: <span style="color: #86efac; font-weight: bold;">${(batch.quantityKg || 0).toFixed(1)} kg</span>
+                                Scadenza: ${batch.expiry || 'N/A'}
+                            </div>
+                            <div style="color: #999; font-size: 13px;">
+                                Disponibile: <span style="color: #86efac; font-weight: bold;">${(batch.quantityKg || batch.quantity || 0).toFixed(1)} kg</span>
                             </div>
                         </div>
                     </div>
                 </div>
             `).join('');
 
-            document.getElementById('editProductBatchesList').innerHTML = batchesHTML;
+            batchesList.innerHTML = batchesHTML;
         }
 
         // Quando cambi articolo nel modal, aggiorna i lotti
@@ -3456,6 +3587,7 @@
             const editProductNameSelect = document.getElementById('editProductName');
             if (editProductNameSelect) {
                 editProductNameSelect.addEventListener('change', (e) => {
+                    updateEditConversionInfo();
                     renderEditProductBatches(e.target.value);
                 });
             }
@@ -3780,25 +3912,10 @@
                         console.warn('⚠️ API ritorna errore:', response.status);
                     }
                 }
-
-                // Fallback: carica da localStorage con dati di generazione
-                console.log('📦 Fallback a dati generati per testing');
-                currentAvailableBatches = generateTestBatches(selectedProduct);
-                console.log('✅ Lotti fallback generati:', currentAvailableBatches.length);
                 
             } catch (error) {
                 console.error('❌ Errore caricamento lotti:', error);
-                currentAvailableBatches = generateTestBatches(selectedProduct);
             }
-        }
-
-        // Genera lotti di test per il debugging
-        function generateTestBatches(productCode) {
-            const testBatches = [
-                { articolo: productCode, batch: 'LOT' + Date.now(), quantityKg: 100, shelfPosition: 'A1' },
-                { articolo: productCode, batch: 'LOT' + (Date.now() + 1), quantityKg: 150, shelfPosition: 'A2' }
-            ];
-            return testBatches;
         }
 
         // Renderizza i lotti disponibili (not used anymore - batches shown in modal)
@@ -4622,7 +4739,9 @@
                                                     const weight = extractWeightPerCollo(p.product);
                                                     const prodColli = Math.round(p.quantity / weight);
                                                     const shelfPos = p.batchData?.shelfPosition || p.batch || '—';
-                                                    return `<div style="padding: 8px; margin: 4px 0; background: #fff9e6; border: 2px solid #38bdf8; border-radius: 4px; font-weight: bold; color: #0066cc; font-size: 16px;">${p.product} (${prodColli} colli • ${p.quantity}kg) <span style="color: #666; font-size: 14px;">📍 ${shelfPos}</span></div>`;
+                                                    const batchNumber = p.batchData?.batch || p.lotto || '—';
+                                                    const expiryDate = p.batchData?.expiry || p.scadenza || '—';
+                                                    return `<div style="padding: 8px; margin: 4px 0; background: #fff9e6; border: 2px solid #38bdf8; border-radius: 4px; font-weight: bold; color: #0066cc; font-size: 16px;">${p.product} (${prodColli} colli • ${p.quantity}kg) <span style="color: #666; font-size: 14px;">📍 ${shelfPos} • 📦 Lotto: ${batchNumber} • 📅 Scad: ${expiryDate}</span></div>`;
                                                 }).join('');
                                             }
                                         }
@@ -5101,7 +5220,6 @@
                 <div class="order-card">
                     <div class="order-header">
                         <div class="order-title">${fullInfo?.client || 'Cliente'}</div>
-                        <div class="order-status ${order.status}">${getStatusLabel(order.status)}</div>
                     </div>
                     <div class="order-details">
                         <p><strong>📦 Prodotti:</strong> ${fullInfo?.products?.map(p => {
@@ -5794,9 +5912,6 @@
         }
 
         function confirmDeleteTrip(tripId) {
-            if (!confirm('Sei sicuro di voler eliminare questo viaggio?')) {
-                return;
-            }
             deleteTrip(tripId);
             renderTripsManager();
             renderOrderTasks();

@@ -22,7 +22,9 @@ export class BackupService {
   private backupDir: string;
   private nasUrl: string;
   private nasPort: number;
-  private maxLocalBackups: number = 10;
+  // Mantieni TUTTI i backup - non cancellare mai automaticamente
+  // Sono salvati sul NAS (persistenti), meglio avere la cronologia completa
+  private maxLocalBackups: number = 9999;
   private autoBackupTimer: NodeJS.Timeout | null = null;
   private configFilePath: string;
   private autoBackupSettings: AutoBackupSettings = {
@@ -32,21 +34,68 @@ export class BackupService {
     nextBackup: null
   };
 
-  constructor(backupDir: string = '/share/Container/data/molino/backups/database', nasUrl: string = '192.168.1.248', nasPort: number = 5000) {
-    this.backupDir = backupDir;
+  constructor(backupDir?: string, nasUrl: string = '192.168.1.248', nasPort: number = 5000) {
+    // Strategia di fallback per il backup dir:
+    // 1. Usa il parametro backupDir se fornito
+    // 2. Altrimenti, prova i percorsi locali
+    // 3. Altrimenti, prova il mount Docker
+    let selectedBackupDir: string | null = null;
+
+    // Opzione 1: Parametro passato
+    if (backupDir && fs.existsSync(backupDir)) {
+      selectedBackupDir = backupDir;
+      console.log(`📂 Backup directory (from parameter): ${selectedBackupDir}`);
+    }
+    
+    // Opzione 2: Variabile d'ambiente BACKUP_DIR (percorso relativo o assoluto)
+    if (!selectedBackupDir && process.env.BACKUP_DIR) {
+      const envBackupDir = path.resolve(process.env.BACKUP_DIR);
+      if (fs.existsSync(envBackupDir)) {
+        selectedBackupDir = envBackupDir;
+        console.log(`📂 Backup directory (from BACKUP_DIR env): ${selectedBackupDir}`);
+      }
+    }
+
+    // Opzione 3: Percorsi locali comuni
+    if (!selectedBackupDir) {
+      const localPaths = [
+        path.resolve('./backups'),
+        path.resolve(__dirname, '../../backups'),
+        path.resolve(__dirname, '../../../backups'),
+      ];
+      
+      for (const p of localPaths) {
+        if (fs.existsSync(p)) {
+          selectedBackupDir = p;
+          console.log(`📂 Backup directory (from local path): ${selectedBackupDir}`);
+          break;
+        }
+      }
+    }
+
+    // Opzione 4: Mount Docker (per compatibilità container)
+    if (!selectedBackupDir) {
+      const dockerPath = '/backups/database';
+      if (fs.existsSync(dockerPath)) {
+        selectedBackupDir = dockerPath;
+        console.log(`📂 Backup directory (from Docker mount): ${selectedBackupDir}`);
+      }
+    }
+
+    // Se nessun percorso esiste, creane uno di fallback
+    if (!selectedBackupDir) {
+      selectedBackupDir = path.resolve('./backups');
+      console.warn(`⚠️ No existing backup directory found. Creating fallback: ${selectedBackupDir}`);
+      if (!fs.existsSync(selectedBackupDir)) {
+        fs.mkdirSync(selectedBackupDir, { recursive: true });
+      }
+    }
+
+    this.backupDir = selectedBackupDir;
     this.nasUrl = nasUrl;
     this.nasPort = nasPort;
     
-    // Crea cartella backup se non esiste (con fallback a ./backups se /share/CACHEDEV1_DATA non disponibile)
-    if (!fs.existsSync(this.backupDir)) {
-      try {
-        fs.mkdirSync(this.backupDir, { recursive: true });
-      } catch (err) {
-        console.warn(`⚠️ Cannot create ${this.backupDir}, using ./backups instead`);
-        this.backupDir = './backups';
-        fs.mkdirSync(this.backupDir, { recursive: true });
-      }
-    }
+    console.log(`📂 Backup directory impostata a: ${this.backupDir}`);
     
     // File di configurazione per le impostazioni auto-backup
     this.configFilePath = path.join(this.backupDir, 'backup-config.json');
@@ -374,36 +423,59 @@ export class BackupService {
       }
       
       // IMPORTANTE: Disconnetti Prisma prima di sostituire il file database
-      console.log('🔌 Disconnecting Prisma before restore...');
-      await PrismaClientManager.resetConnection();
+      console.log(`🔌 Inizio ripristino database da: ${backupPath}`);
+      console.log('🔌 Disconnessione Prisma...');
+      await PrismaClientManager.disconnect();
       
-      // Backup del database corrente
+      // Piccolo delay per assicurarsi che il file sia rilasciato dal sistema operativo
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Backup del database corrente (safety backup)
       if (fs.existsSync(dbPath)) {
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        fs.copyFileSync(dbPath, path.join(this.backupDir, `db-pre-restore-${timestamp}.sql`));
+        const safetyBackupPath = path.join(this.backupDir, `db-pre-restore-${timestamp}.sql`);
+        console.log(`💾 Creazione backup di sicurezza: ${safetyBackupPath}`);
+        fs.copyFileSync(dbPath, safetyBackupPath);
       }
 
       // Ripristina il file database
+      console.log(`🚚 Sostituzione file database: ${dbPath}`);
       fs.copyFileSync(backupPath, dbPath);
-      console.log(`✅ Database file restored from: ${backupPath}`);
+      console.log(`✅ File database ripristinato con successo`);
       
       // Ripristina gli uploads se fornito
       if (uploadsBackupPath && fs.existsSync(uploadsBackupPath)) {
         try {
+          console.log(`📦 Ripristino uploads da: ${uploadsBackupPath}`);
           await this.restoreUploads(uploadsBackupPath);
-          console.log(`✅ Uploads restored from: ${uploadsBackupPath}`);
+          console.log(`✅ Uploads ripristinati`);
         } catch (uploadError) {
-          console.warn(`⚠️ Could not restore uploads: ${uploadError}`);
-          // Non fallire il restore del database se fallisce quello degli uploads
+          console.warn(`⚠️ Errore ripristino uploads: ${uploadError}`);
         }
       }
       
       // IMPORTANTE: Reset della connessione Prisma per vedere i nuovi dati
-      console.log('🔄 Reconnecting Prisma to restored database...');
+      console.log('🔄 Riconnessione Prisma...');
       await PrismaClientManager.resetConnection();
-      console.log('✅ Prisma reconnected - restore complete');
+
+      // Esegui prisma db push per assicurare compatibilità schema
+      try {
+        console.log('🚀 Allineamento schema database post-ripristino...');
+        const { exec } = require('child_process');
+        const { promisify } = require('util');
+        const execAsync = promisify(exec);
+        
+        // Usa il percorso corretto dello schema nel container
+        const schemaPath = 'server/prisma/schema.prisma';
+        await execAsync(`npx prisma db push --schema=${schemaPath} --accept-data-loss`);
+        console.log('✅ Schema database allineato');
+      } catch (schemaError) {
+        console.warn('⚠️ Avviso: Allineamento schema post-ripristino fallito (potrebbe non essere critico):', schemaError);
+      }
+
+      console.log('✅ Ripristino completato con successo');
     } catch (error) {
-      console.error('❌ Restore error:', error);
+      console.error('❌ Errore critico durante il ripristino:', error);
       throw error;
     }
   }
@@ -671,8 +743,13 @@ export class BackupService {
     this.saveAutoBackupSettings();
   }
   
-  /**
-   * Ottieni le impostazioni correnti dell'auto-backup
+  /**   * Ottiene la cartella dei backup
+   */
+  getBackupDir(): string {
+    return this.backupDir;
+  }
+
+  /**   * Ottieni le impostazioni correnti dell'auto-backup
    */
   getAutoBackupSettings(): AutoBackupSettings {
     return { ...this.autoBackupSettings };
