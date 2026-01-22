@@ -17,6 +17,29 @@ const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const prisma_1 = __importDefault(require("../lib/prisma"));
 const User_1 = require("../models/User");
 class AuthController {
+    // Verifica token e restituisce utente corrente
+    getCurrentUser(req, res) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                if (!req.user) {
+                    return res.status(401).json({ message: 'Not authenticated' });
+                }
+                // Verifica che l'utente esista ancora nel database
+                const user = yield prisma_1.default.user.findUnique({
+                    where: { id: req.user.id },
+                    select: { id: true, username: true, role: true }
+                });
+                if (!user) {
+                    return res.status(401).json({ message: 'User not found' });
+                }
+                res.json({ user });
+            }
+            catch (err) {
+                const errorMsg = err instanceof Error ? err.message : 'Internal server error';
+                res.status(500).json({ message: errorMsg });
+            }
+        });
+    }
     login(req, res) {
         return __awaiter(this, void 0, void 0, function* () {
             try {

@@ -1,0 +1,7 @@
+[2026-01-21 00:05:57] ✅ Backup completed successfully
+Wed Jan 21 00:06:24 CET 2026: Starting MariaDB backup...
+Wed Jan 21 00:06:24 CET 2026: Backup completed successfully: /share/Public/molino-data/backups/mariadb/mariadb-backup-2026-01-21_00-06-24.sql.gz
+Wed Jan 21 00:06:24 CET 2026: Backup size: 4.9K
+Wed Jan 21 00:06:24 CET 2026: Cleaning old backups (retention: 30 days)...
+Wed Jan 21 00:06:24 CET 2026: Total backups retained: 3
+Wed Jan 21 00:06:24 CET 2026: Backup process completed

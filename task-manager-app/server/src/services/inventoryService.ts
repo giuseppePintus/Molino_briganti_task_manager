@@ -270,7 +270,7 @@ export class InventoryService {
           // Cerca l'inventario basato su POSIZIONE, CODICE e LOTTO
           let existingInventory = await prisma.inventory.findFirst({
             where: { 
-              position: posizione,
+              shelfPosition: posizione,
               batch: lotto || null,
               article: {
                 code: finalCode
@@ -316,7 +316,6 @@ export class InventoryService {
                 unit: 'kg',
                 inventory: {
                   create: {
-                    position: posizione,
                     shelfPosition: shelfPositionKey,
                     currentStock: quantita,
                     minimumStock: 5,
@@ -343,9 +342,9 @@ export class InventoryService {
       });
 
       for (const inv of allInventories) {
-        const key = `${inv.position}|${inv.article.code}|${inv.batch || ''}`;
-        if (inv.position && !processedRecords.has(key)) {
-          console.log(`🗑️ Eliminazione record obsoleto: Pos ${inv.position}, Art ${inv.article.code}, Lotto ${inv.batch || 'N/D'}`);
+        const key = `${inv.shelfPosition}|${inv.article.code}|${inv.batch || ''}`;
+        if (inv.shelfPosition && !processedRecords.has(key)) {
+          console.log(`🗑️ Eliminazione record obsoleto: Pos ${inv.shelfPosition}, Art ${inv.article.code}, Lotto ${inv.batch || 'N/D'}`);
           await prisma.inventory.delete({ where: { id: inv.id } });
           deletedCount++;
         }
@@ -630,8 +629,7 @@ export class InventoryService {
       return await prisma.inventory.update({
         where: { articleId },
         data: { 
-          shelfPosition,
-          position
+          shelfPosition: position
         },
         include: { article: true }
       });

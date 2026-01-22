@@ -8,6 +8,7 @@ const authController = new AuthController();
 router.post('/login', (req, res) => authController.login(req, res));
 router.post('/quick-login', (req, res) => authController.quickLogin(req, res));
 router.post('/seed', (req, res) => authController.seedDefaultUsers(req, res));
+router.get('/me', authMiddleware, (req, res) => authController.getCurrentUser(req, res));
 router.get('/operators/public', (req, res) => authController.getPublicOperators(req, res));
 router.get('/admins/public', (req, res) => authController.getPublicAdmins(req, res));
 router.get('/operators', authMiddleware, requireMaster, (req, res) => authController.getOperators(req, res));

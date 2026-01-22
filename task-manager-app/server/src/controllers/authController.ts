@@ -4,6 +4,30 @@ import prisma from '../lib/prisma';
 import { hashPassword, comparePassword } from '../models/User';
 
 export class AuthController {
+    // Verifica token e restituisce utente corrente
+    async getCurrentUser(req: Request, res: Response) {
+        try {
+            if (!req.user) {
+                return res.status(401).json({ message: 'Not authenticated' });
+            }
+
+            // Verifica che l'utente esista ancora nel database
+            const user = await prisma.user.findUnique({ 
+                where: { id: req.user.id },
+                select: { id: true, username: true, role: true }
+            });
+
+            if (!user) {
+                return res.status(401).json({ message: 'User not found' });
+            }
+
+            res.json({ user });
+        } catch (err: unknown) {
+            const errorMsg = err instanceof Error ? err.message : 'Internal server error';
+            res.status(500).json({ message: errorMsg });
+        }
+    }
+
     async login(req: Request, res: Response) {
         try {
             const { username, password } = req.body;

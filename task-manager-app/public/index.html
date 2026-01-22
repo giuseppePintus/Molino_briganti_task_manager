@@ -2445,21 +2445,43 @@
         }
 
         // ==================== INIT ====================
-        window.addEventListener('load', () => {
+        window.addEventListener('load', async () => {
             if (token && currentUser.id) {
-                // User already logged in - redirect to appropriate dashboard
-                if (currentUser.role === 'master') {
-                    window.location.href = 'admin-dashboard.html';
-                } else {
-                    window.location.href = 'operator-dashboard.html';
+                // Verifica che il token sia ancora valido
+                try {
+                    const response = await fetch(`${API_URL}/auth/me`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    
+                    if (response.ok) {
+                        // Token valido - redirect to appropriate dashboard
+                        if (currentUser.role === 'master') {
+                            window.location.href = 'admin-dashboard.html';
+                        } else {
+                            window.location.href = 'operator-dashboard.html';
+                        }
+                        return;
+                    } else {
+                        // Token non valido - pulisci localStorage
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('currentUser');
+                        token = null;
+                        currentUser = {};
+                    }
+                } catch (error) {
+                    console.warn('Errore verifica token:', error);
+                    // In caso di errore di rete, pulisci per sicurezza
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('currentUser');
+                    token = null;
+                    currentUser = {};
                 }
-            } else {
-                // Show login page with operator carousel
-                // Small delay to ensure DOM is ready
-                setTimeout(() => {
-                    loadOperatorsCarousel();
-                }, 100);
             }
+            
+            // Show login page with operator carousel
+            setTimeout(() => {
+                loadOperatorsCarousel();
+            }, 100);
         });
     </script>
 </body>

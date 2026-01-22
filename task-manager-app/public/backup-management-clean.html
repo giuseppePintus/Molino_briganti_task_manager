@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="it">
 <head>
     <meta charset="UTF-8">
@@ -287,9 +287,9 @@
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <h1>💾 Gestione Backup</h1>
+            <h1>??’¾ Gestione Backup</h1>
             <div class="header-actions">
-                <button class="btn btn-settings" onclick="window.location.href='admin-dashboard.html'">🏠 Home</button>
+                <button class="btn btn-settings" onclick="window.location.href='admin-dashboard.html'">??  Home</button>
             </div>
         </div>
 
@@ -299,34 +299,37 @@
         <!-- Statistics -->
         <div class="stats-grid" id="statsGrid">
             <div class="stat-box">
-                <h3>📊 Totale Backup</h3>
+                <h3>??“? Totale Backup</h3>
                 <div class="value" id="totalBackups">0</div>
             </div>
             <div class="stat-box">
-                <h3>💾 Spazio Usato</h3>
+                <h3>??’¾ Spazio Usato</h3>
                 <div class="value" id="totalSize">0 MB</div>
             </div>
             <div class="stat-box">
-                <h3>📅 Ultimo Backup</h3>
+                <h3>??“… Ultimo Backup</h3>
                 <div class="value" id="lastBackup">-</div>
             </div>
         </div>
 
         <!-- Create Backup -->
         <div class="card">
-            <h2>➕ Crea Nuovo Backup</h2>
+            <h2>?ž• Crea Nuovo Backup MariaDB</h2>
             <button class="btn btn-primary" onclick="createBackup()">
-                <span>🔧</span>
-                <span>Crea Backup Adesso</span>
+                <span>??”?</span>
+                <span>Crea Backup MariaDB Adesso</span>
             </button>
             <p style="margin-top: 15px; color: #a0a0a0; font-size: 13px;">
-                ℹ️ Crea un backup completo del database e della configurazione. Il backup includerà tutti i dati attuali.
+                ?„¹?¸ Crea un backup completo del database MariaDB. Il backup verrÃ  salvato compresso su NAS: <code style="background: #2d2d2d; padding: 2px 6px; border-radius: 3px;">/share/Public/molino-data/backups/mariadb/</code>
+            </p>
+            <p style="margin-top: 10px; color: #7dd3fc; font-size: 13px;">
+                ??“? Retention: 30 giorni | ??’¾ Formato: SQL compresso (gzip)
             </p>
         </div>
 
         <!-- Backup List -->
         <div class="card">
-            <h2>📋 Backup Disponibili</h2>
+            <h2>??“‹ Backup Disponibili</h2>
             <div class="backup-list" id="backupList">
                 <div class="loading">
                     <div class="spinner"></div>
@@ -337,7 +340,7 @@
 
         <!-- Restore Backup -->
         <div class="card">
-            <h2>🔄 Ripristina Backup</h2>
+            <h2>??”„ Ripristina Backup</h2>
             <div class="form-group">
                 <label for="backupSelect">Seleziona Backup da Ripristinare:</label>
                 <select id="backupSelect">
@@ -345,38 +348,70 @@
                 </select>
             </div>
             <button class="btn btn-danger" onclick="restoreBackup()">
-                <span>⚠️</span>
+                <span>?š ?¸</span>
                 <span>Ripristina Backup</span>
             </button>
             <p style="margin-top: 15px; color: #f97316; font-size: 13px;">
-                ⚠️ Il ripristino sovrascriverà i dati attuali. Assicurati di aver creato un backup recente.
+                ?š ?¸ Il ripristino sovrascriverÃ  i dati attuali. Assicurati di aver creato un backup recente.
             </p>
         </div>
 
         <!-- Auto-Backup Settings -->
         <div class="card">
-            <h2>⏰ Backup Automatici</h2>
+            <h2>?° Backup Automatici MariaDB</h2>
             <div id="autoBackupStatus" style="margin-bottom: 15px; padding: 10px; border-radius: 6px; background: #1a1a2e;">
-                <span id="autoBackupStatusIcon">⏸️</span> 
+                <span id="autoBackupStatusIcon">?¸?¸</span> 
                 <span id="autoBackupStatusText">Backup automatico disabilitato</span>
             </div>
             <div class="form-group">
                 <label for="autoBackupEnabled" style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
                     <input type="checkbox" id="autoBackupEnabled" onchange="toggleAutoBackup()" style="width: 20px; height: 20px;">
-                    <span>Abilita backup automatici</span>
+                    <span>Abilita backup automatici MariaDB</span>
                 </label>
             </div>
             <div class="form-group">
                 <label for="autoBackupInterval">Frequenza (ore):</label>
-                <input type="number" id="autoBackupInterval" min="1" max="168" value="24">
-                <button class="btn btn-secondary" onclick="saveAutoBackupSettings()" style="margin-left: 10px; padding: 8px 15px;">💾 Salva Frequenza</button>
+                <input type="number" id="autoBackupInterval" min="1" max="168" value="1">
+                <button class="btn btn-secondary" onclick="saveAutoBackupSettings()" style="margin-left: 10px; padding: 8px 15px;">??’¾ Salva Frequenza</button>
             </div>
             <div id="autoBackupInfo" style="margin-top: 15px; padding: 10px; background: #0d2137; border-radius: 6px; font-size: 13px;">
-                <div id="lastBackupInfo" style="margin-bottom: 5px;">📅 Ultimo backup: <span id="lastBackupTime">-</span></div>
-                <div id="nextBackupInfo">⏰ Prossimo backup: <span id="nextBackupTime">-</span></div>
+                <div id="lastBackupInfo" style="margin-bottom: 5px;">??“… Ultimo backup: <span id="lastBackupTime">-</span></div>
+                <div id="nextBackupInfo">?° Prossimo backup: <span id="nextBackupTime">-</span></div>
             </div>
             <p style="margin-top: 15px; color: #a0a0a0; font-size: 13px;">
-                ℹ️ I backup automatici verranno eseguiti a intervalli regolari e conservati nel server.
+                ?„¹?¸ I backup MariaDB vengono eseguiti tramite <code style="background: #2d2d2d; padding: 2px 6px; border-radius: 3px;">mysqldump</code> e salvati compressi sul NAS.
+            </p>
+            <p style="margin-top: 10px; color: #7dd3fc; font-size: 12px;">
+                ??“ Script: <code style="background: #2d2d2d; padding: 2px 6px; border-radius: 3px;">/share/Public/molino-data/mariadb-backup.sh</code>
+            </p>
+        </div>
+
+        <!-- Backup Configuration Info -->
+        <div class="card">
+            <h2>??“ Configurazione Backup MariaDB</h2>
+            <div style="padding: 15px; background: #3d3d3d; border-radius: 6px; border-left: 3px solid #16a34a;">
+                <h4 style="margin-top: 0; color: #e0e0e0;">??“ Configurazione Sistema</h4>
+                <p style="margin: 8px 0; font-size: 13px; color: #a0a0a0;">
+                    <strong>Database:</strong> <code style="background: #2d2d2d; padding: 4px 8px; border-radius: 3px; color: #7dd3fc;">molino_production</code> @ <code style="background: #2d2d2d; padding: 4px 8px; border-radius: 3px; color: #7dd3fc;">192.168.1.248:3306</code>
+                </p>
+                <p style="margin: 8px 0; font-size: 13px; color: #a0a0a0;">
+                    <strong>Directory Backup:</strong> <code style="background: #2d2d2d; padding: 4px 8px; border-radius: 3px; color: #7dd3fc;">/share/Public/molino-data/backups/mariadb/</code>
+                </p>
+                <p style="margin: 8px 0; font-size: 13px; color: #a0a0a0;">
+                    <strong>Script Backup:</strong> <code style="background: #2d2d2d; padding: 4px 8px; border-radius: 3px; color: #7dd3fc;">/share/Public/molino-data/mariadb-backup.sh</code>
+                </p>
+                <p style="margin: 8px 0; font-size: 13px; color: #a0a0a0;">
+                    <strong>Script Ripristino:</strong> <code style="background: #2d2d2d; padding: 4px 8px; border-radius: 3px; color: #7dd3fc;">/share/Public/molino-data/mariadb-restore.sh</code>
+                </p>
+                <p style="margin: 8px 0; font-size: 13px; color: #a0a0a0;">
+                    <strong>Retention:</strong> <code style="background: #2d2d2d; padding: 4px 8px; border-radius: 3px; color: #7dd3fc;">30 giorni</code>
+                </p>
+                <p style="margin: 8px 0; font-size: 13px; color: #a0a0a0;">
+                    <strong>Formato:</strong> <code style="background: #2d2d2d; padding: 4px 8px; border-radius: 3px; color: #7dd3fc;">SQL compresso (gzip)</code>
+                </p>
+            </div>
+            <p style="margin-top: 15px; color: #86efac; font-size: 13px;">
+                ?œ… Sistema di backup MariaDB configurato e funzionante
             </p>
         </div>
     </div>
@@ -407,11 +442,11 @@
                 });
 
                 if (!response.ok) {
-                    console.error('❌ API backup non disponibile');
+                    console.error('?Œ API backup MariaDB non disponibile');
                     renderBackupList([]);
                     updateBackupSelect([]);
                     updateStats([]);
-                    showAlert('❌ API non disponibile', 'error');
+                    showAlert('?Œ API non disponibile', 'error');
                     return;
                 }
 
@@ -423,7 +458,7 @@
                     // Nuovo formato con metadati completi
                     backups = result.backups;
                 } else if (result.files && Array.isArray(result.files)) {
-                    // Compatibilità con vecchio formato - estrai i metadati dal filesystem
+                    // CompatibilitÃ  con vecchio formato - estrai i metadati dal filesystem
                     backups = result.files.map((filename, idx) => ({
                         filename: filename,
                         createdAt: new Date().toISOString(),
@@ -459,13 +494,13 @@
             list.innerHTML = backups.map(backup => `
                 <div class="backup-item">
                     <div class="backup-info">
-                        <h3>📦 ${backup.filename || 'Backup senza nome'}</h3>
-                        <p>📅 ${new Date(backup.createdAt).toLocaleString('it-IT')}</p>
-                        <p>💾 Dimensione: ${formatFileSize(backup.size)}</p>
+                        <h3>??“¦ ${backup.filename || 'Backup senza nome'}</h3>
+                        <p>??“… ${new Date(backup.createdAt).toLocaleString('it-IT')}</p>
+                        <p>??’¾ Dimensione: ${formatFileSize(backup.size)}</p>
                     </div>
                     <div class="backup-actions">
-                        <button class="btn btn-primary btn-small" onclick="downloadBackup('${backup.filename}')">📥 Scarica</button>
-                        <button class="btn btn-danger btn-small" onclick="deleteBackup('${backup.filename}')">🗑️ Elimina</button>
+                        <button class="btn btn-primary btn-small" onclick="downloadBackup('${backup.filename}')">??“¥ Scarica</button>
+                        <button class="btn btn-danger btn-small" onclick="deleteBackup('${backup.filename}')">??—‘?¸ Elimina</button>
                     </div>
                 </div>
             `).join('');
@@ -506,28 +541,31 @@
         async function createBackup() {
             const btn = event.target;
             btn.disabled = true;
-            btn.textContent = '⏳ Creazione in corso...';
+            btn.textContent = '?³ Creazione backup MariaDB in corso...';
 
             try {
+                // Esegui il backup MariaDB tramite script SSH
+                showAlert('?³ Esecuzione backup MariaDB...', 'info');
+                
                 const response = await fetch(`${API_URL}/backup/manual`, {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
 
                 if (!response.ok) {
-                    const error = await response.text();
-                    throw new Error(error || 'Errore creazione backup');
+                    const error = await response.json();
+                    throw new Error(error.message || 'Errore creazione backup');
                 }
 
                 const result = await response.json();
-                showAlert('✅ Backup creato con successo!', 'success');
+                showAlert(`?œ… Backup MariaDB creato con successo! File: ${result.filename || 'backup.sql.gz'}`, 'success');
                 await loadBackups();
             } catch (error) {
                 console.error('Errore:', error);
-                showAlert('Errore: ' + error.message, 'error');
+                showAlert('?Œ Errore: ' + error.message, 'error');
             } finally {
                 btn.disabled = false;
-                btn.innerHTML = '<span>🔧</span><span>Crea Backup Adesso</span>';
+                btn.innerHTML = '<span>??”?</span><span>Crea Backup MariaDB Adesso</span>';
             }
         }
 
@@ -540,7 +578,7 @@
         }
 
         async function deleteBackup(backupFilename) {
-            if (!confirm('Sei sicuro di voler eliminare questo backup?')) return;
+            if (!confirm('Sei sicuro di voler eliminare questo backup MariaDB?')) return;
 
             try {
                 const response = await fetch(`${API_URL}/backup/${backupFilename}`, {
@@ -548,9 +586,9 @@
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
 
-                if (!response.ok) throw new Error('Errore eliminazione backup');
+                if (!response.ok) throw new Error('Errore eliminazione backup MariaDB');
 
-                showAlert('✅ Backup eliminato con successo!', 'success');
+                showAlert('?œ… Backup MariaDB eliminato con successo!', 'success');
                 await loadBackups();
             } catch (error) {
                 showAlert('Errore: ' + error.message, 'error');
@@ -561,23 +599,23 @@
             const backupSelect = document.getElementById('backupSelect');
             const backupFilename = backupSelect.value;
             if (!backupFilename) {
-                showAlert('⚠️ Seleziona un backup da ripristinare', 'error');
+                showAlert('?š ?¸ Seleziona un backup MariaDB da ripristinare', 'error');
                 return;
             }
 
-            if (!confirm('⚠️ ATTENZIONE: Questo sovrascriverà tutti i dati attuali con quelli del backup selezionato. Continuare?')) return;
+            if (!confirm('?š ?¸ ATTENZIONE: Questo sovrascriverÃ  tutti i dati attuali del database MariaDB con quelli del backup selezionato. Continuare?')) return;
 
             // Mostra stato di caricamento
             const restoreBtn = document.querySelector('button[onclick="restoreBackup()"]');
             const originalBtnContent = restoreBtn.innerHTML;
             restoreBtn.disabled = true;
-            restoreBtn.innerHTML = '<span>⏳</span> <span>Ripristino in corso...</span>';
+            restoreBtn.innerHTML = '<span>?³</span> <span>Ripristino MariaDB in corso...</span>';
             
-            showAlert('⏳ Ripristino in corso... Attendere prego.', 'info');
+            showAlert('?³ Ripristino MariaDB in corso... Attendere prego.', 'info');
 
             try {
                 const encodedFilename = encodeURIComponent(backupFilename);
-                console.log(`Inizio ripristino backup: ${backupFilename}`);
+                console.log(`Inizio ripristino backup MariaDB: ${backupFilename}`);
                 
                 const response = await fetch(`${API_URL}/backup/restore/${encodedFilename}`, {
                     method: 'POST',
@@ -590,19 +628,19 @@
                 const result = await response.json();
 
                 if (!response.ok) {
-                    throw new Error(result.error || 'Errore durante il ripristino');
+                    throw new Error(result.error || 'Errore durante il ripristino MariaDB');
                 }
 
-                console.log('Ripristino completato:', result);
-                showAlert('✅ Backup ripristinato con successo! Il sistema si sta riavviando...', 'success');
+                console.log('Ripristino MariaDB completato:', result);
+                showAlert('?œ… Backup MariaDB ripristinato con successo! Il sistema si sta riavviando...', 'success');
                 
-                // Attendi un po' di più per permettere al server di stabilizzarsi
+                // Attendi un po' di piÃ¹ per permettere al server di stabilizzarsi
                 setTimeout(() => {
                     window.location.href = 'index.html';
                 }, 3000);
             } catch (error) {
                 console.error('Errore ripristino:', error);
-                showAlert('❌ Errore: ' + error.message, 'error');
+                showAlert('?Œ Errore: ' + error.message, 'error');
                 restoreBtn.disabled = false;
                 restoreBtn.innerHTML = originalBtnContent;
             }
@@ -620,7 +658,7 @@
             const interval = parseInt(document.getElementById('autoBackupInterval').value) || 24;
             
             if (interval < 1 || interval > 168) {
-                showAlert('⚠️ La frequenza deve essere tra 1 e 168 ore', 'error');
+                showAlert('?š ?¸ La frequenza deve essere tra 1 e 168 ore', 'error');
                 return;
             }
             
@@ -644,13 +682,13 @@
                 if (response.ok) {
                     const result = await response.json();
                     updateAutoBackupUI(result.settings);
-                    showAlert(enabled ? '✅ Backup automatico abilitato!' : '⏹️ Backup automatico disabilitato', 'success');
+                    showAlert(enabled ? '?œ… Backup automatico MariaDB abilitato!' : '?¹?¸ Backup automatico MariaDB disabilitato', 'success');
                 } else {
                     throw new Error('Server error');
                 }
             } catch (error) {
                 console.error('Errore:', error);
-                showAlert('❌ Errore nella configurazione del backup automatico', 'error');
+                showAlert('?Œ Errore nella configurazione del backup automatico MariaDB', 'error');
             }
         }
         
@@ -666,7 +704,7 @@
                 } else {
                     // Fallback a localStorage se l'endpoint non esiste
                     const autoBackupEnabled = localStorage.getItem('autoBackupEnabled') === 'true';
-                    const autoBackupInterval = parseInt(localStorage.getItem('autoBackupInterval') || '24');
+                    const autoBackupInterval = parseInt(localStorage.getItem('autoBackupInterval') || '1');
                     document.getElementById('autoBackupEnabled').checked = autoBackupEnabled;
                     document.getElementById('autoBackupInterval').value = autoBackupInterval;
                 }
@@ -684,12 +722,12 @@
             const statusDiv = document.getElementById('autoBackupStatus');
             
             if (settings.enabled) {
-                statusIcon.textContent = '▶️';
+                statusIcon.textContent = '?–¶?¸';
                 statusText.textContent = `Backup automatico ATTIVO - ogni ${settings.intervalHours} ore`;
                 statusDiv.style.background = '#0d3320';
                 statusDiv.style.borderLeft = '3px solid #22c55e';
             } else {
-                statusIcon.textContent = '⏸️';
+                statusIcon.textContent = '?¸?¸';
                 statusText.textContent = 'Backup automatico disabilitato';
                 statusDiv.style.background = '#1a1a2e';
                 statusDiv.style.borderLeft = '3px solid #6b7280';
@@ -722,3 +760,4 @@
     </script>
 </body>
 </html>
+

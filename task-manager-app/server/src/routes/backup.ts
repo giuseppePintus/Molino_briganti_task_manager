@@ -95,13 +95,22 @@ router.post('/upload', async (req: Request, res: Response) => {
  * GET /api/backup/download/:filename
  * Scarica un backup specifico
  */
-router.get('/download/:filename', async (req: Request, res: Response) => {
+router.get('/download/:filename(*)', async (req: Request, res: Response) => {
   try {
     const filename = decodeURIComponent(req.params.filename);
     
-    // Valida nome file (previeni path traversal)
-    if (filename.includes('..') || filename.includes('/')) {
+    // Valida nome file (previeni path traversal) - permetti solo sottocartelle legittime
+    if (filename.includes('..')) {
       return res.status(400).json({ error: 'Invalid filename' });
+    }
+    
+    // Permetti solo sottocartelle autorizzate (es. mariadb/)
+    const allowedSubdirs = ['mariadb'];
+    if (filename.includes('/')) {
+      const subdir = filename.split('/')[0];
+      if (!allowedSubdirs.includes(subdir)) {
+        return res.status(400).json({ error: 'Invalid filename' });
+      }
     }
 
     const backupPath = path.join(BackupService.getBackupDir(), filename);
@@ -110,7 +119,7 @@ router.get('/download/:filename', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Backup not found' });
     }
 
-    res.download(backupPath, filename);
+    res.download(backupPath, path.basename(filename));
   } catch (error: any) {
     res.status(500).json({ 
       success: false, 
@@ -123,13 +132,22 @@ router.get('/download/:filename', async (req: Request, res: Response) => {
  * POST /api/backup/restore/:filename
  * Ripristina database da backup specifico
  */
-router.post('/restore/:filename', async (req: Request, res: Response) => {
+router.post('/restore/:filename(*)', async (req: Request, res: Response) => {
   try {
     let filename = decodeURIComponent(req.params.filename);
     
-    // Valida nome file
-    if (filename.includes('..') || filename.includes('/')) {
+    // Valida nome file - permetti sottocartelle legittime
+    if (filename.includes('..')) {
       return res.status(400).json({ error: 'Invalid filename' });
+    }
+    
+    // Permetti solo sottocartelle autorizzate (es. mariadb/)
+    const allowedSubdirs = ['mariadb'];
+    if (filename.includes('/')) {
+      const subdir = filename.split('/')[0];
+      if (!allowedSubdirs.includes(subdir)) {
+        return res.status(400).json({ error: 'Invalid filename' });
+      }
     }
 
     const backupPath = path.join(BackupService.getBackupDir(), filename);
@@ -178,13 +196,22 @@ router.post('/restore-latest', async (req: Request, res: Response) => {
  * DELETE /api/backup/:filename
  * Elimina un backup specifico
  */
-router.delete('/:filename', async (req: Request, res: Response) => {
+router.delete('/:filename(*)', async (req: Request, res: Response) => {
   try {
     const filename = decodeURIComponent(req.params.filename);
     
-    // Valida nome file
-    if (filename.includes('..') || filename.includes('/')) {
+    // Valida nome file - permetti sottocartelle legittime
+    if (filename.includes('..')) {
       return res.status(400).json({ error: 'Invalid filename' });
+    }
+    
+    // Permetti solo sottocartelle autorizzate (es. mariadb/)
+    const allowedSubdirs = ['mariadb'];
+    if (filename.includes('/')) {
+      const subdir = filename.split('/')[0];
+      if (!allowedSubdirs.includes(subdir)) {
+        return res.status(400).json({ error: 'Invalid filename' });
+      }
     }
 
     const backupPath = path.join(BackupService.getBackupDir(), filename);

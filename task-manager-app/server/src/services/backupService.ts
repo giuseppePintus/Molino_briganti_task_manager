@@ -73,7 +73,16 @@ export class BackupService {
       }
     }
 
-    // Opzione 4: Mount Docker (per compatibilità container)
+    // Opzione 4: Percorso NAS con struttura dati/molino
+    if (!selectedBackupDir) {
+      const nasBackupPath = '/data/molino/backups/database';
+      if (fs.existsSync(nasBackupPath)) {
+        selectedBackupDir = nasBackupPath;
+        console.log(`📂 Backup directory (from NAS mount): ${selectedBackupDir}`);
+      }
+    }
+
+    // Opzione 5: Mount Docker (per compatibilità container)
     if (!selectedBackupDir) {
       const dockerPath = '/backups/database';
       if (fs.existsSync(dockerPath)) {
@@ -146,23 +155,25 @@ export class BackupService {
       const backupPath = path.join(this.backupDir, backupName);
       const uploadsBackupPath = path.join(this.backupDir, uploadsBackupName);
 
-      // Leggi il percorso del database dal .env (DATABASE_URL)
+      // Leggi DATABASE_URL e determina se è MariaDB/MySQL o SQLite
       const databaseUrl = process.env.DATABASE_URL || 'file:./prisma/data/tasks.db';
-      // Estrai il percorso del file da "file:./path/to/db"
-      let dbPath = databaseUrl.replace('file:', '');
       
-      // Se il percorso è relativo, risolvi rispetto alla root del server (/app/server in Docker o server/ in locale)
-      if (!path.isAbsolute(dbPath)) {
-        // In Docker: process.cwd() = /app/server, dbPath = ./prisma/data/tasks.db → /app/server/prisma/data/tasks.db
-        // In localhost: process.cwd() = .../task-manager-app/server, dbPath relativo
-        dbPath = path.join(process.cwd(), dbPath);
-      }
-      
-      if (fs.existsSync(dbPath)) {
-        fs.copyFileSync(dbPath, backupPath);
-        console.log(`✅ Database backed up: ${backupPath}`);
+      if (databaseUrl.startsWith('mysql://')) {
+        // MariaDB/MySQL - usa mysqldump
+        await this.backupMariaDB(backupPath);
       } else {
-        console.warn(`⚠️ Database file not found at ${dbPath} - skipping database backup`);
+        // SQLite - copia il file
+        let dbPath = databaseUrl.replace('file:', '');
+        if (!path.isAbsolute(dbPath)) {
+          dbPath = path.join(process.cwd(), dbPath);
+        }
+        
+        if (fs.existsSync(dbPath)) {
+          fs.copyFileSync(dbPath, backupPath);
+          console.log(`✅ Database backed up: ${backupPath}`);
+        } else {
+          console.warn(`⚠️ Database file not found at ${dbPath} - skipping database backup`);
+        }
       }
       
       // Backup della cartella uploads (dove sono i logo e gli altri file)
@@ -196,6 +207,46 @@ export class BackupService {
       // Non lanciare errore - continua comunque
       return '';
     }
+  }
+
+  /**
+   * Backup MariaDB/MySQL usando mysqldump
+   */
+  private async backupMariaDB(backupPath: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      try {
+        // Parse DATABASE_URL: mysql://user:pass@host:port/database
+        const dbUrl = process.env.DATABASE_URL || '';
+        const urlMatch = dbUrl.match(/mysql:\/\/([^:]+):([^@]+)@([^:]+):(\d+)\/(.+)/);
+        
+        if (!urlMatch) {
+          console.error('❌ Invalid DATABASE_URL format for MariaDB');
+          reject(new Error('Invalid DATABASE_URL format'));
+          return;
+        }
+        
+        const [, user, password, host, port, database] = urlMatch;
+        
+        // Usa mysqldump per creare il backup
+        const dumpCmd = `mysqldump -h${host} -P${port} -u${user} -p${password} ${database}`;
+        
+        exec(dumpCmd, { maxBuffer: 50 * 1024 * 1024 }, (error, stdout, stderr) => {
+          if (error) {
+            console.error(`❌ mysqldump error: ${error.message}`);
+            reject(error);
+            return;
+          }
+          
+          // Scrivi l'output nel file di backup
+          fs.writeFileSync(backupPath, stdout);
+          console.log(`✅ MariaDB database backed up: ${backupPath}`);
+          resolve();
+        });
+      } catch (error) {
+        console.error('❌ MariaDB backup error:', error);
+        reject(error);
+      }
+    });
   }
 
   /**
@@ -557,34 +608,56 @@ export class BackupService {
   }
 
   /**
-   * Lista backup disponibili (db + uploads)
+   * Lista backup disponibili (db + uploads) - supporta sia SQLite che MariaDB
    */
   async listBackups(): Promise<any[]> {
     try {
+      const allBackups: any[] = [];
+      
+      // 1. Cerca backup nella directory principale (formato db-backup-*.sql)
       const files = fs.readdirSync(this.backupDir);
-      const backupFiles = files.filter(f => f.startsWith('db-backup-'));
+      const backupFiles = files.filter(f => f.startsWith('db-backup-') && f.endsWith('.sql'));
       const uploadsBackupFiles = files.filter(f => f.startsWith('uploads-backup-'));
       
-      // Ritorna array di oggetti con filename, size e createdAt
-      const backups = backupFiles.map(filename => {
+      for (const filename of backupFiles) {
         const filePath = path.join(this.backupDir, filename);
         const stats = fs.statSync(filePath);
         const timestamp = filename.replace('db-backup-', '').replace('.sql', '');
-        
-        // Cerca il corrispondente backup degli uploads
         const uploadsFile = uploadsBackupFiles.find(f => f.includes(timestamp));
         
-        return {
+        allBackups.push({
           filename: filename,
-          uploadsFilename: uploadsFile,
+          uploadsFilename: uploadsFile || null,
           size: stats.size,
           uploadsSize: uploadsFile ? fs.statSync(path.join(this.backupDir, uploadsFile)).size : 0,
-          createdAt: stats.mtime.toISOString()
-        };
-      });
+          createdAt: stats.mtime.toISOString(),
+          type: 'sqlite'
+        });
+      }
+      
+      // 2. Cerca backup MariaDB nella sottocartella mariadb/ (formato mariadb-backup-*.sql.gz)
+      const mariadbDir = path.join(this.backupDir, 'mariadb');
+      if (fs.existsSync(mariadbDir)) {
+        const mariadbFiles = fs.readdirSync(mariadbDir);
+        const mariadbBackups = mariadbFiles.filter(f => f.startsWith('mariadb-backup-') && (f.endsWith('.sql') || f.endsWith('.sql.gz')));
+        
+        for (const filename of mariadbBackups) {
+          const filePath = path.join(mariadbDir, filename);
+          const stats = fs.statSync(filePath);
+          
+          allBackups.push({
+            filename: `mariadb/${filename}`,
+            uploadsFilename: null,
+            size: stats.size,
+            uploadsSize: 0,
+            createdAt: stats.mtime.toISOString(),
+            type: 'mariadb'
+          });
+        }
+      }
       
       // Ordina per data di modifica (più recenti prima)
-      return backups.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      return allBackups.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     } catch (error) {
       console.error('❌ List backups error:', error);
       return [];

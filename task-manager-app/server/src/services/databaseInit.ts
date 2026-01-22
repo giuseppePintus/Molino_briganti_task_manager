@@ -7,6 +7,14 @@ import { execSync } from 'child_process';
  */
 export async function createTablesIfNotExist(prisma: PrismaClient) {
   try {
+    // Se stiamo usando MySQL/MariaDB, Prisma gestisce automaticamente le tabelle
+    const databaseUrl = process.env.DATABASE_URL || '';
+    if (databaseUrl.startsWith('mysql://')) {
+      console.log('✅ Using MySQL/MariaDB - tables managed by Prisma');
+      return;
+    }
+
+    // Codice per SQLite (legacy)
     // Assicura che il Prisma client sia rigenerato per l'attuale schema
     console.log('🔄 Ensuring Prisma Client is up-to-date...');
     try {
@@ -16,8 +24,8 @@ export async function createTablesIfNotExist(prisma: PrismaClient) {
       console.log('⚠️  Prisma generation skipped or failed (may already be current)');
     }
     
-    // Disabilita i foreign key constraints per permettere la ricreazione
-    await prisma.$executeRawUnsafe(`PRAGMA foreign_keys = OFF`);
+    // Disabilita i foreign key constraints per permettere la ricreazione (solo per SQLite)
+    // await prisma.$executeRawUnsafe(`PRAGMA foreign_keys = OFF`);
 
     
     // Esegui il SQL per creare le tabelle direttamente secondo lo schema Prisma
@@ -444,8 +452,8 @@ export async function initializeDatabaseIfEmpty(prisma: PrismaClient) {
     console.log(`   👤 ${operator2.username} (Operator) - Password: operator123`);
     console.log('⚠️  IMPORTANTE: Cambia le password di default in produzione!');
 
-    // Re-abilita i foreign key constraints
-    await prisma.$executeRawUnsafe(`PRAGMA foreign_keys = ON`);
+    // Re-abilita i foreign key constraints (solo per SQLite)
+    // await prisma.$executeRawUnsafe(`PRAGMA foreign_keys = ON`);
 
     return {
       admins: [admin1, admin2],

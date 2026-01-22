@@ -3,7 +3,7 @@ FROM --platform=linux/arm64 node:20-slim
 
 WORKDIR /app
 
-# Installa dipendenze per moduli nativi (come canvas) su Debian + Python per PDF extraction
+# Installa dipendenze per moduli nativi (come canvas) su Debian + Python per PDF extraction + MariaDB client per backup
 RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y \
     libjpeg-dev \
     libgif-dev \
     librsvg2-dev \
+    mariadb-client \
     && rm -rf /var/lib/apt/lists/*
 
 # Installa Python packages necessari per PDF extraction
