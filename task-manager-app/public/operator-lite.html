@@ -2,8 +2,10 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Operatore - Molino Briganti</title>
+    <link rel="stylesheet" href="css/common-styles.css">
+    <link rel="stylesheet" href="css/operator-lite-custom.css">
     <style>
         /* CSS compatibile con browser vecchi - OTTIMIZZATO PER TABLET 10" */
         * {
@@ -538,27 +540,27 @@
             <div class="company-branding">
                 <img id="loginLogo" src="images/logo INSEGNA.png" alt="Logo Azienda">
             </div>
-            <p style="text-align: center; color: #888; margin-bottom: 20px; font-size: 20px;">Seleziona il tuo nome:</p>
+            <p class="login-select-text">Seleziona il tuo nome:</p>
             <div id="operatorGrid" class="operator-grid">
                 <div class="loading-operators">Caricamento operatori...</div>
             </div>
-            <p id="version-op-lite" style="text-align: center; margin-top: 30px; font-size: 18px; color: #666;">Versione Lite v1.0.27</p>
+            <p id="version-op-lite">Versione Lite v1.0.27</p>
         </div>
     </div>
     
     <!-- Dashboard Section -->
-    <div id="dashboardSection" style="display: none;">
+    <div id="dashboardSection">
         <div class="header">
-            <span class="header-logo"><img id="dashboardLogo" src="images/logo INSEGNA.png" alt="Logo" style="display: block;"></span>
-            <span id="currentDateTime" style="color: #fff; font-size: 24px; font-weight: bold; margin-left: 20px; vertical-align: middle;"></span>
-            <div class="user-info" style="display: flex; align-items: flex-start;">
-                <div style="text-align: center; margin-right: 10px;">
+            <span class="header-logo"><img id="dashboardLogo" src="images/logo INSEGNA.png" alt="Logo"></span>
+            <span id="currentDateTime"></span>
+            <div class="user-info user-info-flex">
+                <div class="user-info-center">
                     <button class="refresh-btn" onclick="loadTasks()">🔄 Aggiorna</button>
-                    <div style="color: #888; font-size: 12px; margin-top: 4px;">Agg: <span id="lastUpdate">--:--</span></div>
+                    <div class="update-time">Agg: <span id="lastUpdate">--:--</span></div>
                 </div>
-                <div style="text-align: center;">
+                <div class="logout-section">
                     <button class="logout-btn" onclick="handleLogout()">🚪 Esci</button>
-                    <div id="logoutCountdown" style="color: #f59e0b; font-size: 12px; margin-top: 4px;">Logout: 1:40</div>
+                    <div id="logoutCountdown">Logout: 1:40</div>
                 </div>
             </div>
             <div class="clear"></div>
@@ -572,7 +574,7 @@
                 <span id="userDisplay"></span>
                 <span id="connectionStatus" class="online">● Online</span>
             </div>
-            <div style="width: 150px;"></div>
+            <div class="header-spacer"></div>
         </div>
         
         <div class="container">
@@ -581,11 +583,11 @@
                 <div class="loading">Caricamento...</div>
             </div>
             
-            <div id="ordersList" style="margin-top: 30px;">
+            <div id="ordersList">
                 <!-- Ordini verranno renderizzati qui -->
             </div>
             
-            <div id="tripsList" style="margin-top: 30px;">
+            <div id="tripsList">
                 <!-- Viaggi verranno renderizzati qui -->
             </div>
         </div>

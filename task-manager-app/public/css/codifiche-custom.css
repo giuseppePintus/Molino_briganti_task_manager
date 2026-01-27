@@ -1,0 +1,11 @@
+/* Codifiche Management Custom Styles */
+
+.table-header-width-150 {
+  width: 150px;
+  text-align: center;
+}
+
+.table-loading-cell {
+  text-align: center;
+  color: #9ca3af;
+}

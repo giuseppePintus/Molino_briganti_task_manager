@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestione Viaggi - Molino Briganti</title>
     <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/trips-management-custom.css">
     <script src="js/settings-utils.js"></script>
     <style>
         * {
@@ -549,14 +550,14 @@
         </div>
 
         <!-- Quick Actions -->
-        <div class="quick-actions" style="grid-template-columns: repeat(3, 1fr);">
+        <div class="quick-actions quick-actions-3col">
             <button class="btn btn-success" onclick="window.location.href='customers-management.html'">👥 Nuovo Cliente</button>
             <button class="btn btn-success" onclick="openCreateTripModal()">➕ Nuovo Viaggio</button>
             <button class="btn btn-primary" onclick="window.location.href='orders-planner.html'">📦 Planner Ordini</button>
         </div>
 
         <!-- Calendar -->
-        <div class="card" style="padding: 12px;">
+        <div class="card card-padded">
             <div class="calendar-header">
                 <button class="btn btn-secondary calendar-btn-dummy" onclick="toggleShowAllTrips()" id="toggleShowAllBtn">👁️ Visualizza Tutti</button>
                 <button class="btn btn-primary calendar-btn-prev" onclick="previousPeriod()">◀</button>
@@ -589,8 +590,8 @@
                     <label for="tripDate">Data *</label>
                     <input type="date" id="tripDate" required>
                 </div>
-                <div style="padding:10px;background:#3d3d3d;border-radius:6px;margin:10px 0;">
-                    <p style="color:#60a5fa;font-size:12px;margin:0;">💡 L'operatore verrà assegnato dall'admin tramite il task generato dal viaggio</p>
+                <div class="info-note-box">
+                    <p class="note-text">💡 L'operatore verrà assegnato dall'admin tramite il task generato dal viaggio</p>
                 </div>
                 <div class="modal-actions">
                     <button type="submit" class="btn btn-primary">💾 Crea</button>
@@ -606,25 +607,25 @@
             <h2 id="tripOrdersTitle">📦 Gestione Ordini Viaggio</h2>
             
             <!-- Info Assignment -->
-            <div style="margin:10px 0 18px 0;padding:10px;background:#2d2d2d;border-radius:6px;border:2px solid #3b82f6;">
-                <p style="color:#60a5fa;font-size:13px;margin:0;">💡 <strong>Nota:</strong> L'operatore verrà assegnato dall'admin tramite il task generato dal viaggio nella dashboard principale</p>
+            <div class="info-assignment-box">
+                <p class="note-text-large">💡 <strong>Nota:</strong> L'operatore verrà assegnato dall'admin tramite il task generato dal viaggio nella dashboard principale</p>
             </div>
 
             <!-- Available Orders -->
-            <div style="margin-bottom:15px;">
-                <h3 style="font-size:16px;margin-bottom:10px;">Ordini Disponibili (consegnati):</h3>
+            <div class="section-container">
+                <h3 class="section-title">Ordini Disponibili (consegnati):</h3>
                 <div id="availableOrdersList" class="orders-list"></div>
             </div>
 
             <!-- Trip Orders Sequence -->
-            <div style="margin-bottom:15px;">
-                <h3 style="font-size:16px;margin-bottom:10px;">Ordini nel Viaggio:</h3>
+            <div class="section-container">
+                <h3 class="section-title">Ordini nel Viaggio:</h3>
                 <div id="tripOrdersList"></div>
             </div>
 
             <!-- Product Totals -->
-            <div style="margin-top:15px;padding:15px;background:#2d2d2d;border-radius:6px;border:2px solid #16a34a;">
-                <h3 style="font-size:16px;margin-bottom:10px;color:#16a34a;">📊 Totali Prodotti:</h3>
+            <div class="totals-box">
+                <h3>📊 Totali Prodotti:</h3>
                 <div id="tripTotals"></div>
             </div>
 

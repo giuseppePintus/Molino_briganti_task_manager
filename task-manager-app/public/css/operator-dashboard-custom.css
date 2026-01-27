@@ -1,0 +1,19 @@
+/* operator-dashboard.html custom styles */
+
+.logo-hidden {
+    display: none;
+}
+
+.current-task-section {
+    display: none;
+    background: #3d3d3d;
+    border-left: 4px solid #ea580c;
+}
+
+.current-task-title {
+    color: #e0e0e0;
+}
+
+.section-hidden {
+    display: none;
+}

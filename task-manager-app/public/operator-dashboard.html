@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Operator Dashboard - Molino Briganti</title>
     <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/operator-dashboard-custom.css">
     <style>
         * {
             margin: 0;
@@ -111,7 +112,9 @@
             font-weight: 700;
             color: #e0e0e0;
             letter-spacing: 0.3px;
-            min-width: fit-content;
+            min-width: -moz-fit-content; /* Firefox */
+            min-width: -webkit-fit-content; /* Chrome/Safari */
+            min-width: fit-content; /* Standard */
         }
 
         /* Base button styles moved to css/common.css. Keep size helpers like .btn-small and contextual rules. */
@@ -408,7 +411,7 @@
         <div class="header">
             <div class="header-left">
                 <div class="header-logo">
-                    <img id="headerLogoImg" src="images/logo INSEGNA.png" alt="Molino Briganti Logo" style="display: none">
+                    <img id="headerLogoImg" src="images/logo INSEGNA.png" alt="Molino Briganti Logo" class="logo-hidden">
                 </div>
                 <h1>⚡ Operator Dashboard</h1>
             </div>
@@ -425,8 +428,8 @@
         <div class="stats" id="stats"></div>
 
         <!-- Current Task -->
-        <div id="currentTaskSection" class="card" style="display: none; background: #3d3d3d; border-left: 4px solid #ea580c;">
-            <h2 id="currentTaskTitle" style="color: #e0e0e0;">⚡ Attuale Compito in Esecuzione</h2>
+        <div id="currentTaskSection" class="card current-task-section">
+            <h2 id="currentTaskTitle" class="current-task-title">⚡ Attuale Compito in Esecuzione</h2>
             <div id="currentTaskContent"></div>
         </div>
 
@@ -441,7 +444,7 @@
         </div>
 
         <!-- Orders Section -->
-        <div class="card" id="ordersSection" style="display: none;">
+        <div class="card section-hidden" id="ordersSection">
             <h2>📦 Ordini di Ritiro</h2>
             <div id="ordersList" class="task-list">
                 <div class="empty-state">
@@ -451,7 +454,7 @@
         </div>
 
         <!-- Trips Section -->
-        <div class="card" id="tripsSection" style="display: none;">
+        <div class="card section-hidden" id="tripsSection">
             <h2>🚐 Viaggi Programmati</h2>
             <div id="tripsList" class="task-list">
                 <div class="empty-state">

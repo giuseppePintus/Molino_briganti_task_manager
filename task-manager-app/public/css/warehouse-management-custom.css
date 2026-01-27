@@ -1,0 +1,67 @@
+/* warehouse-management.html custom styles */
+
+.info-box-master-csv {
+    padding: 10px;
+    background: #1e3a52;
+    border-left: 4px solid #2563eb;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #93c5fd;
+}
+
+.btn-import-pdf {
+    background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%);
+    box-shadow: 0 4px 12px rgba(234, 88, 12, 0.3);
+}
+
+.stats-bar-hidden {
+    display: none;
+}
+
+.overview-description {
+    color: #a0a0a0;
+    margin-bottom: 15px;
+}
+
+.warehouse-header-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.warehouse-header-section h2 {
+    margin: 0;
+}
+
+.warehouse-search-container {
+    margin-bottom: 15px;
+    display: none;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.warehouse-search-input {
+    flex: 1;
+    min-width: 200px;
+    padding: 10px;
+    background: #3d3d3d;
+    border: 1px solid #4d4d4d;
+    color: #e0e0e0;
+    border-radius: 4px;
+}
+
+.warehouse-export-btn {
+    min-width: 150px;
+}
+
+.info-description-gray {
+    color: #a0a0a0;
+    margin-bottom: 10px;
+}
+
+.info-description-small {
+    color: #999;
+    font-size: 13px;
+}

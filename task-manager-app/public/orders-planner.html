@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Planner Ordini - Molino Briganti</title>
     <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/common-styles.css">
+    <link rel="stylesheet" href="css/orders-planner-custom.css">
     <script src="js/settings-utils.js"></script>
     <style>
         * {
@@ -752,7 +754,7 @@
         <!-- Planner Actions removed -->
 
         <!-- Calendar -->
-        <div class="card" style="padding: 12px;">
+        <div class="card card-padded">
             <div class="calendar-header">
                 <button class="btn btn-secondary calendar-btn-dummy" onclick="toggleShowAllOrders()" id="toggleShowAllBtn2">👁️ Visualizza Tutti</button>
                 <button class="btn btn-primary calendar-btn-prev" onclick="previousPeriod()">◀</button>
@@ -760,7 +762,7 @@
                 <button class="btn btn-primary calendar-btn-next" onclick="nextPeriod()">▶</button>
                 <button class="btn btn-secondary calendar-btn-toggle" onclick="toggleCalendarView()" id="toggleCalendarBtn">🗓️ Settimana</button>
             </div>
-            <div style="padding: 10px; background: rgba(255, 255, 255, 0.05); border-radius: 6px; margin-bottom: 12px; font-size: 13px; color: #9ca3af; border-left: 3px solid #3b82f6;">
+            <div class="calendar-info-box">
                 Clicca su un giorno per visualizzare/gestire gli ordini • Doppio clic per creare un nuovo ordine
             </div>
             <div id="calendarContainer" class="calendar-container">
@@ -769,19 +771,19 @@
         </div>
 
         <!-- Unified Orders Section -->
-        <div class="card" id="orderTasksCard" style="border-left: 4px solid #3b82f6;display:none;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;flex-wrap:wrap;gap:10px;">
-                <h2 style="display:flex;align-items:center;gap:6px;margin:0;">📋 Ordini da Assegnare <span id="tasksCount" style="font-size: 13px;color:#a0a0a0;font-weight:400;"></span></h2>
+        <div class="card card-hidden card-blue-border" id="orderTasksCard">
+            <div class="card-header-flex">
+                <h2 class="card-title-flex">📋 Ordini da Assegnare <span id="tasksCount" class="card-count-badge"></span></h2>
             </div>
             <div class="orders-grid" id="orderTasksGrid">
                 <!-- Orders will appear here -->
             </div>
         </div>
 
-        <div class="card" style="border-left: 4px solid #38bdf8;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;flex-wrap:wrap;gap:10px;">
-                <h2 style="display:flex;align-items:center;gap:6px;margin:0;">🚐 Viaggi <span id="tripsCount" style="font-size: 13px;color:#a0a0a0;font-weight:400;"></span></h2>
-                <button class="btn btn-primary" onclick="forceRefreshTrips()" style="font-size:12px;padding:6px 12px;">🔄 Sincronizza</button>
+        <div class="card card-cyan-border">
+            <div class="card-header-flex">
+                <h2 class="card-title-flex">🚐 Viaggi <span id="tripsCount" class="card-count-badge"></span></h2>
+                <button class="btn btn-primary btn-close-small" onclick="forceRefreshTrips()">🔄 Sincronizza</button>
             </div>
             <div class="orders-grid" id="tripsGrid">
                 <!-- Trips will appear here -->
@@ -791,271 +793,271 @@
 
     <!-- Order Modal - Stile migliorato come admin-dashboard -->
     <div id="orderModal" class="modal">
-        <div class="modal-content" style="padding: 0; border-radius: 12px; border: 2px solid #3b82f6; max-width: 600px;">
+        <div class="modal-content modal-content-custom">
             <!-- Header con colore -->
-            <div id="orderModalHeader" style="background: rgba(59, 130, 246, 0.2); padding: 20px; border-bottom: 1px solid #3b82f6;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h2 style="margin: 0; color: #3b82f6; font-size: 20px;">📝 Nuovo Ordine</h2>
-                    <button type="button" onclick="closeOrderModal()" style="background: none; border: none; color: #999; font-size: 28px; cursor: pointer; padding: 0; line-height: 1;" title="Chiudi">×</button>
+            <div id="orderModalHeader" class="modal-header">
+                <div class="modal-header-flex">
+                    <h2 class="modal-title">📝 Nuovo Ordine</h2>
+                    <button type="button" onclick="closeOrderModal()" class="modal-close-btn" title="Chiudi">×</button>
                 </div>
             </div>
             
             <!-- Body scrollabile -->
-            <div style="padding: 20px; max-height: 60vh; overflow-y: auto;">
+            <div class="modal-body-scrollable">
                 <form id="orderForm" onsubmit="saveOrder(event)">
-                    <div class="form-group" style="margin-bottom: 16px;">
-                        <label for="orderClient" style="display: block; color: #e0e0e0; margin-bottom: 6px; font-weight: 600;">👤 Cliente</label>
-                        <div style="display: grid; grid-template-columns: 1fr auto; gap: 8px;">
-                            <select id="orderClient" required onchange="updateClientInfo()" style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;">
+                    <div class="form-group form-group-spaced">
+                        <label for="orderClient" class="form-label">👤 Cliente</label>
+                        <div class="grid-1fr-auto">
+                            <select id="orderClient" class="form-input-full font-size-14" required onchange="updateClientInfo()">
                                 <option value="">-- Seleziona Cliente --</option>
                             </select>
-                            <button type="button" onclick="openNewClientModal()" style="padding: 12px 14px; background: #86efac; color: #000; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; min-width: 120px;">➕ Nuovo</button>
+                            <button type="button" class="btn btn-success min-w-120" onclick="openNewClientModal()">➕ Nuovo</button>
                         </div>
-                        <div id="clientHoursInfo" style="margin-top: 8px; font-size: 12px; color: #86efac; display: none;"></div>
+                        <div id="clientHoursInfo" class="card-hidden client-hours-info"></div>
                     </div>
 
                     <!-- Sezione Prodotti -->
-                    <div class="form-group" style="margin-bottom: 16px; background: #252525; padding: 15px; border-radius: 8px; border-left: 3px solid #86efac;">
-                        <label style="display: block; color: #86efac; margin-bottom: 10px; font-weight: 600;">📦 Prodotti nell'ordine</label>
+                    <div class="form-group form-group-highlighted">
+                        <label class="form-label label-success">📦 Prodotti nell'ordine</label>
                         
-                        <div style="display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-bottom: 12px;">
+                        <div class="grid-1fr-auto mb-12">
                             <div>
-                                <select id="orderProduct" onchange="loadAvailableBatches(); updateConversionInfo()" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;">
+                                <select id="orderProduct" class="form-select-full p-10 font-size-14" onchange="loadAvailableBatches(); updateConversionInfo()">
                                     <option value="">-- Seleziona Articolo --</option>
                                 </select>
                             </div>
-                            <button type="button" onclick="addProductToOrder()" style="padding: 10px 14px; background: #86efac; color: #000; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">➕ Aggiungi</button>
+                            <button type="button" class="btn btn-success btn-add" onclick="addProductToOrder()">➕ Aggiungi</button>
                         </div>
 
                         <!-- Conversione Automatica Colli ↔ KG -->
-                        <div style="padding: 12px; background: #1a2a2a; border-radius: 6px; border-left: 3px solid #16a34a; margin-bottom: 12px;">
-                            <label style="display: block; color: #86efac; margin-bottom: 10px; font-weight: 600; font-size: 13px;">🔄 Quantità (Conversione automatica)</label>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                        <div class="quantity-conversion-box">
+                            <label class="form-label label-success mb-10 font-size-13">🔄 Quantità (Conversione automatica)</label>
+                            <div class="grid-1fr-1fr">
                                 <div>
-                                    <label style="font-size: 13px; color: #bbb; display: block; margin-bottom: 4px;">Colli</label>
-                                    <input type="number" id="orderColli" min="1" step="1" placeholder="Colli" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #4d4d4d; border-radius: 6px; color: #fff; -moz-appearance: textfield;" oninput="colliToKgAuto()" onwheel="event.preventDefault();">
+                                    <label class="form-label-gray font-size-13 mb-4">Colli</label>
+                                    <input type="number" class="form-input-full no-spinner" id="orderColli" min="1" step="1" placeholder="Colli" oninput="colliToKgAuto()" onwheel="event.preventDefault();">
                                 </div>
                                 <div>
-                                    <label style="font-size: 13px; color: #bbb; display: block; margin-bottom: 4px;">Peso (kg)</label>
-                                    <input type="number" id="orderQuantity" min="1" step="1" placeholder="Peso (kg)" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; -moz-appearance: textfield;" oninput="kgToColliAuto()" onwheel="event.preventDefault();">
+                                    <label class="form-label-gray font-size-13 mb-4">Peso (kg)</label>
+                                    <input type="number" class="form-input-full no-spinner" id="orderQuantity" min="1" step="1" placeholder="Peso (kg)" oninput="kgToColliAuto()" onwheel="event.preventDefault();">
                                 </div>
                             </div>
-                            <div style="margin-top: 8px; font-size: 13px; color: #888;">
+                            <div class="info-text-small">
                                 <span id="conversionInfo">Seleziona un articolo per la conversione</span>
                             </div>
                         </div>
 
-                        <div id="orderProductsTableContainer" style="display: none;">
-                            <table style="width: 100%; border-collapse: collapse; background: #1a1a1a; font-size: 12px; border-radius: 6px; overflow: hidden;">
+                        <div id="orderProductsTableContainer" class="card-hidden">
+                            <table class="products-table">
                                 <thead>
-                                    <tr style="background: #0d0d0d; border-bottom: 2px solid #4d4d4d;">
-                                        <th style="padding: 8px; text-align: left; color: #e0e0e0;">Articolo</th>
-                                        <th style="padding: 8px; text-align: right; color: #e0e0e0;">Quantità (colli • kg)</th>
-                                        <th style="padding: 8px; text-align: center; color: #e0e0e0;">Lotti</th>
-                                        <th style="padding: 8px; text-align: center; color: #e0e0e0;">Azione</th>
+                                    <tr>
+                                        <th>Articolo</th>
+                                        <th>Quantità (colli • kg)</th>
+                                        <th>Lotti</th>
+                                        <th>Azione</th>
                                     </tr>
                                 </thead>
                                 <tbody id="orderProductsTableBody"></tbody>
                             </table>
-                            <div style="margin-top: 8px; padding: 8px; background: #1a1a1a; border-radius: 6px;">
-                                <strong style="color: #86efac;">Totale: <span id="orderProductsTotal">0</span> kg</strong>
+                            <div class="products-table-footer">
+                                <strong class="products-total">Totale: <span id="orderProductsTotal">0</span> kg</strong>
                             </div>
                         </div>
                     </div>
 
-                    <div class="form-group" style="margin-bottom: 16px;">
-                        <label for="orderType" style="display: block; color: #e0e0e0; margin-bottom: 6px; font-weight: 600;">📋 Tipo Ordine</label>
-                        <select id="orderType" required onchange="updateTripOptions()" style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;">
+                    <div class="form-group form-group-spaced">
+                        <label for="orderType" class="form-label">📋 Tipo Ordine</label>
+                        <select id="orderType" class="form-input-full font-size-14" required onchange="updateTripOptions()">
                             <option value="consegnato">🚚 Consegnato</option>
                             <option value="ritira">📥 Ritira Cliente</option>
                         </select>
                     </div>
 
-                    <div class="form-group" style="margin-bottom: 16px;">
-                        <label style="display: block; color: #e0e0e0; margin-bottom: 6px; font-weight: 600;">📅 Data e Orario Consegna</label>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div class="form-group form-group-spaced">
+                        <label class="form-label">📅 Data e Orario Consegna</label>
+                        <div class="grid-1fr-1fr-gap10">
                             <div>
-                                <label for="orderDate" style="font-size: 12px; color: #bbb; display: block; margin-bottom: 4px;">Data:</label>
-                                <input type="date" id="orderDate" required onchange="updateTripOptions()" style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;">
+                                <label for="orderDate" class="form-label-gray font-size-12 mb-4">Data:</label>
+                                <input type="date" class="form-input-full font-size-14" id="orderDate" required onchange="updateTripOptions()">
                             </div>
                             <div>
-                                <label for="orderTime" style="font-size: 12px; color: #bbb; display: block; margin-bottom: 4px;">Orario:</label>
-                                <input type="time" id="orderTime" value="12:00" style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;">
+                                <label for="orderTime" class="form-label-gray font-size-12 mb-4">Orario:</label>
+                                <input type="time" class="form-input-full font-size-14" id="orderTime" value="12:00">
                             </div>
                         </div>
                     </div>
                     
                     <!-- Sezione Viaggio -->
-                    <div class="form-group" id="tripSection" style="display: none; margin-bottom: 16px; background: #252525; padding: 15px; border-radius: 8px; border-left: 3px solid #3b82f6;">
-                        <label for="tripOptions" style="display: block; color: #3b82f6; margin-bottom: 10px; font-weight: 600;">🚚 Viaggio</label>
-                        <select id="tripOptions" onchange="updateTripSelection()" style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;">
+                    <div class="form-group form-group-highlighted card-hidden card-blue-border" id="tripSection">
+                        <label for="tripOptions" class="form-label label-blue mb-10">🚚 Viaggio</label>
+                        <select id="tripOptions" class="form-input-full font-size-14" onchange="updateTripSelection()">
                             <option value="pending" selected>⏳ Senza viaggio (Sospeso)</option>
                             <option value="new">🆕 Crea nuovo viaggio</option>
                             <option value="existing">📌 Aggiungi a viaggio esistente</option>
                         </select>
                         
-                        <div id="newTripFields" style="display: none; margin-top: 12px;">
-                            <label for="newTripName" style="font-size: 12px; color: #bbb; display: block; margin-bottom: 4px;">Nome viaggio:</label>
-                            <input type="text" id="newTripName" placeholder="es. Consegne 30/11" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 13px; margin-bottom: 10px;">
+                        <div id="newTripFields" class="card-hidden trip-fields-margin">
+                            <label for="newTripName" class="form-label-gray font-size-12 mb-4">Nome viaggio:</label>
+                            <input type="text" class="form-input-full font-size-13 mb-10" id="newTripName" placeholder="es. Consegne 30/11">
                             
-                            <label for="newTripVehicle" style="font-size: 12px; color: #bbb; display: block; margin-bottom: 4px;">🚐 Automezzo:</label>
-                            <select id="newTripVehicle" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 13px; margin-bottom: 10px;">
+                            <label for="newTripVehicle" class="form-label-gray font-size-12 mb-4">🚐 Automezzo:</label>
+                            <select id="newTripVehicle" class="form-input-full p-10 font-size-13 mb-10">
                                 <option value="">-- Seleziona automezzo --</option>
                             </select>
                             
-                            <label for="newTripOperator" style="font-size: 12px; color: #bbb; display: block; margin-bottom: 4px;">👤 Operatore:</label>
-                            <select id="newTripOperator" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 13px;">
+                            <label for="newTripOperator" class="form-label-gray font-size-12 mb-4">👤 Operatore:</label>
+                            <select id="newTripOperator" class="form-input-full p-10 font-size-13">
                                 <option value="">-- Seleziona operatore --</option>
                             </select>
                         </div>
                         
-                        <div id="existingTripFields" style="display: none; margin-top: 12px;">
-                            <label for="existingTrip" style="font-size: 12px; color: #bbb;">Viaggio disponibile:</label>
-                            <select id="existingTrip" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 13px; margin-top: 4px;">
+                        <div id="existingTripFields" class="card-hidden trip-fields-margin">
+                            <label for="existingTrip" class="form-label-gray font-size-12">Viaggio disponibile:</label>
+                            <select id="existingTrip" class="form-input-full p-10 font-size-13 mt-4">
                                 <option value="">-- Nessun viaggio disponibile --</option>
                             </select>
                         </div>
                     </div>
 
-                    <div class="form-group" style="margin-bottom: 16px;">
-                        <label for="orderNotes" style="display: block; color: #e0e0e0; margin-bottom: 6px; font-weight: 600;">📝 Note</label>
-                        <textarea id="orderNotes" rows="3" placeholder="Note aggiuntive..." style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px; resize: vertical;"></textarea>
+                    <div class="form-group form-group-spaced">
+                        <label for="orderNotes" class="form-label">📝 Note</label>
+                        <textarea id="orderNotes" class="form-input-full font-size-14 resize-vertical" rows="3" placeholder="Note aggiuntive..."></textarea></textarea>
                     </div>
                 </form>
             </div>
             
             <!-- Footer con azioni -->
-            <div style="padding: 16px 20px; background: #252525; border-top: 1px solid #444; display: flex; gap: 12px; justify-content: flex-end;">
-                <button type="button" onclick="closeOrderModal()" style="background: #6b7280; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-weight: 600;">❌ Annulla</button>
-                <button type="button" onclick="document.getElementById('orderForm').dispatchEvent(new Event('submit', {cancelable: true}))" style="background: #3b82f6; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-weight: 600;">💾 Salva</button>
+            <div class="modal-footer-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeOrderModal()">❌ Annulla</button>
+                <button type="button" class="btn btn-primary" onclick="document.getElementById('orderForm').dispatchEvent(new Event('submit', {cancelable: true}))">💾 Salva</button>
             </div>
         </div>
     </div>
 
     <!-- Client Modal - Identico a customers-management.html -->
     <div id="newClientModal" class="modal">
-        <div class="modal-content" style="padding: 0; border-radius: 12px; border: 2px solid #86efac; max-width: 600px;">
+        <div class="modal-content modal-content-custom card-green-border">
             <!-- Header con colore -->
-            <div style="background: rgba(134, 239, 172, 0.2); padding: 20px; border-bottom: 1px solid #86efac;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h2 style="margin: 0; color: #86efac; font-size: 20px;">👥 Nuovo Cliente</h2>
-                    <button type="button" onclick="closeNewClientModal()" style="background: none; border: none; color: #999; font-size: 28px; cursor: pointer; padding: 0; line-height: 1;" title="Chiudi">×</button>
+            <div class="modal-header modal-header-green">
+                <div class="modal-header-flex">
+                    <h2 class="modal-title modal-title-green">👥 Nuovo Cliente</h2>
+                    <button type="button" onclick="closeNewClientModal()" class="modal-close-btn" title="Chiudi">×</button>
                 </div>
             </div>
             
             <!-- Body scrollabile -->
-            <div style="padding: 20px; max-height: 60vh; overflow-y: auto;">
+            <div class="modal-body-scrollable">
                 <form id="newClientForm" onsubmit="saveNewClient(event)">
-                    <div class="form-group" style="margin-bottom: 16px;">
-                        <label for="newClientName" style="display: block; color: #e0e0e0; margin-bottom: 6px; font-weight: 600;">Nome Azienda *</label>
-                        <input type="text" id="newClientName" required placeholder="Es. Azienda XYZ" style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;">
+                    <div class="form-group form-group-spaced">
+                        <label for="newClientName" class="form-label">Nome Azienda *</label>
+                        <input type="text" class="form-input-full font-size-14" id="newClientName" required placeholder="Es. Azienda XYZ">
                     </div>
                     
-                    <div class="form-group" style="margin-bottom: 16px;">
-                        <label for="newClientEmail" style="display: block; color: #e0e0e0; margin-bottom: 6px; font-weight: 600;">Email *</label>
-                        <input type="email" id="newClientEmail" required placeholder="Es. info@azienda.it" style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;">
+                    <div class="form-group form-group-spaced">
+                        <label for="newClientEmail" class="form-label">Email *</label>
+                        <input type="email" class="form-input-full font-size-14" id="newClientEmail" required placeholder="Es. info@azienda.it">
                     </div>
                     
-                    <div class="form-group" style="margin-bottom: 16px;">
-                        <label for="newClientPhone" style="display: block; color: #e0e0e0; margin-bottom: 6px; font-weight: 600;">Telefono *</label>
-                        <input type="tel" id="newClientPhone" required placeholder="Es. 0123456789" style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;">
+                    <div class="form-group form-group-spaced">
+                        <label for="newClientPhone" class="form-label">Telefono *</label>
+                        <input type="tel" class="form-input-full font-size-14" id="newClientPhone" required placeholder="Es. 0123456789">
                     </div>
                     
-                    <div class="form-group" style="margin-bottom: 16px;">
-                        <label for="newClientAddress" style="display: block; color: #e0e0e0; margin-bottom: 6px; font-weight: 600;">Indirizzo *</label>
-                        <input type="text" id="newClientAddress" required placeholder="Es. Via Roma 123" style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;">
+                    <div class="form-group form-group-spaced">
+                        <label for="newClientAddress" class="form-label">Indirizzo *</label>
+                        <input type="text" class="form-input-full font-size-14" id="newClientAddress" required placeholder="Es. Via Roma 123">
                     </div>
                     
-                    <div class="form-group" style="margin-bottom: 16px;">
-                        <label for="newClientCity" style="display: block; color: #e0e0e0; margin-bottom: 6px; font-weight: 600;">Città *</label>
-                        <input type="text" id="newClientCity" required placeholder="Es. Milano" style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;">
+                    <div class="form-group form-group-spaced">
+                        <label for="newClientCity" class="form-label">Città *</label>
+                        <input type="text" class="form-input-full font-size-14" id="newClientCity" required placeholder="Es. Milano">
                     </div>
 
-                    <div class="form-group" style="margin-bottom: 16px;">
-                        <label style="display: block; color: #e0e0e0; margin-bottom: 6px; font-weight: 600;">Orario Apertura Mattina *</label>
-                        <div style="display: flex; gap: 10px; align-items: center;">
-                            <input type="time" id="newClientOpenMorningStart" required placeholder="Es. 08:00" style="flex: 1; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;" onchange="syncNewClientDeliveryHours()">
-                            <span style="color: #a0a0a0;">alle</span>
-                            <input type="time" id="newClientOpenMorningEnd" required placeholder="Es. 13:00" style="flex: 1; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;" onchange="syncNewClientDeliveryHours()">
+                    <div class="form-group form-group-spaced">
+                        <label class="form-label">Orario Apertura Mattina *</label>
+                        <div class="flex-align-center">
+                            <input type="time" class="form-input-full font-size-14 flex-1" id="newClientOpenMorningStart" required placeholder="Es. 08:00" onchange="syncNewClientDeliveryHours()">
+                            <span class="time-separator">alle</span>
+                            <input type="time" class="form-input-full font-size-14 flex-1" id="newClientOpenMorningEnd" required placeholder="Es. 13:00" onchange="syncNewClientDeliveryHours()">
                         </div>
                     </div>
 
-                    <div class="form-group" style="margin-bottom: 16px;">
-                        <label style="display: block; color: #e0e0e0; margin-bottom: 6px; font-weight: 600;">Orario Apertura Pomeriggio (opzionale)</label>
-                        <div style="display: flex; gap: 10px; align-items: center;">
-                            <input type="time" id="newClientOpenAfternoonStart" placeholder="Es. 15:00" style="flex: 1; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;" onchange="syncNewClientDeliveryHours()">
-                            <span style="color: #a0a0a0;">alle</span>
-                            <input type="time" id="newClientOpenAfternoonEnd" placeholder="Es. 19:00" style="flex: 1; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;" onchange="syncNewClientDeliveryHours()">
+                    <div class="form-group form-group-spaced">
+                        <label class="form-label">Orario Apertura Pomeriggio (opzionale)</label>
+                        <div class="flex-align-center">
+                            <input type="time" class="form-input-full font-size-14 time-input-flex" id="newClientOpenAfternoonStart" placeholder="Es. 15:00" onchange="syncNewClientDeliveryHours()">
+                            <span class="time-separator">alle</span>
+                            <input type="time" class="form-input-full font-size-14 time-input-flex" id="newClientOpenAfternoonEnd" placeholder="Es. 19:00" onchange="syncNewClientDeliveryHours()">
                         </div>
                     </div>
 
-                    <div class="form-group" style="margin-bottom: 16px;">
-                        <label style="display: block; color: #e0e0e0; margin-bottom: 6px; font-weight: 600;">Finestra Consegne Mattina *</label>
-                        <div style="display: flex; gap: 10px; align-items: center;">
-                            <input type="time" id="newClientDeliveryMorningStart" required placeholder="Es. 08:00" style="flex: 1; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;">
-                            <span style="color: #a0a0a0;">alle</span>
-                            <input type="time" id="newClientDeliveryMorningEnd" required placeholder="Es. 12:00" style="flex: 1; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;">
+                    <div class="form-group form-group-spaced">
+                        <label class="form-label">Finestra Consegne Mattina *</label>
+                        <div class="flex-align-center">
+                            <input type="time" class="form-input-full font-size-14 time-input-flex" id="newClientDeliveryMorningStart" required placeholder="Es. 08:00">
+                            <span class="time-separator">alle</span>
+                            <input type="time" class="form-input-full font-size-14 time-input-flex" id="newClientDeliveryMorningEnd" required placeholder="Es. 12:00">
                         </div>
                     </div>
 
-                    <div class="form-group" style="margin-bottom: 16px;">
-                        <label style="display: block; color: #e0e0e0; margin-bottom: 6px; font-weight: 600;">Finestra Consegne Pomeriggio (opzionale)</label>
-                        <div style="display: flex; gap: 10px; align-items: center;">
-                            <input type="time" id="newClientDeliveryAfternoonStart" placeholder="Es. 15:00" style="flex: 1; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;">
-                            <span style="color: #a0a0a0;">alle</span>
-                            <input type="time" id="newClientDeliveryAfternoonEnd" placeholder="Es. 18:00" style="flex: 1; padding: 12px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 14px;">
+                    <div class="form-group form-group-spaced">
+                        <label class="form-label">Finestra Consegne Pomeriggio (opzionale)</label>
+                        <div class="flex-align-center">
+                            <input type="time" class="form-input-full font-size-14 time-input-flex" id="newClientDeliveryAfternoonStart" placeholder="Es. 15:00">
+                            <span class="time-separator">alle</span>
+                            <input type="time" class="form-input-full font-size-14 time-input-flex" id="newClientDeliveryAfternoonEnd" placeholder="Es. 18:00">
                         </div>
                     </div>
                 </form>
             </div>
             
             <!-- Footer con azioni -->
-            <div style="padding: 16px 20px; background: #252525; border-top: 1px solid #444; display: flex; gap: 12px; justify-content: flex-end;">
-                <button type="button" onclick="closeNewClientModal()" style="background: #6b7280; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-weight: 600;">❌ Annulla</button>
-                <button type="button" onclick="document.getElementById('newClientForm').dispatchEvent(new Event('submit', {cancelable: true}))" style="background: #86efac; color: #000; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-weight: 600;">💾 Salva</button>
+            <div class="modal-footer-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeNewClientModal()">❌ Annulla</button>
+                <button type="button" class="btn btn-success" onclick="document.getElementById('newClientForm').dispatchEvent(new Event('submit', {cancelable: true}))">💾 Salva</button>
             </div>
         </div>
     </div>
     <div id="editProductModal" class="modal">
-        <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-content max-w-500">
             <div class="modal-header">
                 <h2>✏️ Modifica Prodotto</h2>
             </div>
             <div class="modal-body">
-                <div style="background: #2d2d2d; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 10px; font-weight: bold; color: #e0e0e0;">Articolo:</label>
-                    <select id="editProductName" onchange="updateEditConversionInfo(); renderEditProductBatches(this.value)" style="width: 100%; padding: 8px; background: #1a1a1a; color: #e0e0e0; border: 1px solid #4d4d4d; border-radius: 4px;">
+                <div class="form-box-dark">
+                    <label class="form-label mb-10">Articolo:</label>
+                    <select id="editProductName" class="form-select-full p-8" onchange="updateEditConversionInfo(); renderEditProductBatches(this.value)">
                         <!-- Opzioni caricate dinamicamente -->
                     </select>
                 </div>
 
-                <div style="background: #2d2d2d; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 10px; font-weight: bold; color: #e0e0e0;">🔄 Quantità (Conversione automatica)</label>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
+                <div class="form-box-dark">
+                    <label class="form-label mb-10">🔄 Quantità (Conversione automatica)</label>
+                    <div class="grid-1fr-1fr mb-10">
                         <div>
-                            <label style="display: block; font-size: 12px; color: #a0a0a0; margin-bottom: 5px;">Colli</label>
-                            <input type="number" id="editProductColli" step="1" min="0" oninput="editColliToKgAuto()" style="width: 100%; padding: 8px; background: #1a1a1a; color: #e0e0e0; border: 1px solid #4d4d4d; border-radius: 4px;">
+                            <label class="form-label-gray font-size-12 mb-5">Colli</label>
+                            <input type="number" class="form-input-full p-8" id="editProductColli" step="1" min="0" oninput="editColliToKgAuto()">
                         </div>
                         <div>
-                            <label style="display: block; font-size: 12px; color: #a0a0a0; margin-bottom: 5px;">Peso (kg)</label>
-                            <input type="number" id="editProductQuantity" step="1" min="0" oninput="editKgToColliAuto()" style="width: 100%; padding: 8px; background: #1a1a1a; color: #e0e0e0; border: 1px solid #4d4d4d; border-radius: 4px;">
+                            <label class="form-label-gray font-size-12 mb-5">Peso (kg)</label>
+                            <input type="number" class="form-input-full p-8" id="editProductQuantity" step="1" min="0" oninput="editKgToColliAuto()">
                         </div>
                     </div>
-                    <span id="editConversionInfo" style="color: #a0a0a0; font-size: 12px;">Seleziona un articolo per la conversione</span>
+                    <span id="editConversionInfo" class="info-text-gray">Seleziona un articolo per la conversione</span>
                 </div>
 
                 <!-- Visualizzazione Lotti Assegnati -->
-                <div style="background: #1a3a3a; padding: 15px; border-radius: 6px; border: 1px solid #2d5a5a;">
-                    <h3 style="margin-top: 0; color: #a0d4ff;">📦 Lotti Disponibili:</h3>
-                    <div id="editProductBatchesList" style="max-height: 200px; overflow-y: auto;">
+                <div class="form-box-batches">
+                    <h3 class="batches-title">📦 Lotti Disponibili:</h3>
+                    <div id="editProductBatchesList" class="batches-list-scrollable">
                         <!-- Lotti caricati dinamicamente -->
                     </div>
                 </div>
             </div>
 
-            <div style="padding: 15px; border-top: 1px solid #4d4d4d;">
-                <button type="button" class="btn btn-primary" onclick="saveEditProduct()" style="width: 100%; margin-bottom: 8px;">✅ Salva Modifiche</button>
-                <button type="button" class="btn btn-secondary" onclick="closeEditProductModal()" style="width: 100%;">❌ Annulla</button>
+            <div class="modal-footer-edit">
+                <button type="button" class="btn btn-primary w-full mb-8" onclick="saveEditProduct()">✅ Salva Modifiche</button>
+                <button type="button" class="btn btn-secondary w-full" onclick="closeEditProductModal()">❌ Annulla</button>
             </div>
         </div>
     </div>
@@ -1773,7 +1775,7 @@
             }
             
             if (allOrdersToDisplay.length === 0) {
-                grid.innerHTML = '<p style="color:#808080;grid-column:1/-1;text-align:center;padding:20px;">Nessun ordine ' + (showAllOrders ? '' : 'per oggi') + '</p>';
+                grid.innerHTML = '<p class="empty-message" style="color:#808080;grid-column:1/-1;text-align:center;padding:20px;">Nessun ordine ' + (showAllOrders ? '' : 'per oggi') + '</p>';
                 return;
             }
             
@@ -1973,7 +1975,7 @@
             }
             
             if (tripsToShow.length === 0) {
-                grid.innerHTML = '<p style="color:#808080;grid-column:1/-1;text-align:center;padding:20px;">Nessun viaggio ' + (showAllOrders ? '' : 'per oggi') + '</p>';
+                grid.innerHTML = '<p class="empty-message" style="color:#808080;grid-column:1/-1;text-align:center;padding:20px;">Nessun viaggio ' + (showAllOrders ? '' : 'per oggi') + '</p>';
                 console.log('⚠️ [renderTrips] Nessun viaggio da mostrare');
                 return;
             }
@@ -3543,7 +3545,7 @@
         function renderEditProductBatches(productCode) {
             const article = articoli.find(a => a.codice === productCode);
             if (!article) {
-                document.getElementById('editProductBatchesList').innerHTML = '<p style="color: #999;">Nessun articolo trovato</p>';
+                document.getElementById('editProductBatchesList').innerHTML = '<p class="empty-message" style="color: #999;">Nessun articolo trovato</p>';
                 return;
             }
 
@@ -3551,7 +3553,7 @@
             
             // Se currentAvailableBatches non è ancora caricato, mostra un messaggio
             if (!currentAvailableBatches || currentAvailableBatches.length === 0) {
-                batchesList.innerHTML = '<p style="color: #999;">Caricamento lotti...</p>';
+                batchesList.innerHTML = '<p class="empty-message" style="color: #999;">Caricamento lotti...</p>';
                 return;
             }
 
@@ -3559,7 +3561,7 @@
             const batches = currentAvailableBatches || [];
 
             if (batches.length === 0) {
-                batchesList.innerHTML = '<p style="color: #999;">Nessun lotto disponibile per questo articolo</p>';
+                batchesList.innerHTML = '<p class="empty-message" style="color: #999;">Nessun lotto disponibile per questo articolo</p>';
                 return;
             }
 
@@ -5203,7 +5205,7 @@
             });
             
             if (unassignedOrders.length === 0) {
-                grid.innerHTML = '<p style="color: #808080; grid-column: 1/-1; text-align: center; padding: 20px;">Nessun ordine non assegnato. Tutti gli ordini sono inclusi in un viaggio!</p>';
+                grid.innerHTML = '<p class="empty-message" style="color: #808080; grid-column: 1/-1; text-align: center; padding: 20px;">Nessun ordine non assegnato. Tutti gli ordini sono inclusi in un viaggio!</p>';
                 return;
             }
 
@@ -5762,7 +5764,7 @@
         function renderTripsManager() {
             const container = document.getElementById('tripsManagerList');
             if (trips.length === 0) {
-                container.innerHTML = '<p style="color:#808080;text-align:center;padding:20px;">Nessun viaggio creato</p>';
+                container.innerHTML = '<p class="empty-message" style="color:#808080;text-align:center;padding:20px;">Nessun viaggio creato</p>';
                 return;
             }
 
@@ -5947,7 +5949,7 @@
 
             const container = document.getElementById('availableOrdersList');
             if (available.length === 0) {
-                container.innerHTML = '<p style="color:#808080;font-size:12px;">Nessun ordine disponibile per questa data</p>';
+                container.innerHTML = '<p class="empty-message" style="color:#808080;font-size:12px;">Nessun ordine disponibile per questa data</p>';
                 return;
             }
 
@@ -5967,7 +5969,7 @@
             const container = document.getElementById('tripOrdersList');
             
             if (tripOrders.length === 0) {
-                container.innerHTML = '<p style="color:#808080;font-size:12px;padding:10px;text-align:center;">Nessun ordine nel viaggio</p>';
+                container.innerHTML = '<p class="empty-message" style="color:#808080;font-size:12px;padding:10px;text-align:center;">Nessun ordine nel viaggio</p>';
                 return;
             }
 
@@ -5997,7 +5999,7 @@
             const container = document.getElementById('tripTotals');
             
             if (Object.keys(totals).length === 0) {
-                container.innerHTML = '<p style="color:#808080;font-size:12px;">Nessun prodotto</p>';
+                container.innerHTML = '<p class="empty-message" style="color:#808080;font-size:12px;">Nessun prodotto</p>';
                 return;
             }
 
@@ -6105,12 +6107,12 @@
 
     <!-- Modal Assegna Task -->
     <div id="assignTaskModal" class="modal">
-        <div class="modal-content" style="max-width:420px;">
-            <h2 style="margin-top:0;font-size:16px;">🔧 Assegna Task Ordine</h2>
+        <div class="modal-content modal-compact">
+            <h2 class="modal-title-compact">🔧 Assegna Task Ordine</h2>
             <form onsubmit="assignTaskToOperators(event)">
                 <input type="hidden" id="assignTaskId">
-                <div id="operatorsChecklist" style="display:flex;flex-direction:column;margin-bottom:12px;"></div>
-                <div class="modal-actions" style="margin-top:10px;">
+                <div id="operatorsChecklist" class="operators-checklist"></div>
+                <div class="modal-actions modal-actions-top">
                     <button type="submit" class="btn btn-primary">💾 Salva Assegnazione</button>
                     <button type="button" class="btn btn-secondary" onclick="closeAssignTaskModal()">❌ Chiudi</button>
                 </div>
@@ -6123,27 +6125,27 @@
         <div class="modal-content">
             <h2>✏️ Modifica Viaggio</h2>
             <form id="editTripForm" onsubmit="saveEditedTrip(event)">
-                <div class="form-group" style="margin-bottom: 16px;">
-                    <label for="editTripName" style="display: block; margin-bottom: 6px; color: #e0e0e0; font-weight: 600;">Nome Viaggio:</label>
-                    <input type="text" id="editTripName" required placeholder="Es: Giro Mattina" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; box-sizing: border-box;">
+                <div class="form-group edit-trip-form-group">
+                    <label for="editTripName" class="edit-trip-label">Nome Viaggio:</label>
+                    <input type="text" id="editTripName" required placeholder="Es: Giro Mattina" class="edit-trip-input">
                 </div>
-                <div class="form-group" style="margin-bottom: 16px;">
-                    <label for="editTripDate" style="display: block; margin-bottom: 6px; color: #e0e0e0; font-weight: 600;">Data:</label>
-                    <input type="date" id="editTripDate" required style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; box-sizing: border-box;">
+                <div class="form-group edit-trip-form-group">
+                    <label for="editTripDate" class="edit-trip-label">Data:</label>
+                    <input type="date" id="editTripDate" required class="edit-trip-input">
                 </div>
-                <div class="form-group" style="margin-bottom: 16px;">
-                    <label for="editTripTime" style="display: block; margin-bottom: 6px; color: #e0e0e0; font-weight: 600;">Orario (opzionale):</label>
-                    <input type="time" id="editTripTime" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; box-sizing: border-box;">
+                <div class="form-group edit-trip-form-group">
+                    <label for="editTripTime" class="edit-trip-label">Orario (opzionale):</label>
+                    <input type="time" id="editTripTime" class="edit-trip-input">
                 </div>
-                <div class="form-group" style="margin-bottom: 16px;">
-                    <label for="editTripOperator" style="display: block; margin-bottom: 6px; color: #e0e0e0; font-weight: 600;">Operatore (opzionale):</label>
-                    <select id="editTripOperator" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; box-sizing: border-box;">
+                <div class="form-group edit-trip-form-group">
+                    <label for="editTripOperator" class="edit-trip-label">Operatore (opzionale):</label>
+                    <select id="editTripOperator" class="edit-trip-input">
                         <option value="">-- Non assegnato --</option>
                     </select>
                 </div>
-                <div class="form-group" style="margin-bottom: 16px;">
-                    <label for="editTripVehicle" style="display: block; margin-bottom: 6px; color: #e0e0e0; font-weight: 600;">Veicolo (opzionale):</label>
-                    <input type="text" id="editTripVehicle" placeholder="Es: Furgone 1" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; box-sizing: border-box;">
+                <div class="form-group edit-trip-form-group">
+                    <label for="editTripVehicle" class="edit-trip-label">Veicolo (opzionale):</label>
+                    <input type="text" id="editTripVehicle" placeholder="Es: Furgone 1" class="edit-trip-input">
                 </div>
                 <div class="modal-actions">
                     <button type="submit" class="btn btn-primary">💾 Salva Modifiche</button>
@@ -6155,9 +6157,9 @@
 
     <!-- Modal Gestione Viaggi -->
     <div id="tripsManagerModal" class="modal">
-        <div class="modal-content" style="max-width:900px;max-height:80vh;overflow-y:auto;">
+        <div class="modal-content modal-large">
             <h2>🚚 Gestione Viaggi</h2>
-            <button class="btn btn-primary" onclick="openCreateTripModal()" style="margin-bottom:15px;">➕ Nuovo Viaggio</button>
+            <button class="btn btn-primary btn-new-trip" onclick="openCreateTripModal()">➕ Nuovo Viaggio</button>
             <div id="tripsManagerList"></div>
             <div class="modal-actions">
                 <button type="button" class="btn btn-secondary" onclick="closeTripsManager()">❌ Chiudi</button>
@@ -6170,27 +6172,27 @@
         <div class="modal-content">
             <h2>➕ Nuovo Viaggio</h2>
             <form id="createTripForm" onsubmit="saveNewTrip(event)">
-                <div class="form-group" style="margin-bottom: 16px;">
-                    <label for="tripName" style="display: block; margin-bottom: 6px; color: #e0e0e0; font-weight: 600;">Nome Viaggio:</label>
-                    <input type="text" id="tripName" required placeholder="Es: Giro Mattina" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; box-sizing: border-box;">
+                <div class="form-group edit-trip-form-group">
+                    <label for="tripName" class="edit-trip-label">Nome Viaggio:</label>
+                    <input type="text" id="tripName" required placeholder="Es: Giro Mattina" class="edit-trip-input">
                 </div>
-                <div class="form-group" style="margin-bottom: 16px;">
-                    <label for="tripDate" style="display: block; margin-bottom: 6px; color: #e0e0e0; font-weight: 600;">Data:</label>
-                    <input type="date" id="tripDate" required style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; box-sizing: border-box;">
+                <div class="form-group edit-trip-form-group">
+                    <label for="tripDate" class="edit-trip-label">Data:</label>
+                    <input type="date" id="tripDate" required class="edit-trip-input">
                 </div>
-                <div class="form-group" style="margin-bottom: 16px;">
-                    <label for="tripTime" style="display: block; margin-bottom: 6px; color: #e0e0e0; font-weight: 600;">Orario (opzionale):</label>
-                    <input type="time" id="tripTime" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; box-sizing: border-box;">
+                <div class="form-group edit-trip-form-group">
+                    <label for="tripTime" class="edit-trip-label">Orario (opzionale):</label>
+                    <input type="time" id="tripTime" class="edit-trip-input">
                 </div>
-                <div class="form-group" style="margin-bottom: 16px;">
-                    <label for="tripOperator" style="display: block; margin-bottom: 6px; color: #e0e0e0; font-weight: 600;">Operatore (opzionale):</label>
-                    <select id="tripOperator" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; box-sizing: border-box;">
+                <div class="form-group edit-trip-form-group">
+                    <label for="tripOperator" class="edit-trip-label">Operatore (opzionale):</label>
+                    <select id="tripOperator" class="edit-trip-input">
                         <option value="">-- Non assegnato --</option>
                     </select>
                 </div>
-                <div class="form-group" style="margin-bottom: 16px;">
-                    <label for="tripVehicle" style="display: block; margin-bottom: 6px; color: #e0e0e0; font-weight: 600;">Veicolo (opzionale):</label>
-                    <input type="text" id="tripVehicle" placeholder="Es: Furgone 1" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; box-sizing: border-box;">
+                <div class="form-group edit-trip-form-group">
+                    <label for="tripVehicle" class="edit-trip-label">Veicolo (opzionale):</label>
+                    <input type="text" id="tripVehicle" placeholder="Es: Furgone 1" class="edit-trip-input">
                 </div>
                 <div class="modal-actions">
                     <button type="submit" class="btn btn-primary">💾 Crea</button>
@@ -6202,21 +6204,21 @@
 
     <!-- Modal Gestione Ordini Viaggio -->
     <div id="tripOrdersModal" class="modal">
-        <div class="modal-content" style="max-width:800px;max-height:80vh;overflow-y:auto;">
+        <div class="modal-content modal-medium">
             <h2 id="tripOrdersTitle">📦 Gestione Ordini Viaggio</h2>
-            <div style="margin:10px 0 18px 0;padding:10px;background:#2d2d2d;border-radius:6px;border:2px solid #3b82f6;">
-                <p style="color:#60a5fa;font-size:13px;margin:0;">💡 <strong>Nota:</strong> L'operatore verrà assegnato dall'admin tramite il task generato dal viaggio nella dashboard principale</p>
+            <div class="trip-info-note">
+                <p>💡 <strong>Nota:</strong> L'operatore verrà assegnato dall'admin tramite il task generato dal viaggio nella dashboard principale</p>
             </div>
-            <div style="margin-bottom:15px;">
-                <h3 style="font-size:16px;margin-bottom:10px;">Ordini Disponibili (consegnati):</h3>
-                <div id="availableOrdersList" style="max-height:200px;overflow-y:auto;background:#3d3d3d;padding:10px;border-radius:6px;"></div>
+            <div class="trip-section">
+                <h3>Ordini Disponibili (consegnati):</h3>
+                <div id="availableOrdersList" class="available-orders-list"></div>
             </div>
-            <div style="margin-bottom:15px;">
-                <h3 style="font-size:16px;margin-bottom:10px;">Ordini nel Viaggio:</h3>
+            <div class="trip-section">
+                <h3>Ordini nel Viaggio:</h3>
                 <div id="tripOrdersList"></div>
             </div>
-            <div style="margin-top:15px;padding:15px;background:#2d2d2d;border-radius:6px;border:2px solid #16a34a;">
-                <h3 style="font-size:16px;margin-bottom:10px;color:#16a34a;">📊 Totali Prodotti:</h3>
+            <div class="trip-totals-section">
+                <h3 class="trip-section-header">📊 Totali Prodotti:</h3>
                 <div id="tripTotals"></div>
             </div>
             <div class="modal-actions">
@@ -6226,7 +6228,7 @@
     </div>
 
     <!-- Genera Dati Button at Bottom -->
-    <div style="position: fixed; bottom: 20px; right: 20px; z-index: 100;">
+    <div class="generate-btn-fixed">
         <button class="btn btn-warning" onclick="generateSampleOrders()" title="Genera dati di test">🔄 Genera Dati</button>
     </div>
 </body>

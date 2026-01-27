@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestione Admin / Operatori - Molino Briganti</title>
     <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/operators-custom.css">
     <script src="js/settings-utils.js"></script>
     <style>
         * {
@@ -346,25 +347,25 @@
             <div id="operatorsContainer" class="operators-grid">
                 <div class="empty-state">
                     <div class="spinner"></div>
-                    <p style="margin-top: 15px;">Caricamento utenti...</p>
+                    <p class="operators-loading">Caricamento utenti...</p>
                 </div>
             </div>
         </div>
         </div>
 
         <!-- Edit Operator Modal -->
-    <div id="editModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; padding: 20px;">
-        <div style="background: #2d2d2d; border: 1px solid #4d4d4d; padding: 30px; border-radius: 10px; max-width: 500px; width: 100%; max-height: 80vh; overflow-y: auto; color: #e0e0e0;">
+    <div id="editModal" class="modal-overlay">
+        <div class="modal-content">
             <h2>✏️ Modifica Utente</h2>
-            <form id="editOperatorForm" onsubmit="handleEditOperator(event)" style="margin-top: 20px;">
+            <form id="editOperatorForm" onsubmit="handleEditOperator(event)" class="modal-form">
                 <div class="form-group">
                     <label for="editOperatorUsername">Username</label>
-                    <input type="text" id="editOperatorUsername" disabled style="background: #3d3d3d; color: #a0a0a0; cursor: not-allowed;">
+                    <input type="text" id="editOperatorUsername" disabled class="input-disabled">
                 </div>
                 <div class="form-group">
                     <label>Tipo</label>
-                    <div style="padding: 10px; background: #3d3d3d; border-radius: 6px; border: 1px solid #4d4d4d;">
-                        <span id="editOperatorRole" style="color: #e0e0e0; font-weight: 600;"></span>
+                    <div class="role-display">
+                        <span id="editOperatorRole" class="role-display-text"></span>
                     </div>
                 </div>
                 <div class="form-group">
@@ -375,9 +376,9 @@
                     <label for="editOperatorImage">Immagine (Emoji o URL)</label>
                     <input type="text" id="editOperatorImage" placeholder="es. 👨‍🔧 oppure https://...">
                 </div>
-                <div style="display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap;">
-                    <button type="submit" class="btn btn-primary" style="flex: 1; min-width: 150px;" data-icon="💾"><span>Salva<br>Modifiche</span></button>
-                    <button type="button" class="btn btn-secondary" style="flex: 1; min-width: 150px;" data-icon="❌" onclick="closeEditModal()"><span>Annulla</span></button>
+                <div class="modal-buttons">
+                    <button type="submit" class="btn btn-primary modal-button-flex" data-icon="💾"><span>Salva<br>Modifiche</span></button>
+                    <button type="button" class="btn btn-secondary modal-button-flex" data-icon="❌" onclick="closeEditModal()"><span>Annulla</span></button>
                 </div>
             </form>
         </div>

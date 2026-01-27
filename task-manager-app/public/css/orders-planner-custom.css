@@ -1,0 +1,480 @@
+/* ============================================
+   ORDERS PLANNER CUSTOM STYLES
+   Stili specifici per orders-planner.html
+   ============================================ */
+
+/* Card borders specifiche */
+.card-blue-border {
+    border-left: 4px solid #3b82f6;
+}
+
+.card-cyan-border {
+    border-left: 4px solid #38bdf8;
+}
+
+.card-green-border {
+    border: 2px solid #86efac;
+}
+
+/* Modal headers */
+.modal-header-green {
+    background: rgba(134, 239, 172, 0.2);
+    border-bottom: 1px solid #86efac;
+}
+
+.modal-title-green {
+    color: #86efac;
+}
+
+/* Header flex per ordini e viaggi */
+.card-header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.card-title-flex {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+}
+
+.card-count-badge {
+    font-size: 13px;
+    color: #a0a0a0;
+    font-weight: 400;
+}
+
+/* Grid layouts */
+.grid-1fr-auto {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+}
+
+.grid-1fr-1fr {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.grid-1fr-1fr-gap10 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+/* Quantità conversion box */
+.quantity-conversion-box {
+    padding: 12px;
+    background: #1a2a2a;
+    border-radius: 6px;
+    border-left: 3px solid #16a34a;
+    margin-bottom: 12px;
+}
+
+/* Form boxes */
+.form-box-dark {
+    background: #2d2d2d;
+    padding: 15px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+}
+
+.form-box-batches {
+    background: #1a3a3a;
+    padding: 15px;
+    border-radius: 6px;
+    border: 1px solid #2d5a5a;
+}
+
+.batches-list-scrollable {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.batches-title {
+    margin-top: 0;
+    color: #a0d4ff;
+}
+
+/* Info e count elements */
+.info-text-small {
+    margin-top: 8px;
+    font-size: 13px;
+    color: #888;
+}
+
+.info-text-gray {
+    color: #a0a0a0;
+    font-size: 12px;
+}
+
+.client-hours-info {
+    margin-top: 8px;
+    font-size: 12px;
+    color: #86efac;
+}
+
+/* Tabella prodotti */
+.products-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #1a1a1a;
+    font-size: 12px;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.products-table thead tr {
+    background: #0d0d0d;
+    border-bottom: 2px solid #4d4d4d;
+}
+
+.products-table th,
+.products-table td {
+    padding: 8px;
+    color: #e0e0e0;
+}
+
+.products-table th:nth-child(1),
+.products-table td:nth-child(1) {
+    text-align: left;
+}
+
+.products-table th:nth-child(2),
+.products-table td:nth-child(2) {
+    text-align: right;
+}
+
+.products-table th:nth-child(3),
+.products-table td:nth-child(3),
+.products-table th:nth-child(4),
+.products-table td:nth-child(4) {
+    text-align: center;
+}
+
+.products-table-footer {
+    margin-top: 8px;
+    padding: 8px;
+    background: #1a1a1a;
+    border-radius: 6px;
+}
+
+.products-total {
+    color: #86efac;
+}
+
+/* Modal footer standard */
+.modal-footer-actions {
+    padding: 16px 20px;
+    background: #252525;
+    border-top: 1px solid #444;
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+.modal-footer-actions .btn {
+    padding: 12px 24px;
+    font-weight: 600;
+}
+
+.modal-footer-edit {
+    padding: 15px;
+    border-top: 1px solid #4d4d4d;
+}
+
+/* Label colors specifici */
+.label-success {
+    color: #86efac;
+}
+
+.label-blue {
+    color: #3b82f6;
+}
+
+/* Time/date spans */
+.time-separator {
+    color: #a0a0a0;
+}
+
+/* Flex containers */
+.flex-align-center {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.flex-column {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 12px;
+}
+
+/* Trip fields margin */
+.trip-fields-margin {
+    margin-top: 12px;
+}
+
+/* Action buttons flex */
+.order-actions-flex {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+}
+
+.order-actions-flex .btn {
+    flex: 1;
+    min-width: 80px;
+    padding: 6px 8px;
+}
+
+/* Empty message styling */
+.empty-message {
+    color: #808080;
+}
+
+/* Message con grid-column */
+.empty-grid-message {
+    color: #808080;
+    grid-column: 1/-1;
+    text-align: center;
+    padding: 20px;
+}
+
+/* Flex-1 utility for time inputs */
+.flex-1 {
+    flex: 1;
+}
+
+/* Width utilities */
+.w-full {
+    width: 100%;
+}
+
+.max-w-420 {
+    max-width: 420px;
+}
+
+.max-w-500 {
+    max-width: 500px;
+}
+
+/* Sizing utilities */
+.min-w-120 {
+    min-width: 120px;
+}
+
+.font-size-12 {
+    font-size: 12px;
+}
+
+.font-size-13 {
+    font-size: 13px;
+}
+
+.font-size-14 {
+    font-size: 14px;
+}
+
+.font-size-16 {
+    font-size: 16px;
+}
+
+/* Margin utilities specifici */
+.mb-12 {
+    margin-bottom: 12px;
+}
+
+.mb-10 {
+    margin-bottom: 10px;
+}
+
+.mb-8 {
+    margin-bottom: 8px;
+}
+
+.mb-6 {
+    margin-bottom: 6px;
+}
+
+.mb-5 {
+    margin-bottom: 5px;
+}
+
+.mb-4 {
+    margin-bottom: 4px;
+}
+
+.mt-0 {
+    margin-top: 0;
+}
+
+.mt-8 {
+    margin-top: 8px;
+}
+
+.mt-10 {
+    margin-top: 10px;
+}
+
+.mt-12 {
+    margin-top: 12px;
+}
+
+/* Padding utilities */
+.p-8 {
+    padding: 8px;
+}
+
+.p-10 {
+    padding: 10px;
+}
+
+/* Number input no spinner */
+input[type="number"].no-spinner {
+    appearance: textfield;
+    -moz-appearance: textfield;
+}
+
+input[type="number"].no-spinner::-webkit-outer-spin-button,
+input[type="number"].no-spinner::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* Textarea resize vertical */
+textarea.resize-vertical {
+    resize: vertical;
+}
+
+/* Button variants utilities */
+.btn-add {
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-weight: 600;
+}
+
+/* Time input flex */
+.time-input-flex {
+    flex: 1;
+}
+
+/* Modal compact styles */
+.modal-compact {
+    max-width: 420px;
+}
+
+.modal-title-compact {
+    margin-top: 0;
+    font-size: 16px;
+}
+
+.operators-checklist {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 12px;
+}
+
+.modal-actions-top {
+    margin-top: 10px;
+}
+
+/* Edit trip form styles */
+.edit-trip-form-group {
+    margin-bottom: 16px;
+}
+
+.edit-trip-label {
+    display: block;
+    margin-bottom: 6px;
+    color: #e0e0e0;
+    font-weight: 600;
+}
+
+.edit-trip-input {
+    width: 100%;
+    padding: 10px;
+    background: #1a1a1a;
+    border: 1px solid #444;
+    border-radius: 6px;
+    color: #fff;
+    box-sizing: border-box;
+}
+
+/* Trips manager modal */
+.modal-large {
+    max-width: 900px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.modal-medium {
+    max-width: 800px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.btn-new-trip {
+    margin-bottom: 15px;
+}
+
+/* Trip orders modal sections */
+.trip-info-note {
+    margin: 10px 0 18px 0;
+    padding: 10px;
+    background: #2d2d2d;
+    border-radius: 6px;
+    border: 2px solid #3b82f6;
+}
+
+.trip-info-note p {
+    color: #60a5fa;
+    font-size: 13px;
+    margin: 0;
+}
+
+.trip-section {
+    margin-bottom: 15px;
+}
+
+.trip-section h3 {
+    font-size: 16px;
+    margin-bottom: 10px;
+}
+
+.trip-section-header {
+    font-size: 16px;
+    margin-bottom: 10px;
+    color: #16a34a;
+}
+
+.available-orders-list {
+    max-height: 200px;
+    overflow-y: auto;
+    background: #3d3d3d;
+    padding: 10px;
+    border-radius: 6px;
+}
+
+.trip-totals-section {
+    margin-top: 15px;
+    padding: 15px;
+    background: #2d2d2d;
+    border-radius: 6px;
+    border: 2px solid #16a34a;
+}
+
+/* Fixed generate button */
+.generate-btn-fixed {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 100;
+}

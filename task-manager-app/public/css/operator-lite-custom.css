@@ -1,0 +1,72 @@
+/* Custom styles for operator-lite.html */
+
+/* Login section styles */
+.login-select-text {
+    text-align: center;
+    color: #888;
+    margin-bottom: 20px;
+    font-size: 20px;
+}
+
+#version-op-lite {
+    text-align: center;
+    margin-top: 30px;
+    font-size: 18px;
+    color: #666;
+}
+
+/* Dashboard section */
+#dashboardSection {
+    display: none;
+}
+
+#dashboardLogo {
+    display: block;
+}
+
+#currentDateTime {
+    color: #fff;
+    font-size: 24px;
+    font-weight: bold;
+    margin-left: 20px;
+    vertical-align: middle;
+}
+
+.user-info-flex {
+    display: flex;
+    align-items: flex-start;
+}
+
+.user-info-center {
+    text-align: center;
+    margin-right: 10px;
+}
+
+.update-time {
+    color: #888;
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+.logout-section {
+    text-align: center;
+}
+
+#logoutCountdown {
+    color: #f59e0b;
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+.header-spacer {
+    width: 150px;
+}
+
+/* Lists spacing */
+#ordersList {
+    margin-top: 30px;
+}
+
+#tripsList {
+    margin-top: 30px;
+}

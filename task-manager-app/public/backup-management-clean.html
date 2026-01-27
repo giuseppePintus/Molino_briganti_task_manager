@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestione Backup - Molino Briganti</title>
-    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/common-styles.css">
+    <link rel="stylesheet" href="css/backup-management-clean-custom.css">
     <style>
         * {
             margin: 0;
@@ -319,10 +320,10 @@
                 <span>??”?</span>
                 <span>Crea Backup MariaDB Adesso</span>
             </button>
-            <p style="margin-top: 15px; color: #a0a0a0; font-size: 13px;">
-                ?„¹?¸ Crea un backup completo del database MariaDB. Il backup verrÃ  salvato compresso su NAS: <code style="background: #2d2d2d; padding: 2px 6px; border-radius: 3px;">/share/Public/molino-data/backups/mariadb/</code>
+            <p class="backup-description">
+                ℹ️ Crea un backup completo del database MariaDB. Il backup verrà  salvato compresso su NAS: <code>/share/Public/molino-data/backups/mariadb/</code>
             </p>
-            <p style="margin-top: 10px; color: #7dd3fc; font-size: 13px;">
+            <p class="backup-retention-info">
                 ??“? Retention: 30 giorni | ??’¾ Formato: SQL compresso (gzip)
             </p>
         </div>
@@ -351,7 +352,7 @@
                 <span>?š ?¸</span>
                 <span>Ripristina Backup</span>
             </button>
-            <p style="margin-top: 15px; color: #f97316; font-size: 13px;">
+            <p class="backup-restore-warning">
                 ?š ?¸ Il ripristino sovrascriverÃ  i dati attuali. Assicurati di aver creato un backup recente.
             </p>
         </div>
@@ -359,58 +360,58 @@
         <!-- Auto-Backup Settings -->
         <div class="card">
             <h2>?° Backup Automatici MariaDB</h2>
-            <div id="autoBackupStatus" style="margin-bottom: 15px; padding: 10px; border-radius: 6px; background: #1a1a2e;">
-                <span id="autoBackupStatusIcon">?¸?¸</span> 
+            <div id="autoBackupStatus" class="auto-backup-status-box">
+                <span id="autoBackupStatusIcon">⏸️</span> 
                 <span id="autoBackupStatusText">Backup automatico disabilitato</span>
             </div>
             <div class="form-group">
-                <label for="autoBackupEnabled" style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-                    <input type="checkbox" id="autoBackupEnabled" onchange="toggleAutoBackup()" style="width: 20px; height: 20px;">
+                <label for="autoBackupEnabled" class="auto-backup-toggle">
+                    <input type="checkbox" id="autoBackupEnabled" onchange="toggleAutoBackup()" class="auto-backup-checkbox">
                     <span>Abilita backup automatici MariaDB</span>
                 </label>
             </div>
             <div class="form-group">
                 <label for="autoBackupInterval">Frequenza (ore):</label>
                 <input type="number" id="autoBackupInterval" min="1" max="168" value="1">
-                <button class="btn btn-secondary" onclick="saveAutoBackupSettings()" style="margin-left: 10px; padding: 8px 15px;">??’¾ Salva Frequenza</button>
+                <button class="btn btn-secondary save-frequency-btn" onclick="saveAutoBackupSettings()">💾 Salva Frequenza</button>
             </div>
-            <div id="autoBackupInfo" style="margin-top: 15px; padding: 10px; background: #0d2137; border-radius: 6px; font-size: 13px;">
-                <div id="lastBackupInfo" style="margin-bottom: 5px;">??“… Ultimo backup: <span id="lastBackupTime">-</span></div>
-                <div id="nextBackupInfo">?° Prossimo backup: <span id="nextBackupTime">-</span></div>
+            <div id="autoBackupInfo" class="auto-backup-info-box">
+                <div id="lastBackupInfo" class="last-backup-info">🕐 Ultimo backup: <span id="lastBackupTime">-</span></div>
+                <div id="nextBackupInfo">⏰ Prossimo backup: <span id="nextBackupTime">-</span></div>
             </div>
-            <p style="margin-top: 15px; color: #a0a0a0; font-size: 13px;">
-                ?„¹?¸ I backup MariaDB vengono eseguiti tramite <code style="background: #2d2d2d; padding: 2px 6px; border-radius: 3px;">mysqldump</code> e salvati compressi sul NAS.
+            <p class="backup-description">
+                ℹ️ I backup MariaDB vengono eseguiti tramite <code>mysqldump</code> e salvati compressi sul NAS.
             </p>
-            <p style="margin-top: 10px; color: #7dd3fc; font-size: 12px;">
-                ??“ Script: <code style="background: #2d2d2d; padding: 2px 6px; border-radius: 3px;">/share/Public/molino-data/mariadb-backup.sh</code>
+            <p class="backup-script-info">
+                📜 Script: <code>/share/Public/molino-data/mariadb-backup.sh</code>
             </p>
         </div>
 
         <!-- Backup Configuration Info -->
         <div class="card">
             <h2>??“ Configurazione Backup MariaDB</h2>
-            <div style="padding: 15px; background: #3d3d3d; border-radius: 6px; border-left: 3px solid #16a34a;">
-                <h4 style="margin-top: 0; color: #e0e0e0;">??“ Configurazione Sistema</h4>
-                <p style="margin: 8px 0; font-size: 13px; color: #a0a0a0;">
-                    <strong>Database:</strong> <code style="background: #2d2d2d; padding: 4px 8px; border-radius: 3px; color: #7dd3fc;">molino_production</code> @ <code style="background: #2d2d2d; padding: 4px 8px; border-radius: 3px; color: #7dd3fc;">192.168.1.248:3306</code>
+            <div class="config-box">
+                <h4>⚙️ Configurazione Sistema</h4>
+                <p class="config-item">
+                    <strong>Database:</strong> <code>molino_production</code> @ <code>192.168.1.248:3306</code>
                 </p>
-                <p style="margin: 8px 0; font-size: 13px; color: #a0a0a0;">
-                    <strong>Directory Backup:</strong> <code style="background: #2d2d2d; padding: 4px 8px; border-radius: 3px; color: #7dd3fc;">/share/Public/molino-data/backups/mariadb/</code>
+                <p class="config-item">
+                    <strong>Directory Backup:</strong> <code>/share/Public/molino-data/backups/mariadb/</code>
                 </p>
-                <p style="margin: 8px 0; font-size: 13px; color: #a0a0a0;">
-                    <strong>Script Backup:</strong> <code style="background: #2d2d2d; padding: 4px 8px; border-radius: 3px; color: #7dd3fc;">/share/Public/molino-data/mariadb-backup.sh</code>
+                <p class="config-item">
+                    <strong>Script Backup:</strong> <code>/share/Public/molino-data/mariadb-backup.sh</code>
                 </p>
-                <p style="margin: 8px 0; font-size: 13px; color: #a0a0a0;">
-                    <strong>Script Ripristino:</strong> <code style="background: #2d2d2d; padding: 4px 8px; border-radius: 3px; color: #7dd3fc;">/share/Public/molino-data/mariadb-restore.sh</code>
+                <p class="config-item">
+                    <strong>Script Ripristino:</strong> <code>/share/Public/molino-data/mariadb-restore.sh</code>
                 </p>
-                <p style="margin: 8px 0; font-size: 13px; color: #a0a0a0;">
-                    <strong>Retention:</strong> <code style="background: #2d2d2d; padding: 4px 8px; border-radius: 3px; color: #7dd3fc;">30 giorni</code>
+                <p class="config-item">
+                    <strong>Retention:</strong> <code>30 giorni</code>
                 </p>
-                <p style="margin: 8px 0; font-size: 13px; color: #a0a0a0;">
-                    <strong>Formato:</strong> <code style="background: #2d2d2d; padding: 4px 8px; border-radius: 3px; color: #7dd3fc;">SQL compresso (gzip)</code>
+                <p class="config-item">
+                    <strong>Formato:</strong> <code>SQL compresso (gzip)</code>
                 </p>
             </div>
-            <p style="margin-top: 15px; color: #86efac; font-size: 13px;">
+            <p class="system-ready-info">
                 ?œ… Sistema di backup MariaDB configurato e funzionante
             </p>
         </div>
@@ -479,7 +480,7 @@
             } catch (error) {
                 console.error('Errore:', error);
                 showAlert('Errore caricamento backup: ' + error.message, 'error');
-                document.getElementById('backupList').innerHTML = '<p style="color: #a0a0a0;">Errore nel caricamento dei backup</p>';
+                document.getElementById('backupList').innerHTML = '<p class="error-message">Errore nel caricamento dei backup</p>';
             }
         }
 
@@ -487,7 +488,7 @@
             const list = document.getElementById('backupList');
             
             if (backups.length === 0) {
-                list.innerHTML = '<p style="color: #a0a0a0; text-align: center; padding: 20px;">Nessun backup disponibile</p>';
+                list.innerHTML = '<p class="no-backups-message">Nessun backup disponibile</p>';
                 return;
             }
 

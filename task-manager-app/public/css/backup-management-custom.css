@@ -1,0 +1,63 @@
+/* Custom styles for backup-management.html */
+
+/* Backup info paragraphs */
+.backup-info-text {
+    margin-top: 15px;
+    color: #a0a0a0;
+    font-size: 13px;
+}
+
+.backup-warning-text {
+    margin-top: 15px;
+    color: #f97316;
+    font-size: 13px;
+}
+
+/* Auto backup status section */
+#autoBackupStatus {
+    margin-bottom: 15px;
+    padding: 10px;
+    border-radius: 6px;
+    background: #1a1a2e;
+}
+
+#autoBackupStatus label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+}
+
+#autoBackupEnabled {
+    width: 20px;
+    height: 20px;
+}
+
+.save-frequency-btn {
+    margin-left: 10px;
+    padding: 8px 15px;
+}
+
+/* Auto backup info */
+#autoBackupInfo {
+    margin-top: 15px;
+    padding: 10px;
+    background: #0d2137;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+#lastBackupInfo {
+    margin-bottom: 5px;
+}
+
+/* Error and empty states */
+.backup-error {
+    color: #a0a0a0;
+}
+
+.backup-empty {
+    color: #a0a0a0;
+    text-align: center;
+    padding: 20px;
+}

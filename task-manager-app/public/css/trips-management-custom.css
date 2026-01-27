@@ -1,0 +1,59 @@
+/* trips-management.html custom styles */
+
+.quick-actions-3col {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.card-padded {
+    padding: 12px;
+}
+
+.info-note-box {
+    padding: 10px;
+    background: #3d3d3d;
+    border-radius: 6px;
+    margin: 10px 0;
+}
+
+.note-text {
+    color: #60a5fa;
+    font-size: 12px;
+    margin: 0;
+}
+
+.note-text-large {
+    color: #60a5fa;
+    font-size: 13px;
+    margin: 0;
+}
+
+.info-assignment-box {
+    margin: 10px 0 18px 0;
+    padding: 10px;
+    background: #2d2d2d;
+    border-radius: 6px;
+    border: 2px solid #3b82f6;
+}
+
+.section-container {
+    margin-bottom: 15px;
+}
+
+.section-title {
+    font-size: 16px;
+    margin-bottom: 10px;
+}
+
+.totals-box {
+    margin-top: 15px;
+    padding: 15px;
+    background: #2d2d2d;
+    border-radius: 6px;
+    border: 2px solid #16a34a;
+}
+
+.totals-box h3 {
+    font-size: 16px;
+    margin-bottom: 10px;
+    color: #16a34a;
+}

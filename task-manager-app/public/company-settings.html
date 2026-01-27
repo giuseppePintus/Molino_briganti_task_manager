@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Impostazioni Azienda - Molino Briganti</title>
   <link rel="stylesheet" href="css/common.css">
+  <link rel="stylesheet" href="css/company-settings-custom.css">
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     body { font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:#1a1a1a; color:#e0e0e0; }
@@ -88,12 +89,12 @@
         </div>
         <div class="form-group">
           <label for="logoFile">Logo Azienda</label>
-          <div style="display: flex; gap: 10px; align-items: center;">
-            <input type="file" id="logoFile" accept="image/*" onchange="handleLogoUpload(event)" style="flex: 1;">
-            <img id="logoPreview" src="" alt="Preview" style="max-height: 50px; max-width: 100px; display: none; border-radius: 4px;">
+          <div class="logo-upload-container">
+            <input type="file" id="logoFile" accept="image/*" onchange="handleLogoUpload(event)">
+            <img id="logoPreview" src="" alt="Preview" class="logo-preview">
           </div>
           <input type="hidden" id="logoUrl">
-          <small style="color: #888; margin-top: 5px; display: block;">Seleziona un'immagine dal tuo computer</small>
+          <small class="logo-hint">Seleziona un'immagine dal tuo computer</small>
         </div>
       </div>
     </div>
@@ -107,34 +108,34 @@
       <div class="form-row">
         <div class="form-group">
           <label>Mattina (inizio - fine)</label>
-          <div style="display:flex; gap:10px;">
-            <input type="time" id="openMorningStart" value="08:00">
-            <input type="time" id="openMorningEnd" value="13:00">
+          <div class="time-input-container">
+            <input type="time" id="openMorningStart" value="08:00" aria-label="Orario inizio mattina">
+            <input type="time" id="openMorningEnd" value="13:00" aria-label="Orario fine mattina">
           </div>
         </div>
         <div class="form-group">
           <label>Pomeriggio (inizio - fine, opzionale)</label>
-          <div style="display:flex; gap:10px;">
-            <input type="time" id="openAfternoonStart" value="15:00">
-            <input type="time" id="openAfternoonEnd" value="18:00">
+          <div class="time-input-container">
+            <input type="time" id="openAfternoonStart" value="15:00" aria-label="Orario inizio pomeriggio">
+            <input type="time" id="openAfternoonEnd" value="18:00" aria-label="Orario fine pomeriggio">
           </div>
         </div>
       </div>
-      <div style="border-top: 1px solid #4d4d4d; margin-top: 15px; padding-top: 15px;">
-        <h3 style="font-size: 16px; color: #fbbf24; margin-bottom: 12px;">📅 Orari Sabato (se diversi)</h3>
+      <div class="schedule-divider">
+        <h3 class="schedule-subtitle">📅 Orari Sabato (se diversi)</h3>
         <div class="form-row">
           <div class="form-group">
             <label>Mattina Sabato</label>
-            <div style="display:flex; gap:10px;">
-              <input type="time" id="openSatMorningStart" value="08:00">
-              <input type="time" id="openSatMorningEnd" value="12:00">
+            <div class="time-input-container">
+              <input type="time" id="openSatMorningStart" value="08:00" aria-label="Orario inizio mattina sabato">
+              <input type="time" id="openSatMorningEnd" value="12:00" aria-label="Orario fine mattina sabato">
             </div>
           </div>
           <div class="form-group">
             <label>Pomeriggio Sabato (opzionale)</label>
-            <div style="display:flex; gap:10px;">
-              <input type="time" id="openSatAfternoonStart" value="">
-              <input type="time" id="openSatAfternoonEnd" value="">
+            <div class="time-input-container">
+              <input type="time" id="openSatAfternoonStart" value="" aria-label="Orario inizio pomeriggio sabato">
+              <input type="time" id="openSatAfternoonEnd" value="" aria-label="Orario fine pomeriggio sabato">
             </div>
           </div>
         </div>
@@ -150,34 +151,34 @@
       <div class="form-row">
         <div class="form-group">
           <label>Mattina (inizio - fine)</label>
-          <div style="display:flex; gap:10px;">
-            <input type="time" id="deliveryMorningStart" value="08:00">
-            <input type="time" id="deliveryMorningEnd" value="12:00">
+          <div class="time-input-container">
+            <input type="time" id="deliveryMorningStart" value="08:00" aria-label="Orario inizio consegna mattina">
+            <input type="time" id="deliveryMorningEnd" value="12:00" aria-label="Orario fine consegna mattina">
           </div>
         </div>
         <div class="form-group">
           <label>Pomeriggio (inizio - fine, opzionale)</label>
-          <div style="display:flex; gap:10px;">
-            <input type="time" id="deliveryAfternoonStart" value="15:00">
-            <input type="time" id="deliveryAfternoonEnd" value="18:00">
+          <div class="time-input-container">
+            <input type="time" id="deliveryAfternoonStart" value="15:00" aria-label="Orario inizio consegna pomeriggio">
+            <input type="time" id="deliveryAfternoonEnd" value="18:00" aria-label="Orario fine consegna pomeriggio">
           </div>
         </div>
       </div>
-      <div style="border-top: 1px solid #4d4d4d; margin-top: 15px; padding-top: 15px;">
-        <h3 style="font-size: 16px; color: #fbbf24; margin-bottom: 12px;">📅 Orari Consegna Sabato (se diversi)</h3>
+      <div class="schedule-divider">
+        <h3 class="schedule-subtitle">📅 Orari Consegna Sabato (se diversi)</h3>
         <div class="form-row">
           <div class="form-group">
             <label>Mattina Sabato</label>
-            <div style="display:flex; gap:10px;">
-              <input type="time" id="deliverySatMorningStart" value="08:00">
-              <input type="time" id="deliverySatMorningEnd" value="12:00">
+            <div class="time-input-container">
+              <input type="time" id="deliverySatMorningStart" value="08:00" aria-label="Orario inizio consegna mattina sabato">
+              <input type="time" id="deliverySatMorningEnd" value="12:00" aria-label="Orario fine consegna mattina sabato">
             </div>
           </div>
           <div class="form-group">
             <label>Pomeriggio Sabato (opzionale)</label>
-            <div style="display:flex; gap:10px;">
-              <input type="time" id="deliverySatAfternoonStart" value="">
-              <input type="time" id="deliverySatAfternoonEnd" value="">
+            <div class="time-input-container">
+              <input type="time" id="deliverySatAfternoonStart" value="" aria-label="Orario inizio consegna pomeriggio sabato">
+              <input type="time" id="deliverySatAfternoonEnd" value="" aria-label="Orario fine consegna pomeriggio sabato">
             </div>
           </div>
         </div>
@@ -188,7 +189,7 @@
       <h2>🎉 Giorni Festivi</h2>
       <div class="section">
         <div class="holidays">
-          <input type="date" id="holidayDate">
+          <input type="date" id="holidayDate" aria-label="Seleziona data festività">
           <button class="btn btn-primary" onclick="addHoliday()">➕ Aggiungi Festivo</button>
         </div>
         <div id="holidaysList" class="holidays-list"></div>

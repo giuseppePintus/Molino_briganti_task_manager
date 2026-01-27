@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestione Backup - Molino Briganti</title>
-    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/common-styles.css">
+    <link rel="stylesheet" href="css/backup-management-custom.css">
     <style>
         * {
             margin: 0;
@@ -319,7 +320,7 @@
                 <span>🔧</span>
                 <span>Crea Backup Adesso</span>
             </button>
-            <p style="margin-top: 15px; color: #a0a0a0; font-size: 13px;">
+            <p class="backup-info-text">
                 ℹ️ Crea un backup completo del database e della configurazione. Il backup includerà tutti i dati attuali.
             </p>
         </div>
@@ -348,7 +349,7 @@
                 <span>⚠️</span>
                 <span>Ripristina Backup</span>
             </button>
-            <p style="margin-top: 15px; color: #f97316; font-size: 13px;">
+            <p class="backup-warning-text">
                 ⚠️ Il ripristino sovrascriverà i dati attuali. Assicurati di aver creato un backup recente.
             </p>
         </div>
@@ -356,26 +357,26 @@
         <!-- Auto-Backup Settings -->
         <div class="card">
             <h2>⏰ Backup Automatici</h2>
-            <div id="autoBackupStatus" style="margin-bottom: 15px; padding: 10px; border-radius: 6px; background: #1a1a2e;">
+            <div id="autoBackupStatus">
                 <span id="autoBackupStatusIcon">⏸️</span> 
                 <span id="autoBackupStatusText">Backup automatico disabilitato</span>
             </div>
             <div class="form-group">
-                <label for="autoBackupEnabled" style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-                    <input type="checkbox" id="autoBackupEnabled" onchange="toggleAutoBackup()" style="width: 20px; height: 20px;">
+                <label for="autoBackupEnabled">
+                    <input type="checkbox" id="autoBackupEnabled" onchange="toggleAutoBackup()">
                     <span>Abilita backup automatici</span>
                 </label>
             </div>
             <div class="form-group">
                 <label for="autoBackupInterval">Frequenza (ore):</label>
                 <input type="number" id="autoBackupInterval" min="1" max="168" value="24">
-                <button class="btn btn-secondary" onclick="saveAutoBackupSettings()" style="margin-left: 10px; padding: 8px 15px;">💾 Salva Frequenza</button>
+                <button class="btn btn-secondary save-frequency-btn" onclick="saveAutoBackupSettings()">💾 Salva Frequenza</button>
             </div>
-            <div id="autoBackupInfo" style="margin-top: 15px; padding: 10px; background: #0d2137; border-radius: 6px; font-size: 13px;">
-                <div id="lastBackupInfo" style="margin-bottom: 5px;">📅 Ultimo backup: <span id="lastBackupTime">-</span></div>
+            <div id="autoBackupInfo">
+                <div id="lastBackupInfo">📅 Ultimo backup: <span id="lastBackupTime">-</span></div>
                 <div id="nextBackupInfo">⏰ Prossimo backup: <span id="nextBackupTime">-</span></div>
             </div>
-            <p style="margin-top: 15px; color: #a0a0a0; font-size: 13px;">
+            <p class="backup-info-text">
                 ℹ️ I backup automatici verranno eseguiti a intervalli regolari e conservati nel server.
             </p>
         </div>
@@ -444,7 +445,7 @@
             } catch (error) {
                 console.error('Errore:', error);
                 showAlert('Errore caricamento backup: ' + error.message, 'error');
-                document.getElementById('backupList').innerHTML = '<p style="color: #a0a0a0;">Errore nel caricamento dei backup</p>';
+                document.getElementById('backupList').innerHTML = '<p class="backup-error">Errore nel caricamento dei backup</p>';
             }
         }
 
@@ -452,7 +453,7 @@
             const list = document.getElementById('backupList');
             
             if (backups.length === 0) {
-                list.innerHTML = '<p style="color: #a0a0a0; text-align: center; padding: 20px;">Nessun backup disponibile</p>';
+                list.innerHTML = '<p class="backup-empty">Nessun backup disponibile</p>';
                 return;
             }
 

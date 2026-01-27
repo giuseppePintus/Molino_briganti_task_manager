@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestione Magazzino - Molino Briganti</title>
     <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/warehouse-management-custom.css">
     <script src="js/settings-utils.js"></script>
     <style>
         * {
@@ -218,7 +219,6 @@
         .btn-small {
             padding: 6px 10px;
             font-size: 12px;
-            min-height: auto;
             height: auto;
         }
 
@@ -402,13 +402,13 @@
 
         <!-- Action Bar -->
         <div class="action-bar">
-            <div id="masterCsvInfo" style="padding: 10px; background: #1e3a52; border-left: 4px solid #2563eb; border-radius: 4px; font-size: 12px; color: #93c5fd;">
+            <div id="masterCsvInfo" class="info-box-master-csv">
                 Master CSV (Fisso): <strong id="masterCsvPath">/share/Container/data/molino/master-Inventory.csv</strong>
             </div>
             <button class="btn btn-import" onclick="importFromMasterCsvNas()" id="importMasterNasBtn" data-icon="📥">
                 <span>Importa da Master CSV (NAS)</span>
             </button>
-            <button class="btn btn-import" onclick="importWarehouseFromPdf()" id="importWarehousePdfBtn" data-icon="📄" style="background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%); box-shadow: 0 4px 12px rgba(234, 88, 12, 0.3);">
+            <button class="btn btn-import btn-import-pdf" onclick="importWarehouseFromPdf()" id="importWarehousePdfBtn" data-icon="📄">
                 <span>⚡ Aggiorna Magazzino da PDF</span>
             </button>
             <button class="btn btn-primary" onclick="refreshInventoryData()" id="refreshBtn" data-icon="🔄">
@@ -421,7 +421,7 @@
         </div>
 
         <!-- Statistics Bar -->
-        <div class="stats-bar" id="statsBar" style="display: none;">
+        <div class="stats-bar stats-bar-hidden" id="statsBar">
             <div class="stat-item">
                 <div class="label">Articoli</div>
                 <div class="value" id="statsArticles">0</div>
@@ -443,7 +443,7 @@
         <!-- Overview Card -->
         <div class="card">
             <h2>📊 Panoramica Magazzino</h2>
-            <p style="color: #a0a0a0; margin-bottom: 15px;">Gestisci l'inventario e monitora le giacenze di magazzino</p>
+            <p class="overview-description">Gestisci l'inventario e monitora le giacenze di magazzino</p>
             
             <div class="content-section">
                 <div class="feature-card">
@@ -471,19 +471,19 @@
 
         <!-- Warehouse Status Card -->
         <div class="card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h2 style="margin: 0;">📊 Stato Magazzino</h2>
+            <div class="warehouse-header-section">
+                <h2>📊 Stato Magazzino</h2>
                 <button class="btn btn-primary" onclick="toggleWarehouseTable()" id="toggleWarehouseBtn">
                     <span>▶ Apri</span>
                 </button>
             </div>
-            <p style="color: #a0a0a0; margin-bottom: 15px;">Visualizza e modifica le giacenze in tempo reale</p>
+            <p class="overview-description">Visualizza e modifica le giacenze in tempo reale</p>
             
-            <div style="margin-bottom: 15px; display: none; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <div class="warehouse-search-container">
                 <input type="text" id="searchWarehouse" placeholder="🔍 Cerca per nome, codice o posizione..." 
-                       style="flex: 1; min-width: 200px; padding: 10px; background: #3d3d3d; border: 1px solid #4d4d4d; color: #e0e0e0; border-radius: 4px;"
+                       class="warehouse-search-input"
                        onkeyup="filterWarehouseTable()">
-                <button class="btn btn-primary" onclick="exportWarehouseData()" style="min-width: 150px;">
+                <button class="btn btn-primary warehouse-export-btn" onclick="exportWarehouseData()">
                     <span>📥 Esporta CSV</span>
                 </button>
             </div>
@@ -496,8 +496,8 @@
         <!-- Info Card -->
         <div class="card">
             <h2>ℹ️ Informazioni</h2>
-            <p style="color: #a0a0a0; margin-bottom: 10px;">Questa pagina fornisce un'interfaccia per la gestione del magazzino Molino Briganti.</p>
-            <p style="color: #999; font-size: 13px;">I dati sono sincronizzati con il file di inventario CSV e il database dell'applicazione.</p>
+            <p class="info-description-gray">Questa pagina fornisce un'interfaccia per la gestione del magazzino Molino Briganti.</p>
+            <p class="info-description-small">I dati sono sincronizzati con il file di inventario CSV e il database dell'applicazione.</p>
         </div>
     </div>
 

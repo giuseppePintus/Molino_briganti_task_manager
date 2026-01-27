@@ -1,0 +1,19 @@
+/* customers-management.html custom styles */
+
+.time-input-group {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.time-separator {
+    color: #a0a0a0;
+}
+
+.flex-1 {
+    flex: 1;
+}
+
+.logo-hidden {
+    display: none;
+}
