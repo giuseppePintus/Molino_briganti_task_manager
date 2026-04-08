@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="css/common.css">
     <link rel="stylesheet" href="css/warehouse-management-custom.css">
     <script src="js/settings-utils.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
     <style>
         * {
             margin: 0;
@@ -38,27 +39,29 @@
 
         .header {
             background: #2d2d2d;
-            padding: 15px 20px;
+            padding: 10px 20px;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.3);
             margin-bottom: 20px;
             display: flex;
             justify-content: space-between;
-            align-items: center;
+            align-items: flex-start;
             gap: 15px;
         }
 
         .header-left {
             display: flex;
-            align-items: center;
-            gap: 15px;
+            align-items: flex-start;
+            gap: 12px;
             flex: 1;
+            min-width: 0;
         }
 
         .header-logo {
             height: 45px;
             display: flex;
             align-items: center;
+            flex-shrink: 0;
         }
 
         .header-logo img {
@@ -67,16 +70,24 @@
             object-fit: contain;
         }
 
+        .header-title {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+        }
+
         .header h1 {
-            font-size: 20px;
+            font-size: 14px;
             color: #e0e0e0;
             margin: 0;
+            line-height: 1.2;
         }
 
         .header-actions {
             display: flex;
             gap: 10px;
             align-items: center;
+            flex-shrink: 0;
         }
 
         .btn {
@@ -134,6 +145,14 @@
             border-radius: 8px;
             border: 1px solid #4d4d4d;
             text-align: center;
+            cursor: pointer;
+            transition: background 0.18s, border-color 0.18s, transform 0.12s;
+        }
+
+        .feature-card:hover {
+            background: #4a4a4a;
+            border-color: #2563eb;
+            transform: translateY(-2px);
         }
 
         .feature-card .icon {
@@ -152,8 +171,37 @@
             color: #a0a0a0;
         }
 
+        .feature-card-sub {
+            display: none;
+            margin-top: 12px;
+            gap: 8px;
+            flex-direction: column;
+        }
+
+        .feature-card-sub.open {
+            display: flex;
+        }
+
+        .feature-card-sub button {
+            background: #2563eb;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .feature-card-sub button:hover {
+            background: #1d4ed8;
+        }
+
         .table-container {
             overflow-x: auto;
+            overflow-y: auto;
+            max-height: 60vh;
             margin-top: 15px;
         }
 
@@ -166,10 +214,12 @@
             border-collapse: collapse;
             background: #3d3d3d;
             border-radius: 6px;
-            overflow: hidden;
         }
 
         table thead {
+            position: sticky;
+            top: 0;
+            z-index: 10;
             background: #2d2d2d;
         }
 
@@ -179,6 +229,7 @@
             font-weight: 600;
             color: #e0e0e0;
             border-bottom: 2px solid #4d4d4d;
+            background: #2d2d2d;
         }
 
         table td {
@@ -326,40 +377,52 @@
 
         .stats-bar {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 10px;
+            grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+            gap: 8px;
             margin-bottom: 20px;
         }
 
         .stat-item {
-            background: #3d3d3d;
-            padding: 12px;
-            border-radius: 6px;
-            border-left: 3px solid var(--primary);
-            text-align: center;
+            background: #2d2d2d;
+            padding: 3px 4px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            border-left: 4px solid var(--primary);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 20px;
         }
 
         .stat-item .label {
-            font-size: 12px;
+            font-size: 8px;
             color: #a0a0a0;
-            margin-bottom: 5px;
         }
 
         .stat-item .value {
-            font-size: 20px;
+            font-size: 12px;
             font-weight: bold;
             color: #e0e0e0;
+            margin-bottom: 0px;
         }
 
         @media (max-width: 768px) {
             .header {
-                flex-direction: column;
-                align-items: flex-start;
+                padding: 8px 12px;
+                gap: 10px;
+            }
+
+            .header-logo {
+                height: 40px;
+            }
+
+            .header h1 {
+                font-size: 12px;
             }
 
             .header-actions {
-                width: 100%;
-                justify-content: flex-start;
+                flex-shrink: 0;
             }
 
             .container {
@@ -378,82 +441,769 @@
                 padding: 8px;
             }
         }
+
+        /* ===== PRINT INVENTORY MODAL ===== */
+        #printInventoryOverlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 3000;
+            align-items: center;
+            justify-content: center;
+        }
+        #printInventoryOverlay.open { display: flex; }
+        #printInventoryModal {
+            background: #2a2a2a;
+            border: 1px solid #4d4d4d;
+            border-radius: 10px;
+            padding: 28px 24px 20px;
+            width: min(500px, 95vw);
+            max-height: 90vh;
+            overflow-y: auto;
+            color: #e0e0e0;
+        }
+        #printInventoryModal h3 {
+            margin: 0 0 20px;
+            font-size: 18px;
+            color: #60a5fa;
+        }
+        .print-opt-group { margin-bottom: 16px; }
+        .print-opt-group label { display: block; font-size: 13px; color: #9ca3af; margin-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+        .print-opt-group select, .print-opt-group input[type=text] {
+            width: 100%; background: #1a1a1a; border: 1px solid #4d4d4d;
+            color: #e0e0e0; border-radius: 6px; padding: 9px 12px; font-size: 14px;
+        }
+        .print-opt-row { display: flex; gap: 10px; }
+        .print-opt-row .print-opt-group { flex: 1; }
+        .print-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+        /* ===== A4 PRINT STYLES ===== */
+        @media print {
+            body > *:not(#printPageContainer) { display: none !important; }
+            #printPageContainer { display: block !important; }
+        }
+        #printPageContainer { display: none; }
+        #printPageContainer.visible { display: block; }
+
+        /* Quick Actions Navigation */
+        /* Quick Actions Navigation */
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .quick-actions > * {
+            min-width: 0;
+        }
+
+        .quick-actions .btn {
+            width: 100%;
+            padding: 10px 8px;
+            min-height: 44px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .quick-actions .btn::before {
+            font-size: 16px;
+        }
+
+        .quick-actions .btn span {
+            font-size: 12px;
+            line-height: 1.2;
+            text-align: center;
+        }
+
+        .quick-actions .btn.active {
+            outline: 2px solid rgba(255, 255, 255, 0.85);
+            outline-offset: 2px;
+            filter: brightness(1.25);
+            transform: translateY(-1px);
+        }
+
+        .quick-actions .btn.active:hover {
+            transform: translateY(-3px);
+        }
+
+        .dropdown-menu-admin {
+            position: relative;
+            display: block;
+        }
+
+        .dropdown-menu-admin .btn-settings {
+            width: 100%;
+        }
+
+        .admin-menu-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: #2d2d2d;
+            border: 1px solid #4d4d4d;
+            border-radius: 6px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            min-width: 220px;
+            z-index: 1000;
+            margin-top: 5px;
+        }
+
+        .admin-menu-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            padding: 12px 15px;
+            border: none;
+            background: transparent;
+            color: #e0e0e0;
+            cursor: pointer;
+            text-align: left;
+            font-size: 14px;
+            transition: background 0.2s;
+            border-bottom: 1px solid #3d3d3d;
+        }
+
+        .admin-menu-item:last-child {
+            border-bottom: none;
+        }
+
+        .admin-menu-item:hover {
+            background: #3d3d3d;
+            border-left: 3px solid #38bdf8;
+            padding-left: 12px;
+        }
+
+        .admin-menu-item .menu-icon {
+            font-size: 16px;
+        }
+
+        .btn-settings {
+            background: linear-gradient(135deg, #38bdf8 0%, #1e40af 100%);
+            color: white;
+            border: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-settings::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s;
+        }
+        .btn-settings:hover {
+            background: linear-gradient(135deg, #1d4ed8 0%, #1e3a8a 100%);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        .btn-settings:hover::after {
+            left: 100%;
+        }
+
+        .btn-tasks {
+            background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+            color: white;
+            border: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-tasks::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s;
+        }
+        .btn-tasks:hover {
+            background: linear-gradient(135deg, #15803d 0%, #166534 100%);
+            box-shadow: 0 6px 20px rgba(22, 163, 74, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        .btn-tasks:hover::after {
+            left: 100%;
+        }
+
+        .btn-customers {
+            background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);
+            color: white;
+            border: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 12px rgba(8, 145, 178, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-customers::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s;
+        }
+        .btn-customers:hover {
+            background: linear-gradient(135deg, #0e7490 0%, #155e75 100%);
+            box-shadow: 0 6px 20px rgba(8, 145, 178, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        .btn-customers:hover::after {
+            left: 100%;
+        }
+
+        .btn-planner {
+            background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+            color: white;
+            border: 1px solid rgba(124, 58, 237, 0.5);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-planner::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s;
+        }
+        .btn-planner:hover {
+            background: linear-gradient(135deg, #6d28d9 0%, #5b21b6 100%);
+            border-color: rgba(124, 58, 237, 1);
+            box-shadow: 0 6px 20px rgba(124, 58, 237, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        .btn-planner:hover::after {
+            left: 100%;
+        }
+
+        .btn-warehouse {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            color: white;
+            border: 1px solid rgba(220, 38, 38, 0.5);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-warehouse::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s;
+        }
+        .btn-warehouse:hover {
+            background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+            border-color: rgba(220, 38, 38, 1);
+            box-shadow: 0 6px 20px rgba(220, 38, 38, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        .btn-warehouse:hover::after {
+            left: 100%;
+        }
+
+        @media (max-width: 600px) {
+            .quick-actions {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+        @media (max-width: 380px) {
+            .quick-actions {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        .sticky-top-bar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: #1a1a1a;
+            padding-bottom: 10px;
+        }
+        .sticky-top-bar .quick-actions {
+            margin-bottom: 0 !important;
+        }
+        .sticky-top-bar .stats,
+        .sticky-top-bar .stats-overview,
+        .sticky-top-bar .stats-bar {
+            max-height: 120px;
+            opacity: 1;
+            overflow: hidden;
+            transition: max-height 0.3s ease, opacity 0.2s ease, margin 0.3s ease;
+        }
+        .sticky-top-bar.scrolled .stats,
+        .sticky-top-bar.scrolled .stats-overview,
+        .sticky-top-bar.scrolled .stats-bar {
+            max-height: 0;
+            opacity: 0;
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+        }
+
+        /* ===== VIEW TOGGLE ===== */
+        .view-toggle {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+        .btn-view {
+            padding: 7px 18px;
+            font-size: 13px;
+            border-radius: 6px;
+            border: 2px solid #4d4d4d;
+            background: #2d2d2d;
+            color: #a0a0a0;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .btn-view.active {
+            border-color: #2563eb;
+            background: #1e3a8a;
+            color: #fff;
+        }
+
+        /* ===== SHELF MAP ===== */
+        .shelf-map {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 4px;
+        }
+        .shelf-sector-card {
+            background: #262626;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #3d3d3d;
+        }
+        .shelf-sector-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            background: linear-gradient(135deg, #1a2e5a 0%, #1e40af 100%);
+            cursor: pointer;
+            user-select: none;
+        }
+        .shelf-sector-header .sector-icon { font-size: 16px; }
+        .shelf-sector-header .sector-name {
+            font-size: 15px;
+            font-weight: 700;
+            color: #fff;
+            flex: 1;
+        }
+        .shelf-sector-header .sector-count {
+            font-size: 12px;
+            color: #bfdbfe;
+            background: rgba(0,0,0,0.25);
+            padding: 2px 10px;
+            border-radius: 20px;
+        }
+        .sector-chevron {
+            font-size: 13px;
+            color: #bfdbfe;
+            transition: transform 0.2s;
+        }
+        .shelf-sector-header.collapsed .sector-chevron {
+            transform: rotate(-90deg);
+        }
+        .shelf-positions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+            gap: 8px;
+            padding: 12px;
+        }
+        .shelf-pos-card {
+            background: #3d3d3d;
+            border-radius: 6px;
+            padding: 10px 12px;
+            border: 1px solid #4d4d4d;
+            cursor: pointer;
+            transition: all 0.15s;
+            position: relative;
+        }
+        .shelf-pos-card:hover {
+            border-color: #2563eb;
+            background: #2a2a4a;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(37,99,235,0.2);
+        }
+        .shelf-pos-card.occupied { border-left: 3px solid #16a34a; }
+        .shelf-pos-card.empty {
+            border-left: 3px solid #555;
+            opacity: 0.65;
+        }
+        .shelf-pos-card.low-stock { border-left: 3px solid #ea580c; }
+        .pos-badge {
+            font-size: 11px;
+            font-weight: 700;
+            color: #93c5fd;
+            background: rgba(37,99,235,0.15);
+            padding: 2px 7px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-bottom: 6px;
+            font-family: monospace;
+            letter-spacing: 0.5px;
+        }
+        .pos-article-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: #e0e0e0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 3px;
+        }
+        .pos-article-code {
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 6px;
+        }
+        .pos-quantity {
+            font-size: 14px;
+            font-weight: 700;
+            color: #4ade80;
+        }
+        .pos-quantity.zero { color: #6b7280; }
+        .pos-lotto {
+            font-size: 11px;
+            color: #93c5fd;
+            margin-top: 2px;
+        }
+        .pos-empty-label {
+            font-size: 12px;
+            color: #5d5d5d;
+            font-style: italic;
+            text-align: center;
+            padding: 8px 0;
+        }
+        .pos-action-row {
+            display: flex;
+            gap: 5px;
+            margin-top: 9px;
+        }
+        .pos-btn {
+            flex: 1;
+            padding: 5px 0;
+            font-size: 13px;
+            font-weight: 700;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: filter 0.15s;
+        }
+        .pos-btn-carico { background: #16a34a; color: #fff; }
+        .pos-btn-carico:hover { filter: brightness(1.2); }
+        .pos-btn-scarico { background: #dc2626; color: #fff; }
+        .pos-btn-scarico:hover { filter: brightness(1.2); }
+        .pos-entries-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .pos-entry-item {
+            background: rgba(37,99,235,0.1);
+            border: 1px solid rgba(37,99,235,0.2);
+            border-radius: 5px;
+            padding: 6px 8px;
+            font-size: 12px;
+            cursor: grab;
+        }
+        .pos-entry-item:active { cursor: grabbing; }
+        .pos-entry-item.dragging {
+            opacity: 0.4;
+            border: 1px dashed #60a5fa;
+        }
+        .shelf-pos-card.drag-over {
+            outline: 2px dashed #4ade80;
+            outline-offset: -2px;
+            background: rgba(74,222,128,0.08) !important;
+        }
+        .shelf-pos-card.drag-over .pos-badge {
+            color: #4ade80;
+        }
+        .pos-entry-qty-badge {
+            background: rgba(74,222,128,0.2);
+            color: #4ade80;
+            font-weight: 700;
+            font-size: 11px;
+            padding: 1px 6px;
+            border-radius: 4px;
+            white-space: nowrap;
+        }
+
+        /* ===== CARICO/SCARICO MODAL ===== */
+        .cargo-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.72);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+        .cargo-modal-overlay.open { display: flex; }
+        .cargo-modal {
+            background: #2d2d2d;
+            border-radius: 12px;
+            padding: 24px;
+            width: 460px;
+            max-width: 96vw;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.55);
+            border: 1px solid #4d4d4d;
+        }
+        .cargo-modal h3 {
+            font-size: 18px;
+            margin-bottom: 18px;
+            color: #e0e0e0;
+        }
+        .cargo-type-switch {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 18px;
+        }
+        .cargo-type-btn {
+            padding: 11px;
+            border: 2px solid #4d4d4d;
+            border-radius: 8px;
+            background: #3d3d3d;
+            color: #a0a0a0;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        .cargo-type-btn.selected-carico {
+            border-color: #16a34a;
+            background: #14532d;
+            color: #4ade80;
+        }
+        .cargo-type-btn.selected-scarico {
+            border-color: #dc2626;
+            background: #7f1d1d;
+            color: #fca5a5;
+        }
+        .cargo-field { margin-bottom: 15px; }
+        .cargo-field label {
+            display: block;
+            font-size: 12px;
+            color: #a0a0a0;
+            margin-bottom: 5px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+        .cargo-field input,
+        .cargo-field select {
+            width: 100%;
+            background: #3a3a3a;
+            border: 1px solid #555;
+            color: #e0e0e0;
+            padding: 10px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .cargo-field input:focus,
+        .cargo-field select:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 2px rgba(37,99,235,0.2);
+        }
+        .cargo-field select option { background: #3a3a3a; }
+        .qty-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .qty-control input {
+            flex: 1;
+            text-align: center;
+            font-size: 20px;
+            font-weight: 700;
+        }
+        .qty-btn {
+            width: 42px;
+            height: 42px;
+            border: none;
+            border-radius: 6px;
+            font-size: 22px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #484848;
+            color: #e0e0e0;
+            transition: background 0.15s;
+            flex-shrink: 0;
+        }
+        .qty-btn:hover { background: #5d5d5d; }
+        .cargo-current-stock {
+            background: rgba(37,99,235,0.1);
+            border: 1px solid rgba(37,99,235,0.25);
+            border-radius: 6px;
+            padding: 8px 12px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            color: #93c5fd;
+        }
+        .cargo-modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .cargo-modal-actions .btn { flex: 1; }
+        .btn-carico-confirm {
+            background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+            color: white;
+        }
+        .btn-scarico-confirm {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            color: white;
+        }
+        .btn-gray { background: #484848; color: #e0e0e0; }
+        .btn-gray:hover { background: #5a5a5a; }
+        .btn-carico-main {
+            background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(22,163,74,0.3);
+        }
+        .btn-carico-main:hover {
+            filter: brightness(1.1);
+            transform: translateY(-2px);
+        }
+        .btn-scarico-main {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(220,38,38,0.3);
+        }
+        .btn-scarico-main:hover {
+            filter: brightness(1.1);
+            transform: translateY(-2px);
+        }
     </style>
 </head>
 <body>
     <div class="container">
+        <div class="sticky-top-bar">
         <!-- Header -->
         <div class="header">
             <div class="header-left">
                 <div class="header-logo">
-                    <img src="images/logo INSEGNA.png" alt="Molino Briganti Logo">
+                    <img src="images/logo INSEGNA.png" alt="Molino Briganti Logo" class="logo-hidden">
                 </div>
-                <h1>🏭 Gestione Magazzino</h1>
+                <div class="header-title">
+                    <h1>🏭 Gestione Magazzino</h1>
+                    <div class="user-info" id="userInfo"></div>
+                </div>
             </div>
             <div class="header-actions">
-                <button class="btn btn-home" onclick="goHome()" data-icon="🏠"><span>Home</span></button>
+                <button class="btn btn-danger" data-icon="🚪" onclick="handleLogout()"><span>Logout</span></button>
             </div>
-        </div>
-
-        <!-- Alert -->
-        <div id="alert" class="alert alert-info">
-            <strong>ℹ️ Percorso Master CSV (Fisso):</strong> \\nas71f89c\Container\data\molino\master-Inventory.csv
-        </div>
-
-        <!-- Action Bar -->
-        <div class="action-bar">
-            <div id="masterCsvInfo" class="info-box-master-csv">
-                Master CSV (Fisso): <strong id="masterCsvPath">/share/Container/data/molino/master-Inventory.csv</strong>
-            </div>
-            <button class="btn btn-import" onclick="importFromMasterCsvNas()" id="importMasterNasBtn" data-icon="📥">
-                <span>Importa da Master CSV (NAS)</span>
-            </button>
-            <button class="btn btn-import btn-import-pdf" onclick="importWarehouseFromPdf()" id="importWarehousePdfBtn" data-icon="📄">
-                <span>⚡ Aggiorna Magazzino da PDF</span>
-            </button>
-            <button class="btn btn-primary" onclick="refreshInventoryData()" id="refreshBtn" data-icon="🔄">
-                <span>Aggiorna</span>
-            </button>
-            <button class="btn btn-codifiche" onclick="goToCodifiche()" data-icon="📋">
-                <span>Codifiche Articoli</span>
-            </button>
-
         </div>
 
         <!-- Statistics Bar -->
-        <div class="stats-bar stats-bar-hidden" id="statsBar">
+        <div class="stats-bar" id="statsBar">
             <div class="stat-item">
-                <div class="label">Articoli</div>
                 <div class="value" id="statsArticles">0</div>
+                <div class="label">Articoli</div>
             </div>
-            <div class="stat-item">
-                <div class="label">Quantità Totale (kg)</div>
+            <div class="stat-item" style="border-left-color: #0891b2;">
                 <div class="value" id="statsQuantity">0</div>
+                <div class="label">Colli / Kg</div>
             </div>
-            <div class="stat-item">
-                <div class="label">Giacenze Vuote</div>
+            <div class="stat-item" style="border-left-color: #dc2626;">
                 <div class="value" id="statsEmpty">0</div>
+                <div class="label">Giacenze Vuote</div>
             </div>
-            <div class="stat-item">
-                <div class="label">Ultimi Aggiornamenti</div>
+            <div class="stat-item" style="border-left-color: #16a34a;">
                 <div class="value" id="statsLastUpdate">-</div>
+                <div class="label">Aggiornato</div>
             </div>
         </div>
 
-        <!-- Overview Card -->
+        <!-- Quick Actions -->
+        <div class="quick-actions">
+            <div class="dropdown-menu-admin">
+                <button class="btn btn-settings" data-icon="⚙️" onclick="toggleAdminMenu()"><span>Gestione</span></button>
+                <div id="adminMenuDropdown" class="admin-menu-dropdown">
+                    <button class="admin-menu-item" onclick="window.location.href='company-settings.html'; toggleAdminMenu();">
+                        <span class="menu-icon">🏢</span>
+                        <span>Impostazioni Azienda</span>
+                    </button>
+                    <button class="admin-menu-item" onclick="window.location.href='operators.html'; toggleAdminMenu();">
+                        <span class="menu-icon">👥</span>
+                        <span>Gestione Admin / Operatori</span>
+                    </button>
+                    <button class="admin-menu-item" onclick="window.location.href='backup-management.html'; toggleAdminMenu();">
+                        <span class="menu-icon">💾</span>
+                        <span>Gestione Backup</span>
+                    </button>
+                </div>
+            </div>
+            <button class="btn btn-customers" data-icon="👨‍💼" onclick="window.location.href='customers-management.html'"><span>Gestione Clienti</span></button>
+            <button class="btn btn-tasks" data-icon="✅" onclick="window.location.href='admin-dashboard.html'"><span>Planner Task</span></button>
+            <button class="btn btn-planner" data-icon="📦" onclick="window.location.href='orders-planner.html'"><span>Planner Ordini</span></button>
+            <button class="btn btn-warehouse active" data-icon="🏭" onclick="window.location.href='warehouse-management.html'"><span>Gestione Magazzino</span></button>
+        </div>
+        </div><!-- /.sticky-top-bar -->
+
+        <!-- Action Bar -->
+        <div class="action-bar">
+            <button class="btn btn-primary" onclick="refreshInventoryData()" id="refreshBtn" data-icon="🔄">
+                <span>Aggiorna</span>
+            </button>
+            <button class="btn btn-carico-main" onclick="window.location.href='warehouse-management-lite.html'" data-icon="📦">
+                <span>⚡ Carico/Scarico Lite</span>
+            </button>
+        </div>
+
+        <!-- Action Bar -->
         <div class="card">
             <h2>📊 Panoramica Magazzino</h2>
             <p class="overview-description">Gestisci l'inventario e monitora le giacenze di magazzino</p>
             
             <div class="content-section">
-                <div class="feature-card">
+                <div class="feature-card" id="fcGestione" onclick="toggleGestioneCard(event)">
                     <div class="icon">📦</div>
-                    <h3>Articoli</h3>
-                    <p>Visualizza e gestisci i prodotti presenti a magazzino</p>
+                    <h3>Gestione</h3>
+                    <p>Gestisci prodotti e posizioni scaffali</p>
+                    <div class="feature-card-sub" id="fcGestioneSub">
+                        <button onclick="event.stopPropagation(); scrollToSection('gestioneProdottiCard')">📦 Gestione Prodotti</button>
+                        <button onclick="event.stopPropagation(); scrollToSection('gestionePosizioni')">📍 Posizioni Scaffali</button>
+                    </div>
                 </div>
-                <div class="feature-card">
+                <div class="feature-card" onclick="scrollToWarehouseStatus()">
                     <div class="icon">📊</div>
-                    <h3>Giacenze</h3>
+                    <h3>Stato Magazzino</h3>
                     <p>Monitora le quantità disponibili di ogni articolo</p>
                 </div>
                 <div class="feature-card">
@@ -470,59 +1220,351 @@
         </div>
 
         <!-- Warehouse Status Card -->
-        <div class="card">
+        <div class="card" id="statoMagazzinoCard" style="display:none;">
             <div class="warehouse-header-section">
                 <h2>📊 Stato Magazzino</h2>
-                <button class="btn btn-primary" onclick="toggleWarehouseTable()" id="toggleWarehouseBtn">
-                    <span>▶ Apri</span>
-                </button>
             </div>
             <p class="overview-description">Visualizza e modifica le giacenze in tempo reale</p>
+
+            <!-- View toggle -->
+            <div class="view-toggle" id="viewToggleBar" style="display:none;">
+                <button class="btn-view active" id="btnViewTabella" onclick="switchView('tabella')">📋 Prodotti</button>
+                <button class="btn-view" id="btnViewScaffali" onclick="switchView('scaffali')">🏗️ Scaffali</button>
+            </div>
             
-            <div class="warehouse-search-container">
+            <div class="warehouse-search-container" style="display:none;">
                 <input type="text" id="searchWarehouse" placeholder="🔍 Cerca per nome, codice o posizione..." 
                        class="warehouse-search-input"
                        onkeyup="filterWarehouseTable()">
                 <button class="btn btn-primary warehouse-export-btn" onclick="exportWarehouseData()">
                     <span>📥 Esporta CSV</span>
                 </button>
+                <button class="btn btn-secondary warehouse-export-btn" onclick="openPrintInventory()" style="background:#374151;border:1px solid #4d4d4d;">
+                    <span>🖨️ Stampa</span>
+                </button>
             </div>
             
             <div class="table-container hidden-content" id="warehouseTable">
                 <div class="empty-state">Caricamento stato magazzino...</div>
             </div>
+
+            <!-- Shelf map view (hidden by default) -->
+            <div id="scaffaliView" style="display:none;"></div>
         </div>
 
-        <!-- Info Card -->
-        <div class="card">
-            <h2>ℹ️ Informazioni</h2>
-            <p class="info-description-gray">Questa pagina fornisce un'interfaccia per la gestione del magazzino Molino Briganti.</p>
-            <p class="info-description-small">I dati sono sincronizzati con il file di inventario CSV e il database dell'applicazione.</p>
+        <!-- ===== GESTIONE PRODOTTI CARD ===== -->
+        <div class="card" id="gestioneProdottiCard" style="display:none;">
+            <div class="warehouse-header-section">
+                <h2>📦 Gestione Prodotti</h2>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <span id="prodottiCount" style="background:#2563eb;color:#fff;border-radius:20px;padding:2px 12px;font-size:13px;font-weight:700;">0</span>
+                    <button class="btn btn-primary btn-small" onclick="openArticleModal(null)">➕ Nuovo</button>
+                </div>
+            </div>
+            <div id="prodottiList" style="margin-top:16px;">
+                <div class="empty-state">Caricamento...</div>
+            </div>
+        </div>
+
+        <!-- ===== POSIZIONI SCAFFALE CARD ===== -->
+        <div class="card" id="gestionePosizioni" style="display:none;">
+            <div class="warehouse-header-section">
+                <h2>🏗️ Posizioni Scaffale</h2>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <span id="posizioniCount" style="background:#0891b2;color:#fff;border-radius:20px;padding:2px 12px;font-size:13px;font-weight:700;">0</span>
+                    <button class="btn btn-small" style="background:#0891b2;color:#fff;" onclick="openNewPosForm()">➕ Aggiungi</button>
+                </div>
+            </div>
+            <div id="newPosForm" style="display:none;margin-top:14px;background:#1e293b;border-radius:8px;padding:14px;">
+                <div style="display:grid;grid-template-columns:1fr 2fr auto;gap:8px;align-items:end;">
+                    <div class="cargo-field" style="margin-bottom:0;">
+                        <label>Codice *</label>
+                        <input type="text" id="newPosCode" placeholder="es. A1.1" style="text-transform:uppercase;">
+                    </div>
+                    <div class="cargo-field" style="margin-bottom:0;">
+                        <label>Descrizione</label>
+                        <input type="text" id="newPosDesc" placeholder="es. Scaffale A fila 1">
+                    </div>
+                    <button class="btn btn-carico-confirm" style="height:38px;padding:0 16px;" onclick="submitNewPosition()">✓ Crea</button>
+                </div>
+            </div>
+            <div id="posizioniList" style="margin-top:16px;">
+                <div class="empty-state">Caricamento...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== ASSEGNAZIONE SCAFFALE MODAL ===== -->
+    <div class="cargo-modal-overlay" id="assignShelfOverlay" onclick="closeAssignShelfModal(event)">
+        <div class="cargo-modal">
+            <h3>🏗️ Assegna Articolo a Scaffale</h3>
+            <div style="background:#1e293b;border-radius:8px;padding:10px 14px;margin-bottom:16px;text-align:center;">
+                Posizione: <strong id="assignShelfPosCode" style="color:#60a5fa;font-size:18px;"></strong>
+            </div>
+            <div class="cargo-field">
+                <label>Articolo da assegnare</label>
+                <select id="assignShelfArticleSelect">
+                    <option value="">-- Seleziona articolo --</option>
+                </select>
+            </div>
+            <div class="cargo-modal-actions">
+                <button class="btn btn-gray" onclick="document.getElementById('assignShelfOverlay').classList.remove('open')">✕ Annulla</button>
+                <button class="btn btn-carico-confirm" id="assignShelfConfirmBtn" onclick="submitAssignShelf()">
+                    <span id="assignShelfConfirmText">✓ Assegna</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== SHELF ENTRY MODAL (AGGIUNGI / MODIFICA) ===== -->
+    <div class="cargo-modal-overlay" id="shelfEntryOverlay" onclick="closeShelfEntryModal(event)">
+        <div class="cargo-modal" style="width:460px;max-height:90vh;overflow-y:auto;">
+            <h3 id="shelfEntryModalTitle">📦 Aggiungi prodotto a scaffale</h3>
+            <input type="hidden" id="shelfEntryId">
+            <div style="background:#1e293b;border-radius:8px;padding:8px 14px;margin-bottom:14px;text-align:center;">
+                Posizione: <strong id="shelfEntryPosCode" style="color:#60a5fa;font-size:18px;"></strong>
+            </div>
+            <!-- Lista prodotti aggiunti (solo in modalità crea) -->
+            <div id="shelfEntryAddedList" style="display:none;margin-bottom:12px;"></div>
+            <div id="shelfEntryFormSection">
+                <div class="cargo-field" id="shelfEntryArticleField">
+                    <label>Articolo</label>
+                    <select id="shelfEntryArticleSelect">
+                        <option value="">-- Seleziona articolo --</option>
+                    </select>
+                </div>
+                <div class="cargo-field">
+                    <label>Posizione scaffale</label>
+                    <select id="shelfEntryPosSelect">
+                        <option value="">-- Seleziona posizione --</option>
+                    </select>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                    <div class="cargo-field">
+                        <label>Quantità (colli)</label>
+                        <input type="number" id="shelfEntryQty" min="0" value="0">
+                    </div>
+                    <div class="cargo-field">
+                        <label>Lotto</label>
+                        <input type="text" id="shelfEntryBatch" placeholder="opzionale">
+                    </div>
+                    <div class="cargo-field">
+                        <label>Scadenza</label>
+                        <input type="text" id="shelfEntryExpiry" placeholder="MM/AAAA">
+                    </div>
+                    <div class="cargo-field">
+                        <label>Annotazioni</label>
+                        <input type="text" id="shelfEntryNotes" placeholder="opzionale">
+                    </div>
+                </div>
+            </div>
+            <div id="shelfEntryError" style="display:none;color:#f87171;font-size:13px;margin-bottom:8px;"></div>
+            <div class="cargo-modal-actions" style="flex-wrap:wrap;gap:8px;">
+                <button class="btn btn-gray" onclick="closeShelfEntryForce()">✕ Chiudi</button>
+                <button class="btn" id="shelfEntryAddMoreBtn" style="display:none;background:#0f766e;color:#fff;" onclick="submitShelfEntry(true)">+ Aggiungi altro</button>
+                <button class="btn btn-carico-confirm" id="shelfEntryConfirmBtn" onclick="submitShelfEntry(false)">
+                    <span id="shelfEntryConfirmText">✓ Salva e chiudi</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MODIFICA POSIZIONE SCAFFALE MODAL ===== -->
+
+    <!-- ===== COPIA PRODOTTO IN ALTRA POSIZIONE MODAL ===== -->
+    <div class="cargo-modal-overlay" id="copyEntryOverlay" onclick="closeCopyEntryModal(event)">
+        <div class="cargo-modal" style="width:460px;max-height:90vh;overflow-y:auto;" onclick="event.stopPropagation()">
+            <h3>📋 Copia prodotto in altra posizione</h3>
+            <input type="hidden" id="copyEntrySourceId">
+            <div style="background:#1e293b;border-radius:8px;padding:10px 14px;margin-bottom:14px;">
+                <div style="color:#9ca3af;font-size:12px;">Prodotto originale</div>
+                <div id="copyEntrySummary" style="color:#e0e0e0;font-size:14px;font-weight:600;margin-top:2px;"></div>
+            </div>
+            <div class="cargo-field">
+                <label>Posizione di destinazione</label>
+                <select id="copyEntryPosSelect" style="background:#1f2937;border:1px solid #374151;border-radius:6px;color:#e0e0e0;padding:6px 10px;width:100%;font-size:14px;"></select>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div class="cargo-field">
+                    <label>Quantità (colli)</label>
+                    <input type="number" id="copyEntryQty" min="0" value="0">
+                </div>
+                <div class="cargo-field">
+                    <label>Lotto</label>
+                    <input type="text" id="copyEntryBatch" placeholder="opzionale">
+                </div>
+                <div class="cargo-field">
+                    <label>Scadenza</label>
+                    <input type="text" id="copyEntryExpiry" placeholder="MM/AAAA">
+                </div>
+                <div class="cargo-field">
+                    <label>Annotazioni</label>
+                    <input type="text" id="copyEntryNotes" placeholder="opzionale">
+                </div>
+            </div>
+            <div id="copyEntryError" style="display:none;color:#f87171;font-size:13px;margin-bottom:8px;"></div>
+            <div class="cargo-modal-actions">
+                <button class="btn btn-gray" onclick="closeCopyEntryForce()">✕ Annulla</button>
+                <button class="btn btn-carico-confirm" id="copyEntryConfirmBtn" onclick="submitCopyEntry()">
+                    <span id="copyEntryConfirmText">📋 Copia</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="cargo-modal-overlay" id="editPosOverlay" onclick="closeEditPosModal(event)">
+        <div class="cargo-modal" style="width:480px;max-height:90vh;overflow-y:auto;">
+            <h3>🏗️ Modifica Posizione</h3>
+            <input type="hidden" id="editPosId">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div class="cargo-field">
+                    <label>Codice posizione</label>
+                    <select id="editPosCode" onchange="switchEditPosition()" style="background:#1f2937;border:1px solid #374151;border-radius:6px;color:#e0e0e0;padding:6px 10px;width:100%;font-size:14px;"></select>
+                </div>
+                <div class="cargo-field">
+                    <label>Descrizione / Nota</label>
+                    <input type="text" id="editPosDesc" placeholder="es. zona fredda...">
+                </div>
+            </div>
+            <div id="editPosError" style="display:none;color:#f87171;font-size:13px;margin-bottom:8px;"></div>
+            <div class="cargo-modal-actions" style="margin-bottom:16px;">
+                <button class="btn btn-gray" onclick="document.getElementById('editPosOverlay').classList.remove('open')">✕ Chiudi</button>
+                <button class="btn btn-carico-confirm" id="editPosConfirmBtn" onclick="submitEditPosition()">
+                    <span id="editPosConfirmText">✓ Salva posizione</span>
+                </button>
+            </div>
+            <!-- Prodotti in questa posizione -->
+            <div id="editPosEntriesSection" style="border-top:1px solid #374151;padding-top:14px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                    <strong style="color:#e0e0e0;">📦 Prodotti in questa posizione</strong>
+                    <button class="btn btn-small" style="background:#16a34a;color:#fff;" onclick="addEntryFromEditPos()">+ Aggiungi</button>
+                </div>
+                <div id="editPosEntriesList"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== ARTICOLO MODAL (CREA / MODIFICA) ===== -->
+    <div class="cargo-modal-overlay" id="articleModalOverlay" onclick="closeArticleModal(event)">
+        <div class="cargo-modal" style="width:520px;">
+            <h3 id="articleModalTitle">📦 Nuovo Articolo</h3>
+            <input type="hidden" id="articleModalId">
+            <div class="cargo-field">
+                <label>Codice *</label>
+                <input type="text" id="artCode" placeholder="es. F-0-SP35-5">
+            </div>
+            <div class="cargo-field">
+                <label>Nome *</label>
+                <input type="text" id="artName" placeholder="es. FARINA 0 SP35 da 5 kg">
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div class="cargo-field">
+                    <label>Categoria</label>
+                    <input type="text" id="artCategory" placeholder="es. FARINE">
+                </div>
+                <div class="cargo-field">
+                    <label>Unità di misura</label>
+                    <input type="text" id="artUnit" placeholder="kg" value="kg">
+                </div>
+                <div class="cargo-field">
+                    <label>Peso per collo (kg)</label>
+                    <input type="number" id="artWeightPerUnit" placeholder="es. 5" min="0.01" step="0.01" value="1">
+                </div>
+                <div class="cargo-field">
+                    <label>Codice a Barre</label>
+                    <input type="text" id="artBarcode" placeholder="EAN/barcode">
+                </div>
+            </div>
+            <div class="cargo-field">
+                <label>Descrizione</label>
+                <input type="text" id="artDescription" placeholder="Descrizione opzionale">
+            </div>
+            <div id="articleModalError" style="display:none;color:#f87171;font-size:13px;margin-top:-8px;margin-bottom:8px;"></div>
+            <div class="cargo-modal-actions">
+                <button class="btn btn-gray" onclick="document.getElementById('articleModalOverlay').classList.remove('open')">✕ Annulla</button>
+                <button class="btn btn-carico-confirm" id="articleModalConfirmBtn" onclick="submitArticleForm()">
+                    <span id="articleModalConfirmText">✓ Salva</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== CARICO / SCARICO MODAL ===== -->
+    <div class="cargo-modal-overlay" id="cargoModalOverlay" onclick="closeCargoModal(event)">
+        <div class="cargo-modal">
+            <h3 id="cargoModalTitle">📥 Carico Merce</h3>
+
+            <div class="cargo-type-switch">
+                <button class="cargo-type-btn selected-carico" id="btnTypeCarico" onclick="setCargoType('CARICO')">
+                    📥 Carico
+                </button>
+                <button class="cargo-type-btn" id="btnTypeScarico" onclick="setCargoType('SCARICO')">
+                    📤 Scarico
+                </button>
+            </div>
+
+            <div class="cargo-field">
+                <label>Articolo</label>
+                <select id="cargoArticleSelect" onchange="onCargoArticleChange()">
+                    <option value="">-- Seleziona articolo --</option>
+                </select>
+            </div>
+
+            <div class="cargo-current-stock" id="cargoCurrentStockInfo" style="display:none;">
+                Giacenza attuale: <strong id="cargoCurrentStockValue">0</strong> colli &nbsp;·&nbsp; <strong id="cargoCurrentStockKg">0</strong> kg
+            </div>
+
+            <div class="cargo-field">
+                <label id="cargoQtyLabel">Quantità da caricare (colli)</label>
+                <div class="qty-control">
+                    <button class="qty-btn" onclick="adjustQty(-1)">−</button>
+                    <input type="number" id="cargoQtyInput" value="1" min="0" step="1" placeholder="0" oninput="updateCargoKgPreview()">
+                    <button class="qty-btn" onclick="adjustQty(+1)">+</button>
+                </div>
+                <div id="cargoKgPreview" style="margin-top:6px;font-size:12px;color:#93c5fd;"></div>
+            </div>
+
+            <div id="cargoExtraFields">
+                <div class="cargo-field">
+                    <label>Lotto (opzionale)</label>
+                    <input type="text" id="cargoLottoInput" placeholder="Es. L2025-001">
+                </div>
+                <div class="cargo-field">
+                    <label>Scadenza (opzionale)</label>
+                    <input type="date" id="cargoScadenzaInput">
+                </div>
+            </div>
+
+            <div class="cargo-field">
+                <label>Note (opzionale)</label>
+                <input type="text" id="cargoNotesInput" placeholder="Es. Resa da cliente, fornitore X...">
+            </div>
+
+            <div class="cargo-modal-actions">
+                <button class="btn btn-gray" onclick="document.getElementById('cargoModalOverlay').classList.remove('open')">✕ Annulla</button>
+                <button class="btn btn-carico-confirm" id="cargoConfirmBtn" onclick="submitCargoScarico()">
+                    <span id="cargoConfirmText">✓ Conferma Carico</span>
+                </button>
+            </div>
         </div>
     </div>
 
     <script>
-        // Estrai peso singolo collo dal codice prodotto
-        // Esempi: F-0-5 → 5, F-0-10 → 10, F-00-5 → 5
-        function extractWeightPerCollo(code) {
-            if (!code) return 1; // Default 1 se non trovato
-            
-            // Prova a estrarre l'ultimo numero dal codice
-            // Codici come F-0-5, F-00-10, ecc.
+        // Peso per collo: usa il campo weightPerUnit dal DB, fallback regex sul codice
+        function getWeightPerUnit(article) {
+            if (article && article.weightPerUnit && article.weightPerUnit > 0) return article.weightPerUnit;
+            // Fallback: estrai dall'ultimo numero del codice (es. F-0-5 → 5)
+            const code = article?.code || article?.codice || '';
             const match = code.match(/-(\d+)$/);
-            if (match) {
-                return parseInt(match[1]) || 1;
-            }
-            
-            // Se non trova pattern, ritorna 1
+            if (match) return parseInt(match[1]) || 1;
             return 1;
         }
 
         // Calcola il peso totale in kg da numero di colli e peso per collo
-        function calculateTotalWeight(quantita, code) {
+        function calculateTotalWeight(quantita, weightPerUnit) {
             const quantNum = parseInt(quantita) || 0;
-            const weightPerCollo = extractWeightPerCollo(code);
-            return quantNum * weightPerCollo;
+            const w = parseFloat(weightPerUnit) || 1;
+            return quantNum * w;
         }
 
         const API_URL = `http://${window.location.hostname}:${window.location.port || 5000}/api`;
@@ -538,12 +1580,56 @@
                 window.location.href = '/index.html';
                 return;
             }
+            // Popola userInfo
+            const userInfoEl = document.getElementById('userInfo');
+            if (userInfoEl && currentUser.username) {
+                userInfoEl.textContent = `👤 ${currentUser.username}`;
+            }
             // Load branding
             if (window.SettingsUtils && window.SettingsUtils.loadAndApplyBranding) {
                 await window.SettingsUtils.loadAndApplyBranding();
             }
             loadInventoryData();
             loadMasterCsvInfo(); // Carica info file master CSV selezionato
+
+            // ── Real-time sync via Socket.IO ──────────────────────────────
+            if (typeof io !== 'undefined') {
+                const _socket = io(window.location.origin, { transports: ['websocket', 'polling'] });
+                let _reloadTimer = null;
+                _socket.on('inventory:updated', () => {
+                    // Debounce: se arrivano più eventi rapidi, ricarica una sola volta
+                    clearTimeout(_reloadTimer);
+                    _reloadTimer = setTimeout(async () => {
+                        await loadShelfData();
+                        _refreshWarehouseView();
+                    }, 400);
+                });
+            }
+        });
+
+        function handleLogout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('currentUser');
+            window.location.href = '/index.html';
+        }
+
+        function toggleAdminMenu() {
+            const dropdown = document.getElementById('adminMenuDropdown');
+            if (!dropdown) return;
+            if (dropdown.style.display === 'none' || dropdown.style.display === '') {
+                dropdown.style.display = 'block';
+            } else {
+                dropdown.style.display = 'none';
+            }
+        }
+
+        // Chiudi il menu quando si clicca fuori
+        document.addEventListener('click', (event) => {
+            const dropdown = document.getElementById('adminMenuDropdown');
+            const gestButton = event.target.closest('.dropdown-menu-admin');
+            if (dropdown && !gestButton) {
+                dropdown.style.display = 'none';
+            }
         });
 
         function goHome() {
@@ -570,24 +1656,7 @@
         }
 
         // ===== UTILITY FUNCTIONS =====
-        
-        // Estrai peso singolo collo dal codice prodotto
-        // Esempi: F-0-5 → 5, F-0-10 → 10, F-00-5 → 5
-        function extractWeightPerCollo(code) {
-            if (!code) return 1;
-            const match = code.match(/-(\d+)$/);
-            if (match) {
-                return parseInt(match[1]) || 1;
-            }
-            return 1;
-        }
-
-        // Calcola il peso totale in kg
-        function calculateTotalWeight(quantita, code) {
-            const quantNum = parseInt(quantita) || 0;
-            const weightPerCollo = extractWeightPerCollo(code);
-            return quantNum * weightPerCollo;
-        }
+        // (getWeightPerUnit e calculateTotalWeight definiti sopra)
 
         // ===== ALERTS & DASHBOARD =====
 
@@ -604,7 +1673,7 @@
                     html = '<div style="padding: 20px; text-align: center; color: #16a34a; background: #dcfce7; border-radius: 6px;">✓ Nessun allarme attivo. Magazzino in buone condizioni!</div>';
                 } else {
                     html = alerts.map(alert => {
-                        const totalKg = calculateTotalWeight(alert.currentStock, alert.article.code);
+                        const totalKg = calculateTotalWeight(alert.currentStock, getWeightPerUnit(alert.article));
                         return `
                         <div style="padding: 15px; background: #fecaca; border-left: 4px solid #dc2626; border-radius: 4px; margin-bottom: 10px;">
                             <strong style="color: #991b1b;">🚨 ${alert.article.name}</strong><br>
@@ -755,7 +1824,7 @@
                 const scadenza = article.inventory?.expiry || article.scadenza || article.expiry || '-';
                 const quantita = article.inventory?.currentStock || article.quantita || article.quantity || '0';
                 const annotazioni = article.inventory?.notes || article.annotazioni || article.notes || '-';
-                const totalKg = calculateTotalWeight(quantita, codice);
+                const totalKg = calculateTotalWeight(quantita, getWeightPerUnit(article));
 
                 html += `
                     <tr>
@@ -782,18 +1851,59 @@
             loadWarehouseStatus();
         }
 
+        // Mappa prenotazioni per posizione: { "articleCode|batch" -> quantity }
+        let reservationsByPosition = {};
+
         async function loadWarehouseStatus() {
             try {
-                const response = await fetch(`${API_URL}/inventory/articles`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                const [articlesResp, ordersResp] = await Promise.all([
+                    fetch(`${API_URL}/inventory/articles`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    }),
+                    fetch(`${API_URL}/orders?status=pending`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    }).catch(() => null),
+                    loadShelfData()
+                ]);
+
+                // Carica anche ordini in_progress
+                let ordersInProgress = [];
+                try {
+                    const ipResp = await fetch(`${API_URL}/orders?status=in_progress`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (ipResp.ok) ordersInProgress = await ipResp.json();
+                } catch (e) {}
+
+                // Costruisci mappa prenotazioni per batch
+                reservationsByPosition = {};
+                let allOrders = [];
+                if (ordersResp && ordersResp.ok) {
+                    allOrders = await ordersResp.json();
+                }
+                allOrders = allOrders.concat(ordersInProgress);
+
+                allOrders.forEach(order => {
+                    if (!order.products || !Array.isArray(order.products)) return;
+                    order.products.forEach(p => {
+                        if (!p.product || !p.quantity) return;
+                        const key = `${p.product}|${p.batch || ''}`;
+                        reservationsByPosition[key] = (reservationsByPosition[key] || 0) + p.quantity;
+                    });
                 });
 
-                if (!response.ok) {
+                if (!articlesResp.ok) {
                     throw new Error('Errore nel caricamento dello stato magazzino');
                 }
 
-                allArticles = await response.json();
+                allArticles = await articlesResp.json();
                 renderWarehouseStatus(allArticles);
+                // Update management panel counts
+                const validCount = allArticles.filter(a => !a.code?.startsWith('EMPTY-')).length;
+                document.getElementById('prodottiCount').textContent = validCount;
+                document.getElementById('posizioniCount').textContent = allShelfPositions.length;
+                if (prodottiExpanded) renderProdottiList();
+                if (posizioniExpanded) renderPosizioniList();
             } catch (error) {
                 console.error('Errore caricamento stato magazzino:', error);
                 document.getElementById('warehouseTable').innerHTML = `
@@ -807,80 +1917,106 @@
         function renderWarehouseStatus(articles) {
             const container = document.getElementById('warehouseTable');
 
-            if (!articles || articles.length === 0) {
-                container.innerHTML = '<div class="empty-state">Nessun articolo in magazzino</div>';
+            // Article-centric view: one row per article
+            const validArticles = articles.filter(a => !a.code?.startsWith('EMPTY-'));
+
+            if (!validArticles.length) {
+                container.innerHTML = '<div class="empty-state">Nessun prodotto trovato.</div>';
                 return;
             }
 
-            // Filtra gli articoli: scarta quelli con codice che inizia con EMPTY (posizioni vuote)
-            const validArticles = articles.filter(a => !a.code || !a.code.startsWith('EMPTY-'));
+            const getArrow = (col) => currentSortBy === col ? (currentSortAsc ? ' ▲' : ' ▼') : '';
 
-            if (validArticles.length === 0) {
-                container.innerHTML = '<div class="empty-state">Nessun articolo in magazzino (solo posizioni vuote)</div>';
-                return;
-            }
-
-            // Genera frecce per ordinamento
-            const getArrow = (col) => {
-                if (currentSortBy === col) {
-                    return currentSortAsc ? ' ▲' : ' ▼';
-                }
-                return '';
-            };
+            const sorted = [...validArticles].sort((a, b) => {
+                let v = 0;
+                if (currentSortBy === 'name') v = (a.name || '').localeCompare(b.name || '', 'it');
+                else v = (a.code || '').localeCompare(b.code || '', 'it');
+                return currentSortAsc ? v : -v;
+            });
 
             let html = `
                 <table>
                     <thead>
                         <tr>
-                            <th style="cursor: pointer;" onclick="sortWarehouse('position')">Posizione${getArrow('position')}</th>
-                            <th style="cursor: pointer;" onclick="sortWarehouse('code')">Codice${getArrow('code')}</th>
-                            <th style="cursor: pointer;" onclick="sortWarehouse('name')">Nome${getArrow('name')}</th>
-                            <th>Quantità (kg)</th>
-                            <th>Lotto</th>
-                            <th>Scadenza</th>
+                            <th style="cursor:pointer;" onclick="sortWarehouse('code')">Codice${getArrow('code')}</th>
+                            <th style="cursor:pointer;" onclick="sortWarehouse('name')">Nome${getArrow('name')}</th>
+                            <th>📍 Scaffale</th>
+                            <th>📦 Colli tot.</th>
+                            <th>⚖️ Kg tot.</th>
+                            <th>🔒 Colli prenotati</th>
+                            <th>✅ Colli disponibili</th>
                             <th>Azioni</th>
                         </tr>
                     </thead>
                     <tbody>
             `;
 
-            validArticles.forEach((article, idx) => {
-                // Estrai la posizione dal shelfPosition (formato: "posizione-codice")
-                let posizione = '(non assegnata)';
-                if (article.inventory?.shelfPosition) {
-                    const parts = article.inventory.shelfPosition.split('-');
-                    posizione = parts[0] || '(non assegnata)'; // Prende la parte prima del primo trattino
-                }
+            sorted.forEach(art => {
+                const entries = allShelfEntries.filter(e => e.articleId === art.id);
+                const totalQty = entries.reduce((s, e) => s + (e.quantity || 0), 0);
+                const totalKg = calculateTotalWeight(totalQty, getWeightPerUnit(art));
+                const weightPerUnit = getWeightPerUnit(art);
                 
-                const codice = article.code || article.codice || '(senza codice)';
-                const nome = article.name || article.nome || '(senza nome)';
-                const quantita = article.inventory?.currentStock || article.quantita || 0;
-                const lotto = article.inventory?.batch || article.lotto || '(senza lotto)';
-                const scadenza = article.inventory?.expiry || article.scadenza || '(non specificata)';
+                // Calcola prenotato dagli ordini attivi — converte kg → colli
+                let totalReservedKg = 0;
+                const artCode = art.code || '';
+                Object.keys(reservationsByPosition).forEach(key => {
+                    if (key.startsWith(artCode + '|')) {
+                        totalReservedKg += reservationsByPosition[key];
+                    }
+                });
+                // Fallback al campo inventory.reserved (già in kg) se nessun ordine
+                if (totalReservedKg === 0) totalReservedKg = art.inventory?.reserved || 0;
+                const totalReserved = weightPerUnit > 0 ? Math.round(totalReservedKg / weightPerUnit) : totalReservedKg;
+                
+                const available = totalQty - totalReserved;
+                const reservedCell = totalReserved > 0
+                    ? `<span style="background:#431407;color:#f97316;font-weight:700;padding:2px 8px;border-radius:12px;font-size:12px;">🔒 ${totalReserved}</span>`
+                    : `<span style="color:#6b7280;">—</span>`;
+                const availableColor = available < 0 ? '#dc2626' : (totalReserved > 0 && available === 0 ? '#ea580c' : '#4ade80');
+
+                let scaffaleBadges;
+                if (entries.length > 0) {
+                    scaffaleBadges = entries.map(e => {
+                        const posObj = allShelfPositions.find(p => p.code === e.positionCode);
+                        const tooltipTitle = [posObj?.description, e.notes].filter(Boolean).join(' — ');
+                        const tooltip = tooltipTitle ? ` title="${tooltipTitle}"` : '';
+                        
+                        // Prenotato per questa posizione: converti kg → colli
+                        const entryBatch = e.batch || '';
+                        const reserveKey = `${artCode}|${entryBatch}`;
+                        const entryReservedKg = reservationsByPosition[reserveKey] || 0;
+                        const entryReserved = weightPerUnit > 0 ? Math.round(entryReservedKg / weightPerUnit) : entryReservedKg;
+                        
+                        const parts = [];
+                        if (e.quantity != null) parts.push(`<span style="color:#bfdbfe;">📦 ${e.quantity}</span>`);
+                        if (entryReserved > 0) parts.push(`<span style="color:#f97316;font-weight:700;">🔒 ${entryReserved}</span>`);
+                        if (e.batch)           parts.push(`<span style="color:#fde68a;">🏷️ ${e.batch}</span>`);
+                        if (e.expiry)          parts.push(`<span style="color:#6ee7b7;">📅 ${e.expiry}</span>`);
+                        if (e.notes)           parts.push(`<span style="color:#d1d5db;">💬 ${e.notes}</span>`);
+                        const sub = parts.length ? `<span style="font-weight:400;font-size:12px;display:flex;gap:8px;flex-wrap:wrap;margin-top:3px;">${parts.join('')}</span>` : '';
+                        return `<span${tooltip} onclick="openShelfEntryModal('${e.positionCode}', ${e.id})" style="display:inline-flex;flex-direction:column;background:#172554;color:#60a5fa;font-family:monospace;font-size:14px;font-weight:700;padding:5px 10px;border-radius:7px;margin:3px 6px 3px 0;cursor:pointer;border:1px solid #1e3a8a;">📍 ${e.positionCode}${sub}</span>`;
+                    }).join('');
+                } else {
+                    scaffaleBadges = `<span style="color:#6b7280;font-size:12px;">non assegnato</span>`;
+                }
 
                 html += `
-                    <tr data-article-id="${article.id || idx}">
-                        <td>${posizione}</td>
-                        <td><strong>${codice}</strong></td>
-                        <td>${nome}</td>
-                        <td class="editable-cell" onclick="editCell(this, 'quantity', ${article.id})" data-value="${quantita}">
-                            <span class="cell-value">${quantita}</span>
-                            <input type="number" class="cell-input" style="display: none;" value="${quantita}" min="0" step="0.5">
-                        </td>
-                        <td>${lotto}</td>
-                        <td>${scadenza}</td>
-                        <td>
-                            <button class="btn btn-small btn-edit" onclick="editQuantity(this, ${article.id})">✏️</button>
-                        </td>
-                    </tr>
-                `;
+                <tr>
+                    <td><strong>${art.code || '—'}</strong></td>
+                    <td>${art.name || '—'}</td>
+                    <td style="min-width:120px;">${scaffaleBadges}</td>
+                    <td><strong>${totalQty}</strong></td>
+                    <td><span style="color:#60a5fa;font-weight:600;">${totalKg} kg</span></td>
+                    <td style="text-align:center;">${reservedCell}</td>
+                    <td style="text-align:center;"><span style="font-weight:700;color:${availableColor};">${available}</span></td>
+                    <td style="white-space:nowrap;">
+                        <button class="btn btn-small" style="background:#16a34a;color:#fff;" onclick="openShelfEntryModal(null, null, ${art.id})">+ Scaffale</button>
+                    </td>
+                </tr>`;
             });
 
-            html += `
-                    </tbody>
-                </table>
-            `;
-
+            html += `</tbody></table>`;
             container.innerHTML = html;
         }
 
@@ -1046,19 +2182,87 @@
             }
         }
 
+        const MAIN_SECTIONS = ['statoMagazzinoCard', 'gestioneProdottiCard', 'gestionePosizioni'];
+
+        function showOnlySection(id) {
+            MAIN_SECTIONS.forEach(sid => {
+                const el = document.getElementById(sid);
+                if (el) el.style.display = sid === id ? 'block' : 'none';
+            });
+            // Auto-espandi lista prodotti
+            if (id === 'gestioneProdottiCard') {
+                prodottiExpanded = true;
+                renderProdottiList();
+            }
+            // Auto-espandi lista posizioni
+            if (id === 'gestionePosizioni') {
+                posizioniExpanded = true;
+                renderPosizioniList();
+            }
+            setTimeout(() => {
+                const el = document.getElementById(id);
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 50);
+        }
+
+        function scrollToSection(id) {
+            showOnlySection(id);
+        }
+
+        function scrollToWarehouseStatus() {
+            showOnlySection('statoMagazzinoCard');
+            // Apri la tabella automaticamente
+            const table = document.getElementById('warehouseTable');
+            if (table && table.classList.contains('hidden-content')) {
+                toggleWarehouseTable();
+            }
+        }
+
+        function toggleGestioneCard(e) {
+            const sub = document.getElementById('fcGestioneSub');
+            const card = document.getElementById('fcGestione');
+            if (sub.classList.contains('open')) {
+                sub.classList.remove('open');
+                card.style.borderColor = '';
+            } else {
+                sub.classList.add('open');
+                card.style.borderColor = '#2563eb';
+            }
+        }
+
         function toggleWarehouseTable() {
             const btn = document.getElementById('toggleWarehouseBtn');
             const table = document.getElementById('warehouseTable');
-            const search = document.querySelector('input[id="searchWarehouse"]').parentElement;
-            
-            if (table.classList.contains('hidden-content')) {
-                table.classList.remove('hidden-content');
-                search.style.display = 'flex';
-                btn.innerHTML = '<span>▼ Chiudi</span>';
+            const scaffali = document.getElementById('scaffaliView');
+            const searchContainer = document.querySelector('.warehouse-search-container');
+            const viewToggleBar = document.getElementById('viewToggleBar');
+
+            if (!table || !scaffali) return;
+
+            const isTableHidden = table.classList.contains('hidden-content');
+            const isOpen = !isTableHidden || (scaffali.style.display === 'block');
+
+            if (!isOpen) {
+                // Open
+                if (viewToggleBar) viewToggleBar.style.display = 'flex';
+                if (currentView === 'scaffali') {
+                    table.style.display = 'none';
+                    scaffali.style.display = 'block';
+                    if (searchContainer) searchContainer.style.display = 'none';
+                    renderShelfMap(allArticles, allShelfPositions);
+                } else {
+                    table.classList.remove('hidden-content');
+                    scaffali.style.display = 'none';
+                    if (searchContainer) searchContainer.style.display = 'flex';
+                }
+                if (btn) btn.innerHTML = '<span>▼ Chiudi</span>';
             } else {
+                // Close
                 table.classList.add('hidden-content');
-                search.style.display = 'none';
-                btn.innerHTML = '<span>▶ Apri</span>';
+                scaffali.style.display = 'none';
+                if (searchContainer) searchContainer.style.display = 'none';
+                if (viewToggleBar) viewToggleBar.style.display = 'none';
+                if (btn) btn.innerHTML = '<span>▶ Apri</span>';
             }
         }
 
@@ -1173,8 +2377,8 @@
                 console.log('📄 Importazione dal PDF nel NAS...');
                 
                 // Conferma prima di azzerare i dati
-                if (!confirm('⚠️  ATTENZIONE!\n\nQuesto comando:\n1. Leggerà il file PDF dal NAS\n2. AZZERERÀ completamente il master-Inventory.csv\n3. Lo ricrea con i dati del PDF\n4. Sincronizzerà il database\n\nContinuare?')) {
-                    throw new Error('Operazione annullata dall\'utente');
+                if (!await customConfirm('⚠️ ATTENZIONE!\nQuesto azzererà il master-Inventory.csv e lo ricreerà dal PDF NAS.\nContinuare?')) {
+                    return;
                 }
 
                 const response = await fetch(`${API_URL}/inventory/import/pdf`, {
@@ -1219,6 +2423,1218 @@
             } catch (error) {
                 console.error('Errore:', error);
                 showAlert(`❌ Errore: ${error.message}`, 'error');
+            }
+        }
+
+        // ===== VIEW TOGGLE =====
+        let currentView = 'tabella'; // 'tabella' | 'scaffali'
+
+        function _refreshWarehouseView(targetPosCode) {
+            if (currentView === 'tabella') {
+                renderWarehouseStatus(allArticles);
+                return;
+            }
+            // Capture currently open sectors before re-render
+            const openSectors = [];
+            document.querySelectorAll('.shelf-positions-grid').forEach(el => {
+                if (el.style.display !== 'none') openSectors.push(el.id.replace('sector-grid-', ''));
+            });
+            // Also ensure the sector of the target position is open
+            if (targetPosCode) {
+                const targetSector = targetPosCode.charAt(0).toUpperCase();
+                if (!openSectors.includes(targetSector)) openSectors.push(targetSector);
+            }
+            renderShelfMap(allArticles, allShelfPositions);
+            // Restore open sectors
+            openSectors.forEach(sector => {
+                const grid = document.getElementById(`sector-grid-${sector}`);
+                const header = document.getElementById(`sector-header-${sector}`);
+                if (grid) grid.style.display = 'grid';
+                if (header) header.classList.remove('collapsed');
+            });
+            // Scroll to modified position card
+            if (targetPosCode) {
+                setTimeout(() => {
+                    const badges = document.querySelectorAll('.pos-badge');
+                    for (const badge of badges) {
+                        if (badge.textContent.trim() === targetPosCode) {
+                            const card = badge.closest('.shelf-pos-card');
+                            if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            break;
+                        }
+                    }
+                }, 50);
+            }
+        }
+
+        function switchView(view) {
+            currentView = view;
+            document.getElementById('btnViewTabella').classList.toggle('active', view === 'tabella');
+            document.getElementById('btnViewScaffali').classList.toggle('active', view === 'scaffali');
+
+            const tableContainer = document.getElementById('warehouseTable');
+            const scaffaliView = document.getElementById('scaffaliView');
+            const searchContainer = document.querySelector('.warehouse-search-container');
+
+            if (view === 'tabella') {
+                tableContainer.style.display = '';
+                tableContainer.classList.remove('hidden-content');
+                scaffaliView.style.display = 'none';
+                if (searchContainer) searchContainer.style.display = 'flex';
+                renderWarehouseStatus(allArticles);
+            } else {
+                tableContainer.style.display = 'none';
+                scaffaliView.style.display = 'block';
+                if (searchContainer) searchContainer.style.display = 'none';
+                renderShelfMap(allArticles, allShelfPositions);
+            }
+        }
+
+        // ===== SHELF MAP =====
+        let allShelfPositions = [];
+        let allShelfEntries = [];
+
+        async function loadShelfData() {
+            try {
+                const [posResp, entriesResp] = await Promise.all([
+                    fetch(`${API_URL}/inventory/shelf-positions`, { headers: { 'Authorization': `Bearer ${token}` } }),
+                    fetch(`${API_URL}/inventory/shelf-entries`, { headers: { 'Authorization': `Bearer ${token}` } })
+                ]);
+                if (posResp.ok) allShelfPositions = await posResp.json();
+                if (entriesResp.ok) allShelfEntries = await entriesResp.json();
+            } catch (e) {
+                console.warn('Shelf data not available:', e);
+            }
+        }
+
+        function renderShelfMap(articles, positions) {
+            const container = document.getElementById('scaffaliView');
+            if (!container) return;
+
+            // Build sectors from positions list (or fallback to entries)
+            let sectors = {};
+
+            if (positions && positions.length > 0) {
+                positions.forEach(pos => {
+                    const sector = pos.code.charAt(0).toUpperCase();
+                    if (!sectors[sector]) sectors[sector] = [];
+                    sectors[sector].push({
+                        id: pos.id,
+                        code: pos.code,
+                        description: pos.description || null,
+                        entries: allShelfEntries.filter(e => e.positionCode === pos.code)
+                    });
+                });
+            } else {
+                // Fallback: derive positions from entries
+                const codes = [...new Set(allShelfEntries.map(e => e.positionCode))].sort();
+                codes.forEach(code => {
+                    const sector = code.charAt(0).toUpperCase();
+                    if (!sectors[sector]) sectors[sector] = [];
+                    sectors[sector].push({
+                        id: allShelfPositions.find(p => p.code === code)?.id || null,
+                        code,
+                        description: null,
+                        entries: allShelfEntries.filter(e => e.positionCode === code)
+                    });
+                });
+            }
+
+            if (Object.keys(sectors).length === 0) {
+                container.innerHTML = '<div class="empty-state">Nessuna posizione scaffale trovata. Aggiungi posizioni dalla sezione Impostazioni.</div>';
+                return;
+            }
+
+            let html = '<div class="shelf-map">';
+
+            Object.keys(sectors).sort().forEach(sector => {
+                const sectorPositions = sectors[sector];
+                const occupied = sectorPositions.filter(p => p.entries.length > 0).length;
+
+                html += `
+                <div class="shelf-sector-card">
+                    <div class="shelf-sector-header collapsed" onclick="toggleSector('${sector}')" id="sector-header-${sector}">
+                        <span class="sector-icon">🏗️</span>
+                        <span class="sector-name">Settore ${sector}</span>
+                        <span class="sector-count">${occupied}/${sectorPositions.length} occupati</span>
+                        <span class="sector-chevron">▼</span>
+                    </div>
+                    <div class="shelf-positions-grid" id="sector-grid-${sector}" style="display:none;">
+                `;
+
+                sectorPositions.forEach(pos => {
+                    const hasEntries = pos.entries.length > 0;
+                    if (!hasEntries) {
+                        html += `
+                        <div class="shelf-pos-card empty" onclick="openShelfEntryModal('${pos.code}', null)" ondragover="onPosDragOver(event)" ondragleave="onPosDragLeave(event)" ondrop="onPosDrop(event, '${pos.code}')">
+                            <div class="pos-badge" onclick="event.stopPropagation();openEditPosModal(${pos.id})" title="Gestisci posizione" style="cursor:pointer;">${pos.code}</div>
+                            ${pos.description ? `<div style="font-size:10px;color:#6b7280;margin-top:2px;">${pos.description}</div>` : ''}
+                            <div class="pos-empty-label">📭 Posizione vuota</div>
+                            <div style="font-size:11px;color:#6b7280;margin-top:4px;">Clicca per assegnare</div>
+                        </div>`;
+                    } else {
+                        html += `
+                        <div class="shelf-pos-card occupied" onclick="openEditPosModal(${pos.id})" style="cursor:pointer;" ondragover="onPosDragOver(event)" ondragleave="onPosDragLeave(event)" ondrop="onPosDrop(event, '${pos.code}')">
+                            <div class="pos-badge" title="Gestisci posizione">${pos.code}</div>
+                            ${pos.description ? `<div style="font-size:10px;color:#9ca3af;margin-bottom:4px;">${pos.description}</div>` : ''}
+                            <div class="pos-entries-list">`;
+
+                        pos.entries.forEach(entry => {
+                            const art = articles.find(a => a.id === entry.articleId);
+                            const nome = art?.name || `Articolo #${entry.articleId}`;
+                            const codice = art?.code || '';
+                            const qty = entry.quantity || 0;
+                            // Prenotato per questo specifico batch: converti kg → colli
+                            const entryBatch = entry.batch || '';
+                            const reserveKey = `${codice}|${entryBatch}`;
+                            const entryReservedKg = reservationsByPosition[reserveKey] || 0;
+                            const artWeightPerUnit = art?.weightPerUnit || 1;
+                            const entryReserved = artWeightPerUnit > 0 ? Math.round(entryReservedKg / artWeightPerUnit) : entryReservedKg;
+                            const entryAvailable = qty - entryReserved;
+                            html += `
+                            <div class="pos-entry-item" draggable="true" ondragstart="onEntryDragStart(event, ${entry.id}, '${pos.code}')" ondragend="onEntryDragEnd(event)">
+                                <div style="display:flex;align-items:center;gap:4px;">
+                                    <span class="pos-article-name" title="${nome}" style="flex:1;">${nome}</span>
+                                    <span class="pos-entry-qty-badge">${qty}</span>
+                                </div>
+                                <div class="pos-article-code">${codice}</div>
+                                ${entry.batch ? `<div class="pos-lotto">🏷️ ${entry.batch}</div>` : ''}
+                                ${entry.expiry ? `<div class="pos-lotto">📅 ${entry.expiry}</div>` : ''}
+                                ${entryReserved > 0 ? `<div style="font-size:11px;background:#431407;color:#f97316;border-radius:4px;padding:2px 6px;margin-top:2px;font-weight:600;">🔒 ${entryReserved} prenotati</div>` : ''}
+                                ${entryReserved > 0 ? `<div style="font-size:11px;color:${entryAvailable <= 0 ? '#dc2626' : '#4ade80'};margin-top:1px;font-weight:600;">✅ ${entryAvailable} disponibili</div>` : ''}
+                                <div style="display:flex;gap:4px;margin-top:4px;">
+                                    <button class="pos-btn" style="background:#2563eb;color:#fff;font-size:10px;padding:2px 8px;flex:1;" onclick="event.stopPropagation();openShelfEntryModal('${pos.code}', ${entry.id})">✏️</button>
+                                    <button class="pos-btn" style="background:#7c3aed;color:#fff;font-size:10px;padding:2px 8px;flex:1;" onclick="event.stopPropagation();openCopyEntryModal(${entry.id})" title="Copia in altra posizione">📋</button>
+                                    <button class="pos-btn" style="background:#dc2626;color:#fff;font-size:10px;padding:2px 8px;flex:1;" onclick="event.stopPropagation();deleteShelfEntry(${entry.id})">🗑️</button>
+                                </div>
+                            </div>`;
+                        });
+
+                        html += `</div>
+                            <div style="margin-top:6px;">
+                                <button class="pos-btn" style="background:#16a34a;color:#fff;width:100%;font-size:11px;" onclick="event.stopPropagation();openShelfEntryModal('${pos.code}', null)">+ Aggiungi prodotto</button>
+                            </div>
+                        </div>`;
+                    }
+                });
+
+                html += `</div></div>`;
+            });
+
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        function toggleSector(sector) {
+            const grid = document.getElementById(`sector-grid-${sector}`);
+            const header = document.getElementById(`sector-header-${sector}`);
+            if (!grid) return;
+            if (grid.style.display === 'none') {
+                grid.style.display = 'grid';
+                if (header) header.classList.remove('collapsed');
+            } else {
+                grid.style.display = 'none';
+                if (header) header.classList.add('collapsed');
+            }
+        }
+
+        // ===== DRAG & DROP SHELF ENTRIES =====
+        let draggedEntryId = null;
+        let draggedFromPos = null;
+
+        function onEntryDragStart(e, entryId, posCode) {
+            e.stopPropagation();
+            draggedEntryId = entryId;
+            draggedFromPos = posCode;
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', entryId);
+            setTimeout(() => e.target.classList.add('dragging'), 0);
+        }
+
+        function onEntryDragEnd(e) {
+            e.target.classList.remove('dragging');
+            draggedEntryId = null;
+            draggedFromPos = null;
+            document.querySelectorAll('.shelf-pos-card.drag-over').forEach(el => el.classList.remove('drag-over'));
+        }
+
+        function onPosDragOver(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.dataTransfer.dropEffect = 'move';
+            const card = e.target.closest('.shelf-pos-card');
+            if (card) card.classList.add('drag-over');
+        }
+
+        function onPosDragLeave(e) {
+            e.stopPropagation();
+            const card = e.target.closest('.shelf-pos-card');
+            if (card && !card.contains(e.relatedTarget)) {
+                card.classList.remove('drag-over');
+            }
+        }
+
+        async function onPosDrop(e, targetPosCode) {
+            e.preventDefault();
+            e.stopPropagation();
+            const card = e.target.closest('.shelf-pos-card');
+            if (card) card.classList.remove('drag-over');
+
+            if (!draggedEntryId || targetPosCode === draggedFromPos) return;
+
+            const entry = allShelfEntries.find(en => en.id === draggedEntryId);
+            if (!entry) return;
+
+            const art = allArticles.find(a => a.id === entry.articleId);
+            const nome = art?.name || `Articolo #${entry.articleId}`;
+
+            const action = prompt(
+                `"${nome}" (×${entry.quantity})\nDa ${draggedFromPos} → ${targetPosCode}\n\nDigita:\n  S = Sposta\n  C = Copia (apre modale)\n\n(Annulla per annullare)`,
+                'S'
+            );
+            if (!action) return;
+
+            const choice = action.trim().toUpperCase();
+
+            if (choice === 'C') {
+                // Open the copy modal pre-filled with target position
+                openCopyEntryModal(draggedEntryId, targetPosCode);
+                return;
+            }
+
+            if (choice !== 'S') { showAlert('❌ Scelta non valida (S o C)', 'error'); return; }
+
+            try {
+                const resp = await fetch(`${API_URL}/inventory/shelf-entries/${draggedEntryId}`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        quantity: entry.quantity,
+                        batch: entry.batch || null,
+                        expiry: entry.expiry || null,
+                        notes: entry.notes || null,
+                        positionCode: targetPosCode
+                    })
+                });
+                if (!resp.ok) {
+                    const err = await resp.json().catch(() => ({}));
+                    throw new Error(err?.error || `HTTP ${resp.status}`);
+                }
+                showAlert(`✅ "${nome}" spostato in ${targetPosCode}`, 'success');
+                await loadShelfData();
+                _refreshWarehouseView(targetPosCode);
+            } catch (err) {
+                showAlert(`❌ Errore spostamento: ${err.message}`, 'error');
+            }
+        }
+
+        // ===== COPIA PRODOTTO IN ALTRA POSIZIONE =====
+        function openCopyEntryModal(entryId, preselectedPos) {
+            const entry = allShelfEntries.find(e => e.id === entryId);
+            if (!entry) return;
+            const art = allArticles.find(a => a.id === entry.articleId);
+            const nome = art?.name || `Articolo #${entry.articleId}`;
+            const codice = art?.code || '';
+
+            document.getElementById('copyEntrySourceId').value = entryId;
+            document.getElementById('copyEntrySummary').innerHTML =
+                `${nome} <span style="color:#60a5fa;">${codice}</span> — da <strong style="color:#facc15;">${entry.positionCode}</strong>`;
+            document.getElementById('copyEntryQty').value = entry.quantity || 0;
+            document.getElementById('copyEntryBatch').value = entry.batch || '';
+            document.getElementById('copyEntryExpiry').value = entry.expiry || '';
+            document.getElementById('copyEntryNotes').value = entry.notes || '';
+            document.getElementById('copyEntryError').style.display = 'none';
+            document.getElementById('copyEntryConfirmBtn').disabled = false;
+            document.getElementById('copyEntryConfirmText').textContent = '📋 Copia';
+
+            // Populate position select (exclude source)
+            const sel = document.getElementById('copyEntryPosSelect');
+            sel.innerHTML = '<option value="">-- Seleziona destinazione --</option>';
+            allShelfPositions.slice().sort((a,b) => a.code.localeCompare(b.code)).forEach(p => {
+                if (p.code === entry.positionCode) return;
+                sel.innerHTML += `<option value="${p.code}">${p.code}${p.description ? ' — ' + p.description : ''}</option>`;
+            });
+            if (preselectedPos) sel.value = preselectedPos;
+
+            document.getElementById('copyEntryOverlay').classList.add('open');
+        }
+
+        function closeCopyEntryModal(event) {
+            if (event && event.target !== event.currentTarget) return;
+            document.getElementById('copyEntryOverlay').classList.remove('open');
+        }
+        function closeCopyEntryForce() {
+            document.getElementById('copyEntryOverlay').classList.remove('open');
+        }
+
+        async function submitCopyEntry() {
+            const entryId = parseInt(document.getElementById('copyEntrySourceId').value);
+            const entry = allShelfEntries.find(e => e.id === entryId);
+            if (!entry) return;
+
+            const positionCode = document.getElementById('copyEntryPosSelect').value;
+            const qty = parseInt(document.getElementById('copyEntryQty').value) || 0;
+            const batch = document.getElementById('copyEntryBatch').value.trim() || null;
+            const expiry = document.getElementById('copyEntryExpiry').value.trim() || null;
+            const notes = document.getElementById('copyEntryNotes').value.trim() || null;
+            const errEl = document.getElementById('copyEntryError');
+
+            if (!positionCode) { errEl.textContent = 'Seleziona una posizione di destinazione'; errEl.style.display = 'block'; return; }
+            if (qty <= 0) { errEl.textContent = 'La quantità deve essere > 0'; errEl.style.display = 'block'; return; }
+
+            errEl.style.display = 'none';
+            document.getElementById('copyEntryConfirmBtn').disabled = true;
+            document.getElementById('copyEntryConfirmText').textContent = '⏳ Copia in corso...';
+
+            try {
+                const resp = await fetch(`${API_URL}/inventory/shelf-entries`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ articleId: entry.articleId, positionCode, quantity: qty, batch, expiry, notes })
+                });
+                if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e?.error || `HTTP ${resp.status}`); }
+
+                const art = allArticles.find(a => a.id === entry.articleId);
+                showAlert(`✅ "${art?.name || '?'}" copiato in ${positionCode} (×${qty})`, 'success');
+                closeCopyEntryForce();
+                await loadShelfData();
+                _refreshWarehouseView(positionCode);
+            } catch (err) {
+                errEl.textContent = err.message;
+                errEl.style.display = 'block';
+                document.getElementById('copyEntryConfirmBtn').disabled = false;
+                document.getElementById('copyEntryConfirmText').textContent = '📋 Copia';
+            }
+        }
+
+        // ===== CARICO / SCARICO MODAL =====
+        let currentCargoType = 'CARICO';
+
+        function openCargoModal(articleId, operation) {
+            operation = operation || 'CARICO';
+            currentCargoType = operation;
+
+            // Populate article select
+            const select = document.getElementById('cargoArticleSelect');
+            select.innerHTML = '<option value="">-- Seleziona articolo --</option>';
+            const validArticles = allArticles
+                .filter(a => !a.code?.startsWith('EMPTY-'))
+                .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'it'));
+
+            validArticles.forEach(a => {
+                const opt = document.createElement('option');
+                opt.value = a.id;
+                const qty = parseFloat(a.inventory?.currentStock ?? a.quantita ?? 0);
+                const kg = calculateTotalWeight(qty, getWeightPerUnit(a));
+                opt.textContent = `${a.name || a.nome} (${a.code || a.codice}) — ${qty} colli (${kg} kg)`;
+                select.appendChild(opt);
+            });
+
+            if (articleId) {
+                select.value = articleId;
+                onCargoArticleChange();
+            } else {
+                document.getElementById('cargoCurrentStockInfo').style.display = 'none';
+            }
+
+            setCargoType(operation);
+            document.getElementById('cargoQtyInput').value = 1;
+            document.getElementById('cargoLottoInput').value = '';
+            document.getElementById('cargoScadenzaInput').value = '';
+            document.getElementById('cargoNotesInput').value = '';
+            document.getElementById('cargoModalOverlay').classList.add('open');
+        }
+
+        function closeCargoModal(event) {
+            if (event && event.target !== document.getElementById('cargoModalOverlay')) return;
+            document.getElementById('cargoModalOverlay').classList.remove('open');
+        }
+
+        function setCargoType(type) {
+            currentCargoType = type;
+            const btnC = document.getElementById('btnTypeCarico');
+            const btnS = document.getElementById('btnTypeScarico');
+            const confirmBtn = document.getElementById('cargoConfirmBtn');
+            const confirmText = document.getElementById('cargoConfirmText');
+            const qtyLabel = document.getElementById('cargoQtyLabel');
+            const titleEl = document.getElementById('cargoModalTitle');
+            const extraFields = document.getElementById('cargoExtraFields');
+
+            if (type === 'CARICO') {
+                btnC.className = 'cargo-type-btn selected-carico';
+                btnS.className = 'cargo-type-btn';
+                confirmBtn.className = 'btn btn-carico-confirm';
+                confirmText.textContent = '✓ Conferma Carico';
+                qtyLabel.textContent = 'Quantità da caricare (colli)';
+                titleEl.textContent = '📥 Carico Merce';
+                extraFields.style.display = '';
+            } else {
+                btnS.className = 'cargo-type-btn selected-scarico';
+                btnC.className = 'cargo-type-btn';
+                confirmBtn.className = 'btn btn-scarico-confirm';
+                confirmText.textContent = '✓ Conferma Scarico';
+                qtyLabel.textContent = 'Quantità da scaricare (colli)';
+                titleEl.textContent = '📤 Scarico Merce';
+                extraFields.style.display = 'none';
+            }
+        }
+
+        function onCargoArticleChange() {
+            const select = document.getElementById('cargoArticleSelect');
+            const articleId = parseInt(select.value);
+            const infoEl = document.getElementById('cargoCurrentStockInfo');
+            const stockVal = document.getElementById('cargoCurrentStockValue');
+
+            if (!articleId) {
+                infoEl.style.display = 'none';
+                return;
+            }
+
+            const article = allArticles.find(a => a.id === articleId);
+            if (article) {
+                const current = parseFloat(article.inventory?.currentStock ?? article.quantita ?? 0);
+                stockVal.textContent = current;
+                const kgEl = document.getElementById('cargoCurrentStockKg');
+                if (kgEl) kgEl.textContent = calculateTotalWeight(current, getWeightPerUnit(article));
+                infoEl.style.display = 'block';
+                updateCargoKgPreview();
+            }
+        }
+
+        function updateCargoKgPreview() {
+            const select = document.getElementById('cargoArticleSelect');
+            const articleId = parseInt(select.value);
+            const qty = parseFloat(document.getElementById('cargoQtyInput').value) || 0;
+            const previewEl = document.getElementById('cargoKgPreview');
+            if (!previewEl) return;
+            if (!articleId || qty <= 0) { previewEl.textContent = ''; return; }
+            const article = allArticles.find(a => a.id === articleId);
+            if (!article) { previewEl.textContent = ''; return; }
+            const kg = calculateTotalWeight(qty, getWeightPerUnit(article));
+            previewEl.textContent = `= ${kg} kg totali`;
+        }
+
+        function adjustQty(delta) {
+            const input = document.getElementById('cargoQtyInput');
+            const step = parseFloat(input.step) || 1;
+            const next = Math.max(0, (parseFloat(input.value) || 0) + delta * step);
+            input.value = next;
+            updateCargoKgPreview();
+        }
+
+        async function submitCargoScarico() {
+            const select = document.getElementById('cargoArticleSelect');
+            const articleId = parseInt(select.value);
+
+            if (!articleId) {
+                showAlert('❌ Seleziona un articolo', 'error');
+                return;
+            }
+
+            const delta = parseFloat(document.getElementById('cargoQtyInput').value);
+            if (isNaN(delta) || delta <= 0) {
+                showAlert('❌ Inserisci una quantità valida', 'error');
+                return;
+            }
+
+            const article = allArticles.find(a => a.id === articleId);
+            if (!article) {
+                showAlert('❌ Articolo non trovato', 'error');
+                return;
+            }
+
+            const currentStock = parseFloat(article.inventory?.currentStock ?? article.quantita ?? 0);
+            let newQuantity;
+
+            if (currentCargoType === 'CARICO') {
+                newQuantity = currentStock + delta;
+            } else {
+                newQuantity = currentStock - delta;
+                if (newQuantity < 0) {
+                    showAlert(`❌ Quantità insufficiente. Giacenza attuale: ${currentStock} colli (${calculateTotalWeight(currentStock, getWeightPerUnit(article))} kg)`, 'error');
+                    return;
+                }
+            }
+
+            const notes = document.getElementById('cargoNotesInput').value.trim();
+            const reason = `${currentCargoType} - ${delta} kg${notes ? ' - ' + notes : ''}`;
+
+            const confirmBtn = document.getElementById('cargoConfirmBtn');
+            confirmBtn.disabled = true;
+            const origText = document.getElementById('cargoConfirmText').textContent;
+            document.getElementById('cargoConfirmText').textContent = 'Salvataggio...';
+
+            try {
+                const response = await fetch(`${API_URL}/inventory/stock/update`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ articleId, newQuantity, reason })
+                });
+
+                if (!response.ok) throw new Error('Errore nel salvataggio');
+
+                const emoji = currentCargoType === 'CARICO' ? '📥' : '📤';
+                const articleName = article.name || article.nome;
+                const newKg = calculateTotalWeight(newQuantity, getWeightPerUnit(article));
+                showAlert(`${emoji} ${currentCargoType}: ${delta} colli → ${articleName}. Giacenza: ${newQuantity} colli (${newKg} kg)`, 'success');
+
+                // Update local data
+                if (article.inventory) {
+                    article.inventory.currentStock = newQuantity;
+                } else {
+                    article.quantita = newQuantity;
+                }
+                updateStatistics(allArticles);
+
+                // Re-render current view
+                if (currentView === 'scaffali') {
+                    renderShelfMap(allArticles, allShelfPositions);
+                } else {
+                    renderWarehouseStatus(allArticles);
+                }
+
+                document.getElementById('cargoModalOverlay').classList.remove('open');
+            } catch (e) {
+                showAlert(`❌ Errore: ${e.message}`, 'error');
+            } finally {
+                confirmBtn.disabled = false;
+                document.getElementById('cargoConfirmText').textContent = origText;
+            }
+        }
+
+        // ===== ASSEGNAZIONE SCAFFALE =====
+        let assignShelfTargetPos = '';
+
+        function openAssignShelfModal(positionCode) {
+            assignShelfTargetPos = positionCode;
+            document.getElementById('assignShelfPosCode').textContent = positionCode;
+
+            // Populate select with articles that have no shelf position or are unassigned
+            const select = document.getElementById('assignShelfArticleSelect');
+            select.innerHTML = '<option value="">-- Seleziona articolo --</option>';
+            const validArticles = allArticles
+                .filter(a => !a.code?.startsWith('EMPTY-'))
+                .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'it'));
+
+            validArticles.forEach(a => {
+                const opt = document.createElement('option');
+                opt.value = a.id;
+                const pos = a.inventory?.shelfPosition || 'non assegnato';
+                opt.textContent = `${a.name || a.nome} (${a.code || a.codice}) — pos: ${pos}`;
+                select.appendChild(opt);
+            });
+
+            document.getElementById('assignShelfOverlay').classList.add('open');
+        }
+
+        function closeAssignShelfModal(event) {
+            if (event && event.target !== document.getElementById('assignShelfOverlay')) return;
+            document.getElementById('assignShelfOverlay').classList.remove('open');
+        }
+
+        async function submitAssignShelf() {
+            const articleId = parseInt(document.getElementById('assignShelfArticleSelect').value);
+            if (!articleId) {
+                showAlert('❌ Seleziona un articolo', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('assignShelfConfirmBtn');
+            btn.disabled = true;
+            document.getElementById('assignShelfConfirmText').textContent = 'Assegnazione...';
+
+            try {
+                const response = await fetch(`${API_URL}/inventory/shelf-position`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ articleId, shelfPosition: assignShelfTargetPos })
+                });
+
+                if (!response.ok) throw new Error('Errore nell\'assegnazione');
+
+                const article = allArticles.find(a => a.id === articleId);
+                const articleName = article?.name || article?.nome || '';
+                showAlert(`✅ ${articleName} assegnato a ${assignShelfTargetPos}`, 'success');
+
+                // Update local data
+                if (article) {
+                    if (article.inventory) {
+                        article.inventory.shelfPosition = assignShelfTargetPos;
+                    } else {
+                        article.inventory = { shelfPosition: assignShelfTargetPos };
+                    }
+                }
+
+                // Re-render shelf map
+                renderShelfMap(allArticles, allShelfPositions);
+                document.getElementById('assignShelfOverlay').classList.remove('open');
+            } catch (e) {
+                showAlert(`❌ Errore: ${e.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                document.getElementById('assignShelfConfirmText').textContent = '✓ Assegna';
+            }
+        }
+
+        // ===== GESTIONE SHELF ENTRIES =====
+        let shelfEntryTargetPos = null;
+
+        function openShelfEntryModal(positionCode, entryId, preselectedArticleId) {
+            shelfEntryTargetPos = positionCode;
+            document.getElementById('shelfEntryPosCode').textContent = positionCode || '';
+            document.getElementById('shelfEntryId').value = entryId || '';
+            document.getElementById('shelfEntryError').style.display = 'none';
+            document.getElementById('shelfEntryConfirmBtn').disabled = false;
+
+            const isEdit = !!entryId;
+
+            // Populate position select
+            const posSelect = document.getElementById('shelfEntryPosSelect');
+            posSelect.innerHTML = '<option value="">-- Seleziona posizione --</option>';
+            allShelfPositions.forEach(pos => {
+                const opt = document.createElement('option');
+                opt.value = pos.code;
+                opt.textContent = pos.description ? `${pos.code} — ${pos.description}` : pos.code;
+                posSelect.appendChild(opt);
+            });
+
+            const articleField = document.getElementById('shelfEntryArticleField');
+            const select = document.getElementById('shelfEntryArticleSelect');
+            const addedList = document.getElementById('shelfEntryAddedList');
+            const addMoreBtn = document.getElementById('shelfEntryAddMoreBtn');
+
+            if (isEdit) {
+                // Edit mode — single save then close
+                const entry = allShelfEntries.find(e => e.id === entryId);
+                document.getElementById('shelfEntryModalTitle').textContent = '✏️ Modifica posizione scaffale';
+                articleField.style.display = 'none';
+                document.getElementById('shelfEntryQty').value = entry?.quantity ?? 0;
+                document.getElementById('shelfEntryBatch').value = entry?.batch || '';
+                document.getElementById('shelfEntryExpiry').value = entry?.expiry || '';
+                document.getElementById('shelfEntryNotes').value = entry?.notes || '';
+                posSelect.value = entry?.positionCode || positionCode || '';
+                document.getElementById('shelfEntryConfirmText').textContent = '✓ Salva e chiudi';
+                addMoreBtn.style.display = 'none';
+                addedList.style.display = 'none';
+                addedList.innerHTML = '';
+            } else {
+                // Create mode — allow multi-add
+                document.getElementById('shelfEntryModalTitle').textContent = '📦 Aggiungi prodotto a scaffale';
+                articleField.style.display = 'block';
+                select.innerHTML = '<option value="">-- Seleziona articolo --</option>';
+                const validArticles = allArticles
+                    .filter(a => !a.code?.startsWith('EMPTY-'))
+                    .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'it'));
+                validArticles.forEach(a => {
+                    const opt = document.createElement('option');
+                    opt.value = a.id;
+                    opt.textContent = `${a.name || a.nome} (${a.code || a.codice})`;
+                    select.appendChild(opt);
+                });
+                // Pre-select article if provided
+                if (preselectedArticleId) select.value = preselectedArticleId;
+                document.getElementById('shelfEntryQty').value = 0;
+                document.getElementById('shelfEntryBatch').value = '';
+                document.getElementById('shelfEntryExpiry').value = '';
+                document.getElementById('shelfEntryNotes').value = '';
+                posSelect.value = positionCode || '';
+                document.getElementById('shelfEntryConfirmText').textContent = '✓ Salva e chiudi';
+                addMoreBtn.style.display = 'inline-flex';
+                addedList.style.display = 'none';
+                addedList.innerHTML = '';
+            }
+
+            document.getElementById('shelfEntryOverlay').classList.add('open');
+        }
+
+        function closeShelfEntryModal(event) {
+            if (event && event.target !== document.getElementById('shelfEntryOverlay')) return;
+            document.getElementById('shelfEntryOverlay').classList.remove('open');
+        }
+
+        function closeShelfEntryForce() {
+            document.getElementById('shelfEntryOverlay').classList.remove('open');
+        }
+
+        async function submitShelfEntry(stayOpen) {
+            const entryId = parseInt(document.getElementById('shelfEntryId').value) || null;
+            const qty = parseInt(document.getElementById('shelfEntryQty').value) || 0;
+            const batch = document.getElementById('shelfEntryBatch').value.trim() || null;
+            const expiry = document.getElementById('shelfEntryExpiry').value.trim() || null;
+            const notes = document.getElementById('shelfEntryNotes').value.trim() || null;
+            const positionCode = document.getElementById('shelfEntryPosSelect').value.trim() || shelfEntryTargetPos;
+            const errEl = document.getElementById('shelfEntryError');
+            const btn = document.getElementById('shelfEntryConfirmBtn');
+
+            if (!positionCode) { errEl.textContent = 'Seleziona una posizione'; errEl.style.display = 'block'; return; }
+
+            btn.disabled = true;
+            const prevText = stayOpen ? '+ Aggiungi altro' : '✓ Salva e chiudi';
+            if (stayOpen) {
+                document.getElementById('shelfEntryAddMoreBtn').disabled = true;
+                document.getElementById('shelfEntryAddMoreBtn').textContent = '⏳';
+            } else {
+                document.getElementById('shelfEntryConfirmText').textContent = '⏳ Salvataggio...';
+            }
+            errEl.style.display = 'none';
+
+            try {
+                let resp, savedLabel;
+                if (entryId) {
+                    resp = await fetch(`${API_URL}/inventory/shelf-entries/${entryId}`, {
+                        method: 'PUT',
+                        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ quantity: qty, batch, expiry, notes, positionCode })
+                    });
+                    savedLabel = `${positionCode} × ${qty}`;
+                } else {
+                    const articleId = parseInt(document.getElementById('shelfEntryArticleSelect').value);
+                    if (!articleId) {
+                        errEl.textContent = 'Seleziona un articolo';
+                        errEl.style.display = 'block';
+                        btn.disabled = false;
+                        if (stayOpen) { document.getElementById('shelfEntryAddMoreBtn').disabled = false; document.getElementById('shelfEntryAddMoreBtn').textContent = '+ Aggiungi altro'; }
+                        else document.getElementById('shelfEntryConfirmText').textContent = '✓ Salva e chiudi';
+                        return;
+                    }
+                    resp = await fetch(`${API_URL}/inventory/shelf-entries`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ articleId, positionCode, quantity: qty, batch, expiry, notes })
+                    });
+                    const art = allArticles.find(a => a.id === articleId);
+                    savedLabel = `${art?.name || art?.nome || '?'} × ${qty} → ${positionCode}`;
+                }
+
+                if (!resp.ok) { const e = await resp.json().catch(() => {}); throw new Error(e?.error || `HTTP ${resp.status}`); }
+
+                await loadShelfData();
+                _refreshWarehouseView(positionCode);
+
+                if (stayOpen) {
+                    // Reset form for next entry (keep position)
+                    const addedList = document.getElementById('shelfEntryAddedList');
+                    const row = document.createElement('div');
+                    row.style.cssText = 'background:#14532d;color:#bbf7d0;border-radius:5px;padding:5px 10px;margin-bottom:4px;font-size:13px;';
+                    row.textContent = '✓ ' + savedLabel;
+                    addedList.appendChild(row);
+                    addedList.style.display = 'block';
+
+                    document.getElementById('shelfEntryArticleSelect').value = '';
+                    document.getElementById('shelfEntryQty').value = 0;
+                    document.getElementById('shelfEntryBatch').value = '';
+                    document.getElementById('shelfEntryExpiry').value = '';
+                    document.getElementById('shelfEntryNotes').value = '';
+                    btn.disabled = false;
+                    document.getElementById('shelfEntryAddMoreBtn').disabled = false;
+                    document.getElementById('shelfEntryAddMoreBtn').textContent = '+ Aggiungi altro';
+                } else {
+                    document.getElementById('shelfEntryOverlay').classList.remove('open');
+                    showAlert('✅ Scaffale aggiornato', 'success');
+                }
+            } catch (e) {
+                errEl.textContent = e.message;
+                errEl.style.display = 'block';
+                btn.disabled = false;
+                if (stayOpen) { document.getElementById('shelfEntryAddMoreBtn').disabled = false; document.getElementById('shelfEntryAddMoreBtn').textContent = '+ Aggiungi altro'; }
+                else document.getElementById('shelfEntryConfirmText').textContent = '✓ Salva e chiudi';
+            }
+        }
+
+        async function deleteShelfEntry(entryId, posCode) {
+            if (!await customConfirm('Rimuovere questo prodotto dalla posizione scaffale?')) return;
+            try {
+                const resp = await fetch(`${API_URL}/inventory/shelf-entries/${entryId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                showAlert('🗑️ Prodotto rimosso dalla posizione', 'success');
+                await loadShelfData();
+                _refreshWarehouseView();
+                // If editPos modal is open, refresh its entries list
+                if (posCode && document.getElementById('editPosOverlay').classList.contains('open')) {
+                    _renderEditPosEntries(posCode);
+                }
+            } catch (e) {
+                showAlert(`❌ ${e.message}`, 'error');
+            }
+        }
+
+        // ===== GESTIONE PRODOTTI =====
+
+        let prodottiExpanded = false;
+
+        function toggleProdottiList() {
+            prodottiExpanded = !prodottiExpanded;
+            document.getElementById('prodottiList').style.display = prodottiExpanded ? 'block' : 'none';
+            if (prodottiExpanded) renderProdottiList();
+        }
+
+        function renderProdottiList() {
+            const container = document.getElementById('prodottiList');
+            const valid = allArticles.filter(a => !a.code?.startsWith('EMPTY-')).sort((a,b) => (a.code||'').localeCompare(b.code||''));
+            document.getElementById('prodottiCount').textContent = valid.length;
+            if (!valid.length) { container.innerHTML = '<div class="empty-state">Nessun prodotto</div>'; return; }
+            container.innerHTML = `
+                <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                    <thead><tr style="color:#9ca3af;border-bottom:1px solid #374151;">
+                        <th style="text-align:left;padding:6px 8px;">Codice</th>
+                        <th style="text-align:left;padding:6px 8px;">Nome</th>
+                        <th style="text-align:center;padding:6px 8px;">kg/collo</th>
+                        <th style="text-align:left;padding:6px 8px;">Categoria</th>
+                        <th style="text-align:right;padding:6px 8px;">Azioni</th>
+                    </tr></thead>
+                    <tbody>${valid.map(a => `
+                    <tr style="border-bottom:1px solid #1f2937;" class="prodotto-row" id="prow-${a.id}">
+                        <td style="padding:4px 8px;"><input id="pin-code-${a.id}" value="${(a.code||'').replace(/"/g,'&quot;')}" style="background:#1f2937;border:1px solid #374151;border-radius:5px;color:#60a5fa;padding:4px 8px;width:100%;font-size:13px;font-weight:700;" onkeydown="if(event.key==='Enter')saveInlineArticle(${a.id});else if(event.key==='Escape')renderProdottiList();"></td>
+                        <td style="padding:4px 8px;"><input id="pin-name-${a.id}" value="${(a.name||'').replace(/"/g,'&quot;')}" style="background:#1f2937;border:1px solid #374151;border-radius:5px;color:#e0e0e0;padding:4px 8px;width:100%;font-size:13px;" onkeydown="if(event.key==='Enter')saveInlineArticle(${a.id});else if(event.key==='Escape')renderProdottiList();"></td>
+                        <td style="padding:4px 8px;text-align:center;"><input id="pin-wpu-${a.id}" type="number" value="${getWeightPerUnit(a)}" min="0.01" step="0.01" style="background:#1f2937;border:1px solid #374151;border-radius:5px;color:#4ade80;padding:4px 6px;width:64px;font-size:13px;text-align:center;" onkeydown="if(event.key==='Enter')saveInlineArticle(${a.id});else if(event.key==='Escape')renderProdottiList();"></td>
+                        <td style="padding:4px 8px;"><input id="pin-cat-${a.id}" value="${(a.category||'').replace(/"/g,'&quot;')}" style="background:#1f2937;border:1px solid #374151;border-radius:5px;color:#9ca3af;padding:4px 8px;width:100%;font-size:13px;" onkeydown="if(event.key==='Enter')saveInlineArticle(${a.id});else if(event.key==='Escape')renderProdottiList();"></td>
+                        <td style="padding:4px 8px;text-align:right;white-space:nowrap;">
+                            <button class="btn btn-small" style="background:#16a34a;color:#fff;margin-right:4px;font-size:12px;" onclick="saveInlineArticle(${a.id})">✓ Salva</button>
+                            <button class="btn btn-small" style="background:#7f1d1d;color:#fca5a5;" onclick="deleteArticleConfirm(${a.id},'${(a.name||'').replace(/'/g,"\\'")}')">🗑️</button>
+                        </td>
+                    </tr>`).join('')}</tbody>
+                </table>`;
+        }
+
+        async function saveInlineArticle(id) {
+            const a = allArticles.find(x => x.id === id);
+            if (!a) return;
+            const code = document.getElementById(`pin-code-${id}`)?.value.trim().toUpperCase();
+            const name = document.getElementById(`pin-name-${id}`)?.value.trim();
+            const wpu  = parseFloat(document.getElementById(`pin-wpu-${id}`)?.value) || 1;
+            const cat  = document.getElementById(`pin-cat-${id}`)?.value.trim();
+            if (!code) { showAlert('❌ Il codice è obbligatorio', 'error'); return; }
+            if (!name) { showAlert('❌ Il nome è obbligatorio', 'error'); return; }
+            const btn = document.querySelector(`#prow-${id} button`);
+            if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+            try {
+                const resp = await fetch(`${API_URL}/inventory/articles/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code, name, category: cat || null, unit: a.unit || 'kg', weightPerUnit: wpu, barcode: a.barcode || null, description: a.description || null })
+                });
+                if (!resp.ok) { const e = await resp.json().catch(()=>{}); throw new Error(e?.error || `HTTP ${resp.status}`); }
+                showAlert('✅ Articolo aggiornato', 'success');
+                await loadWarehouseStatus();
+                renderProdottiList();
+            } catch (e) {
+                showAlert(`❌ ${e.message}`, 'error');
+                if (btn) { btn.disabled = false; btn.textContent = '✓ Salva'; }
+            }
+        }
+
+        function openArticleModal(articleId) {
+            const isNew = !articleId;
+            document.getElementById('articleModalTitle').textContent = isNew ? '📦 Nuovo Articolo' : '✏️ Modifica Articolo';
+            document.getElementById('articleModalId').value = articleId || '';
+            document.getElementById('articleModalError').style.display = 'none';
+
+            if (isNew) {
+                document.getElementById('artCode').value = '';
+                document.getElementById('artName').value = '';
+                document.getElementById('artCategory').value = '';
+                document.getElementById('artUnit').value = 'kg';
+                document.getElementById('artWeightPerUnit').value = '1';
+                document.getElementById('artBarcode').value = '';
+                document.getElementById('artDescription').value = '';
+            } else {
+                const a = allArticles.find(x => x.id === articleId);
+                if (!a) return;
+                document.getElementById('artCode').value = a.code || '';
+                document.getElementById('artName').value = a.name || '';
+                document.getElementById('artCategory').value = a.category || '';
+                document.getElementById('artUnit').value = a.unit || 'kg';
+                document.getElementById('artWeightPerUnit').value = getWeightPerUnit(a);
+                document.getElementById('artBarcode').value = a.barcode || '';
+                document.getElementById('artDescription').value = a.description || '';
+            }
+            document.getElementById('articleModalOverlay').classList.add('open');
+        }
+
+        function closeArticleModal(event) {
+            if (event && event.target !== document.getElementById('articleModalOverlay')) return;
+            document.getElementById('articleModalOverlay').classList.remove('open');
+        }
+
+        async function submitArticleForm() {
+            const id = document.getElementById('articleModalId').value;
+            const code = document.getElementById('artCode').value.trim();
+            const name = document.getElementById('artName').value.trim();
+            const errEl = document.getElementById('articleModalError');
+
+            if (!code || !name) {
+                errEl.textContent = '❌ Codice e Nome sono obbligatori';
+                errEl.style.display = 'block';
+                return;
+            }
+
+            const payload = {
+                code,
+                name,
+                description: document.getElementById('artDescription').value.trim() || null,
+                category: document.getElementById('artCategory').value.trim() || null,
+                unit: document.getElementById('artUnit').value.trim() || 'kg',
+                weightPerUnit: parseFloat(document.getElementById('artWeightPerUnit').value) || 1,
+                barcode: document.getElementById('artBarcode').value.trim() || null
+            };
+
+            const btn = document.getElementById('articleModalConfirmBtn');
+            btn.disabled = true;
+            document.getElementById('articleModalConfirmText').textContent = 'Salvataggio...';
+            errEl.style.display = 'none';
+
+            try {
+                const url = id ? `${API_URL}/inventory/articles/${id}` : `${API_URL}/inventory/articles`;
+                const method = id ? 'PUT' : 'POST';
+                const resp = await fetch(url, {
+                    method,
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!resp.ok) { const e = await resp.json().catch(()=>{}); throw new Error(e?.error || `HTTP ${resp.status}`); }
+
+                showAlert(id ? `✅ Articolo aggiornato` : `✅ Articolo creato`, 'success');
+                document.getElementById('articleModalOverlay').classList.remove('open');
+
+                // Refresh local data
+                await loadWarehouseStatus();
+                if (prodottiExpanded) renderProdottiList();
+            } catch (e) {
+                errEl.textContent = `❌ ${e.message}`;
+                errEl.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                document.getElementById('articleModalConfirmText').textContent = '✓ Salva';
+            }
+        }
+
+        async function deleteArticleConfirm(id, name) {
+            if (!await customConfirm(`Eliminare l'articolo "${name}"?`)) return;
+            try {
+                const resp = await fetch(`${API_URL}/inventory/articles/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                showAlert(`🗑️ Articolo eliminato`, 'success');
+                await loadWarehouseStatus();
+                if (prodottiExpanded) renderProdottiList();
+            } catch (e) {
+                showAlert(`❌ ${e.message}`, 'error');
+            }
+        }
+
+        // ===== POSIZIONI SCAFFALE =====
+
+        let posizioniExpanded = false;
+
+        function togglePosizioniList() {
+            posizioniExpanded = !posizioniExpanded;
+            document.getElementById('posizioniList').style.display = posizioniExpanded ? 'block' : 'none';
+            if (posizioniExpanded) renderPosizioniList();
+        }
+
+        function renderPosizioniList() {
+            const container = document.getElementById('posizioniList');
+            document.getElementById('posizioniCount').textContent = allShelfPositions.length;
+            if (!allShelfPositions.length) { container.innerHTML = '<div class="empty-state">Nessuna posizione configurata</div>'; return; }
+            const sorted = [...allShelfPositions].sort((a,b) => (a.code||'').localeCompare(b.code||'', undefined, {numeric:true}));
+            container.innerHTML = `
+                <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                    ${sorted.map(p => `
+                    <div style="display:flex;align-items:center;gap:6px;background:#1e293b;border-radius:8px;padding:6px 10px;border:1px solid #334155;">
+                        <span class="pos-badge" style="margin:0;cursor:pointer;" onclick="openEditPosModal(${p.id})" title="Clicca per modificare">${p.code}</span>
+                        ${p.description ? `<span style="font-size:12px;color:#9ca3af;cursor:pointer;" onclick="openEditPosModal(${p.id})">${p.description}</span>` : ''}
+                        <button onclick="deletePosConfirm(${p.id},'${(p.code||'').replace(/'/g,"\\'")}') " style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:14px;padding:0 2px;">✕</button>
+                    </div>`).join('')}
+                </div>`;
+        }
+
+        function openNewPosForm() {
+            const form = document.getElementById('newPosForm');
+            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+            if (form.style.display === 'block') document.getElementById('newPosCode').focus();
+        }
+
+        async function submitNewPosition() {
+            const code = document.getElementById('newPosCode').value.trim().toUpperCase();
+            const desc = document.getElementById('newPosDesc').value.trim() || null;
+            if (!code) { showAlert('❌ Il codice posizione è obbligatorio', 'error'); return; }
+            try {
+                const resp = await fetch(`${API_URL}/inventory/shelf-positions`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code, description: desc })
+                });
+                if (!resp.ok) { const e = await resp.json().catch(()=>{}); throw new Error(e?.error || `HTTP ${resp.status}`); }
+                showAlert(`✅ Posizione ${code} creata`, 'success');
+                document.getElementById('newPosCode').value = '';
+                document.getElementById('newPosDesc').value = '';
+                document.getElementById('newPosForm').style.display = 'none';
+                await loadShelfData();
+                document.getElementById('posizioniCount').textContent = allShelfPositions.length;
+                if (posizioniExpanded) renderPosizioniList();
+                _refreshWarehouseView();
+            } catch (e) {
+                showAlert(`❌ ${e.message}`, 'error');
+            }
+        }
+
+        async function deletePosConfirm(id, code) {
+            if (!await customConfirm(`Eliminare la posizione "${code}"?`)) return;
+            try {
+                const resp = await fetch(`${API_URL}/inventory/shelf-positions/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                showAlert(`🗑️ Posizione ${code} eliminata`, 'success');
+                await loadShelfData();
+                document.getElementById('posizioniCount').textContent = allShelfPositions.length;
+                if (posizioniExpanded) renderPosizioniList();
+                _refreshWarehouseView();
+            } catch (e) {
+                showAlert(`❌ ${e.message}`, 'error');
+            }
+        }
+
+        function openEditPosModal(posId) {
+            const pos = allShelfPositions.find(p => p.id === posId);
+            if (!pos) return;
+            document.getElementById('editPosId').value = pos.id;
+
+            // Populate select with all positions, select current
+            const sel = document.getElementById('editPosCode');
+            sel.innerHTML = allShelfPositions
+                .slice().sort((a,b) => a.code.localeCompare(b.code))
+                .map(p => `<option value="${p.id}" data-code="${p.code}"${p.id === pos.id ? ' selected' : ''}>${p.code}</option>`)
+                .join('');
+
+            document.getElementById('editPosDesc').value = pos.description || '';
+            const errEl = document.getElementById('editPosError');
+            if (errEl) errEl.style.display = 'none';
+            document.getElementById('editPosConfirmBtn').disabled = false;
+            document.getElementById('editPosConfirmText').textContent = '✓ Salva posizione';
+
+            // Render entries at this position
+            _renderEditPosEntries(pos.code);
+
+            document.getElementById('editPosOverlay').classList.add('open');
+        }
+
+        function _renderEditPosEntries(posCode) {
+            const list = document.getElementById('editPosEntriesList');
+            const entries = allShelfEntries.filter(e => e.positionCode === posCode);
+            if (!entries.length) {
+                list.innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:8px 0;">Nessun prodotto in questa posizione</div>';
+                return;
+            }
+            list.innerHTML = entries.map(e => {
+                const art = allArticles.find(a => a.id === e.articleId);
+                const artName = art ? (art.name || art.nome) : `#${e.articleId}`;
+                return `<div id="editPosEntry_${e.id}" style="background:#1e293b;border-radius:6px;padding:10px 12px;margin-bottom:8px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                        <span style="color:#e0e0e0;font-size:13px;font-weight:600;">${artName}</span>
+                        <button class="btn btn-small" style="background:#991b1b;color:#fff;" onclick="deleteShelfEntry(${e.id}, '${posCode}')">🗑️</button>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;">
+                        <div><label style="font-size:11px;color:#9ca3af;">Qtà</label>
+                            <input type="number" value="${e.quantity ?? 0}" id="epe_qty_${e.id}" style="width:100%;background:#0f172a;border:1px solid #374151;color:#e0e0e0;border-radius:4px;padding:4px 6px;font-size:13px;"></div>
+                        <div><label style="font-size:11px;color:#9ca3af;">Lotto</label>
+                            <input type="text" value="${e.batch || ''}" id="epe_batch_${e.id}" style="width:100%;background:#0f172a;border:1px solid #374151;color:#e0e0e0;border-radius:4px;padding:4px 6px;font-size:13px;"></div>
+                        <div><label style="font-size:11px;color:#9ca3af;">Scadenza</label>
+                            <input type="text" value="${e.expiry || ''}" id="epe_expiry_${e.id}" style="width:100%;background:#0f172a;border:1px solid #374151;color:#e0e0e0;border-radius:4px;padding:4px 6px;font-size:13px;"></div>
+                        <div><label style="font-size:11px;color:#9ca3af;">Annotazioni</label>
+                            <input type="text" value="${e.notes || ''}" id="epe_notes_${e.id}" style="width:100%;background:#0f172a;border:1px solid #374151;color:#e0e0e0;border-radius:4px;padding:4px 6px;font-size:13px;"></div>
+                    </div>
+                    <button class="btn btn-small" style="margin-top:8px;background:#1d4ed8;color:#fff;" onclick="saveEntryFromEditPos(${e.id}, '${posCode}')">💾 Salva</button>
+                    <span id="epe_msg_${e.id}" style="font-size:12px;margin-left:8px;"></span>
+                </div>`;
+            }).join('');
+        }
+
+        async function saveEntryFromEditPos(entryId, posCode) {
+            const qty = parseInt(document.getElementById(`epe_qty_${entryId}`).value) || 0;
+            const batch = document.getElementById(`epe_batch_${entryId}`).value.trim() || null;
+            const expiry = document.getElementById(`epe_expiry_${entryId}`).value.trim() || null;
+            const notes = document.getElementById(`epe_notes_${entryId}`).value.trim() || null;
+            const msgEl = document.getElementById(`epe_msg_${entryId}`);
+            msgEl.style.color = '#9ca3af';
+            msgEl.textContent = '⏳';
+            try {
+                const resp = await fetch(`${API_URL}/inventory/shelf-entries/${entryId}`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ quantity: qty, batch, expiry, notes, positionCode: posCode })
+                });
+                if (!resp.ok) { const e = await resp.json().catch(()=>{}); throw new Error(e?.error || `HTTP ${resp.status}`); }
+                msgEl.style.color = '#4ade80';
+                msgEl.textContent = '✓ Salvato';
+                await loadShelfData();
+                _refreshWarehouseView(posCode);
+            } catch (e) {
+                msgEl.style.color = '#f87171';
+                msgEl.textContent = '✗ ' + e.message;
+            }
+        }
+
+        function addEntryFromEditPos() {
+            // Close editPos modal and open shelfEntry modal for this position (create mode)
+            const sel = document.getElementById('editPosCode');
+            const posCode = sel.options[sel.selectedIndex]?.dataset.code || sel.value;
+            document.getElementById('editPosOverlay').classList.remove('open');
+            openShelfEntryModal(posCode, null);
+        }
+
+        function switchEditPosition() {
+            const sel = document.getElementById('editPosCode');
+            const posId = parseInt(sel.value);
+            if (posId) openEditPosModal(posId);
+        }
+
+        function closeEditPosModal(event) {
+            if (event && event.target !== document.getElementById('editPosOverlay')) return;
+            document.getElementById('editPosOverlay').classList.remove('open');
+        }
+
+        async function submitEditPosition() {
+            const id = parseInt(document.getElementById('editPosId').value);
+            const sel = document.getElementById('editPosCode');
+            const code = sel.options[sel.selectedIndex]?.dataset.code || '';
+            const description = document.getElementById('editPosDesc').value.trim() || null;
+            const errEl = document.getElementById('editPosError');
+            if (!code) { errEl.textContent = 'Il codice posizione è obbligatorio'; errEl.style.display = 'block'; return; }
+            const btn = document.getElementById('editPosConfirmBtn');
+            const txt = document.getElementById('editPosConfirmText');
+            btn.disabled = true;
+            txt.textContent = '⏳ Salvataggio...';
+            if (errEl) errEl.style.display = 'none';
+            try {
+                const resp = await fetch(`${API_URL}/inventory/shelf-positions/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code, description })
+                });
+                if (!resp.ok) { const e = await resp.json().catch(()=>{}); throw new Error(e?.error || `HTTP ${resp.status}`); }
+                document.getElementById('editPosOverlay').classList.remove('open');
+                showAlert(`✅ Posizione ${code} aggiornata`, 'success');
+                await loadShelfData();
+                document.getElementById('posizioniCount').textContent = allShelfPositions.length;
+                if (posizioniExpanded) renderPosizioniList();
+                _refreshWarehouseView(code);
+            } catch (e) {
+                if (errEl) { errEl.textContent = e.message; errEl.style.display = 'block'; }
+                btn.disabled = false;
+                txt.textContent = '✓ Salva';
             }
         }
 
@@ -1268,5 +3684,269 @@
             }
         }
     </script>
-</body>
+    <script>
+    (function() {
+        var bar = document.querySelector('.sticky-top-bar');
+        if (!bar) return;
+        var locked = false;
+        window.addEventListener('scroll', function() {
+            if (locked) return;
+            if (window.scrollY > 60 && !bar.classList.contains('scrolled')) {
+                locked = true;
+                bar.classList.add('scrolled');
+                setTimeout(function() { locked = false; }, 400);
+            } else if (window.scrollY <= 5 && bar.classList.contains('scrolled')) {
+                locked = true;
+                bar.classList.remove('scrolled');
+                setTimeout(function() { locked = false; }, 400);
+            }
+        }, { passive: true });
+    })();
+
+    function customConfirm(msg) {
+        return new Promise(resolve => {
+            const ov = document.createElement('div');
+            ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:99999;display:flex;align-items:center;justify-content:center;';
+            ov.innerHTML = `<div style="background:#2d2d2d;border-radius:12px;padding:28px 32px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.5);border:1px solid #4d4d4d;"><p style="color:#e0e0e0;font-size:15px;margin:0 0 24px;line-height:1.6;">${msg.replace(/\n/g,'<br>')}</p><div style="display:flex;gap:10px;justify-content:flex-end;"><button id="_ccNo" style="background:#374151;color:#e0e0e0;border:none;border-radius:6px;padding:9px 22px;font-size:14px;cursor:pointer;">Annulla</button><button id="_ccYes" style="background:#dc2626;color:#fff;border:none;border-radius:6px;padding:9px 22px;font-size:14px;font-weight:600;cursor:pointer;">Conferma</button></div></div>`;
+            document.body.appendChild(ov);
+            const done = r => { ov.remove(); resolve(r); };
+            ov.querySelector('#_ccYes').onclick = () => done(true);
+            ov.querySelector('#_ccNo').onclick = () => done(false);
+            ov.onclick = ev => { if (ev.target === ov) done(false); };
+            const kh = ev => { if (ev.key === 'Enter') { ev.preventDefault(); done(true); } else if (ev.key === 'Escape') done(false); document.removeEventListener('keydown', kh); };
+            document.addEventListener('keydown', kh);
+            ov.querySelector('#_ccYes').focus();
+        });
+    }
+
+    // ESC closes modals, ENTER confirms active modal
+    document.addEventListener('keydown', function(e) {
+        const tag = document.activeElement?.tagName;
+        const inInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+
+        if (e.key === 'Escape') {
+            ['cargoModalOverlay','assignShelfOverlay','shelfEntryOverlay','editPosOverlay','articleModalOverlay','printInventoryOverlay'].forEach(function(id) {
+                const el = document.getElementById(id);
+                if (el && el.classList.contains('open')) el.classList.remove('open');
+            });
+        } else if (e.key === 'Enter' && !inInput) {
+            const modalMap = [
+                { id: 'shelfEntryOverlay',   btn: 'shelfEntryConfirmBtn' },
+                { id: 'cargoModalOverlay',   btn: 'cargoConfirmBtn' },
+                { id: 'articleModalOverlay', btn: 'articleModalConfirmBtn' },
+                { id: 'editPosOverlay',      btn: 'editPosConfirmBtn' },
+                { id: 'assignShelfOverlay',  btn: 'assignShelfConfirmBtn' },
+            ];
+            for (const m of modalMap) {
+                const ov = document.getElementById(m.id);
+                if (ov && ov.classList.contains('open')) {
+                    const btn = document.getElementById(m.btn);
+                    if (btn && !btn.disabled) { e.preventDefault(); btn.click(); }
+                    return;
+                }
+            }
+        }
+    });
+    </script>
+
+    <!-- ===== PRINT INVENTORY MODAL ===== -->
+    <div id="printInventoryOverlay" onclick="if(event.target===this)closePrintInventory()">
+        <div id="printInventoryModal">
+            <h3>🖨️ Stampa Inventario</h3>
+
+            <div class="print-opt-row">
+                <div class="print-opt-group">
+                    <label>Filtra per</label>
+                    <select id="printFilter">
+                        <option value="all">Tutto l'inventario</option>
+                        <option value="sector">Settore scaffale (A, B…)</option>
+                        <option value="category">Categoria articolo</option>
+                        <option value="stock_gt0">Solo articoli con giacenza</option>
+                        <option value="stock_low">Solo articoli sottoscorta</option>
+                    </select>
+                </div>
+                <div class="print-opt-group" id="printFilterValueGroup" style="display:none;">
+                    <label id="printFilterValueLabel">Valore</label>
+                    <select id="printFilterValue"></select>
+                </div>
+            </div>
+
+            <div class="print-opt-row">
+                <div class="print-opt-group">
+                    <label>Ordina per</label>
+                    <select id="printSort">
+                        <option value="position">Posizione scaffale</option>
+                        <option value="code">Codice articolo</option>
+                        <option value="name">Nome articolo</option>
+                        <option value="category">Categoria</option>
+                        <option value="stock">Giacenza (decrescente)</option>
+                    </select>
+                </div>
+                <div class="print-opt-group">
+                    <label>Formato</label>
+                    <select id="printFormat">
+                        <option value="per_position">Una riga per posizione scaffale</option>
+                        <option value="per_article">Una riga per articolo (totali)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="print-opt-group">
+                <label>Titolo stampa (opzionale)</label>
+                <input type="text" id="printTitle" placeholder="Es: Inventario Aprile 2026">
+            </div>
+
+            <div class="print-actions">
+                <button class="btn" style="background:#374151;color:#e0e0e0;" onclick="closePrintInventory()">Annulla</button>
+                <button class="btn btn-primary" onclick="generateAndPrint()">🖨️ Stampa</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden print container -->
+    <div id="printPageContainer"></div>
+
+    <script>
+    // ===== PRINT INVENTORY =====
+    function openPrintInventory() {
+        const overlay = document.getElementById('printInventoryOverlay');
+        overlay.classList.add('open');
+
+        const filterSel = document.getElementById('printFilter');
+        filterSel.onchange = _updatePrintFilterValue;
+        _updatePrintFilterValue();
+
+        function _updatePrintFilterValue() {
+            const group = document.getElementById('printFilterValueGroup');
+            const label = document.getElementById('printFilterValueLabel');
+            const sel = document.getElementById('printFilterValue');
+            const val = filterSel.value;
+            if (val === 'sector') {
+                const sectors = [...new Set(allShelfPositions.map(p => p.code.charAt(0)))].sort();
+                group.style.display = '';
+                label.textContent = 'Settore';
+                sel.innerHTML = sectors.map(s => `<option value="${s}">Settore ${s}</option>`).join('');
+            } else if (val === 'category') {
+                const categories = [...new Set(allArticles.map(a => a.category).filter(Boolean))].sort();
+                group.style.display = '';
+                label.textContent = 'Categoria';
+                sel.innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join('');
+            } else {
+                group.style.display = 'none';
+            }
+        }
+    }
+
+    function closePrintInventory() {
+        document.getElementById('printInventoryOverlay').classList.remove('open');
+    }
+
+    function generateAndPrint() {
+        const filter = document.getElementById('printFilter').value;
+        const filterVal = document.getElementById('printFilterValue').value;
+        const sort = document.getElementById('printSort').value;
+        const format = document.getElementById('printFormat').value;
+        const titleInput = document.getElementById('printTitle').value.trim();
+
+        let rows = [];
+
+        if (format === 'per_position') {
+            let entries = [...allShelfEntries];
+            if (filter === 'sector') {
+                entries = entries.filter(e => e.positionCode.charAt(0) === filterVal);
+            } else if (filter === 'category') {
+                entries = entries.filter(e => {
+                    const art = allArticles.find(a => a.id === e.articleId);
+                    return art && art.category === filterVal;
+                });
+            } else if (filter === 'stock_gt0') {
+                entries = entries.filter(e => e.quantity > 0);
+            } else if (filter === 'stock_low') {
+                entries = entries.filter(e => {
+                    const art = allArticles.find(a => a.id === e.articleId);
+                    return art && art.inventory && art.inventory.currentStock < art.inventory.minimumStock;
+                });
+            }
+            rows = entries.map(e => {
+                const art = allArticles.find(a => a.id === e.articleId) || {};
+                return {
+                    position: e.positionCode, code: art.code || '', name: art.name || '–',
+                    category: art.category || '–', quantity: e.quantity, unit: art.unit || 'pz',
+                    batch: e.batch || '', expiry: e.expiry || '', notes: e.notes || ''
+                };
+            });
+        } else {
+            let arts = [...allArticles];
+            if (filter === 'sector') {
+                arts = arts.filter(a => allShelfEntries.some(e => e.articleId === a.id && e.positionCode.charAt(0) === filterVal));
+            } else if (filter === 'category') {
+                arts = arts.filter(a => a.category === filterVal);
+            } else if (filter === 'stock_gt0') {
+                arts = arts.filter(a => (a.inventory?.currentStock || 0) > 0);
+            } else if (filter === 'stock_low') {
+                arts = arts.filter(a => a.inventory && a.inventory.currentStock < a.inventory.minimumStock);
+            }
+            rows = arts.map(a => {
+                const entries = allShelfEntries.filter(e => e.articleId === a.id);
+                return {
+                    position: entries.map(e => e.positionCode).join(', ') || '–',
+                    code: a.code || '', name: a.name || '–', category: a.category || '–',
+                    quantity: a.inventory?.currentStock || 0, unit: a.unit || 'pz',
+                    batch: a.inventory?.batch || '', expiry: a.inventory?.expiry || '', notes: a.inventory?.notes || ''
+                };
+            });
+        }
+
+        // Sort
+        rows.sort((a, b) => {
+            if (sort === 'position') return a.position.localeCompare(b.position);
+            if (sort === 'code')     return a.code.localeCompare(b.code);
+            if (sort === 'name')     return a.name.localeCompare(b.name);
+            if (sort === 'category') return (a.category.localeCompare(b.category)) || a.name.localeCompare(b.name);
+            if (sort === 'stock')    return b.quantity - a.quantity;
+            return 0;
+        });
+
+        const today = new Date().toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit', year:'numeric' });
+        const filterLabels = { all: 'Tutto', sector: `Settore ${filterVal}`, category: filterVal, stock_gt0: 'Solo con giacenza', stock_low: 'Solo sottoscorta' };
+        const sortLabels   = { position: 'Posizione', code: 'Codice', name: 'Nome', category: 'Categoria', stock: 'Giacenza' };
+        const mainTitle    = titleInput || 'Inventario Magazzino';
+
+        const tableRows = rows.map(r => `<tr>
+            <td>${r.position}</td><td>${r.code}</td><td>${r.name}</td><td>${r.category}</td>
+            <td style="text-align:right;font-weight:600;">${r.quantity} ${r.unit}</td>
+            <td>${r.batch}</td><td>${r.expiry}</td><td>${r.notes}</td>
+        </tr>`).join('');
+
+        const html = `<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8"><title>${mainTitle}</title>
+        <style>
+            @page{size:A4 landscape;margin:12mm}
+            body{font-family:Arial,sans-serif;font-size:11px;color:#111;margin:0}
+            h1{font-size:15px;margin:0 0 3px}
+            .sub{font-size:9px;color:#555;margin-bottom:10px}
+            table{width:100%;border-collapse:collapse}
+            th{background:#1e3a5f;color:#fff;padding:5px 7px;text-align:left;font-size:9px;text-transform:uppercase}
+            td{padding:4px 7px;border-bottom:1px solid #ddd;vertical-align:top}
+            tr:nth-child(even) td{background:#f5f7fa}
+            .foot{margin-top:6px;font-size:9px;color:#888;text-align:right}
+        </style></head><body>
+        <h1>🏭 ${mainTitle}</h1>
+        <div class="sub">Data: ${today} &nbsp;|&nbsp; Filtro: ${filterLabels[filter]} &nbsp;|&nbsp; Ordine: ${sortLabels[sort]} &nbsp;|&nbsp; Formato: ${format === 'per_position' ? 'per posizione' : 'per articolo'} &nbsp;|&nbsp; ${rows.length} righe</div>
+        <table><thead><tr>
+            <th>Posizione</th><th>Codice</th><th>Nome Articolo</th><th>Categoria</th>
+            <th>Quantità</th><th>Lotto</th><th>Scadenza</th><th>Note</th>
+        </tr></thead><tbody>${tableRows}</tbody></table>
+        <div class="foot">Molino Briganti – ${today} – ${rows.length} voci</div>
+        </body></html>`;
+
+        const win = window.open('', '_blank', 'width=1100,height=750');
+        win.document.write(html);
+        win.document.close();
+        win.focus();
+        win.onload = () => win.print();
+        closePrintInventory();
+    }
+    </script>
+
+    </body>
 </html>

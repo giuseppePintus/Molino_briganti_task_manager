@@ -22,9 +22,8 @@ export class BackupService {
   private backupDir: string;
   private nasUrl: string;
   private nasPort: number;
-  // Mantieni TUTTI i backup - non cancellare mai automaticamente
-  // Sono salvati sul NAS (persistenti), meglio avere la cronologia completa
-  private maxLocalBackups: number = 9999;
+  // Numero massimo di backup da mantenere
+  private maxLocalBackups: number = 50;
   private autoBackupTimer: NodeJS.Timeout | null = null;
   private configFilePath: string;
   private autoBackupSettings: AutoBackupSettings = {
@@ -463,37 +462,51 @@ export class BackupService {
    */
   async restoreDatabase(backupPath: string, uploadsBackupPath?: string): Promise<void> {
     try {
-      // Leggi il percorso del database dal .env (DATABASE_URL)
-      const databaseUrl = process.env.DATABASE_URL || 'file:./prisma/data/tasks.db';
-      // Estrai il percorso del file da "file:./path/to/db"
-      let dbPath = databaseUrl.replace('file:', '');
-      
-      // Se il percorso è relativo, risolvi rispetto alla root del server
-      if (!path.isAbsolute(dbPath)) {
-        dbPath = path.join(process.cwd(), dbPath);
-      }
-      
-      // IMPORTANTE: Disconnetti Prisma prima di sostituire il file database
       console.log(`🔌 Inizio ripristino database da: ${backupPath}`);
-      console.log('🔌 Disconnessione Prisma...');
-      await PrismaClientManager.disconnect();
-      
-      // Piccolo delay per assicurarsi che il file sia rilasciato dal sistema operativo
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Backup del database corrente (safety backup)
-      if (fs.existsSync(dbPath)) {
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const safetyBackupPath = path.join(this.backupDir, `db-pre-restore-${timestamp}.sql`);
-        console.log(`💾 Creazione backup di sicurezza: ${safetyBackupPath}`);
-        fs.copyFileSync(dbPath, safetyBackupPath);
+
+      const databaseUrl = process.env.DATABASE_URL || 'file:./prisma/data/tasks.db';
+
+      if (databaseUrl.startsWith('mysql://')) {
+        // MariaDB/MySQL — importa via mysql CLI
+        await this.restoreMariaDB(backupPath);
+      } else {
+        // SQLite — sostituisce il file
+        let dbPath = databaseUrl.replace('file:', '');
+        if (!path.isAbsolute(dbPath)) {
+          dbPath = path.join(process.cwd(), dbPath);
+        }
+
+        console.log('🔌 Disconnessione Prisma...');
+        await PrismaClientManager.disconnect();
+        await new Promise(resolve => setTimeout(resolve, 1500));
+
+        // Safety backup del db corrente
+        if (fs.existsSync(dbPath)) {
+          const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+          const safetyBackupPath = path.join(this.backupDir, `db-pre-restore-${timestamp}.sql`);
+          console.log(`💾 Creazione backup di sicurezza: ${safetyBackupPath}`);
+          fs.copyFileSync(dbPath, safetyBackupPath);
+        }
+
+        console.log(`🚚 Sostituzione file database: ${dbPath}`);
+        fs.copyFileSync(backupPath, dbPath);
+        console.log(`✅ File database ripristinato con successo`);
+
+        console.log('🔄 Riconnessione Prisma...');
+        await PrismaClientManager.resetConnection();
+
+        // Allineamento schema
+        try {
+          const { promisify } = require('util');
+          const execAsync = promisify(exec);
+          const schemaPath = 'server/prisma/schema.prisma';
+          await execAsync(`npx prisma db push --schema=${schemaPath} --accept-data-loss`);
+          console.log('✅ Schema database allineato');
+        } catch (schemaError) {
+          console.warn('⚠️ Allineamento schema fallito (potrebbe non essere critico):', schemaError);
+        }
       }
 
-      // Ripristina il file database
-      console.log(`🚚 Sostituzione file database: ${dbPath}`);
-      fs.copyFileSync(backupPath, dbPath);
-      console.log(`✅ File database ripristinato con successo`);
-      
       // Ripristina gli uploads se fornito
       if (uploadsBackupPath && fs.existsSync(uploadsBackupPath)) {
         try {
@@ -504,31 +517,63 @@ export class BackupService {
           console.warn(`⚠️ Errore ripristino uploads: ${uploadError}`);
         }
       }
-      
-      // IMPORTANTE: Reset della connessione Prisma per vedere i nuovi dati
-      console.log('🔄 Riconnessione Prisma...');
-      await PrismaClientManager.resetConnection();
-
-      // Esegui prisma db push per assicurare compatibilità schema
-      try {
-        console.log('🚀 Allineamento schema database post-ripristino...');
-        const { exec } = require('child_process');
-        const { promisify } = require('util');
-        const execAsync = promisify(exec);
-        
-        // Usa il percorso corretto dello schema nel container
-        const schemaPath = 'server/prisma/schema.prisma';
-        await execAsync(`npx prisma db push --schema=${schemaPath} --accept-data-loss`);
-        console.log('✅ Schema database allineato');
-      } catch (schemaError) {
-        console.warn('⚠️ Avviso: Allineamento schema post-ripristino fallito (potrebbe non essere critico):', schemaError);
-      }
 
       console.log('✅ Ripristino completato con successo');
     } catch (error) {
       console.error('❌ Errore critico durante il ripristino:', error);
       throw error;
     }
+  }
+
+  /**
+   * Ripristina database MariaDB/MySQL importando un file SQL tramite mysql CLI
+   */
+  private async restoreMariaDB(backupPath: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      try {
+        const dbUrl = process.env.DATABASE_URL || '';
+        const urlMatch = dbUrl.match(/mysql:\/\/([^:]+):([^@]+)@([^:]+):(\d+)\/(.+)/);
+        if (!urlMatch) {
+          reject(new Error('Invalid DATABASE_URL format for MariaDB'));
+          return;
+        }
+        const [, user, password, host, port, database] = urlMatch;
+
+        // Safety backup prima di sovrascrivere
+        const { promisify } = require('util');
+        const execAsync = promisify(exec);
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const safetyBackupPath = path.join(this.backupDir, `db-pre-restore-${timestamp}.sql`);
+        const dumpCmd = `mysqldump -h${host} -P${port} -u${user} -p${password} ${database}`;
+
+        exec(dumpCmd, { maxBuffer: 50 * 1024 * 1024 }, (dumpErr, dumpOut) => {
+          if (!dumpErr && dumpOut) {
+            fs.writeFileSync(safetyBackupPath, dumpOut);
+            console.log(`💾 Safety backup creato: ${safetyBackupPath}`);
+          }
+
+          // Importa il backup
+          console.log(`🚚 Importazione SQL nel database MariaDB: ${database}`);
+          const importCmd = `mysql -h${host} -P${port} -u${user} -p${password} ${database}`;
+          const mysqlProcess = exec(importCmd, { maxBuffer: 50 * 1024 * 1024 }, (importErr) => {
+            if (importErr) {
+              console.error(`❌ mysql import error: ${importErr.message}`);
+              reject(importErr);
+            } else {
+              console.log('✅ MariaDB database ripristinato con successo');
+              resolve();
+            }
+          });
+
+          // Invia il file SQL come stdin
+          const sqlStream = fs.createReadStream(backupPath);
+          sqlStream.pipe(mysqlProcess.stdin!);
+          sqlStream.on('error', (e) => reject(e));
+        });
+      } catch (error) {
+        reject(error);
+      }
+    });
   }
 
   /**

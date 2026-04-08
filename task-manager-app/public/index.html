@@ -128,6 +128,19 @@
             color: var(--dark) !important;
         }
 
+        #version-footer {
+            display: block;
+            text-align: center;
+            margin-top: 20px;
+            color: #666;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            pointer-events: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
         .form-group {
             margin-bottom: 20px;
         }
@@ -987,17 +1000,17 @@
                     </button>
                 </form>
             </div>
-        </div>
 
-        <!-- Version Footer - Auto-loaded from API -->
-        <div id="version-footer">
-            v...
+            <!-- Version Footer - Auto-loaded from API -->
+            <div id="version-footer">
+                v...
+            </div>
+            <script>
+                fetch('/api/version').then(r => r.json()).then(d => {
+                    document.getElementById('version-footer').textContent = 'v' + d.version + ' • ' + d.date.split('-').reverse().join('/');
+                }).catch(() => {});
+            </script>
         </div>
-        <script>
-            fetch('/api/version').then(r => r.json()).then(d => {
-                document.getElementById('version-footer').textContent = 'v' + d.version + ' • ' + d.date.split('-').reverse().join('/');
-            }).catch(() => {});
-        </script>
     </div>
 
     <!-- Dashboard -->
@@ -1739,7 +1752,7 @@
         }
 
         async function handleDeleteTask(taskId) {
-            if (!confirm('Sei sicuro di voler eliminare questo compito?')) return;
+            if (!await customConfirm('Eliminare questo compito?')) return;
 
             try {
                 const response = await fetch(`${API_URL}/tasks/${taskId}`, {
@@ -1965,7 +1978,7 @@
         }
 
         async function handleDeleteTask(taskId) {
-            if (!confirm('Sei sicuro di voler eliminare questo compito?')) return;
+            if (!await customConfirm('Eliminare questo compito?')) return;
 
             try {
                 const response = await fetch(`${API_URL}/tasks/${taskId}`, {
@@ -2031,7 +2044,7 @@
         }
 
         async function handleDeleteOperator(operatorId, operatorName) {
-            if (!confirm(`Sei sicuro di voler eliminare l'operatore "${operatorName}"?`)) return;
+            if (!await customConfirm(`Eliminare l'operatore "${operatorName}"?`)) return;
 
             try {
                 const response = await fetch(`${API_URL}/auth/operators/${operatorId}`, {
@@ -2483,6 +2496,36 @@
             setTimeout(() => {
                 loadOperatorsCarousel();
             }, 100);
+        });
+
+        // Global ESC key handler
+        function customConfirm(msg) {
+            return new Promise(resolve => {
+                const ov = document.createElement('div');
+                ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:99999;display:flex;align-items:center;justify-content:center;';
+                ov.innerHTML = `<div style="background:#2d2d2d;border-radius:12px;padding:28px 32px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.5);border:1px solid #4d4d4d;"><p style="color:#e0e0e0;font-size:15px;margin:0 0 24px;line-height:1.6;">${msg.replace(/\n/g,'<br>')}</p><div style="display:flex;gap:10px;justify-content:flex-end;"><button id="_ccNo" style="background:#374151;color:#e0e0e0;border:none;border-radius:6px;padding:9px 22px;font-size:14px;cursor:pointer;">Annulla</button><button id="_ccYes" style="background:#dc2626;color:#fff;border:none;border-radius:6px;padding:9px 22px;font-size:14px;font-weight:600;cursor:pointer;">Conferma</button></div></div>`;
+                document.body.appendChild(ov);
+                const done = r => { ov.remove(); resolve(r); };
+                ov.querySelector('#_ccYes').onclick = () => done(true);
+                ov.querySelector('#_ccNo').onclick = () => done(false);
+                ov.onclick = ev => { if (ev.target === ov) done(false); };
+                const kh = ev => { if (ev.key === 'Enter') { ev.preventDefault(); done(true); } else if (ev.key === 'Escape') done(false); document.removeEventListener('keydown', kh); };
+                document.addEventListener('keydown', kh);
+                ov.querySelector('#_ccYes').focus();
+            });
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const taskModal = document.getElementById('taskModal');
+                if (taskModal && taskModal.classList.contains('active')) { closeModal(); }
+            } else if (e.key === 'Enter' && !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)) {
+                const taskModal = document.getElementById('taskModal');
+                if (taskModal && taskModal.classList.contains('active')) {
+                    const saveBtn = taskModal.querySelector('button.btn-primary');
+                    if (saveBtn && !saveBtn.disabled) { e.preventDefault(); saveBtn.click(); }
+                }
+            }
         });
     </script>
 </body>

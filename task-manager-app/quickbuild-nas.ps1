@@ -8,6 +8,12 @@ Write-Host "[QUICKBUILD] Quick Build + Deploy NAS (senza dati)" -ForegroundColor
 Write-Host "=====================================================" -ForegroundColor Cyan
 Write-Host ""
 
+# 0. Rigenera Prisma client locale
+Write-Host "[0/5] Rigenerazione Prisma client locale..." -ForegroundColor Yellow
+npx prisma generate --schema=server/prisma/schema.prisma
+Write-Host "[OK] Prisma client rigenerato" -ForegroundColor Green
+Write-Host ""
+
 # 1. Compila TypeScript
 Write-Host "[1/5] Compilazione TypeScript..." -ForegroundColor Yellow
 npm run build
@@ -53,18 +59,40 @@ Write-Host ""
 
 # 5. Extract e restart con utente admin
 Write-Host "[5/5] Extract e restart container..." -ForegroundColor Yellow
-ssh admin@192.168.1.248 'cd /share/Container && tar -xzf task-manager-update.tar.gz && /share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker restart molino-app'
+ssh admin@192.168.1.248 'cd /share/Container && tar -xzf task-manager-update.tar.gz && /share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker restart molino-task-manager-nas'
 Write-Host "[OK] Container riavviato" -ForegroundColor Green
 Write-Host ""
 
 # 6. Sincronizza file critici DENTRO il container
 Write-Host "[6/7] Sincronizzazione file critici nel container..." -ForegroundColor Yellow
+Write-Host "      Copia index.html aggiornato..." -ForegroundColor Gray
+ssh admin@192.168.1.248 '/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker cp /share/Container/public/index.html molino-task-manager-nas:/app/public/index.html'
 Write-Host "      Copia HTML aggiornato (orders-planner.html)..." -ForegroundColor Gray
-ssh admin@192.168.1.248 '/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker cp /share/Container/public/orders-planner.html molino-app:/app/public/orders-planner.html'
+ssh admin@192.168.1.248 '/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker cp /share/Container/public/orders-planner.html molino-task-manager-nas:/app/public/orders-planner.html'
+Write-Host "      Copia admin-dashboard.html aggiornato..." -ForegroundColor Gray
+ssh admin@192.168.1.248 '/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker cp /share/Container/public/admin-dashboard.html molino-task-manager-nas:/app/public/admin-dashboard.html'
+Write-Host "      Copia customers-management.html aggiornato..." -ForegroundColor Gray
+ssh admin@192.168.1.248 '/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker cp /share/Container/public/customers-management.html molino-task-manager-nas:/app/public/customers-management.html'
+Write-Host "      Copia warehouse-management.html aggiornato..." -ForegroundColor Gray
+ssh admin@192.168.1.248 '/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker cp /share/Container/public/warehouse-management.html molino-task-manager-nas:/app/public/warehouse-management.html'
+Write-Host "      Copia warehouse-management-lite.html aggiornato..." -ForegroundColor Gray
+ssh admin@192.168.1.248 '/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker cp /share/Container/public/warehouse-management-lite.html molino-task-manager-nas:/app/public/warehouse-management-lite.html'
+Write-Host "      Copia trips-management.html aggiornato..." -ForegroundColor Gray
+ssh admin@192.168.1.248 '/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker cp /share/Container/public/trips-management.html molino-task-manager-nas:/app/public/trips-management.html'
+Write-Host "      Copia operators.html aggiornato..." -ForegroundColor Gray
+ssh admin@192.168.1.248 '/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker cp /share/Container/public/operators.html molino-task-manager-nas:/app/public/operators.html'
 Write-Host "      Copia package.json aggiornato..." -ForegroundColor Gray
-ssh admin@192.168.1.248 '/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker cp /share/Container/package.json molino-app:/app/package.json'
+ssh admin@192.168.1.248 '/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker cp /share/Container/package.json molino-task-manager-nas:/app/package.json'
+Write-Host "      Copia server/dist aggiornato..." -ForegroundColor Gray
+ssh admin@192.168.1.248 '/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker cp /share/Container/server/dist/. molino-task-manager-nas:/app/server/dist/'
+Write-Host "      Copia schema Prisma aggiornato..." -ForegroundColor Gray
+ssh admin@192.168.1.248 '/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker cp /share/Container/server/prisma/schema.prisma molino-task-manager-nas:/app/server/prisma/schema.prisma'
+Write-Host "      Rigenera Prisma client nel container..." -ForegroundColor Gray
+ssh admin@192.168.1.248 '/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker exec molino-task-manager-nas npx prisma@6.19.0 generate --schema /app/server/prisma/schema.prisma'
+Write-Host "      Sincronizza schema DB (db push)..." -ForegroundColor Gray
+ssh admin@192.168.1.248 '/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker exec molino-task-manager-nas npx prisma@6.19.0 db push --accept-data-loss --schema /app/server/prisma/schema.prisma'
 Write-Host "      Riavvia container..." -ForegroundColor Gray
-ssh admin@192.168.1.248 '/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker restart molino-app'
+ssh admin@192.168.1.248 '/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker restart molino-task-manager-nas'
 Write-Host "[OK] File sincronizzati" -ForegroundColor Green
 Write-Host ""
 

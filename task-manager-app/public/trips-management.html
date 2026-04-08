@@ -122,40 +122,66 @@
             color: #e0e0e0;
         }
 
-        /* Calendar styles (aligned with admin) */
+        /* Calendar header: 2-row grid layout for all screen sizes */
         .calendar-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 10px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto auto;
+            gap: 8px;
             margin-bottom: 15px;
         }
-        .calendar-btn-dummy, .calendar-btn-toggle {
-            padding: 8px 16px;
+
+        /* Row 1: Visualizza Tutti + Settimana */
+        .calendar-btn-dummy {
+            grid-column: 1;
+            grid-row: 1;
+            padding: 10px 14px;
             font-size: 14px;
         }
-        @media (min-width: 768px) {
-            .calendar-btn-dummy, .calendar-btn-toggle {
-                width: 160px;
-                text-align: center;
-            }
+
+        .calendar-btn-toggle {
+            grid-column: 2;
+            grid-row: 1;
+            padding: 10px 14px;
+            font-size: 14px;
         }
+
+        /* Row 2: navigation prev + title + next */
         .calendar-btn-prev, .calendar-btn-next {
-            padding: 8px 12px;
-            font-size: 16px;
-            min-width: 40px;
+            grid-column: 1 / -1;
+            grid-row: 2;
             width: 40px;
+            height: 40px;
+            padding: 0;
+            font-size: 18px;
+            min-width: 40px;
+            max-width: 40px;
             display: flex;
             align-items: center;
             justify-content: center;
         }
+
+        .calendar-btn-prev {
+            justify-self: start;
+        }
+
+        .calendar-btn-next {
+            justify-self: end;
+        }
+
         .calendar-title {
-            margin: 0;
+            grid-column: 1 / -1;
+            grid-row: 2;
+            margin: 0 50px;
             color: #e0e0e0;
             font-size: 16px;
             text-align: center;
-            flex: 1;
-            min-width: 150px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         .calendar-container {
             display: grid;
@@ -218,29 +244,6 @@
                 padding: 3px;
                 font-size: 9px;
             }
-        }
-        
-        @media (max-width: 480px) {
-            .calendar-header {
-                display: grid !important;
-                grid-template-columns: 1fr 1fr;
-                grid-template-rows: auto auto;
-                gap: 8px;
-                margin-bottom: 15px;
-            }
-            .calendar-btn-dummy {
-                grid-column: 1;
-                grid-row: 1;
-                padding: 10px 12px;
-                font-size: 13px;
-            }
-            .calendar-btn-toggle { grid-column: 2; grid-row: 1; padding: 10px 12px; font-size: 13px; }
-            .calendar-btn-prev { grid-column: 1 / -1; grid-row: 2; width: 40px !important; height: 40px; padding: 0 !important; font-size: 18px !important; min-width: 40px !important; max-width: 40px !important; justify-self: start; }
-            .calendar-title { grid-column: 1 / -1; grid-row: 2; font-size: 13px; display: flex; align-items: center; justify-content: center; margin: 0 50px; }
-            .calendar-btn-next { grid-column: 1 / -1; grid-row: 2; width: 40px !important; height: 40px; padding: 0 !important; font-size: 18px !important; min-width: 40px !important; max-width: 40px !important; justify-self: end; }
-        }
-        @media (min-width: 768px) {
-            .calendar-btn-toggle { width: 160px; text-align: center; }
         }
 
         .trips-grid {
@@ -1484,6 +1487,17 @@
                 await loadTrips();
                 renderCalendar();
             }
+        });
+
+        // Global ESC key handler
+        document.addEventListener('keydown', function(e) {
+            if (e.key !== 'Escape') return;
+            
+            const tripOrdersModal = document.getElementById('tripOrdersModal');
+            if (tripOrdersModal && tripOrdersModal.classList.contains('active')) { closeTripOrdersModal(); return; }
+            
+            const createTripModal = document.getElementById('createTripModal');
+            if (createTripModal && createTripModal.classList.contains('active')) { closeCreateTripModal(); return; }
         });
     </script>
 </body>

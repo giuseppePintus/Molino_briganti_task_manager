@@ -25,7 +25,7 @@
     try {
       const token = localStorage.getItem('token');
       const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-      const resp = await fetch(`${API_URL}/settings`, { headers });
+      const resp = await fetch(`${API_URL}/settings/company`, { headers });
       if (resp.ok) {
         const data = await resp.json();
         localStorage.setItem('companySettings', JSON.stringify(data));

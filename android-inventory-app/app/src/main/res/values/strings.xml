@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Molino Inventario</string>
+    <string name="login_title">Accedi</string>
+    <string name="username_label">Nome utente</string>
+    <string name="password_label">Password</string>
+    <string name="login_button">Accedi</string>
+    <string name="logout_button">Esci</string>
+    <string name="articles_title">Articoli</string>
+    <string name="search_hint">Cerca per nome, codice o categoria…</string>
+    <string name="stock_label">Giacenza</string>
+    <string name="minimum_stock_label">Stock minimo</string>
+    <string name="position_label">Posizione</string>
+    <string name="batch_label">Lotto</string>
+    <string name="expiry_label">Scadenza</string>
+    <string name="quantity_label">Quantità</string>
+    <string name="save_button">Salva</string>
+    <string name="cancel_button">Annulla</string>
+    <string name="scan_shelf">Scansiona scaffale</string>
+    <string name="scan_product">Scansiona prodotto</string>
+    <string name="load_goods_title">Carico Merce</string>
+    <string name="alerts_title">Avvisi Stock</string>
+    <string name="settings_title">Impostazioni</string>
+    <string name="server_url_label">URL Server</string>
+    <string name="no_articles">Nessun articolo trovato</string>
+    <string name="no_alerts">Nessun avviso attivo</string>
+    <string name="camera_permission_required">Permesso fotocamera necessario per lo scanner</string>
+    <string name="error_loading">Errore nel caricamento</string>
+    <string name="retry_button">Riprova</string>
+    <string name="step_shelf">Passo 1: Scaffale</string>
+    <string name="step_product">Passo 2: Prodotto</string>
+    <string name="step_details">Passo 3: Dettagli</string>
+    <string name="step_confirm">Passo 4: Conferma</string>
+    <string name="stock_updated">Giacenza aggiornata</string>
+    <string name="nav_articles">Articoli</string>
+    <string name="nav_load">Carico</string>
+    <string name="nav_alerts">Avvisi</string>
+    <string name="nav_settings">Impostazioni</string>
+</resources>

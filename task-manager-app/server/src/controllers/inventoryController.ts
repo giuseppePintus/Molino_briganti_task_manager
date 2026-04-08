@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { InventoryService } from '../services/inventoryService';
+import { socketService, SocketEvents } from '../services/socketService';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -134,7 +135,7 @@ export class InventoryController {
    */
   static async updateStock(req: Request, res: Response) {
     try {
-      const { articleId, newQuantity, reason } = req.body;
+      const { articleId, newQuantity, reason, batch, expiry } = req.body;
       // Prova a ottenere l'userId dal middleware di autenticazione o dal body come fallback
       let userId = (req as any).user?.id;
       
@@ -152,11 +153,15 @@ export class InventoryController {
         parseInt(articleId),
         parseInt(newQuantity),
         reason || 'AGGIUSTAMENTO MANUALE',
-        userId
+        userId,
+        batch,
+        expiry
       );
 
+      socketService.broadcast(SocketEvents.INVENTORY_UPDATED, { type: 'stock', articleId });
       res.json(updated);
     } catch (error: any) {
+      console.error('❌ updateStock ERROR:', error?.message || error);
       res.status(500).json({ error: error.message });
     }
   }
@@ -400,6 +405,38 @@ export class InventoryController {
   }
 
   /**
+   * Crea un nuovo articolo
+   */
+  static async createArticle(req: Request, res: Response) {
+    try {
+      const { code, name, description, category, unit, weightPerUnit, barcode } = req.body;
+      if (!code || !name) {
+        return res.status(400).json({ success: false, error: 'Codice e nome sono obbligatori' });
+      }
+      const article = await InventoryService.createArticle({ code, name, description, category, unit, weightPerUnit: weightPerUnit ? parseFloat(weightPerUnit) : undefined, barcode });
+      res.json({ success: true, data: article });
+    } catch (error: any) {
+      console.error('❌ Create article error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  /**
+   * Aggiorna un articolo esistente
+   */
+  static async updateArticle(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { code, name, description, category, unit, weightPerUnit, barcode } = req.body;
+      const article = await InventoryService.updateArticle(parseInt(id), { code, name, description, category, unit, weightPerUnit: weightPerUnit !== undefined ? parseFloat(weightPerUnit) : undefined, barcode });
+      res.json({ success: true, data: article });
+    } catch (error: any) {
+      console.error('❌ Update article error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  /**
    * Elimina un articolo (admin only)
    */
   static async deleteArticle(req: Request, res: Response) {
@@ -418,6 +455,140 @@ export class InventoryController {
       });
     }
   }
-}
 
+  // =============================================
+  // SHELF POSITIONS
+  // =============================================
+
+  static async getShelfPositions(req: Request, res: Response) {
+    try {
+      const positions = await InventoryService.getShelfPositions();
+      res.json(positions);
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  static async createShelfPosition(req: Request, res: Response) {
+    try {
+      const { code, description } = req.body;
+      if (!code) {
+        return res.status(400).json({ success: false, error: 'Il codice è obbligatorio' });
+      }
+      const position = await InventoryService.createShelfPosition(code, description);
+      res.json({ success: true, data: position });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  static async updateShelfPositionEntry(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { code, description, isActive } = req.body;
+      const position = await InventoryService.updateShelfPositionEntry(parseInt(id), { code, description, isActive });
+      res.json({ success: true, data: position });
+    } catch (error: any) {
+      if (error.code === 'P2002') {
+        return res.status(409).json({ success: false, error: `Il codice posizione "${req.body.code}" è già in uso.` });
+      }
+      console.error('❌ Errore update posizione:', error.message);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  static async deleteShelfPosition(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      await InventoryService.deleteShelfPosition(parseInt(id));
+      res.json({ success: true, message: 'Posizione eliminata' });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  static async seedShelfPositions(req: Request, res: Response) {
+    try {
+      const { positions } = req.body;
+      if (!positions || !Array.isArray(positions)) {
+        return res.status(400).json({ success: false, error: 'Array posizioni richiesto' });
+      }
+      const result = await InventoryService.seedShelfPositions(positions);
+      res.json({ success: true, ...result });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  // =============================================
+  // SHELF ENTRIES
+  // =============================================
+
+  static async getShelfEntries(req: Request, res: Response) {
+    try {
+      const { articleId, positionCode } = req.query;
+      const entries = await InventoryService.getShelfEntries({
+        articleId: articleId ? parseInt(articleId as string) : undefined,
+        positionCode: positionCode as string | undefined
+      });
+      res.json(entries);
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  static async upsertShelfEntry(req: Request, res: Response) {
+    try {
+      const { articleId, positionCode, quantity, batch, expiry, notes } = req.body;
+      if (!articleId || !positionCode) {
+        return res.status(400).json({ success: false, error: 'articleId e positionCode obbligatori' });
+      }
+      const entry = await InventoryService.upsertShelfEntry({
+        articleId: parseInt(articleId),
+        positionCode,
+        quantity: quantity !== undefined ? parseInt(quantity) : 0,
+        batch: batch || undefined,
+        expiry: expiry || undefined,
+        notes: notes || undefined
+      });
+      socketService.broadcast(SocketEvents.INVENTORY_UPDATED, { type: 'shelf-entry' });
+      res.json({ success: true, data: entry });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  static async updateShelfEntry(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { quantity, batch, expiry, notes, positionCode } = req.body;
+      const entry = await InventoryService.updateShelfEntry(parseInt(id), {
+        ...(quantity !== undefined && { quantity: parseInt(quantity) }),
+        ...(batch !== undefined && { batch: batch || null }),
+        ...(expiry !== undefined && { expiry: expiry || null }),
+        ...(notes !== undefined && { notes: notes || null }),
+        ...(positionCode && { positionCode })
+      });
+      socketService.broadcast(SocketEvents.INVENTORY_UPDATED, { type: 'shelf-entry', id });
+      res.json({ success: true, data: entry });
+    } catch (error: any) {
+      if (error.code === 'P2002') {
+        return res.status(409).json({ success: false, error: 'Questo articolo è già presente in quella posizione scaffale.' });
+      }
+      console.error('❌ Errore update shelf entry:', error.message);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  static async deleteShelfEntry(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      await InventoryService.deleteShelfEntry(parseInt(id));
+      socketService.broadcast(SocketEvents.INVENTORY_UPDATED, { type: 'shelf-entry', id });
+      res.json({ success: true, message: 'Entrata rimossa' });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+}
 

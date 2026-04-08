@@ -21,6 +21,8 @@ router.post('/sync-to-csv', InventoryController.syncToMasterCsv);
 // Lettura articoli
 router.get('/articles', InventoryController.getAllArticles);
 router.get('/articles/:id', InventoryController.getArticleDetail);
+router.post('/articles', InventoryController.createArticle);
+router.put('/articles/:id', InventoryController.updateArticle);
 router.delete('/articles/:id', InventoryController.deleteArticle);
 
 // Gestione stock
@@ -35,6 +37,19 @@ router.post('/stock/set-minimum', InventoryController.setMinimumStock);
 
 // Gestione posizioni scaffali
 router.post('/shelf-position', InventoryController.updateShelfPosition);
+
+// CRUD posizioni scaffale
+router.get('/shelf-positions', InventoryController.getShelfPositions);
+router.post('/shelf-positions', InventoryController.createShelfPosition);
+router.put('/shelf-positions/:id', InventoryController.updateShelfPositionEntry);
+router.delete('/shelf-positions/:id', InventoryController.deleteShelfPosition);
+router.post('/shelf-positions/seed', InventoryController.seedShelfPositions);
+
+// ShelfEntries (many-to-many: articolo x posizione)
+router.get('/shelf-entries', InventoryController.getShelfEntries);
+router.post('/shelf-entries', InventoryController.upsertShelfEntry);
+router.put('/shelf-entries/:id', InventoryController.updateShelfEntry);
+router.delete('/shelf-entries/:id', InventoryController.deleteShelfEntry);
 
 // Gestione prenotazioni (per ordini)
 router.get('/batches', InventoryController.getBatches);

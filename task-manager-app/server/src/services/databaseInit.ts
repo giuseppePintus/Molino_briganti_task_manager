@@ -321,6 +321,18 @@ export async function createTablesIfNotExist(prisma: PrismaClient) {
       }
     }
 
+    // Aggiungi colonna "name" se manca in User
+    try {
+      await prisma.$executeRawUnsafe(`
+        ALTER TABLE "User" ADD COLUMN "name" TEXT DEFAULT NULL
+      `);
+    } catch (error: any) {
+      // Colonna potrebbe già esistere
+      if (!error.message.includes('already exists') && !error.message.includes('duplicate')) {
+        console.log('Note:', error.message);
+      }
+    }
+
     // Aggiungi colonna "reserved" se manca in Inventory
     try {
       await prisma.$executeRawUnsafe(`

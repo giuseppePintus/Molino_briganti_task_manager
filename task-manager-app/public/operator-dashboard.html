@@ -114,6 +114,7 @@
             letter-spacing: 0.3px;
             min-width: -moz-fit-content; /* Firefox */
             min-width: -webkit-fit-content; /* Chrome/Safari */
+            min-width: -webkit-fill-available; /* Samsung Internet 5.0+ */
             min-width: fit-content; /* Standard */
         }
 
@@ -483,11 +484,40 @@
         let allOrders = [];
         let allTrips = [];
 
-        // Check authorization
-        window.addEventListener('load', () => {
+        // Funzione per gestire sessione scaduta/invalida
+        function handleSessionExpired() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('currentUser');
+            window.location.href = '/index.html';
+        }
+
+        // Fetch wrapper che gestisce automaticamente 401/403
+        const originalFetch = window.fetch;
+        window.fetch = async function(...args) {
+            const response = await originalFetch.apply(this, args);
+            if ((response.status === 401 || response.status === 403) && args[0]?.toString().includes('/api/')) {
+                handleSessionExpired();
+                return response;
+            }
+            return response;
+        };
+
+        // Check authorization - verifica col server che il token sia ancora valido
+        window.addEventListener('load', async () => {
             if (!token || currentUser.role !== 'slave') {
-                window.location.href = '/index.html';
+                handleSessionExpired();
                 return;
+            }
+            try {
+                const res = await originalFetch(`${API_URL}/auth/me`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!res.ok) {
+                    handleSessionExpired();
+                    return;
+                }
+            } catch (e) {
+                console.warn('⚠️ Impossibile verificare il token, tentativo di continuare...');
             }
             initDashboard();
         });
@@ -1586,6 +1616,14 @@
                 alert.classList.remove('show');
             }, 5000);
         }
+
+        // Global ESC key handler
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const taskModal = document.getElementById('taskModal');
+                if (taskModal && taskModal.classList.contains('active')) { closeModal(); }
+            }
+        });
     </script>
 </body>
 </html>

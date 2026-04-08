@@ -485,15 +485,19 @@ export class InventoryService {
   /**
    * Aggiorna stock per un articolo
    */
-  static async updateStock(articleId: number, newQuantity: number, reason: string, userId: number) {
+  static async updateStock(articleId: number, newQuantity: number, reason: string, userId: number, batch?: string, expiry?: string) {
     try {
-      const inventory = await prisma.inventory.findUnique({
+      let inventory: any = await prisma.inventory.findUnique({
         where: { articleId },
         include: { article: true }
       });
 
       if (!inventory) {
-        throw new Error('Articolo non trovato');
+        // Crea inventory se mancante (articolo mai caricato a magazzino)
+        inventory = await prisma.inventory.create({
+          data: { articleId, currentStock: 0, minimumStock: 0 },
+          include: { article: true }
+        });
       }
 
       const oldQuantity = inventory.currentStock;
@@ -502,7 +506,11 @@ export class InventoryService {
       // Aggiorna stock
       const updated = await prisma.inventory.update({
         where: { articleId },
-        data: { currentStock: newQuantity },
+        data: {
+          currentStock: newQuantity,
+          ...(batch !== undefined && { batch: batch || null }),
+          ...(expiry !== undefined && { expiry: expiry || null }),
+        },
         include: { article: true }
       });
 
@@ -520,21 +528,6 @@ export class InventoryService {
       // Verifica se scatta un allarme
       if (newQuantity < inventory.minimumStock && oldQuantity >= inventory.minimumStock) {
         await this.createStockAlert(articleId, inventory.id, 'LOW_STOCK', newQuantity, inventory.minimumStock);
-      }
-
-      // Sincronizza con il file master CSV dopo l'aggiornamento
-      try {
-        // Salva nel formato locale
-        const csvPath = path.join(process.cwd(), 'public/data/inventory.csv');
-        await this.saveInventoryCSVToFile(csvPath);
-        console.log(`✅ CSV aggiornato dopo modifica stock articolo ${articleId}`);
-
-        // Salva anche nel formato master nel percorso NAS fisso
-        console.log(`🔄 Sincronizzazione master CSV: ${MASTER_CSV_PATH}`);
-        await this.syncToMasterCSV();
-        console.log(`✅ Master CSV sincronizzato`);
-      } catch (csvError) {
-        console.error(`❌ Errore sincronizzazione CSV: ${csvError}`);
       }
 
       return updated;
@@ -672,7 +665,8 @@ export class InventoryService {
         include: {
           inventory: {
             include: { alerts: { where: { isResolved: false } } }
-          }
+          },
+          shelfEntries: true
         },
         orderBy: { code: 'asc' }
       });
@@ -685,17 +679,25 @@ export class InventoryService {
         const key = art.code || art.name || 'UNKNOWN';
         
         if (!uniqueByCode.has(key)) {
-          // Primo articolo con questo codice - salvalo
           uniqueByCode.set(key, {
             ...art,
             totalQuantityAllPositions: art.inventory?.currentStock || 0,
             positionsCount: 1
           });
         } else {
-          // Aggiungi la quantità agli articoli già visti
           const existing = uniqueByCode.get(key);
-          existing.totalQuantityAllPositions += art.inventory?.currentStock || 0;
-          existing.positionsCount += 1;
+          // Preferisci il record che ha effettivamente un'inventory nel DB
+          if (!existing.inventory && art.inventory) {
+            const prevTotal = existing.totalQuantityAllPositions;
+            uniqueByCode.set(key, {
+              ...art,
+              totalQuantityAllPositions: prevTotal + (art.inventory?.currentStock || 0),
+              positionsCount: existing.positionsCount + 1
+            });
+          } else {
+            existing.totalQuantityAllPositions += art.inventory?.currentStock || 0;
+            existing.positionsCount += 1;
+          }
         }
       });
       
@@ -946,8 +948,16 @@ export class InventoryService {
         include: { inventory: true }
       });
 
-      if (!article || !article.inventory) {
-        throw new Error('Articolo non trovato');
+      if (!article) {
+        // Articolo non trovato nel DB - skip prenotazione ma non bloccare l'ordine
+        console.log(`⚠️ [reserveInventory] Articolo ${articleCode} non trovato - skip prenotazione`);
+        return { success: true, skipped: true, reason: 'Articolo non trovato nel database' };
+      }
+
+      if (!article.inventory) {
+        // Articolo trovato ma senza record inventario - skip prenotazione
+        console.log(`⚠️ [reserveInventory] Articolo ${articleCode} senza inventario - skip prenotazione`);
+        return { success: true, skipped: true, reason: 'Nessun inventario associato' };
       }
 
       const inv = article.inventory;
@@ -955,7 +965,9 @@ export class InventoryService {
       const available = (inv.currentStock || 0) - reserved;
 
       if (available < 0) {
-        throw new Error(`Quantità insufficiente: disponibili ${inv.currentStock || 0} - già prenotati ${inv.reserved || 0}`);
+        // Stock insufficiente - logga warning ma non bloccare
+        console.log(`⚠️ [reserveInventory] Stock insufficiente per ${articleCode}: disponibili ${inv.currentStock || 0} - già prenotati ${inv.reserved || 0}`);
+        return { success: true, skipped: true, reason: `Stock insufficiente: disponibili ${inv.currentStock || 0}kg` };
       }
 
       // Aggiorna il campo reserved
@@ -966,7 +978,9 @@ export class InventoryService {
 
       return { success: true, reserved, available, quantity };
     } catch (error) {
-      throw new Error(`Errore prenotazione inventario: ${error}`);
+      // Non bloccare l'ordine per errori di inventario
+      console.error(`❌ [reserveInventory] Errore: ${error}`);
+      return { success: true, skipped: true, reason: `Errore: ${error}` };
     }
   }
 
@@ -1020,15 +1034,6 @@ export class InventoryService {
         where: { id: inv.id },
         data: { reserved, currentStock }
       });
-
-      // Sincronizza con il file master CSV dopo il consumo
-      try {
-        console.log(`🔄 Sincronizzazione master CSV dopo consumo: ${MASTER_CSV_PATH}`);
-        await this.syncToMasterCSV();
-        console.log(`✅ Master CSV sincronizzato`);
-      } catch (csvError) {
-        console.error(`❌ Errore sincronizzazione CSV dopo consumo: ${csvError}`);
-      }
 
       return { success: true, reserved, currentStock };
     } catch (error) {
@@ -1183,6 +1188,51 @@ print(f"{{len(df)}}")
     }
   }
 
+  static async createArticle(data: { code: string; name: string; description?: string; category?: string; unit?: string; weightPerUnit?: number; barcode?: string }) {
+    try {
+      const article = await prisma.article.create({
+        data: {
+          code: data.code,
+          name: data.name,
+          description: data.description || null,
+          category: data.category || null,
+          unit: data.unit || 'kg',
+          weightPerUnit: data.weightPerUnit || 1,
+          barcode: data.barcode || null,
+        },
+        include: { inventory: true }
+      });
+      console.log(`✅ Articolo creato: ${article.id} - ${article.code}`);
+      return article;
+    } catch (error) {
+      console.error(`❌ Errore create articolo: ${error}`);
+      throw error;
+    }
+  }
+
+  static async updateArticle(articleId: number, data: { code?: string; name?: string; description?: string; category?: string; unit?: string; weightPerUnit?: number; barcode?: string }) {
+    try {
+      const article = await prisma.article.update({
+        where: { id: articleId },
+        data: {
+          ...(data.code !== undefined && { code: data.code }),
+          ...(data.name !== undefined && { name: data.name }),
+          ...(data.description !== undefined && { description: data.description || null }),
+          ...(data.category !== undefined && { category: data.category || null }),
+          ...(data.unit !== undefined && { unit: data.unit }),
+          ...(data.weightPerUnit !== undefined && { weightPerUnit: data.weightPerUnit }),
+          ...(data.barcode !== undefined && { barcode: data.barcode || null }),
+        },
+        include: { inventory: true }
+      });
+      console.log(`✅ Articolo aggiornato: ${article.id} - ${article.code}`);
+      return article;
+    } catch (error) {
+      console.error(`❌ Errore update articolo: ${error}`);
+      throw error;
+    }
+  }
+
   static async deleteArticle(articleId: number) {
     try {
       // Elimina l'inventario associato
@@ -1200,6 +1250,163 @@ print(f"{{len(df)}}")
       console.error(`❌ Errore delete articolo: ${error}`);
       throw error;
     }
+  }
+
+  // =============================================
+  // SHELF POSITIONS
+  // =============================================
+
+  static async getShelfPositions(): Promise<any[]> {
+    try {
+      return await prisma.shelfPosition.findMany({
+        where: { isActive: true },
+        orderBy: { code: 'asc' }
+      });
+    } catch (error) {
+      console.error('❌ Errore getShelfPositions:', error);
+      throw error;
+    }
+  }
+
+  static async createShelfPosition(code: string, description?: string) {
+    try {
+      const position = await prisma.shelfPosition.create({
+        data: { code, description: description || null }
+      });
+      console.log(`✅ Posizione scaffale creata: ${code}`);
+      return position;
+    } catch (error) {
+      console.error(`❌ Errore create posizione: ${error}`);
+      throw error;
+    }
+  }
+
+  static async updateShelfPositionEntry(id: number, data: { code?: string; description?: string; isActive?: boolean }) {
+    try {
+      const position = await prisma.shelfPosition.update({
+        where: { id },
+        data: {
+          ...(data.code !== undefined && { code: data.code }),
+          ...(data.description !== undefined && { description: data.description || null }),
+          ...(data.isActive !== undefined && { isActive: data.isActive }),
+        }
+      });
+      console.log(`✅ Posizione scaffale aggiornata: ${position.code}`);
+      return position;
+    } catch (error) {
+      console.error(`❌ Errore update posizione: ${error}`);
+      throw error;
+    }
+  }
+
+  static async deleteShelfPosition(id: number) {
+    try {
+      await prisma.shelfPosition.delete({ where: { id } });
+      console.log(`✅ Posizione scaffale ${id} eliminata`);
+    } catch (error) {
+      console.error(`❌ Errore delete posizione: ${error}`);
+      throw error;
+    }
+  }
+
+  static async seedShelfPositions(positions: string[]) {
+    try {
+      let created = 0;
+      for (const code of positions) {
+        const existing = await prisma.shelfPosition.findUnique({ where: { code } });
+        if (!existing) {
+          await prisma.shelfPosition.create({ data: { code } });
+          created++;
+        }
+      }
+      console.log(`✅ Seed posizioni: ${created} nuove su ${positions.length} totali`);
+      return { created, total: positions.length };
+    } catch (error) {
+      console.error(`❌ Errore seed posizioni: ${error}`);
+      throw error;
+    }
+  }
+
+  // =============================================
+  // SHELF ENTRIES (many-to-many: article × position)
+  // =============================================
+
+  static async getShelfEntries(filters: { articleId?: number; positionCode?: string } = {}) {
+    return await prisma.shelfEntry.findMany({
+      where: {
+        ...(filters.articleId && { articleId: filters.articleId }),
+        ...(filters.positionCode && { positionCode: filters.positionCode }),
+      },
+      include: { article: true },
+      orderBy: [{ positionCode: 'asc' }, { articleId: 'asc' }]
+    });
+  }
+
+  static async upsertShelfEntry(data: { articleId: number; positionCode: string; quantity: number; batch?: string; expiry?: string; notes?: string }) {
+    // Cerca entry esistente con stesso articolo, posizione e lotto
+    const existing = await prisma.shelfEntry.findFirst({
+      where: {
+        articleId: data.articleId,
+        positionCode: data.positionCode,
+        batch: data.batch ?? null
+      }
+    });
+    if (existing) {
+      return await prisma.shelfEntry.update({
+        where: { id: existing.id },
+        data: { quantity: data.quantity, expiry: data.expiry ?? null, notes: data.notes ?? null },
+        include: { article: true }
+      });
+    }
+    return await prisma.shelfEntry.create({
+      data,
+      include: { article: true }
+    });
+  }
+
+  static async updateShelfEntry(id: number, data: { quantity?: number; batch?: string | null; expiry?: string | null; notes?: string | null; positionCode?: string }) {
+    // Se si sta spostando in un'altra posizione, cerca merge possibile
+    if (data.positionCode) {
+      const current = await prisma.shelfEntry.findUnique({ where: { id } });
+      if (current && data.positionCode !== current.positionCode) {
+        const movingBatch = data.batch !== undefined ? data.batch : current.batch;
+        const movingExpiry = data.expiry !== undefined ? data.expiry : current.expiry;
+        const movingQty = data.quantity ?? current.quantity;
+
+        // Cerca entry con stesso articolo, stessa posizione destinazione, stesso lotto e scadenza
+        const existing = await prisma.shelfEntry.findFirst({
+          where: {
+            articleId: current.articleId,
+            positionCode: data.positionCode,
+            batch: movingBatch || null,
+            expiry: movingExpiry || null
+          }
+        });
+
+        if (existing) {
+          // Stesso lotto e scadenza → unisci sommando le quantità
+          const merged = await prisma.shelfEntry.update({
+            where: { id: existing.id },
+            data: { quantity: existing.quantity + movingQty },
+            include: { article: true }
+          });
+          await prisma.shelfEntry.delete({ where: { id } });
+          console.log(`✅ Entry ${id} merged into ${existing.id} (qty: ${merged.quantity}) at ${data.positionCode}`);
+          return merged;
+        }
+        // Lotto/scadenza diversi → sposta normalmente (crea nuova entry nella destinazione)
+      }
+    }
+
+    return await prisma.shelfEntry.update({
+      where: { id },
+      data,
+      include: { article: true }
+    });
+  }
+
+  static async deleteShelfEntry(id: number) {
+    await prisma.shelfEntry.delete({ where: { id } });
   }
 }
 

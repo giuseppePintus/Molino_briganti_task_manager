@@ -292,6 +292,62 @@
             .operator-info div { font-size: 12px; }
             .operator-actions { gap: 8px; }
         }
+
+        /* Avatar picker */
+        .avatar-picker-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .avatar-preview {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: #374151;
+            border: 2px solid #4d4d4d;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            overflow: hidden;
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+        .avatar-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .avatar-uploading {
+            opacity: 0.6;
+            font-size: 13px;
+            color: #93c5fd;
+        }
+        .avatar-file-btn {
+            background: #374151;
+            color: #e0e0e0;
+            border: 1px solid #4d4d4d;
+            border-radius: 6px;
+            padding: 7px 14px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .avatar-file-btn:hover { background: #4b5563; }
+        .avatar-file-input { display: none; }
+        .operator-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #4d4d4d;
+            flex-shrink: 0;
+        }
+        .operator-card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
     </style>
 </head>
 <body>
@@ -326,15 +382,26 @@
                     </div>
                     <div class="form-group">
                         <label for="operatorUsername">Username *</label>
-                        <input type="text" id="operatorUsername" placeholder="es. mario_rossi" required>
+                        <input type="text" id="operatorUsername" placeholder="es. mario_rossi" autocomplete="username" required>
                     </div>
                     <div class="form-group">
                         <label for="operatorPassword">Password *</label>
-                        <input type="password" id="operatorPassword" placeholder="Password sicura" required>
+                        <input type="password" id="operatorPassword" placeholder="Password sicura" autocomplete="new-password" required>
                     </div>
                     <div class="form-group">
-                        <label for="operatorImage">Immagine (Emoji o URL)</label>
-                        <input type="text" id="operatorImage" placeholder="es. 👨‍🔧 oppure https://...">
+                        <label>Immagine Profilo</label>
+                        <div class="avatar-picker-row">
+                            <div class="avatar-preview" id="createAvatarPreview" onclick="document.getElementById('createAvatarFile').click()" title="Clicca per scegliere un'immagine">
+                                <span id="createAvatarPlaceholder">👤</span>
+                            </div>
+                            <div>
+                                <button type="button" class="avatar-file-btn" onclick="document.getElementById('createAvatarFile').click()">📁 Scegli immagine</button>
+                                <input type="file" id="createAvatarFile" class="avatar-file-input" accept="image/*" onchange="handleAvatarUpload(this, 'createAvatarPreview', 'createAvatarPlaceholder', 'operatorImageUrl')">
+                                <input type="hidden" id="operatorImageUrl">
+                                <div style="font-size:11px;color:#6b7280;margin-top:4px;">JPG, PNG, WebP — max 5MB</div>
+                                <div id="createAvatarStatus" style="font-size:12px;color:#93c5fd;margin-top:2px;"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <button type="submit" class="btn btn-success" data-icon="➕"><span>Crea<br>Utente</span></button>
@@ -360,7 +427,7 @@
             <form id="editOperatorForm" onsubmit="handleEditOperator(event)" class="modal-form">
                 <div class="form-group">
                     <label for="editOperatorUsername">Username</label>
-                    <input type="text" id="editOperatorUsername" disabled class="input-disabled">
+                    <input type="text" id="editOperatorUsername" placeholder="Username" autocomplete="username" required>
                 </div>
                 <div class="form-group">
                     <label>Tipo</label>
@@ -369,12 +436,27 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label for="editOperatorPassword">Nuova Password (lascia vuoto per mantenere l'attuale)</label>
-                    <input type="password" id="editOperatorPassword" placeholder="Lascia vuoto per non modificare">
+                    <label for="editOperatorName">Nome Visualizzato</label>
+                    <input type="text" id="editOperatorName" placeholder="es. Mario Rossi">
                 </div>
                 <div class="form-group">
-                    <label for="editOperatorImage">Immagine (Emoji o URL)</label>
-                    <input type="text" id="editOperatorImage" placeholder="es. 👨‍🔧 oppure https://...">
+                    <label for="editOperatorPassword">Nuova Password (lascia vuoto per mantenere l'attuale)</label>
+                    <input type="password" id="editOperatorPassword" placeholder="Lascia vuoto per non modificare" autocomplete="new-password">
+                </div>
+                <div class="form-group">
+                    <label>Immagine Profilo</label>
+                    <div class="avatar-picker-row">
+                        <div class="avatar-preview" id="editAvatarPreview" onclick="document.getElementById('editAvatarFile').click()" title="Clicca per cambiare immagine">
+                            <span id="editAvatarPlaceholder">👤</span>
+                        </div>
+                        <div>
+                            <button type="button" class="avatar-file-btn" onclick="document.getElementById('editAvatarFile').click()">📁 Scegli immagine</button>
+                            <input type="file" id="editAvatarFile" class="avatar-file-input" accept="image/*" onchange="handleAvatarUpload(this, 'editAvatarPreview', 'editAvatarPlaceholder', 'editOperatorImageUrl')">
+                            <input type="hidden" id="editOperatorImageUrl">
+                            <div style="font-size:11px;color:#6b7280;margin-top:4px;">JPG, PNG, WebP — max 5MB</div>
+                            <div id="editAvatarStatus" style="font-size:12px;color:#93c5fd;margin-top:2px;"></div>
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-buttons">
                     <button type="submit" class="btn btn-primary modal-button-flex" data-icon="💾"><span>Salva<br>Modifiche</span></button>
@@ -397,6 +479,9 @@
                 window.location.href = '/index.html';
                 return;
             }
+            // Nascondi il modale all'inizio
+            document.getElementById('editModal').style.display = 'none';
+            
             // Load branding
             if (window.SettingsUtils && window.SettingsUtils.loadAndApplyBranding) {
                 await window.SettingsUtils.loadAndApplyBranding();
@@ -440,13 +525,22 @@
 
             container.innerHTML = operatorsList.map(op => `
                 <div class="operator-card">
-                    <h3>${op.role === 'master' ? '👨‍💼' : '👥'} ${op.username}</h3>
+                    <div class="operator-card-header">
+                        ${ op.image && op.image.startsWith('uploads/')
+                            ? `<img class="operator-avatar" src="${API_URL.replace('/api','')}/${op.image}" alt="${op.name || op.username}" onerror="this.style.display='none'">`
+                            : op.image && op.image.startsWith('http')
+                            ? `<img class="operator-avatar" src="${op.image}" alt="${op.name || op.username}" onerror="this.style.display='none'">`
+                            : `<div class="operator-avatar" style="background:#374151;display:flex;align-items:center;justify-content:center;font-size:24px;">${op.image || (op.role === 'master' ? '👨‍💼' : '👥')}</div>`
+                        }
+                        <h3>${op.name || op.username}</h3>
+                    </div>
                     <div class="operator-info">
+                        <div>📝 Username: ${op.username}</div>
                         <div>📋 Tipo: ${op.role === 'master' ? 'Admin' : 'Operatore'}</div>
                         <div>📅 Creato: ${new Date(op.createdAt).toLocaleString('it-IT', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</div>
                     </div>
                     <div class="operator-actions">
-                        <button class="btn btn-warning btn-small" data-icon="✏️" onclick="openEditModal(${op.id}, '${op.username}', '${op.image || ''}', '${op.role}')"><span>Modifica</span></button>
+                        <button class="btn btn-warning btn-small" data-icon="✏️" onclick="openEditModal(${op.id}, '${op.username}', '${op.name || ''}', '${op.image || ''}', '${op.role}')"><span>Modifica</span></button>
                         <button class="btn btn-danger btn-small" data-icon="🗑️" onclick="handleDeleteOperator(${op.id}, '${op.username}')"><span>Cancella</span></button>
                     </div>
                 </div>
@@ -459,7 +553,7 @@
             const userType = document.getElementById('userType').value;
             const username = document.getElementById('operatorUsername').value;
             const password = document.getElementById('operatorPassword').value;
-            const image = document.getElementById('operatorImage').value;
+            const image = document.getElementById('operatorImageUrl').value;
 
             try {
                 const endpoint = userType === 'admin' ? '/auth/create-admin' : '/auth/create-operator';
@@ -477,18 +571,35 @@
 
                 showAlert(`${userType === 'admin' ? 'Admin' : 'Operatore'} creato con successo!`, 'success');
                 document.getElementById('createOperatorForm').reset();
+                document.getElementById('operatorImageUrl').value = '';
+                resetAvatarPreview('createAvatarPreview', 'createAvatarPlaceholder', 'createAvatarStatus');
                 await loadOperators();
             } catch (error) {
                 showAlert('Errore: ' + error.message, 'error');
             }
         }
 
-        function openEditModal(operatorId, username, image, role) {
+        function openEditModal(operatorId, username, name, image, role) {
             editingOperatorId = operatorId;
             document.getElementById('editOperatorUsername').value = username;
-            document.getElementById('editOperatorImage').value = image || '';
+            document.getElementById('editOperatorName').value = name || '';
+            document.getElementById('editOperatorImageUrl').value = image || '';
             document.getElementById('editOperatorRole').textContent = role === 'master' ? 'Admin' : 'Operatore';
-            document.getElementById('editModal').style.display = 'flex';
+            // Mostra preview immagine attuale
+            const preview = document.getElementById('editAvatarPreview');
+            const placeholder = document.getElementById('editAvatarPlaceholder');
+            if (image && (image.startsWith('uploads/') || image.startsWith('http'))) {
+                const fullUrl = image.startsWith('http') ? image : `${API_URL.replace('/api', '')}/${image}`;
+                preview.innerHTML = `<img src="${fullUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.parentElement.innerHTML='<span>👤</span>'">`;
+            } else if (image) {
+                preview.innerHTML = `<span style="font-size:28px;">${image}</span>`;
+            } else {
+                preview.innerHTML = '<span id="editAvatarPlaceholder">👤</span>';
+            }
+            document.getElementById('editAvatarFile').value = '';
+            document.getElementById('editAvatarStatus').textContent = '';
+            const modal = document.getElementById('editModal');
+            modal.style.cssText = 'display: flex !important; position: fixed !important; top: 0 !important; left: 0 !important; width: 100% !important; height: 100% !important; z-index: 10000 !important;';
         }
 
         function closeEditModal() {
@@ -499,8 +610,15 @@
         async function handleEditOperator(event) {
             event.preventDefault();
             
+            const username = document.getElementById('editOperatorUsername').value.trim();
             const password = document.getElementById('editOperatorPassword').value;
-            const image = document.getElementById('editOperatorImage').value;
+            const name = document.getElementById('editOperatorName').value;
+            const image = document.getElementById('editOperatorImageUrl').value;
+
+            if (!username) {
+                showAlert('Username non può essere vuoto', 'error');
+                return;
+            }
 
             try {
                 const response = await fetch(`${API_URL}/auth/operators/${editingOperatorId}`, {
@@ -510,7 +628,9 @@
                         'Authorization': `Bearer ${token}`
                     },
                     body: JSON.stringify({ 
+                        username: username,
                         password: password || undefined,
+                        name: name || null,
                         image: image || null 
                     })
                 });
@@ -527,7 +647,7 @@
         }
 
         async function handleDeleteOperator(operatorId, operatorName) {
-            if (!confirm(`Sei sicuro di voler eliminare l'operatore "${operatorName}"?`)) return;
+            if (!await customConfirm(`Eliminare l'operatore "${operatorName}"?`)) return;
 
             try {
                 const response = await fetch(`${API_URL}/auth/operators/${operatorId}`, {
@@ -561,10 +681,82 @@
             }, 5000);
         }
 
+        async function handleAvatarUpload(input, previewId, placeholderId, urlInputId) {
+            const file = input.files[0];
+            if (!file) return;
+            const statusId = previewId === 'createAvatarPreview' ? 'createAvatarStatus' : 'editAvatarStatus';
+            const statusEl = document.getElementById(statusId);
+            if (statusEl) statusEl.textContent = '⏳ Caricamento...';
+
+            const formData = new FormData();
+            formData.append('image', file);
+
+            try {
+                const response = await fetch(`${API_URL}/upload/user-image`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData
+                });
+                const data = await response.json();
+                if (!response.ok || !data.success) throw new Error(data.message || 'Errore upload');
+
+                document.getElementById(urlInputId).value = data.url;
+
+                // Mostra preview
+                const preview = document.getElementById(previewId);
+                const baseUrl = API_URL.replace('/api', '');
+                preview.innerHTML = `<img src="${baseUrl}/${data.url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+
+                if (statusEl) statusEl.textContent = '✅ Immagine caricata';
+            } catch (error) {
+                if (statusEl) statusEl.textContent = `❌ ${error.message}`;
+                showAlert('Errore upload immagine: ' + error.message, 'error');
+            }
+        }
+
+        function resetAvatarPreview(previewId, placeholderId, statusId) {
+            const preview = document.getElementById(previewId);
+            if (preview) preview.innerHTML = `<span id="${placeholderId}">👤</span>`;
+            const status = document.getElementById(statusId);
+            if (status) status.textContent = '';
+        }
+
         // Close modal when clicking outside
         document.getElementById('editModal').addEventListener('click', (e) => {
             if (e.target === document.getElementById('editModal')) {
                 closeEditModal();
+            }
+        });
+
+        // Global ESC key handler
+        function customConfirm(msg) {
+            return new Promise(resolve => {
+                const ov = document.createElement('div');
+                ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:99999;display:flex;align-items:center;justify-content:center;';
+                ov.innerHTML = `<div style="background:#2d2d2d;border-radius:12px;padding:28px 32px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.5);border:1px solid #4d4d4d;"><p style="color:#e0e0e0;font-size:15px;margin:0 0 24px;line-height:1.6;">${msg.replace(/\n/g,'<br>')}</p><div style="display:flex;gap:10px;justify-content:flex-end;"><button id="_ccNo" style="background:#374151;color:#e0e0e0;border:none;border-radius:6px;padding:9px 22px;font-size:14px;cursor:pointer;">Annulla</button><button id="_ccYes" style="background:#dc2626;color:#fff;border:none;border-radius:6px;padding:9px 22px;font-size:14px;font-weight:600;cursor:pointer;">Conferma</button></div></div>`;
+                document.body.appendChild(ov);
+                const done = r => { ov.remove(); resolve(r); };
+                ov.querySelector('#_ccYes').onclick = () => done(true);
+                ov.querySelector('#_ccNo').onclick = () => done(false);
+                ov.onclick = ev => { if (ev.target === ov) done(false); };
+                const kh = ev => { if (ev.key === 'Enter') { ev.preventDefault(); done(true); } else if (ev.key === 'Escape') done(false); document.removeEventListener('keydown', kh); };
+                document.addEventListener('keydown', kh);
+                ov.querySelector('#_ccYes').focus();
+            });
+        }
+
+        document.addEventListener('keydown', function(e) {
+            const tag = document.activeElement?.tagName;
+            const inInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('editModal');
+                if (modal && modal.style.display !== 'none') { closeEditModal(); }
+            } else if (e.key === 'Enter' && !inInput) {
+                const modal = document.getElementById('editModal');
+                if (modal && modal.style.display !== 'none') {
+                    const saveBtn = modal.querySelector('button.btn-primary');
+                    if (saveBtn && !saveBtn.disabled) { e.preventDefault(); saveBtn.click(); }
+                }
             }
         });
     </script>

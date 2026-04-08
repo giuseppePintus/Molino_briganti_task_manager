@@ -550,7 +550,7 @@
         }
 
         async function deleteCodifica(codice) {
-            if (!confirm(`Sei sicuro di voler eliminare la codifica "${codice}"?`)) {
+            if (!await customConfirm(`Eliminare la codifica "${codice}"?`)) {
                 return;
             }
 
@@ -575,6 +575,22 @@
         }
 
         // Close modal on Escape
+        function customConfirm(msg) {
+            return new Promise(resolve => {
+                const ov = document.createElement('div');
+                ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:99999;display:flex;align-items:center;justify-content:center;';
+                ov.innerHTML = `<div style="background:#2d2d2d;border-radius:12px;padding:28px 32px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.5);border:1px solid #4d4d4d;"><p style="color:#e0e0e0;font-size:15px;margin:0 0 24px;line-height:1.6;">${msg.replace(/\n/g,'<br>')}</p><div style="display:flex;gap:10px;justify-content:flex-end;"><button id="_ccNo" style="background:#374151;color:#e0e0e0;border:none;border-radius:6px;padding:9px 22px;font-size:14px;cursor:pointer;">Annulla</button><button id="_ccYes" style="background:#dc2626;color:#fff;border:none;border-radius:6px;padding:9px 22px;font-size:14px;font-weight:600;cursor:pointer;">Conferma</button></div></div>`;
+                document.body.appendChild(ov);
+                const done = r => { ov.remove(); resolve(r); };
+                ov.querySelector('#_ccYes').onclick = () => done(true);
+                ov.querySelector('#_ccNo').onclick = () => done(false);
+                ov.onclick = ev => { if (ev.target === ov) done(false); };
+                const kh = ev => { if (ev.key === 'Enter') { ev.preventDefault(); done(true); } else if (ev.key === 'Escape') done(false); document.removeEventListener('keydown', kh); };
+                document.addEventListener('keydown', kh);
+                ov.querySelector('#_ccYes').focus();
+            });
+        }
+
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 closeModal();

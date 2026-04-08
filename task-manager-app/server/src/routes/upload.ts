@@ -3,6 +3,7 @@ import { authMiddleware } from '../middleware/auth';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import prisma from '../lib/prisma';
 
 const router = Router();
 
@@ -26,7 +27,8 @@ const storage = multer.diskStorage({
     // Genera nome univoco con timestamp
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     const ext = path.extname(file.originalname);
-    cb(null, `logo-${uniqueSuffix}${ext}`);
+    const prefix = file.fieldname === 'avatar' ? 'avatar' : 'logo';
+    cb(null, `${prefix}-${uniqueSuffix}${ext}`);
   }
 });
 
@@ -69,6 +71,59 @@ router.post('/logo', authMiddleware, upload.single('logo'), async (req: Request,
     });
   } catch (error: any) {
     console.error('❌ Errore upload logo:', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * POST /api/upload/user-image
+ * Upload immagine per un utente (ritorna solo URL, senza aggiornare il DB)
+ */
+router.post('/user-image', authMiddleware, upload.single('image'), async (req: Request, res: Response) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'Nessun file caricato' });
+    }
+    const relativePath = `uploads/${req.file.filename}`;
+    console.log(`✅ User image caricata: ${req.file.filename}`);
+    res.json({
+      success: true,
+      url: relativePath,
+      filename: req.file.filename,
+      size: req.file.size
+    });
+  } catch (error: any) {
+    console.error('❌ Errore upload user-image:', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * POST /api/upload/avatar
+ * Upload dell'immagine profilo dell'utente corrente
+ */
+router.post('/avatar', authMiddleware, upload.single('avatar'), async (req: Request, res: Response) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'Nessun file caricato' });
+    }
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Non autenticato' });
+    }
+    const relativePath = `uploads/${req.file.filename}`;
+    await prisma.user.update({
+      where: { id: req.user.id },
+      data: { image: relativePath }
+    });
+    console.log(`✅ Avatar caricato per utente ${req.user.username}: ${req.file.filename}`);
+    res.json({
+      success: true,
+      url: relativePath,
+      filename: req.file.filename,
+      size: req.file.size
+    });
+  } catch (error: any) {
+    console.error('❌ Errore upload avatar:', error.message);
     res.status(500).json({ success: false, message: error.message });
   }
 });

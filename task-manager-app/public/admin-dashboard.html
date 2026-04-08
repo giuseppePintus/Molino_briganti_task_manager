@@ -119,6 +119,7 @@
             letter-spacing: 0.3px;
             min-width: -webkit-fill-available;
             min-width: -moz-available;
+            min-width: stretch;
             min-width: fit-content;
         }
 
@@ -983,15 +984,62 @@
         /* Desktop calendar header */
         .calendar-header {
             display: flex;
-            justify-content: space-between;
+            flex-wrap: wrap;
+            justify-content: center;
             align-items: center;
             gap: 10px;
             margin-bottom: 15px;
         }
 
-        .calendar-btn-operators, .calendar-btn-toggle {
+        .calendar-header-left, .calendar-header-right {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .calendar-header-nav {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
+        .calendar-btn-view, .calendar-btn-toggle, .calendar-btn-today, .calendar-btn-all {
             padding: 8px 16px;
             font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .calendar-btn-view.active {
+            background: #38bdf8;
+            color: white;
+            border-color: #38bdf8;
+            font-weight: bold;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+        }
+
+        .calendar-btn-today {
+            background: #0ea5e9;
+            border-color: #0ea5e9;
+            color: white;
+        }
+
+        .calendar-btn-today:hover {
+            background: #0284c7;
+            border-color: #0284c7;
+        }
+
+        .calendar-btn-all {
+            background: #f59e0b;
+            border-color: #f59e0b;
+            color: white;
+        }
+
+        .calendar-btn-all:hover {
+            background: #d97706;
+            border-color: #d97706;
         }
 
         /* Tablet and up: make left/right buttons same width */
@@ -1037,6 +1085,29 @@
 
         /* Tablet specific styles (768px - 1024px) */
         @media (min-width: 768px) and (max-width: 1024px) {
+            .calendar-header {
+                display: flex !important;
+                flex-direction: column;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .calendar-header-left {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .calendar-header-nav {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 10px;
+            }
+
+            .calendar-header-right {
+                width: 100%;
+                justify-content: center;
+            }
             /* Quick actions: grid layout 2 columns */
             .quick-actions {
                 display: grid !important;
@@ -1126,67 +1197,66 @@
         }
 
         @media (max-width: 480px) {
-            /* Mobile: Subgrid approach */
+            /* Mobile: Vertical stack */
             .calendar-header {
-                display: grid !important;
-                grid-template-columns: 1fr 1fr;
-                grid-template-rows: auto auto;
+                display: flex !important;
+                flex-direction: column;
+                align-items: center;
                 gap: 8px;
                 margin-bottom: 15px;
             }
 
-            /* First row: 2 buttons */
-            .calendar-btn-operators {
-                grid-column: 1;
-                grid-row: 1;
-                padding: 10px 12px;
-                font-size: 13px;
+            /* First row: Task view buttons */
+            .calendar-header-left {
+                width: 100%;
+                display: flex;
+                gap: 8px;
+                justify-content: center;
             }
 
-            .calendar-btn-toggle {
-                grid-column: 2;
-                grid-row: 1;
-                padding: 10px 12px;
-                font-size: 13px;
+            .calendar-btn-view {
+                flex: 1;
+                padding: 10px 8px;
+                font-size: 12px;
             }
 
-            /* Second row: create a nested container for navigation */
-            .calendar-btn-prev {
-                grid-column: 1 / -1;
-                grid-row: 2;
+            /* Second row: Navigation (always together) */
+            .calendar-header-nav {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+            }
+
+            .calendar-header-nav .calendar-btn-prev,
+            .calendar-header-nav .calendar-btn-next {
                 width: 40px !important;
                 height: 40px;
                 padding: 0 !important;
                 font-size: 18px !important;
-                min-width: 40px !important;
-                max-width: 40px !important;
-                justify-self: start;
+                flex-shrink: 0;
             }
 
-            .calendar-title {
-                grid-column: 1 / -1;
-                grid-row: 2;
+            .calendar-header-nav .calendar-title {
                 font-size: 13px;
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
-                display: flex;
-                align-items: center;
-                justify-content: center;
                 min-width: 0;
-                margin: 0 50px;
             }
 
-            .calendar-btn-next {
-                grid-column: 1 / -1;
-                grid-row: 2;
-                width: 40px !important;
-                height: 40px;
-                padding: 0 !important;
-                font-size: 18px !important;
-                min-width: 40px !important;
-                max-width: 40px !important;
-                justify-self: end;
+            /* Third row: Action buttons */
+            .calendar-header-right {
+                width: 100%;
+                display: flex;
+                gap: 8px;
+                justify-content: center;
+            }
+
+            .calendar-btn-today, .calendar-btn-toggle, .calendar-btn-all {
+                flex: 1;
+                padding: 10px 8px;
+                font-size: 13px;
             }
 
             /* Quick actions in 2x2 grid on mobile */
@@ -1537,39 +1607,7 @@
             }
         }
 
-        /* Version Badge */
-        .version-badge {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
-            color: #9ca3af;
-            padding: 10px 16px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 700;
-            border: 1px solid #4b5563;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), 0 0 20px rgba(37, 99, 235, 0.2);
-            z-index: 10000;
-            letter-spacing: 0.8px;
-            transition: all 0.3s ease;
-            cursor: default;
-            -webkit-user-select: none;
-            user-select: none;
-            pointer-events: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 45px;
-            text-align: center;
-        }
 
-        .version-badge:hover {
-            background: linear-gradient(135deg, #38bdf8 0%, #1d4ed8 100%);
-            color: #ffffff;
-            border-color: #60a5fa;
-            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4), 0 0 30px rgba(37, 99, 235, 0.3);
-        }
         
         /* Live Update Indicator */
         .live-indicator {
@@ -1595,6 +1633,82 @@
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
         }
+
+        /* === QUICK ACTIONS NAV: GRID OVERRIDE (wins over all breakpoint conflicts) === */
+        .quick-actions {
+            display: grid !important;
+            grid-template-columns: repeat(5, 1fr) !important;
+            gap: 10px !important;
+            margin-bottom: 20px !important;
+            flex-direction: initial !important;
+            flex-wrap: initial !important;
+        }
+        .quick-actions > * { min-width: 0 !important; }
+        .dropdown-menu-admin { display: block !important; }
+        .dropdown-menu-admin .btn-settings {
+            width: 100% !important;
+            height: 100% !important;
+            min-height: 44px !important;
+        }
+        .quick-actions .btn {
+            width: 100% !important;
+            padding: 10px 8px !important;
+            min-height: 44px !important;
+            height: auto !important;
+            font-size: 13px !important;
+            flex: initial !important;
+            min-width: 0 !important;
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 6px !important;
+        }
+        .quick-actions .btn::before { font-size: 16px !important; }
+        .quick-actions .btn span {
+            font-size: 12px !important;
+            line-height: 1.2 !important;
+            text-align: center !important;
+        }
+        .quick-actions .btn.active {
+            outline: 2px solid rgba(255, 255, 255, 0.85) !important;
+            outline-offset: 2px !important;
+            filter: brightness(1.25) !important;
+            transform: translateY(-1px) !important;
+        }
+        .quick-actions .btn.active:hover { transform: translateY(-3px) !important; }
+        @media (max-width: 600px) {
+            .quick-actions { grid-template-columns: repeat(3, 1fr) !important; }
+        }
+        @media (max-width: 380px) {
+            .quick-actions { grid-template-columns: 1fr 1fr !important; }
+        }
+        .sticky-top-bar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: #1a1a1a;
+            padding-bottom: 10px;
+        }
+        .sticky-top-bar .quick-actions {
+            margin-bottom: 0 !important;
+        }
+        .sticky-top-bar .stats,
+        .sticky-top-bar .stats-overview,
+        .sticky-top-bar .stats-bar {
+            max-height: 120px;
+            opacity: 1;
+            overflow: hidden;
+            transition: max-height 0.3s ease, opacity 0.2s ease, margin 0.3s ease;
+        }
+        .sticky-top-bar.scrolled .stats,
+        .sticky-top-bar.scrolled .stats-overview,
+        .sticky-top-bar.scrolled .stats-bar {
+            max-height: 0;
+            opacity: 0;
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+        }
     </style>
     <!-- Socket.io Client -->
     <script src="/socket.io/socket.io.js"></script>
@@ -1602,6 +1716,7 @@
 </head>
 <body>
     <div class="container">
+        <div class="sticky-top-bar">
         <!-- Header -->
         <div class="header">
             <div class="header-left">
@@ -1622,7 +1737,24 @@
         <div id="alert" class="alert"></div>
 
         <!-- Stats -->
-        <div class="stats" id="stats"></div>
+        <div class="stats" id="stats">
+            <div class="stat-card">
+                <div class="number">0</div>
+                <div class="label">Totale Task</div>
+            </div>
+            <div class="stat-card" style="border-left-color: #2196f3;">
+                <div class="number">0</div>
+                <div class="label">In Sospeso</div>
+            </div>
+            <div class="stat-card" style="border-left-color: #ff9800;">
+                <div class="number">0</div>
+                <div class="label">Accettati</div>
+            </div>
+            <div class="stat-card" style="border-left-color: #4caf50;">
+                <div class="number">0</div>
+                <div class="label">Completati</div>
+            </div>
+        </div>
 
         <!-- Quick Actions -->
         <div class="quick-actions">
@@ -1643,28 +1775,36 @@
                     </button>
                 </div>
             </div>
-            <button class="btn btn-customers btn-small-mobile" data-icon="👨‍💼" onclick="window.location.href='customers-management.html'"><span>Gestione Clienti</span></button>
+            <button class="btn btn-customers" data-icon="👨‍💼" onclick="window.location.href='customers-management.html'"><span>Gestione Clienti</span></button>
+            <button class="btn btn-tasks active" data-icon="✅" onclick="window.location.href='admin-dashboard.html'"><span>Planner Task</span></button>
             <button class="btn btn-planner" data-icon="📦" onclick="window.location.href='orders-planner.html'"><span>Planner Ordini</span></button>
             <button class="btn btn-warehouse" data-icon="🏭" onclick="window.location.href='warehouse-management.html'"><span>Gestione Magazzino</span></button>
         </div>
+        </div><!-- /.sticky-top-bar -->
 
         <!-- Calendar -->
         <div class="card card-padded">
             <div class="calendar-header">
-                <button class="btn btn-secondary calendar-btn-operators" onclick="toggleOperatorTasks()" id="toggleTasksBtn">👁️ Task Operatori</button>
-                <button class="btn btn-primary calendar-btn-prev" onclick="previousMonth()">◀</button>
-                <h4 id="calendarMonthYear" class="calendar-title"></h4>
-                <button class="btn btn-primary calendar-btn-next" onclick="nextMonth()">▶</button>
-                <button class="btn btn-secondary calendar-btn-toggle" onclick="toggleCalendarView()" id="toggleCalendarBtn">📅 Mese</button>
+                <div class="calendar-header-left">
+                    <button class="btn btn-secondary calendar-btn-view active" onclick="setViewMode('myTasks')" id="myTasksBtn">👤 I Miei Task</button>
+                    <button class="btn btn-secondary calendar-btn-view" onclick="setViewMode('operatorTasks')" id="operatorTasksBtn">👁️ Task Operatori</button>
+                </div>
+                <div class="calendar-header-nav">
+                    <button class="btn btn-primary calendar-btn-prev" onclick="previousMonth()">◀</button>
+                    <h4 id="calendarMonthYear" class="calendar-title"></h4>
+                    <button class="btn btn-primary calendar-btn-next" onclick="nextMonth()">▶</button>
+                </div>
+                <div class="calendar-header-right">
+                    <button class="btn btn-info calendar-btn-today" onclick="showToday()" title="Visualizza i task di oggi">📅 Oggi</button>
+                    <button class="btn btn-secondary calendar-btn-toggle" onclick="toggleCalendarView()" id="toggleCalendarBtn">📅 Mese</button>
+                    <button class="btn btn-warning calendar-btn-all" onclick="showAllTasks()" title="Visualizza tutti i task">📋 Tutto</button>
+                </div>
             </div>
             <div class="calendar-info-box">
                 Clicca su un giorno per visualizzare/gestire i task • Doppio clic per creare un nuovo task o ricorrenza
             </div>
             <div id="calendarContainer" class="calendar-container">
                 <!-- Calendar will be generated here -->
-            </div>
-            <div class="flex-center-hidden" id="toggleTasksContainer">
-                <button class="btn btn-secondary toggle-tasks-btn hidden" data-icon="⬅️" onclick="toggleOperatorTasks()" id="backToMyTasksBtn"><span>Visualizza I Miei Task</span></button>
             </div>
         </div>
 
@@ -1921,6 +2061,7 @@
             }
 
             // Carica articoli
+            // Carica articoli SOLO dall'API inventory (database MariaDB)
             try {
                 const inventoryResponse = await fetch(`${API_URL}/inventory/articles`, {
                     headers: { 'Authorization': `Bearer ${token}` }
@@ -1943,18 +2084,17 @@
                         });
                         articoli = Array.from(uniqueByCode.values());
                         console.log(`Admin-dashboard: articoli caricati da API: ${articoli.length} (deduplicated from ${inventoryArticles.length})`);
+                    } else {
+                        console.warn('⚠️ API inventory vuota');
+                        articoli = [];
                     }
+                } else {
+                    console.error('❌ API inventory non disponibile');
+                    articoli = [];
                 }
             } catch (apiError) {
-                console.warn('API inventory non disponibile, fallback a CSV:', apiError.message);
-                try {
-                    const csvResponse = await fetch('data/codifica articoli.csv');
-                    const csvText = await csvResponse.text();
-                    articoli = parseArticoliCSV(csvText);
-                    console.log('Admin-dashboard: articoli caricati da CSV:', articoli.length);
-                } catch (e) {
-                    console.error('Errore caricamento articoli:', e);
-                }
+                console.error('❌ Errore caricamento articoli da API:', apiError.message);
+                articoli = [];
             }
         }
 
@@ -2232,7 +2372,12 @@
             productSelect.innerHTML = '<option value="">-- Seleziona Articolo --</option>' +
                 articoli
                     .filter(a => !(a.codice || a.nome || '').startsWith('EMPTY-'))
-                    .map(a => `<option value="${a.codice || a.nome}">${a.codice || a.nome} - ${a.descrizione || a.nome}</option>`).join('');
+                    .map(a => {
+                        const cod = a.codice || a.nome;
+                        const desc = a.descrizione || '';
+                        const displayText = (desc && desc !== cod) ? `${cod} - ${desc}` : cod;
+                        return `<option value="${cod}">${displayText}</option>`;
+                    }).join('');
 
             // Carica prodotti dell'ordine
             if (order.products && order.products.length > 0) {
@@ -2396,17 +2541,20 @@
             const article = articoli.find(a => a.codice === productCode);
             const productDesc = article?.descrizione || productCode;
 
-            // Calcola quanto è già stato assegnato da questo ordine per questo prodotto
+            // Calcola quanto è già stato assegnato da questo ordine per questo prodotto (per lotto+posizione)
             const alreadyAssignedPerBatch = {};
             currentOrderProducts
                 .filter(p => p.product === productCode && p.batch)
                 .forEach(p => {
-                    alreadyAssignedPerBatch[p.batch] = (alreadyAssignedPerBatch[p.batch] || 0) + p.quantity;
+                    const pos = p.batchData?.shelfPosition || p.shelfPosition || '';
+                    const posKey = `${p.batch}|${pos}`;
+                    alreadyAssignedPerBatch[posKey] = (alreadyAssignedPerBatch[posKey] || 0) + p.quantity;
                 });
 
             // Filtra i lotti ancora disponibili (con quantità residua > 0)
             const batchesStillAvailable = availableBatches.filter(batch => {
-                const alreadyUsed = alreadyAssignedPerBatch[batch.batch] || 0;
+                const posKey = `${batch.batch}|${batch.shelfPosition || ''}`;
+                const alreadyUsed = alreadyAssignedPerBatch[posKey] || 0;
                 const residual = (batch.quantityKg || 0) - alreadyUsed;
                 return residual > 0.01;
             });
@@ -2426,12 +2574,15 @@
                         
                         <div style="margin: 15px 0; max-height: 250px; overflow-y: auto; border: 1px solid #4d4d4d; border-radius: 4px; padding: 10px;" id="batchesContainer">
                             ${batchesStillAvailable.map((batch, idx) => {
-                                const alreadyUsed = alreadyAssignedPerBatch[batch.batch] || 0;
+                                const posKey2 = `${batch.batch}|${batch.shelfPosition || ''}`;
+                                const alreadyUsed = alreadyAssignedPerBatch[posKey2] || 0;
                                 const residual = (batch.quantityKg || 0) - alreadyUsed;
                                 const willAssign = Math.min(remainingQuantity, residual);
+                                // Indice reale in currentAvailableBatches
+                                const realIdx = currentAvailableBatches.indexOf(batch);
                                 
                                 return `
-                                    <div class="batch-item" data-product-code="${productCode}" data-remaining="${remainingQuantity}" data-batch-index="${idx}" data-batch-code="${batch.batch}" data-batch-available="${residual}" style="background: #1a1a1a; padding: 10px; margin-bottom: 8px; border-radius: 4px; border-left: 3px solid #3b82f6; cursor: pointer;">
+                                    <div class="batch-item" data-product-code="${productCode}" data-remaining="${remainingQuantity}" data-batch-index="${realIdx}" data-batch-code="${batch.batch}" data-batch-available="${residual}" data-batch-pos="${batch.shelfPosition || ''}" style="background: #1a1a1a; padding: 10px; margin-bottom: 8px; border-radius: 4px; border-left: 3px solid #3b82f6; cursor: pointer;">
                                         <div style="font-weight: bold; color: #3b82f6;">🏷️ Lotto: ${batch.batch}</div>
                                         <div style="font-size: 12px; color: #999; margin-top: 4px;">
                                             Scadenza: ${batch.expiry || 'N/A'} | Disponibile: <span style="color: #86efac;">${residual.toFixed(1)} kg</span>
@@ -2462,14 +2613,20 @@
                         const batchIndex = parseInt(batchItem.dataset.batchIndex);
                         const batchCode = batchItem.dataset.batchCode;
                         const batchAvailable = parseFloat(batchItem.dataset.batchAvailable);
-                        selectBatchForProduct(productCode, remainingQuantity, batchIndex, batchCode, batchAvailable);
+                        const batchPos = batchItem.dataset.batchPos || '';
+                        selectBatchForProduct(productCode, remainingQuantity, batchIndex, batchCode, batchAvailable, batchPos);
                     }
                 });
             }
         }
 
-        function selectBatchForProduct(productCode, remainingQuantity, batchIndex, batchCode, batchAvailable) {
-            const batch = currentAvailableBatches[batchIndex];
+        function selectBatchForProduct(productCode, remainingQuantity, batchIndex, batchCode, batchAvailable, batchPos) {
+            let batch = currentAvailableBatches[batchIndex];
+            // Fallback: se l'indice non corrisponde al batch atteso, cerca per codice+posizione
+            if (!batch || batch.batch !== batchCode) {
+                batch = currentAvailableBatches.find(b => b.batch === batchCode && (b.shelfPosition || '') === (batchPos || ''));
+                if (!batch) batch = currentAvailableBatches.find(b => b.batch === batchCode);
+            }
             if (!batch) return;
 
             const quantityToAssign = Math.min(remainingQuantity, batchAvailable);
@@ -2479,6 +2636,7 @@
                 product: productCode,
                 quantity: quantityToAssign,
                 batch: batch.batch,
+                shelfPosition: batch.shelfPosition || '',
                 batchData: batch
             });
 
@@ -2521,17 +2679,39 @@
             const totalQty = currentOrderProducts.reduce((sum, p) => sum + p.quantity, 0);
 
             tbody.innerHTML = currentOrderProducts.map((product, idx) => {
+                // Risolvi descrizione articolo da codice
+                const art = articoli.find(a => a.codice === product.product || a.nome === product.product);
+                const productDesc = art?.descrizione || product.product;
+                const productLabel = (productDesc && productDesc !== product.product) ? `${product.product} - ${productDesc}` : product.product;
+
                 let batchesDisplay = '<span style="color: #999; font-size: 13px;">-</span>';
+                let scadenzaDisplay = '';
+                let posizioneDisplay = '';
                 
                 if (product.batch) {
-                    batchesDisplay = `<span style="display: inline-block; background: #2d5a3d; padding: 2px 6px; margin: 2px; border-radius: 3px; font-size: 13px; color: #86efac;">${product.batch}</span>`;
+                    let scadenza = product.batchData?.expiry || product.expiry || '';
+                    let posizione = product.batchData?.shelfPosition || product.shelfPosition || '';
+                    
+                    batchesDisplay = `<span style="display:inline-block;background:#2d5a3d;padding:3px 8px;border-radius:4px;font-size:13px;color:#86efac;font-weight:600;">🏷️ ${product.batch}</span>`;
+                    if (scadenza) scadenzaDisplay = `<span style="display:inline-block;background:#1e3a2f;padding:2px 7px;border-radius:4px;font-size:12px;color:#6ee7b7;margin-top:4px;">📅 ${scadenza}</span>`;
+                    if (posizione) posizioneDisplay = `<span style="display:inline-block;background:#1e2d4a;padding:2px 7px;border-radius:4px;font-size:12px;color:#60a5fa;margin-top:4px;">📍 ${posizione}</span>`;
                 }
+
+                const kg = product.quantity;
+                const weight = extractWeightPerCollo(product.product);
+                const colli = Math.round(kg / weight);
 
                 return `
                     <tr style="border-bottom: 1px solid #4d4d4d;">
-                        <td style="padding: 8px; text-align: left; color: #e0e0e0;">${product.product}</td>
-                        <td style="padding: 8px; text-align: right; color: #a0d4ff;">${product.quantity.toFixed(1)} kg</td>
-                        <td style="padding: 8px; text-align: center; font-size: 13px;">${batchesDisplay}</td>
+                        <td style="padding: 8px; text-align: left; color: #e0e0e0; min-width: 120px;">${productLabel}</td>
+                        <td style="padding: 8px; text-align: right; color: #a0d4ff;">${colli} colli • ${kg.toFixed(1)} kg</td>
+                        <td style="padding: 8px; text-align: center; font-size: 13px;">
+                            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+                                ${batchesDisplay}
+                                ${scadenzaDisplay}
+                                ${posizioneDisplay}
+                            </div>
+                        </td>
                         <td style="padding: 8px; text-align: center;">
                             <button type="button" style="background: #dc2626; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 12px;" onclick="removeProductFromOrder(${idx})">🗑️ Rimuovi</button>
                         </td>
@@ -2584,7 +2764,13 @@
                 type: type,
                 dateTime: new Date(dateTimeStr).toISOString(),
                 notes: notes,
-                products: JSON.stringify(currentOrderProducts.filter(p => p.product && p.quantity > 0))
+                products: JSON.stringify(currentOrderProducts.filter(p => p.product && p.quantity > 0).map(p => ({
+                    product: p.product,
+                    quantity: p.quantity,
+                    batch: p.batch || null,
+                    shelfPosition: p.batchData?.shelfPosition || p.shelfPosition || null,
+                    expiry: p.batchData?.expiry || p.expiry || null
+                })))
             };
 
             // Se è assegnato a viaggio, aggiorna anche tripId
@@ -3051,7 +3237,7 @@
 
         // Elimina viaggio (e rimuove associazione da ordini)
         async function handleDeleteTrip(tripId) {
-            if (!confirm('Sei sicuro di voler eliminare questo viaggio? Gli ordini verranno sospesi.')) return;
+            if (!await customConfirm('Eliminare questo viaggio? Gli ordini verranno sospesi.')) return;
 
             const trip = trips.find(t => t.id === tripId);
             if (!trip) return;
@@ -3092,11 +3278,40 @@
             }
         });
 
-        // Check authorization
-        window.addEventListener('load', () => {
+        // Funzione per gestire sessione scaduta/invalida
+        function handleSessionExpired() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('currentUser');
+            window.location.href = '/index.html';
+        }
+
+        // Fetch wrapper che gestisce automaticamente 401/403
+        const originalFetch = window.fetch;
+        window.fetch = async function(...args) {
+            const response = await originalFetch.apply(this, args);
+            if ((response.status === 401 || response.status === 403) && args[0]?.toString().includes('/api/')) {
+                handleSessionExpired();
+                return response;
+            }
+            return response;
+        };
+
+        // Check authorization - verifica col server che il token sia ancora valido
+        window.addEventListener('load', async () => {
             if (!token || currentUser.role !== 'master') {
-                window.location.href = '/index.html';
+                handleSessionExpired();
                 return;
+            }
+            try {
+                const res = await originalFetch(`${API_URL}/auth/me`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!res.ok) {
+                    handleSessionExpired();
+                    return;
+                }
+            } catch (e) {
+                console.warn('⚠️ Impossibile verificare il token, tentativo di continuare...');
             }
             initDashboard();
         });
@@ -3372,23 +3587,33 @@
         // Funzione per spostare i task non completati al giorno lavorativo successivo
         async function moveOverdueTasksToNextWorkday(tasks) {
             try {
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
+                // Usa sempre UTC per evitare problemi di timezone
+                // Ottieni la data odierna nel formato UTC YYYY-MM-DD direttamente da toISOString()
+                const todayDateStr = new Date().toISOString().split('T')[0];
+                
+                console.log(`🔍 moveOverdueTasksToNextWorkday: Oggi è ${todayDateStr}, task totali: ${tasks.length}`);
                 
                 const tasksToMove = tasks.filter(task => {
-                    // Sposta i task non completati programmati nel passato o OGGI (finché non sono stati completati)
+                    // Sposta solo i task non completati programmati nel passato (NON oggi)
                     if (task.completed) return false;
                     if (!task.scheduledAt) return false;
                     
-                    const taskDate = new Date(task.scheduledAt);
-                    taskDate.setHours(0, 0, 0, 0);
+                    const taskDateStr = task.scheduledAt.split('T')[0];  // Es: "2026-04-01"
+                    const shouldMove = taskDateStr < todayDateStr;  // Comparazione stringa funziona se in formato YYYY-MM-DD
                     
-                    return taskDate <= today;
+                    if (shouldMove) {
+                        console.log(`   🔴 Task OVERDUE: "${task.title}" | scheduledAt: ${task.scheduledAt} | taskDate: ${taskDateStr} < today: ${todayDateStr}`);
+                    }
+                    return shouldMove;
                 });
                 
-                // Per ogni task scaduto, sposta al prossimo giorno lavorativo
+                console.log(`📌 Task da spostare: ${tasksToMove.length}`);
+                
+                // Per ogni task scaduto, sposta al giorno successivo (include weekend)
                 for (const task of tasksToMove) {
-                    const nextWorkday = getNextWorkday(new Date());
+                    const nextDay = getNextDay(new Date());
+                    
+                    console.log(`   📤 Spostamento "${task.title}" da ${task.scheduledAt} a ${nextDay.toISOString()}`);
                     
                     const response = await fetch(`${API_URL}/tasks/${task.id}`, {
                         method: 'PUT',
@@ -3398,30 +3623,26 @@
                         },
                         body: JSON.stringify({
                             ...task,
-                            scheduledAt: nextWorkday.toISOString()
+                            scheduledAt: nextDay.toISOString()
                         })
                     });
                     
                     if (response.ok) {
-                        console.log(`✅ Task "${task.title}" spostato al ${nextWorkday.toLocaleDateString('it-IT')}`);
+                        console.log(`✅ Task "${task.title}" spostato al ${nextDay.toLocaleDateString('it-IT')}`);
+                    } else {
+                        console.error(`❌ Errore spostamento task ${task.id}:`, response.status);
                     }
                 }
             } catch (error) {
-                console.error('Errore durante lo spostamento dei task scaduti:', error);
+                console.error('❌ Errore durante lo spostamento dei task scaduti:', error);
             }
         }
         
-        // Funzione per ottenere il prossimo giorno lavorativo (esclude sabato e domenica)
-        function getNextWorkday(date) {
+        // Funzione per ottenere il giorno successivo (include anche weekend e festivi)
+        function getNextDay(date) {
             const next = new Date(date);
             next.setDate(next.getDate() + 1);
             next.setHours(0, 0, 0, 0);
-            
-            // Se cade nel weekend, sposta al lunedì
-            while (next.getDay() === 0 || next.getDay() === 6) {
-                next.setDate(next.getDate() + 1);
-            }
-            
             return next;
         }
 
@@ -3535,9 +3756,10 @@
                     const productsStr = fullInfo?.products?.map(p => {
                         const weight = extractWeightPerCollo(p.product || '');
                         const colli = Math.round(p.quantity / weight);
-                        const shelfPos = p.batchData?.shelfPosition || p.batch || '—';
-                        const lotto = p.batchData?.batch || p.lotto || '—';
-                        return `${p.product} (${colli} colli • ${p.quantity}kg) <span style="color: #38bdf8; font-size: 11px;">[📍${shelfPos} | 📦${lotto}]</span>`;
+                        const shelfPos = p.batchData?.shelfPosition || p.shelfPosition || '—';
+                        const lotto = p.batchData?.batch || p.batch || '—';
+                        const scad = p.batchData?.expiry || p.expiry || '';
+                        return `${p.product} (${colli} colli • ${p.quantity}kg) <span style="color: #38bdf8; font-size: 11px;">[�${lotto}${scad ? ' | 📅' + scad : ''} | 📍${shelfPos}]</span>`;
                     }).join(' + ') || fullInfo?.product;
                     return `
                         <div style="margin-bottom: 10px; padding: 10px; background: #1a1a1a; border-left: 4px solid #3b82f6; border-radius: 4px;">
@@ -3608,7 +3830,7 @@
                             <button class="btn btn-primary btn-small" onclick="openEditTripModal(${trip.id})" style="background: #3b82f6;">✏️ Modifica Viaggio</button>
                             <button class="btn btn-primary btn-small" onclick="openEditOrdersModal(${trip.id})" style="background: #3b82f6;">📦 Modifica Ordine</button>
                             <button class="btn btn-secondary btn-small" onclick="printTrip(${trip.id})" style="background: #8b5cf6;">🖨️ Stampa</button>
-                            <button class="btn btn-secondary btn-small" onclick="if(confirm('Eliminare questo viaggio?')) { window.location.href='trips-management.html'; }" style="background: #6b7280;">🗑️ Elimina</button>
+                            <button class="btn btn-secondary btn-small" onclick="handleDeleteTrip(${trip.id})" style="background: #6b7280;">🗑️ Elimina</button>
                         </div>
                     </div>
                 `;
@@ -5456,7 +5678,7 @@
                     }
                     // Se il task è già stato completato da un operatore, chiedi conferma
                     if (task?.completed) {
-                        if (!confirm('❓ Vuoi eliminare permanentemente questo task completato?')) {
+                        if (!await customConfirm('Eliminare permanentemente questo task completato?')) {
                             return;
                         }
                     }
@@ -5633,19 +5855,21 @@
             window.location.href = '/index.html';
         }
 
-        function toggleOperatorTasks() {
-            const btn = document.getElementById('toggleTasksBtn');
+        function setViewMode(mode) {
+            const myTasksBtn = document.getElementById('myTasksBtn');
+            const operatorTasksBtn = document.getElementById('operatorTasksBtn');
             const dayTasksCard = document.getElementById('dayTasksCard');
             
-            // Commuta tra visualizzazioni
-            if (currentViewMode === 'myTasks') {
-                // Passa a Task Operatori
-                currentViewMode = 'operatorTasks';
-                btn.textContent = '👁️ Task Operatori';
+            // Imposta la modalità di visualizzazione
+            currentViewMode = mode;
+            
+            // Aggiorna gli stili dei pulsanti
+            if (mode === 'myTasks') {
+                myTasksBtn.classList.add('active');
+                operatorTasksBtn.classList.remove('active');
             } else {
-                // Passa a I Miei Task
-                currentViewMode = 'myTasks';
-                btn.textContent = '👁️ I Miei Task';
+                myTasksBtn.classList.remove('active');
+                operatorTasksBtn.classList.add('active');
             }
             
             // Aggiorna il calendario con i task filtrati
@@ -5655,6 +5879,218 @@
             if (dayTasksCard && dayTasksCard.style.display === 'block' && lastViewedDayDate) {
                 showDayTasksModal(lastViewedDayDate);
             }
+        }
+
+        function showToday() {
+            // Ottieni la data di oggi nel formato YYYY-MM-DD
+            const today = new Date();
+            const todayStr = today.toISOString().split('T')[0];
+            
+            // Naviga al mese corrente se non ci sei già
+            currentDate = new Date();
+            renderCalendar();
+            
+            // Mostra i task di oggi
+            showDayTasksModal(todayStr);
+        }
+
+        async function showAllTasks() {
+            try {
+                const dayTasksCard = document.getElementById('dayTasksCard');
+                const dayTasksTitle = document.getElementById('dayTasksTitle');
+                const dayTasksList = document.getElementById('dayTasksList');
+                
+                // Mostra la card
+                dayTasksCard.style.display = 'block';
+                dayTasksTitle.textContent = '📋 Tutti i Task';
+                dayTasksList.innerHTML = '<div style="text-align: center; padding: 20px;">⏳ Caricamento...</div>';
+                
+                // Carica tutti i task
+                const response = await fetch(`${API_URL}/tasks?includeCompleted=true`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (!response.ok) throw new Error('Errore caricamento task');
+                
+                const allTasksData = await response.json();
+                
+                if (allTasksData.length === 0) {
+                    dayTasksList.innerHTML = '<div style="text-align: center; padding: 20px; color: #9ca3af;">Nessun task trovato</div>';
+                    return;
+                }
+                
+                // Raggruppa i task per data
+                const tasksByDate = {};
+                allTasksData.forEach(task => {
+                    const date = task.scheduledAt ? task.scheduledAt.split('T')[0] : 'Senza data';
+                    if (!tasksByDate[date]) {
+                        tasksByDate[date] = [];
+                    }
+                    tasksByDate[date].push(task);
+                });
+                
+                // Ordina le date (senza data alla fine)
+                const sortedDates = Object.keys(tasksByDate).sort((a, b) => {
+                    if (a === 'Senza data') return 1;
+                    if (b === 'Senza data') return -1;
+                    return new Date(a) - new Date(b);
+                });
+                
+                // Conta totali per il riepilogo
+                const totalCompleted = allTasksData.filter(t => t.completed).length;
+                const totalPending = allTasksData.filter(t => !t.completed && !t.acceptedAt).length;
+                const totalAccepted = allTasksData.filter(t => t.acceptedAt && !t.completed).length;
+                const totalUnassigned = allTasksData.filter(t => !t.assignedOperator?.id && !t.completed).length;
+                
+                // Header riepilogo
+                let html = `<div style="display: flex; gap: 12px; flex-wrap: wrap; padding: 10px 0; margin-bottom: 10px; border-bottom: 1px solid #444;">
+                    <span style="background: #1e3a5f; color: #60a5fa; padding: 4px 10px; border-radius: 12px; font-size: 13px;">📊 Totale: ${allTasksData.length}</span>
+                    <span style="background: #1a3d2a; color: #10b981; padding: 4px 10px; border-radius: 12px; font-size: 13px;">✅ Completati: ${totalCompleted}</span>
+                    <span style="background: #3d2a1a; color: #f59e0b; padding: 4px 10px; border-radius: 12px; font-size: 13px;">⏳ In Sospeso: ${totalPending}</span>
+                    <span style="background: #1a2d3d; color: #3b82f6; padding: 4px 10px; border-radius: 12px; font-size: 13px;">👍 Accettati: ${totalAccepted}</span>
+                    <span style="background: #3d1a1a; color: #ef4444; padding: 4px 10px; border-radius: 12px; font-size: 13px;">👤 Non assegnati: ${totalUnassigned}</span>
+                </div>`;
+                
+                // Renderizza i task raggruppati per data
+                sortedDates.forEach(date => {
+                    const dateLabel = date === 'Senza data' ? '🔹 Senza data' : `📅 ${formatDateItalian(date)}`;
+                    const sectionId = 'allTasksSection_' + date.replace(/[^a-zA-Z0-9]/g, '_');
+                    
+                    // Raggruppa i task per operatore all'interno del giorno
+                    const dayTasks = tasksByDate[date];
+                    const operatorGroups = {};
+                    dayTasks.forEach(task => {
+                        const opKey = task.assignedOperator ? task.assignedOperator.username : '__non_assegnato__';
+                        if (!operatorGroups[opKey]) operatorGroups[opKey] = [];
+                        operatorGroups[opKey].push(task);
+                    });
+                    
+                    // Crea riassunto operatori per il giorno
+                    const sortedOpKeysForSummary = Object.keys(operatorGroups).sort((a, b) => {
+                        if (a === '__non_assegnato__') return 1;
+                        if (b === '__non_assegnato__') return -1;
+                        return a.localeCompare(b);
+                    });
+                    
+                    let daySummaryParts = sortedOpKeysForSummary.map(opKey => {
+                        const opTasks = operatorGroups[opKey];
+                        const completedCount = opTasks.filter(t => t.completed).length;
+                        const opName = opKey === '__non_assegnato__' ? '<span style="color:#f59e0b">⚠️ N/A</span>' : `<span style="color:#10b981">👤 ${opKey}</span>`;
+                        const completedBadge = completedCount > 0 ? ` <span style="color:#10b981">${completedCount}✅</span>` : '';
+                        const pendingCount = opTasks.length - completedCount;
+                        const pendingBadge = pendingCount > 0 ? ` <span style="color:#888">${pendingCount}⏳</span>` : '';
+                        return `${opName} <span style="color:#ccc">📋${opTasks.length}</span>${completedBadge}${pendingBadge}`;
+                    }).join(' &nbsp;│&nbsp; ');
+                    
+                    html += `<div style="margin-top: 16px;">
+                        <div onclick="document.getElementById('${sectionId}').style.display = document.getElementById('${sectionId}').style.display === 'none' ? 'block' : 'none'; this.querySelector('.toggle-arrow').textContent = document.getElementById('${sectionId}').style.display === 'none' ? '▶' : '▼';" style="cursor: pointer; display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-weight: bold; color: #38bdf8; font-size: 16px;">
+                            <span class="toggle-arrow">▶</span> ${dateLabel} (${dayTasks.length})
+                        </div>
+                        <div style="padding: 4px 12px 8px 28px; font-size: 13px; line-height: 1.8;">${daySummaryParts}</div>
+                        <div id="${sectionId}" style="display: none;">`;
+                    
+                    // Ordina: operatori alphabetici, "Non assegnato" alla fine
+                    const sortedOpKeys = sortedOpKeysForSummary;
+                    
+                    const hasMultipleGroups = sortedOpKeys.length > 1 || (sortedOpKeys.length === 1 && dayTasks.length > 1);
+                    
+                    sortedOpKeys.forEach((opKey, opIdx) => {
+                        const opTasks = operatorGroups[opKey];
+                        const opLabel = opKey === '__non_assegnato__' ? '⚠️ Non assegnato' : `👤 ${opKey}`;
+                        const opColor = opKey === '__non_assegnato__' ? '#f59e0b' : '#10b981';
+                        const opSectionId = sectionId + '_op_' + opIdx;
+                        
+                        // Mostra sotto-header operatore collassabile solo se ci sono più gruppi
+                        if (hasMultipleGroups) {
+                            html += `<div onclick="document.getElementById('${opSectionId}').style.display = document.getElementById('${opSectionId}').style.display === 'none' ? 'block' : 'none'; this.querySelector('.op-toggle').textContent = document.getElementById('${opSectionId}').style.display === 'none' ? '▶' : '▼';" style="cursor: pointer; margin: 10px 0 6px 0; padding: 8px 12px; background: ${opKey === '__non_assegnato__' ? '#3d2a1a' : '#1a3d2a'}; border-radius: 6px; display: flex; align-items: center; gap: 8px;">
+                                <span class="op-toggle" style="font-size: 12px; color: #888;">▼</span>
+                                <span style="color: ${opColor}; font-weight: bold; font-size: 14px;">${opLabel}</span>
+                                <span style="color: #888; font-size: 12px;">(${opTasks.length} task)</span>
+                            </div>
+                            <div id="${opSectionId}">`;
+                        }
+                        
+                        opTasks.forEach(task => {
+                        // Status reale basato sui campi del task
+                        const status = task.completed ? 'Completato' : (task.paused ? 'In Pausa' : (task.acceptedAt ? 'Accettato' : 'In Sospeso'));
+                        const statusIcon = task.completed ? '✅' : (task.paused ? '⏸️' : (task.acceptedAt ? '👍' : '📋'));
+                        const statusColor = task.completed ? '#10b981' : (task.paused ? '#f59e0b' : (task.acceptedAt ? '#3b82f6' : '#8b5cf6'));
+                        
+                        // Priorità
+                        const priorityColor = task.priority === 'URGENT' ? '#EF4444' : task.priority === 'HIGH' ? '#F97316' : task.priority === 'LOW' ? '#10B981' : '#FCD34D';
+                        
+                        // Operatore assegnato
+                        const operatorInfo = task.assignedOperator 
+                            ? `<span style="color: #10b981; font-size: 12px;">👤 ${task.assignedOperator.username}</span>`
+                            : `<span style="color: #f59e0b; font-size: 12px;">👤 Non assegnato</span>`;
+                        
+                        // Timeline compatta
+                        let timelineItems = [];
+                        if (task.createdAt) timelineItems.push(`📝 ${new Date(task.createdAt).toLocaleString('it-IT', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}`);
+                        if (task.assignedAt) timelineItems.push(`👤 Assegnato: ${new Date(task.assignedAt).toLocaleString('it-IT', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}`);
+                        if (task.acceptedAt) timelineItems.push(`👍 Accettato: ${new Date(task.acceptedAt).toLocaleString('it-IT', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}`);
+                        if (task.completedAt) timelineItems.push(`✅ Completato: ${new Date(task.completedAt).toLocaleString('it-IT', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}`);
+                        
+                        // Pulsanti azione (stessi della day view)
+                        let buttonsHtml = `<div style="margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap;">`;
+                        buttonsHtml += `<button class="btn btn-primary btn-small" onclick="openEditTaskModal(${task.id})" style="background: #3b82f6; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">✏️ Modifica</button>`;
+                        if (!task.assignedOperator) {
+                            buttonsHtml += `<button class="btn btn-info btn-small" onclick="openAssignTaskModal(${task.id})" style="background: #0ea5e9; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">👤 Assegna</button>`;
+                        }
+                        if (task.assignedOperator && !task.acceptedAt) {
+                            buttonsHtml += `<button class="btn btn-success btn-small" onclick="handleTaskStatusChange(${task.id}, 'accept')" style="background: #22c55e; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">👍 Accetta</button>`;
+                        }
+                        if (task.acceptedAt && !task.completed && !task.paused) {
+                            buttonsHtml += `<button class="btn btn-success btn-small" onclick="handleTaskStatusChange(${task.id}, 'complete')" style="background: #22c55e; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">✅ Completa</button>`;
+                            buttonsHtml += `<button class="btn btn-warning btn-small" onclick="handleTaskStatusChange(${task.id}, 'pause')" style="background: #f59e0b; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">⏸️ Pausa</button>`;
+                        }
+                        if (task.paused) {
+                            buttonsHtml += `<button class="btn btn-warning btn-small" onclick="handleTaskStatusChange(${task.id}, 'resume')" style="background: #f59e0b; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">▶️ Riprendi</button>`;
+                        }
+                        buttonsHtml += `<button class="btn btn-secondary btn-small" onclick="handleDeleteTask(${task.id})" style="background: #6b7280; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">🗑️ Rimuovi</button>`;
+                        buttonsHtml += `</div>`;
+                        
+                        html += `
+                            <div style="background: #1a1a1a; border-left: 3px solid ${statusColor}; padding: 12px; margin: 8px 0; border-radius: 4px;">
+                                <div style="display: flex; justify-content: space-between; align-items: start;">
+                                    <div style="flex: 1;">
+                                        <h4 style="margin: 0 0 4px 0; color: #fff;">${task.title}</h4>
+                                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 4px;">
+                                            <span style="background: ${statusColor}; color: white; padding: 2px 8px; border-radius: 3px; font-size: 13px;">${statusIcon} ${status}</span>
+                                            ${operatorInfo}
+                                            <span style="color: ${priorityColor}; font-size: 12px;">${formatPriority(task.priority)}</span>
+                                            ${task.estimatedMinutes ? `<span style="color: #fbbf24; font-size: 12px;">⏱️ ${task.estimatedMinutes} min</span>` : ''}
+                                        </div>
+                                        ${task.description ? `<p style="margin: 4px 0; color: #a0a0a0; font-size: 13px;">${task.description}</p>` : ''}
+                                        ${timelineItems.length > 0 ? `<div style="margin-top: 6px; font-size: 11px; color: #888;">${timelineItems.join(' • ')}</div>` : ''}
+                                    </div>
+                                </div>
+                                ${buttonsHtml}
+                            </div>
+                        `;
+                    });
+                    
+                    // Chiudi il div collassabile dell'operatore se era aperto
+                    if (hasMultipleGroups) {
+                        html += `</div>`;
+                    }
+                    }); // fine sortedOpKeys.forEach
+                    
+                    html += `</div></div>`;
+                });
+                
+                dayTasksList.innerHTML = html;
+                
+            } catch (error) {
+                console.error('Errore nel caricamento di tutti i task:', error);
+                showAlert('Errore nel caricamento dei task', 'danger');
+            }
+        }
+
+        function formatDateItalian(dateStr) {
+            const date = new Date(dateStr + 'T00:00:00');
+            const options = { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' };
+            return date.toLocaleDateString('it-IT', options);
         }
 
         function showAlert(message, type) {
@@ -5908,10 +6344,10 @@
             }
         }
 
-        function showDayTasksModal(dateStr) {
-            console.log('🔍 showDayTasksModal called with:', dateStr);
-            console.log('📊 allTasks disponibili:', allTasks.length);
-            console.log('📦 orders disponibili:', orders.length);
+        async function showDayTasksModal(dateStr) {
+            console.log('🔍 showDayTasksModal V3 FIXED called with:', dateStr);  // V3 - con la comparazione della data CORRETTA
+            console.log('📊 allTasks disponibili al momento:', allTasks.length);
+            console.log('📦 orders disponibili al momento:', orders.length);
             
             // Verifica che gli elementi del DOM esistono
             const dayTasksCard = document.getElementById('dayTasksCard');
@@ -5929,6 +6365,26 @@
             // Salva la data visualizzata
             lastViewedDayDate = dateStr;
             
+            // Mostra loading
+            dayTasksList.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">⏳ Caricamento task...</div>';
+            dayTasksCard.style.display = 'block';
+            
+            // Ricarica i task e gli ordini dal server per assicurarsi di avere dati aggiornati
+            try {
+                console.log('🔄 Ricaricamento task e ordini dal server...');
+                await loadTasks();
+                console.log('✅ Task ricaricati:', allTasks.length);
+                
+                // Ricarica anche gli ordini
+                if (window.DataSync && window.DataSync.loadOrders) {
+                    orders = await window.DataSync.loadOrders();
+                    console.log('✅ Ordini ricaricati:', orders.length);
+                }
+            } catch (error) {
+                console.error('⚠️ Errore ricaricamento task/ordini:', error);
+                // Continua comunque con i dati in cache
+            }
+            
             // Filtra i task per il giorno selezionato
             // ESCLUDI i task con titolo "ritiro -" perché sono mostrati nella sezione Ritiri separata
             let dayTasks = allTasks.filter(task => {
@@ -5936,6 +6392,24 @@
                 if (task.scheduledAt && task.scheduledAt.split('T')[0] === dateStr) return true;
                 return false;
             });
+            
+            console.log(`📌 Task per ${dateStr}:`, dayTasks.length);
+            
+            // DEBUG: mostra le date dei primi 10 task e la comparazione
+            if (allTasks.length > 0) {
+                console.group(`🔍 DEBUG - Comparazione date (cercando: "${dateStr}"):`);
+                for (let i = 0; i < Math.min(10, allTasks.length); i++) {
+                    const t = allTasks[i];
+                    if (t.scheduledAt) {
+                        const taskDatePart = t.scheduledAt.split('T')[0];
+                        const matches = taskDatePart === dateStr ? '✅ MATCH' : '❌ NO MATCH';
+                        console.log(`   [${matches}] Task: "${t.title}" | scheduledAt: ${t.scheduledAt} | dateStr: ${taskDatePart}`);
+                    } else {
+                        console.log(`   [NULL] Task: "${t.title}" | scheduledAt: NULL`);
+                    }
+                }
+                console.groupEnd();
+            }
             
             // Separa i task senza data (non schedulati)
             let unscheduledTasks = allTasks.filter(task => {
@@ -6484,11 +6958,6 @@
             dayTasksList.innerHTML = contentHtml;
 
             dayTasksCard.style.display = 'block';
-            
-            // Scroll automatico verso la card
-            setTimeout(() => {
-                dayTasksCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 100);
         }
 
         function openAssignTripModal(tripId) {
@@ -6727,10 +7196,10 @@
                                                 productsHTML = prods.map(p => {
                                                     const weight = extractWeightPerCollo(p.product);
                                                     const prodColli = Math.round(p.quantity / weight);
-                                                    const shelfPos = p.batchData?.shelfPosition || p.batch || '—';
-                                                    const batchNumber = p.batchData?.batch || p.lotto || '—';
-                                                    const expiryDate = p.batchData?.expiry || p.scadenza || '—';
-                                                    return `<div style="padding: 8px; margin: 4px 0; background: #f3e8ff; border: 2px solid #8b5cf6; border-radius: 4px; font-weight: bold; color: #6d28d9; font-size: 16px;">${p.product} (${prodColli} colli • ${p.quantity}kg) <span style="color: #666; font-size: 14px;">📍 ${shelfPos} • 📦 Lotto: ${batchNumber} • 📅 Scad: ${expiryDate}</span></div>`;
+                                                    const shelfPos = p.batchData?.shelfPosition || p.shelfPosition || '—';
+                                                    const batchNumber = p.batchData?.batch || p.batch || '—';
+                                                    const expiryDate = p.batchData?.expiry || p.expiry || '—';
+                                                    return `<div style="padding: 8px; margin: 4px 0; background: #f3e8ff; border: 2px solid #8b5cf6; border-radius: 4px; font-weight: bold; color: #6d28d9; font-size: 16px;">${p.product} (${prodColli} colli • ${p.quantity}kg) <span style="color: #666; font-size: 14px;">� Lotto: ${batchNumber} • 📅 Scad: ${expiryDate} • 📍 ${shelfPos}</span></div>`;
                                                 }).join('');
                                             }
                                         }
@@ -6793,6 +7262,153 @@
             const printWindow = window.open('', 'PrintTrip', 'height=800,width=900');
             printWindow.document.write(printHTML);
             printWindow.document.close();
+        }
+
+        // Elimina viaggio
+        async function deleteTrip(id) {
+            try {
+                console.log('🗑️ [deleteTrip] Chiamata con id:', id);
+                
+                const trip = trips.find(t => String(t.id) === String(id) || Number(t.id) === Number(id));
+                
+                if (trip) {
+                    const ordersCount = trip.sequence?.length || 0;
+                    
+                    if (ordersCount > 0) {
+                        // Mostra dialog con due opzioni
+                        const confirmDialog = document.createElement('div');
+                        confirmDialog.style.cssText = `
+                            position: fixed;
+                            top: 50%;
+                            left: 50%;
+                            transform: translate(-50%, -50%);
+                            background: #2d2d2d;
+                            border: 2px solid #3b82f6;
+                            border-radius: 8px;
+                            padding: 30px;
+                            z-index: 10000;
+                            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+                            max-width: 400px;
+                            text-align: center;
+                        `;
+                        
+                        confirmDialog.innerHTML = `
+                            <h3 style="color: #e0e0e0; margin-bottom: 10px;">⚠️ Elimina Viaggio</h3>
+                            <p style="color: #a0a0a0; margin-bottom: 20px;">Questo viaggio ha ${ordersCount} ordine/i associato/i.<br>Cosa vuoi fare?</p>
+                            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                                <button id="deleteAllBtn" class="btn btn-danger" style="flex: 1; padding: 10px; background: #dc2626; border: none; color: white; border-radius: 4px; cursor: pointer;">🗑️ Elimina Tutto</button>
+                                <button id="deleteTripOnlyBtn" class="btn btn-primary" style="flex: 1; padding: 10px; background: #3b82f6; border: none; color: white; border-radius: 4px; cursor: pointer;">✂️ Solo Viaggio</button>
+                            </div>
+                            <button id="cancelDeleteBtn" class="btn btn-secondary" style="width: 100%; padding: 10px; background: #6b7280; border: none; color: white; border-radius: 4px; cursor: pointer;">❌ Annulla</button>
+                        `;
+                        
+                        document.body.appendChild(confirmDialog);
+                        
+                        document.getElementById('deleteAllBtn').onclick = async () => {
+                            document.body.removeChild(confirmDialog);
+                            await deleteTripWithOrders(id);
+                        };
+                        
+                        document.getElementById('deleteTripOnlyBtn').onclick = async () => {
+                            document.body.removeChild(confirmDialog);
+                            await deleteTripOnly(id);
+                        };
+                        
+                        document.getElementById('cancelDeleteBtn').onclick = () => {
+                            document.body.removeChild(confirmDialog);
+                        };
+                    } else {
+                        if (await customConfirm('Eliminare questo viaggio?')) {
+                            await deleteTripOnly(id);
+                        }
+                    }
+                } else {
+                    alert('❌ Viaggio non trovato');
+                }
+            } catch (error) {
+                console.error('❌ Errore eliminazione viaggio:', error);
+                alert('❌ Errore: ' + error.message);
+            }
+        }
+
+        // Elimina viaggio E tutti gli ordini associati
+        async function deleteTripWithOrders(id) {
+            try {
+                const trip = trips.find(t => String(t.id) === String(id) || Number(t.id) === Number(id));
+                if (trip) {
+                    console.log(`🗑️ [deleteTripWithOrders] Eliminazione viaggio ${id} E ${trip.sequence?.length || 0} ordini`);
+                    
+                    // Elimina tutti gli ordini associati
+                    if (trip.sequence && trip.sequence.length > 0) {
+                        for (const orderId of trip.sequence) {
+                            try {
+                                await DataSync.deleteOrder(orderId);
+                            } catch (error) {
+                                console.error(`❌ Errore eliminazione ordine ${orderId}:`, error);
+                            }
+                            orders = orders.filter(o => String(o.id) !== String(orderId));
+                        }
+                    }
+                    
+                    // Elimina il viaggio
+                    trips = trips.filter(t => String(t.id) !== String(id));
+                    await DataSync.Trips.delete(id);
+                    
+                    // Aggiorna UI completa
+                    await renderCalendar();
+                    renderTrips();
+                    await updateStats();
+                    if (selectedDate) {
+                        showDayTasksModal(selectedDate);
+                    }
+                    showAlert('✅ Viaggio e ordini associati eliminati', 'success');
+                }
+            } catch (error) {
+                console.error('❌ Errore:', error);
+                alert('❌ Errore: ' + error.message);
+            }
+        }
+
+        // Elimina SOLO il viaggio, lascia gli ordini
+        async function deleteTripOnly(id) {
+            try {
+                const trip = trips.find(t => String(t.id) === String(id) || Number(t.id) === Number(id));
+                if (trip) {
+                    console.log(`✂️ [deleteTripOnly] Eliminazione SOLO viaggio ${id}`);
+                    
+                    // Scollega gli ordini dal viaggio
+                    if (trip.sequence && trip.sequence.length > 0) {
+                        for (const orderId of trip.sequence) {
+                            const order = orders.find(o => String(o.id) === String(orderId) || Number(o.id) === Number(orderId));
+                            if (order) {
+                                order.tripId = null;
+                                order.status = 'pending';
+                                try {
+                                    await DataSync.updateOrder(orderId, order);
+                                } catch (error) {
+                                    console.error(`❌ Errore aggiornamento ordine ${orderId}:`, error);
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Elimina il viaggio
+                    trips = trips.filter(t => String(t.id) !== String(id));
+                    await DataSync.Trips.delete(id);
+                    
+                    // Aggiorna UI completa
+                    await renderCalendar();
+                    renderTrips();
+                    await updateStats();
+                    if (selectedDate) {
+                        showDayTasksModal(selectedDate);
+                    }
+                    showAlert('✅ Viaggio eliminato. Gli ordini rimangono come "Sospeso"', 'success');
+                }
+            } catch (error) {
+                console.error('❌ Errore:', error);
+                alert('❌ Errore: ' + error.message);
+            }
         }
 
         function openEditOrdersModal(tripId) {
@@ -7004,7 +7620,7 @@
         }
 
         async function removeOrderFromTrip(tripId, orderIndex) {
-            if (!confirm('Rimuovere questo ordine dal viaggio?')) return;
+            if (!await customConfirm('Rimuovere questo ordine dal viaggio?')) return;
             
             const trip = trips.find(t => t.id === tripId);
             if (!trip) return;
@@ -7082,14 +7698,6 @@
         }
     </script>
     
-    <!-- Version Badge - Auto-loaded from API -->
-    <div class="version-badge" id="version-badge">v...</div>
-    <script>
-        fetch('/api/version').then(r => r.json()).then(d => {
-            document.getElementById('version-badge').textContent = 'v' + d.version;
-        }).catch(() => {});
-    </script>
-
     <!-- Modal ordine (copiato da orders-planner) -->
     <div id="orderModal" class="modal">
         <div class="modal-content modal-content-custom">
@@ -7260,6 +7868,97 @@
             </form>
         </div>
     </div>
+
+    <script>
+    // Global ESC key handler - chiude qualsiasi popup/modal aperto
+    function customConfirm(msg) {
+        return new Promise(resolve => {
+            const ov = document.createElement('div');
+            ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:99999;display:flex;align-items:center;justify-content:center;';
+            ov.innerHTML = `<div style="background:#2d2d2d;border-radius:12px;padding:28px 32px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.5);border:1px solid #4d4d4d;"><p style="color:#e0e0e0;font-size:15px;margin:0 0 24px;line-height:1.6;">${msg.replace(/\n/g,'<br>')}</p><div style="display:flex;gap:10px;justify-content:flex-end;"><button id="_ccNo" style="background:#374151;color:#e0e0e0;border:none;border-radius:6px;padding:9px 22px;font-size:14px;cursor:pointer;">Annulla</button><button id="_ccYes" style="background:#dc2626;color:#fff;border:none;border-radius:6px;padding:9px 22px;font-size:14px;font-weight:600;cursor:pointer;">Conferma</button></div></div>`;
+            document.body.appendChild(ov);
+            const done = r => { ov.remove(); resolve(r); };
+            ov.querySelector('#_ccYes').onclick = () => done(true);
+            ov.querySelector('#_ccNo').onclick = () => done(false);
+            ov.onclick = ev => { if (ev.target === ov) done(false); };
+            const kh = ev => { if (ev.key === 'Enter') { ev.preventDefault(); done(true); } else if (ev.key === 'Escape') done(false); document.removeEventListener('keydown', kh); };
+            document.addEventListener('keydown', kh);
+            ov.querySelector('#_ccYes').focus();
+        });
+    }
+
+    document.addEventListener('keydown', function(e) {
+        const tag = document.activeElement?.tagName;
+        const inInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+
+        if (e.key === 'Escape') {
+            // Batch modal (dynamically created)
+            const batchOverlay = document.getElementById('batchModalOverlay');
+            if (batchOverlay) { closeBatchModal(); return; }
+
+            // Assign operator modal (dynamically created)
+            const assignModal = document.getElementById('assignModal');
+            if (assignModal) { assignModal.remove(); return; }
+
+            // Assign trip modal (dynamically created)
+            const assignTripModal = document.getElementById('assignTripModal');
+            if (assignTripModal) { assignTripModal.remove(); return; }
+
+            // Order modal
+            const orderModal = document.getElementById('orderModal');
+            if (orderModal && orderModal.classList.contains('active')) { closeOrderModal(); return; }
+
+            // Edit trip modal
+            const editTripModal = document.getElementById('editTripModal');
+            if (editTripModal && editTripModal.classList.contains('active')) { closeEditTripModal(); return; }
+
+            // Trip assignment modal
+            const tripModal = document.getElementById('tripAssignmentModal');
+            if (tripModal && tripModal.classList.contains('active')) { closeTripAssignmentModal(); return; }
+
+            // Edit orders modal
+            const editOrdersModal = document.getElementById('editOrdersModal');
+            if (editOrdersModal && editOrdersModal.classList.contains('active')) { editOrdersModal.classList.remove('active'); return; }
+
+            // Task modal
+            const taskModal = document.getElementById('taskModal');
+            if (taskModal && taskModal.classList.contains('active')) { closeModal(); return; }
+
+        } else if (e.key === 'Enter' && !inInput) {
+            const orderModal = document.getElementById('orderModal');
+            if (orderModal && orderModal.classList.contains('active')) {
+                const form = document.getElementById('orderForm');
+                if (form) { e.preventDefault(); form.dispatchEvent(new Event('submit', {cancelable: true})); }
+                return;
+            }
+            const taskModal = document.getElementById('taskModal');
+            if (taskModal && taskModal.classList.contains('active')) {
+                const saveBtn = taskModal.querySelector('button.btn-primary');
+                if (saveBtn && !saveBtn.disabled) { e.preventDefault(); saveBtn.click(); }
+                return;
+            }
+        }
+    });
+    </script>
+    <script>
+    (function() {
+        var bar = document.querySelector('.sticky-top-bar');
+        if (!bar) return;
+        var locked = false;
+        window.addEventListener('scroll', function() {
+            if (locked) return;
+            if (window.scrollY > 60 && !bar.classList.contains('scrolled')) {
+                locked = true;
+                bar.classList.add('scrolled');
+                setTimeout(function() { locked = false; }, 400);
+            } else if (window.scrollY <= 5 && bar.classList.contains('scrolled')) {
+                locked = true;
+                bar.classList.remove('scrolled');
+                setTimeout(function() { locked = false; }, 400);
+            }
+        }, { passive: true });
+    })();
+    </script>
 
 </body>
 </html>

@@ -385,7 +385,9 @@ export class AuthController {
             }
 
             const operatorId = parseInt(req.params.id);
-            const { password, image } = req.body;
+            const { password, image, name, username } = req.body;
+
+            console.log(`🔧 updateOperator called for id: ${operatorId}, body:`, req.body);
 
             if (!operatorId) {
                 return res.status(400).json({ message: 'User ID required' });
@@ -402,12 +404,43 @@ export class AuthController {
 
             const updateData: any = {};
             
-            if (password) {
+            // Handle username change
+            if (username !== undefined && username !== null) {
+                const trimmedUsername = username.toString().trim();
+                if (trimmedUsername && trimmedUsername !== existingOperator.username) {
+                    // Check if new username already exists
+                    const usernameExists = await prisma.user.findUnique({ 
+                        where: { username: trimmedUsername } 
+                    });
+                    if (usernameExists) {
+                        return res.status(400).json({ message: 'Username già in uso' });
+                    }
+                    updateData.username = trimmedUsername;
+                }
+            }
+            
+            if (password !== undefined && password !== null && password !== '') {
                 updateData.passwordHash = await hashPassword(password);
             }
             
             if (image !== undefined) {
                 updateData.image = image || null;
+            }
+
+            // TODO: name field disabled until Prisma client is properly regenerated with new schema
+            // if (name !== undefined) {
+            //     updateData.name = name || null;
+            // }
+
+            console.log(`📦 updateData:`, updateData);
+
+            // If nothing to update, return current operator
+            if (Object.keys(updateData).length === 0) {
+                console.log(`⚠️  No changes to update`);
+                return res.json({
+                    message: 'No changes made',
+                    operator: { id: existingOperator.id, username: existingOperator.username, name: existingOperator.name, image: existingOperator.image }
+                });
             }
 
             const operator = await prisma.user.update({
@@ -417,10 +450,11 @@ export class AuthController {
 
             res.json({
                 message: 'User updated successfully',
-                operator: { id: operator.id, username: operator.username, image: operator.image }
+                operator: { id: operator.id, username: operator.username, name: operator.name, image: operator.image }
             });
         } catch (err: unknown) {
             const errorMsg = err instanceof Error ? err.message : 'Internal server error';
+            console.error('❌ Error updating operator:', errorMsg);
             res.status(500).json({ message: errorMsg });
         }
     }

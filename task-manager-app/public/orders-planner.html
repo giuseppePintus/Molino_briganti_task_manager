@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="it">
 <head>
     <meta charset="UTF-8">
@@ -544,143 +544,66 @@
         }
 
         /* Desktop calendar header */
+        /* Calendar header: 2-row grid layout for all screen sizes */
         .calendar-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 10px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto auto;
+            gap: 8px;
             margin-bottom: 15px;
         }
 
-        .calendar-btn-dummy, .calendar-btn-toggle {
-            padding: 8px 16px;
+        /* Row 1: Visualizza Tutti + Settimana */
+        .calendar-btn-dummy {
+            grid-column: 1;
+            grid-row: 1;
+            padding: 10px 14px;
             font-size: 14px;
         }
 
-        /* Tablet and up: equalize header button widths */
-        @media (min-width: 768px) {
-            .calendar-btn-dummy, .calendar-btn-toggle {
-                width: 160px;
-                text-align: center;
-            }
+        .calendar-btn-toggle {
+            grid-column: 2;
+            grid-row: 1;
+            padding: 10px 14px;
+            font-size: 14px;
         }
 
+        /* Row 2: navigation prev + title + next */
         .calendar-btn-prev, .calendar-btn-next {
-            padding: 8px 12px;
-            font-size: 16px;
-            min-width: 40px;
+            grid-column: 1 / -1;
+            grid-row: 2;
             width: 40px;
+            height: 40px;
+            padding: 0;
+            font-size: 18px;
+            min-width: 40px;
+            max-width: 40px;
             display: flex;
             align-items: center;
             justify-content: center;
         }
 
+        .calendar-btn-prev {
+            justify-self: start;
+        }
+
+        .calendar-btn-next {
+            justify-self: end;
+        }
+
         .calendar-title {
-            margin: 0;
+            grid-column: 1 / -1;
+            grid-row: 2;
+            margin: 0 50px;
             color: #e0e0e0;
             font-size: 16px;
             text-align: center;
-            flex: 1;
-            min-width: 150px;
-        }
-
-        @media (max-width: 768px) {
-            /* Tablet: stack toggle button below */
-            .calendar-header {
-                display: grid !important;
-                grid-template-columns: 40px 1fr 40px;
-                grid-template-rows: auto auto;
-                gap: 8px;
-                margin-bottom: 15px;
-            }
-
-            .calendar-btn-prev {
-                grid-column: 1;
-                grid-row: 1;
-            }
-
-            .calendar-title {
-                grid-column: 2;
-                grid-row: 1;
-            }
-
-            .calendar-btn-next {
-                grid-column: 3;
-                grid-row: 1;
-            }
-
-            .calendar-btn-toggle {
-                grid-column: 1 / -1;
-                grid-row: 2;
-                width: 100%;
-                font-size: 13px;
-                padding: 8px 12px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            /* Mobile: 2 buttons on row 1, navigation on row 2 */
-            .calendar-header {
-                display: grid !important;
-                grid-template-columns: 1fr 1fr;
-                grid-template-rows: auto auto;
-                gap: 8px;
-                margin-bottom: 15px;
-            }
-
-            /* First row: 2 buttons */
-            .calendar-btn-dummy {
-                grid-column: 1;
-                grid-row: 1;
-                padding: 10px 12px;
-                font-size: 13px;
-            }
-
-            .calendar-btn-toggle {
-                grid-column: 2;
-                grid-row: 1;
-                padding: 10px 12px;
-                font-size: 13px;
-            }
-
-            /* Second row: navigation controls */
-            .calendar-btn-prev {
-                grid-column: 1 / -1;
-                grid-row: 2;
-                width: 40px !important;
-                height: 40px;
-                padding: 0 !important;
-                font-size: 18px !important;
-                min-width: 40px !important;
-                max-width: 40px !important;
-                justify-self: start;
-            }
-
-            .calendar-title {
-                grid-column: 1 / -1;
-                grid-row: 2;
-                font-size: 13px;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                min-width: 0;
-                margin: 0 50px;
-            }
-
-            .calendar-btn-next {
-                grid-column: 1 / -1;
-                grid-row: 2;
-                width: 40px !important;
-                height: 40px;
-                padding: 0 !important;
-                font-size: 18px !important;
-                min-width: 40px !important;
-                max-width: 40px !important;
-                justify-self: end;
-            }
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .btn-planner {
@@ -715,15 +638,263 @@
         .btn-planner:hover::after {
             left: 100%;
         }
+
+        /* Quick Actions Navigation */
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .quick-actions > * {
+            min-width: 0;
+        }
+
+        .quick-actions .btn {
+            width: 100%;
+            padding: 10px 8px;
+            min-height: 44px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .quick-actions .btn::before {
+            font-size: 16px;
+        }
+
+        .quick-actions .btn span {
+            font-size: 12px;
+            line-height: 1.2;
+            text-align: center;
+        }
+
+        .quick-actions .btn.active {
+            outline: 2px solid rgba(255, 255, 255, 0.85);
+            outline-offset: 2px;
+            filter: brightness(1.25);
+            transform: translateY(-1px);
+        }
+
+        .quick-actions .btn.active:hover {
+            transform: translateY(-3px);
+        }
+
+        .dropdown-menu-admin {
+            position: relative;
+            display: block;
+        }
+
+        .dropdown-menu-admin .btn-settings {
+            width: 100%;
+        }
+
+        .admin-menu-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: #2d2d2d;
+            border: 1px solid #4d4d4d;
+            border-radius: 6px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            min-width: 220px;
+            z-index: 1000;
+            margin-top: 5px;
+        }
+
+        .admin-menu-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            padding: 12px 15px;
+            border: none;
+            background: transparent;
+            color: #e0e0e0;
+            cursor: pointer;
+            text-align: left;
+            font-size: 14px;
+            transition: background 0.2s;
+            border-bottom: 1px solid #3d3d3d;
+        }
+
+        .admin-menu-item:last-child {
+            border-bottom: none;
+        }
+
+        .admin-menu-item:hover {
+            background: #3d3d3d;
+            border-left: 3px solid #38bdf8;
+            padding-left: 12px;
+        }
+
+        .admin-menu-item .menu-icon {
+            font-size: 16px;
+        }
+
+        .btn-settings {
+            background: linear-gradient(135deg, #38bdf8 0%, #1e40af 100%);
+            color: white;
+            border: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-settings::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s;
+        }
+        .btn-settings:hover {
+            background: linear-gradient(135deg, #1d4ed8 0%, #1e3a8a 100%);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        .btn-settings:hover::after {
+            left: 100%;
+        }
+
+        .btn-tasks {
+            background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+            color: white;
+            border: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-tasks::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s;
+        }
+        .btn-tasks:hover {
+            background: linear-gradient(135deg, #15803d 0%, #166534 100%);
+            box-shadow: 0 6px 20px rgba(22, 163, 74, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        .btn-tasks:hover::after {
+            left: 100%;
+        }
+
+        .btn-customers {
+            background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);
+            color: white;
+            border: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 12px rgba(8, 145, 178, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-customers::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s;
+        }
+        .btn-customers:hover {
+            background: linear-gradient(135deg, #0e7490 0%, #155e75 100%);
+            box-shadow: 0 6px 20px rgba(8, 145, 178, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        .btn-customers:hover::after {
+            left: 100%;
+        }
+
+        .btn-warehouse {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            color: white;
+            border: 1px solid rgba(220, 38, 38, 0.5);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-warehouse::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s;
+        }
+        .btn-warehouse:hover {
+            background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+            border-color: rgba(220, 38, 38, 1);
+            box-shadow: 0 6px 20px rgba(220, 38, 38, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        .btn-warehouse:hover::after {
+            left: 100%;
+        }
+
+        @media (max-width: 600px) {
+            .quick-actions {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+        @media (max-width: 380px) {
+            .quick-actions {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        .sticky-top-bar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: #1a1a1a;
+            padding-bottom: 10px;
+        }
+        .sticky-top-bar .quick-actions {
+            margin-bottom: 0 !important;
+        }
+        .sticky-top-bar .stats,
+        .sticky-top-bar .stats-overview,
+        .sticky-top-bar .stats-bar {
+            max-height: 120px;
+            opacity: 1;
+            overflow: hidden;
+            transition: max-height 0.3s ease, opacity 0.2s ease, margin 0.3s ease;
+        }
+        .sticky-top-bar.scrolled .stats,
+        .sticky-top-bar.scrolled .stats-overview,
+        .sticky-top-bar.scrolled .stats-bar {
+            max-height: 0;
+            opacity: 0;
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+        }
     </style>
 </head>
 <body>
     <div class="container">
+        <div class="sticky-top-bar">
         <!-- Header -->
         <div class="header">
             <div class="header-left">
                 <div class="header-logo">
-                    <img src="images/logo INSEGNA.png" alt="Molino Briganti Logo">
+                    <img src="images/logo INSEGNA.png" alt="Molino Briganti Logo" class="logo-hidden">
                 </div>
                 <div class="header-title">
                     <h1>📦 Planner Ordini</h1>
@@ -731,7 +902,7 @@
                 </div>
             </div>
             <div class="header-actions">
-                <button class="btn btn-planner" onclick="window.location.href='admin-dashboard.html'">🏠 Home</button>
+                <button class="btn btn-danger" data-icon="🚪" onclick="handleLogout()"><span>Logout</span></button>
             </div>
         </div>
 
@@ -751,7 +922,31 @@
             </div>
         </div>
 
-        <!-- Planner Actions removed -->
+        <!-- Quick Actions -->
+        <div class="quick-actions">
+            <div class="dropdown-menu-admin">
+                <button class="btn btn-settings" data-icon="⚙️" onclick="toggleAdminMenu()"><span>Gestione</span></button>
+                <div id="adminMenuDropdown" class="admin-menu-dropdown">
+                    <button class="admin-menu-item" onclick="window.location.href='company-settings.html'; toggleAdminMenu();">
+                        <span class="menu-icon">🏢</span>
+                        <span>Impostazioni Azienda</span>
+                    </button>
+                    <button class="admin-menu-item" onclick="window.location.href='operators.html'; toggleAdminMenu();">
+                        <span class="menu-icon">👥</span>
+                        <span>Gestione Admin / Operatori</span>
+                    </button>
+                    <button class="admin-menu-item" onclick="window.location.href='backup-management.html'; toggleAdminMenu();">
+                        <span class="menu-icon">💾</span>
+                        <span>Gestione Backup</span>
+                    </button>
+                </div>
+            </div>
+            <button class="btn btn-customers" data-icon="👨‍💼" onclick="window.location.href='customers-management.html'"><span>Gestione Clienti</span></button>
+            <button class="btn btn-tasks" data-icon="✅" onclick="window.location.href='admin-dashboard.html'"><span>Planner Task</span></button>
+            <button class="btn btn-planner active" data-icon="📦" onclick="window.location.href='orders-planner.html'"><span>Planner Ordini</span></button>
+            <button class="btn btn-warehouse" data-icon="🏭" onclick="window.location.href='warehouse-management.html'"><span>Gestione Magazzino</span></button>
+        </div>
+        </div><!-- /.sticky-top-bar -->
 
         <!-- Calendar -->
         <div class="card card-padded">
@@ -853,7 +1048,7 @@
                                     <tr>
                                         <th>Articolo</th>
                                         <th>Quantità (colli • kg)</th>
-                                        <th>Lotti</th>
+                                        <th>Lotto / Scad. / Scaffale</th>
                                         <th>Azione</th>
                                     </tr>
                                 </thead>
@@ -1067,6 +1262,7 @@
         let orders = [];
         let clienti = [];
         let articoli = [];
+        let allShelfEntries = []; // ShelfEntries dal magazzino
         let calendarDisplayMonth = new Date().getMonth();
         let calendarDisplayYear = new Date().getFullYear();
         // Tasks generati dagli ordini
@@ -1143,6 +1339,10 @@
         // Helper per estrarre peso per collo dal codice prodotto (es. F-0-5 = 5kg)
         function extractWeightPerCollo(code) {
             if (!code) return 1;
+            // Prima cerca in articoli (weightPerUnit dal DB)
+            const art = articoli.find(a => a.codice === code);
+            if (art && art.weightPerUnit > 0) return art.weightPerUnit;
+            // Fallback: regex sul codice (es. FARRO-25 → 25)
             const match = code.match(/-(\d+)$/);
             return parseInt(match ? match[1] : 1) || 1;
         }
@@ -1796,19 +1996,25 @@
                 const productsStr = fullInfo?.products?.map(p => {
                     const weight = extractWeightPerCollo(p.product || '');
                     const colli = Math.round(p.quantity / weight);
-                    return `${p.product} (${colli} colli • ${p.quantity}kg)`;
-                }).join(' + ') || fullInfo?.product;
+                    return `<div style="padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.06);">▸ <strong>${p.product}</strong> <span style="color: #93c5fd;">${colli} colli</span> • <span style="color: #fbbf24;">${p.quantity}kg</span></div>`;
+                }).join('') || `<div>${fullInfo?.product || '—'}</div>`;
                 const lottoStr = order.lotto ? `<p><strong>Lotto:</strong> ${order.lotto}</p>` : '';
                 const posizioneStr = order.posizione ? `<p><strong>Scaffale:</strong> ${order.posizione}</p>` : '';
                 const clientName = getClientName(order);
                 return `
                     <div class="order-card" 
-                         style="margin-bottom: 10px; border-left: 4px solid ${borderColor};">
+                         draggable="true"
+                         data-order-id="${order.id}"
+                         data-source="unassigned"
+                         ondragstart="handleUnassignedDragStart(event)"
+                         ondragend="handleOrderDragEnd(event)"
+                         style="margin-bottom: 10px; border-left: 4px solid ${borderColor}; cursor: grab;">
                         <div class="order-header">
                             <div class="order-title">${clientName} <span style="color: #888; font-size: 12px;">#${index + 1}</span></div>
                         </div>
                         <div class="order-details" style="font-size: 12px;">
-                            <p><strong>📦 Prodotti:</strong> ${productsStr}</p>
+                            <div style="margin-bottom: 4px;"><strong>📦 Prodotti:</strong></div>
+                            <div style="margin-left: 8px;">${productsStr}</div>
                             <p><strong>Quantità:</strong> ${(() => {
                                 const qty = fullInfo?.quantity || order.quantity || 0;
                                 let colliInfo = '';
@@ -1996,13 +2202,25 @@
                 const dateOnly = dateObj ? dateObj.toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit', year:'numeric'}) : 'N/D';
                 
                 // Filtro ordini del viaggio - confronto tipo-safe tra ID
-                const tripOrders = orders.filter(o => {
+                let tripOrders = orders.filter(o => {
                     if (!trip.sequence || trip.sequence.length === 0) return false;
                     // Converti entrambi a string per confronto sicuro
                     const orderId = String(o.id);
                     const found = trip.sequence.some(seqId => String(seqId) === orderId);
                     return found;
                 });
+                
+                // Fallback: se la sequence non trova ordini, usa trip.orders dal server (relazione DB tripId)
+                if (tripOrders.length === 0 && trip.orders && trip.orders.length > 0) {
+                    console.warn(`⚠️ [renderTrips] Trip ${trip.id}: sequence non ha trovato ordini, usando trip.orders dal DB (${trip.orders.length} ordini)`);
+                    tripOrders = trip.orders.map(o => {
+                        // Normalizza: mappa clientName a client se mancante
+                        if (!o.client && o.clientName) o.client = o.clientName;
+                        return o;
+                    });
+                    // Aggiorna la sequence con gli ID reali dal DB
+                    trip.sequence = tripOrders.map(o => o.id);
+                }
                 
                 // Ordina gli ordini secondo la sequenza salvata nel viaggio
                 if (trip.sequence && trip.sequence.length > 0) {
@@ -2015,7 +2233,7 @@
                 
                 console.log(`🔍 [renderTrips] Trip ${trip.id} (${trip.name}): sequence=${JSON.stringify(trip.sequence)} orders disponibili=${orders.length} ordini trovati=${tripOrders.length}`);
                 if (tripOrders.length > 0) {
-                    console.log(`   Ordini: ${tripOrders.map(o => o.id + ' (' + o.client + ')').join(', ')}`);
+                    console.log(`   Ordini: ${tripOrders.map(o => o.id + ' (' + getClientName(o) + ')').join(', ')}`);
                 }
                 
                 // Ottieni il nome dell'operatore
@@ -2040,10 +2258,20 @@
                     const productsStr = fullInfo?.products?.map(p => {
                         const weight = extractWeightPerCollo(p.product || '');
                         const colli = Math.round(p.quantity / weight);
-                        const shelfPos = p.batchData?.shelfPosition || p.batch || '—';
-                        const lotto = p.batchData?.batch || p.lotto || '—';
-                        return `${p.product} (${colli} colli • ${p.quantity}kg) <span style="color: #38bdf8; font-size: 11px;">[📍${shelfPos} | 📦${lotto}]</span>`;
-                    }).join(' + ') || fullInfo?.product;
+                        const lotto = p.batch || p.batchData?.batch || '—';
+                        // Cerca la posizione scaffale in allShelfEntries per codice + batch
+                        let shelfPos = p.batchData?.shelfPosition || p.shelfPosition || '';
+                        if (!shelfPos && p.batch) {
+                            const art = articoli.find(a => a.codice === p.product || a.nome === p.product);
+                            if (art) {
+                                const entry = allShelfEntries.find(e => e.articleId === art.id && e.batch === p.batch);
+                                if (entry) shelfPos = entry.positionCode || '';
+                            }
+                        }
+                        const shelfLabel = shelfPos || '—';
+                        const scad = p.batchData?.expiry || p.expiry || '';
+                        return `<div style="padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.06);">▸ <strong>${p.product}</strong> <span style="color: #93c5fd;">${colli} colli</span> • <span style="color: #fbbf24;">${p.quantity}kg</span> <span style="color: #38bdf8; font-size: 11px;">🚩${lotto}${scad ? ' | 📅' + scad : ''} | 📍${shelfLabel}</span></div>`;
+                    }).join('') || `<div>${fullInfo?.product || '—'}</div>`;
                     const lottoStr = order.lotto ? `<p><strong>Lotto:</strong> ${order.lotto}</p>` : '';
                     const posizioneStr = order.posizione ? `<p><strong>Scaffale:</strong> ${order.posizione}</p>` : '';
                     return `
@@ -2063,7 +2291,8 @@
                                 <div class="order-title">${fullInfo?.client || 'Cliente'} <span style="background: #38bdf8; color: white; padding: 2px 8px; border-radius: 4px; font-size: 13px; font-weight: 600;">Tappa ${index + 1}</span></div>
                             </div>
                             <div class="order-details" style="font-size: 12px;">
-                                <p><strong>📦 Prodotti:</strong> ${productsStr}</p>
+                                <div style="margin-bottom: 4px;"><strong>📦 Prodotti:</strong></div>
+                                <div style="margin-left: 8px; margin-bottom: 4px;">${productsStr}</div>
                                 <p><strong>Quantità:</strong> ${(() => {
                                     const qty = fullInfo?.quantity || 0;
                                     let colliInfo = '';
@@ -2101,7 +2330,12 @@
                 }, 0);
                 
                 return `
-                    <div class="task-card" style="border-left: 4px solid ${tripOrders.length === 0 ? '#6b7280' : '#38bdf8'};">
+                    <div class="task-card trip-drop-zone" 
+                         data-trip-id="${trip.id}"
+                         ondragover="handleTripDragOver(event)"
+                         ondragleave="handleTripDragLeave(event)"
+                         ondrop="handleTripDrop(event)"
+                         style="border-left: 4px solid ${tripOrders.length === 0 ? '#6b7280' : '#38bdf8'}; transition: outline 0.2s, background 0.2s;">
                         <div class="task-header">
                             <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
                                 <span style="font-size: 32px;">🚐</span>
@@ -2176,10 +2410,10 @@
                 
                 trip.acceptedAt = new Date().toISOString();
                 await saveTrips();
-                showAlert('✅ Viaggio accettato!', 'success');
+                alert('✅ Viaggio accettato!');
                 renderTrips(); // Ricarica la visualizzazione
             } catch (error) {
-                showAlert('Errore nell\'accettazione: ' + error.message, 'error');
+                alert('Errore nell\'accettazione: ' + error.message);
             }
         }
         
@@ -2228,10 +2462,10 @@
                 trip.completedBy = currentUser.id;
 
                 await saveTrips();
-                showAlert('✅ Viaggio completato e prodotti scaricati dall\'inventario!', 'success');
+                alert('✅ Viaggio completato e prodotti scaricati dall\'inventario!');
                 renderTrips(); // Ricarica la visualizzazione
             } catch (error) {
-                showAlert('Errore nel completamento: ' + error.message, 'error');
+                alert('Errore nel completamento: ' + error.message);
             }
         }
 
@@ -2352,14 +2586,126 @@
         function handleOrderDragEnd(event) {
             event.currentTarget.classList.remove('dragging');
             
-            // Rimuovi classe drag-over da tutte le card
+            // Rimuovi classe drag-over da tutte le card e trip
             document.querySelectorAll('.order-card').forEach(card => {
                 card.classList.remove('drag-over');
+            });
+            document.querySelectorAll('.trip-drop-zone').forEach(zone => {
+                zone.style.outline = '';
+                zone.style.background = '';
             });
             
             draggedOrderId = null;
             draggedTripId = null;
             draggedOrderIndex = null;
+        }
+
+        // === DRAG da ordini non assegnati verso viaggi ===
+        function handleUnassignedDragStart(event) {
+            const orderId = parseInt(event.currentTarget.dataset.orderId);
+            draggedOrderId = orderId;
+            draggedTripId = null; // nessun trip di origine
+            draggedOrderIndex = null;
+            
+            event.currentTarget.classList.add('dragging');
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', orderId);
+            event.dataTransfer.setData('application/x-source', 'unassigned');
+            
+            console.log(`🎯 [Drag Start] Unassigned order ${orderId}`);
+        }
+
+        function handleTripDragOver(event) {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'move';
+            const zone = event.currentTarget;
+            zone.style.outline = '2px dashed #38bdf8';
+            zone.style.background = 'rgba(56, 189, 248, 0.08)';
+        }
+
+        function handleTripDragLeave(event) {
+            // Solo se stiamo effettivamente lasciando la zona (non un figlio)
+            if (!event.currentTarget.contains(event.relatedTarget)) {
+                event.currentTarget.style.outline = '';
+                event.currentTarget.style.background = '';
+            }
+        }
+
+        async function handleTripDrop(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            const tripZone = event.currentTarget;
+            tripZone.style.outline = '';
+            tripZone.style.background = '';
+            
+            const targetTripId = parseInt(tripZone.dataset.tripId);
+            const droppedOrderId = draggedOrderId || parseInt(event.dataTransfer.getData('text/plain'));
+            
+            if (!droppedOrderId || !targetTripId) return;
+            
+            // Se l'ordine proviene da un viaggio (reorder interno), lascia gestire a handleOrderDrop
+            if (draggedTripId && draggedTripId === targetTripId) return;
+            
+            // Se proviene da un altro viaggio, sposta
+            if (draggedTripId && draggedTripId !== targetTripId) {
+                // Togli dal vecchio e aggiungi al nuovo
+                await removeOrderFromTrip(draggedTripId, droppedOrderId);
+            }
+            
+            // Aggiungi l'ordine al viaggio di destinazione
+            const trip = trips.find(t => t.id === targetTripId);
+            if (!trip) return;
+            
+            // Verifica che non sia già nel viaggio
+            if (trip.sequence && trip.sequence.map(String).includes(String(droppedOrderId))) {
+                console.warn('⚠️ Ordine già presente nel viaggio');
+                return;
+            }
+            
+            // Aggiorna anche l'ordine con il tripId
+            const order = orders.find(o => o.id === droppedOrderId);
+            if (order) {
+                order.tripId = targetTripId;
+            }
+            
+            // Aggiungi alla sequence e salva
+            if (!trip.sequence) trip.sequence = [];
+            if (!trip.orderIds) trip.orderIds = [];
+            trip.sequence.push(droppedOrderId);
+            trip.orderIds.push(droppedOrderId);
+            
+            try {
+                // Aggiorna il viaggio nel backend
+                const resp = await fetch(`${API_URL}/trips/${targetTripId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        sequence: JSON.stringify(trip.sequence)
+                    })
+                });
+                
+                // Aggiorna l'ordine con il tripId nel backend
+                if (order) {
+                    await fetch(`${API_URL}/orders/${droppedOrderId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ tripId: targetTripId })
+                    });
+                }
+                
+                console.log(`✅ Ordine ${droppedOrderId} aggiunto al viaggio ${trip.name}`);
+                await forceRefreshTrips();
+                renderOrderTasks();
+            } catch (error) {
+                console.error('❌ Errore assegnazione ordine al viaggio:', error);
+                alert('❌ Errore nell\'assegnazione: ' + error.message);
+            }
         }
         function parseCSV(text) {
             const lines = text.trim().split('\n');
@@ -2404,7 +2750,7 @@
                     clienti = [];
                 }
 
-                // Carica articoli PRIMA dall'API inventory
+                // Carica articoli SOLO dall'API inventory (database MariaDB)
                 try {
                     const inventoryResponse = await fetch(`${API_URL}/inventory/articles`, {
                         headers: { 'Authorization': `Bearer ${token}` }
@@ -2413,48 +2759,50 @@
                     if (inventoryResponse.ok) {
                         const inventoryArticles = await inventoryResponse.json();
                         if (inventoryArticles && inventoryArticles.length > 0) {
-                            // Mappa i dati dell'inventario al formato atteso
-                            articoli = inventoryArticles.map(a => ({
-                                codice: a.code || a.codice || a.name || '',
-                                descrizione: a.name || a.descrizione || a.description || '',
-                                nome: a.name || a.nome || ''
-                            }));
-                            console.log('✅ Articoli caricati da API inventory:', articoli.length);
+                            // Deduplica per codice - prendi solo il primo di ogni codice
+                            const uniqueByCode = new Map();
+                            inventoryArticles.forEach(a => {
+                                const code = a.code || a.codice || a.name || '';
+                                if (code && !uniqueByCode.has(code)) {
+                                    uniqueByCode.set(code, {
+                                        id: a.id,
+                                        codice: code,
+                                        descrizione: a.name || a.descrizione || a.description || '',
+                                        nome: a.name || a.nome || '',
+                                        unit: a.unit || 'pz',
+                                        weightPerUnit: parseFloat(a.weightPerUnit) || 1
+                                    });
+                                }
+                            });
+                            articoli = Array.from(uniqueByCode.values());
+                            console.log(`✅ Articoli caricati da API: ${articoli.length} (deduplicated from ${inventoryArticles.length})`);
                         } else {
-                            throw new Error('API inventory vuota');
+                            console.warn('⚠️ API inventory vuota');
+                            articoli = [];
                         }
                     } else {
-                        throw new Error('API inventory non disponibile');
+                        console.error('❌ API inventory non disponibile');
+                        articoli = [];
                     }
                 } catch (apiError) {
-                    console.warn('⚠️ API inventory non disponibile, provo localStorage/CSV:', apiError.message);
-                    
-                    // Fallback a localStorage
-                    try {
-                        const stored = localStorage.getItem('products');
-                        if (stored) {
-                            articoli = JSON.parse(stored);
-                            if (articoli.length > 0 && articoli[0].nome && !articoli[0].codice) {
-                                console.log('Articoli in localStorage hanno vecchia struttura, ricarico da CSV');
-                                const csvResponse = await fetch('data/codifica articoli.csv');
-                                const csvText = await csvResponse.text();
-                                articoli = parseArticoliCSV(csvText);
-                                localStorage.removeItem('products');
-                            } else {
-                                console.log('Articoli caricati da localStorage:', articoli.length);
-                            }
-                        } else {
-                            const csvResponse = await fetch('data/codifica articoli.csv');
-                            const csvText = await csvResponse.text();
-                            articoli = parseArticoliCSV(csvText);
-                            console.log('Articoli caricati da CSV (fallback):', articoli.length);
-                        }
-                    } catch (error) {
-                        console.error('Errore caricamento articoli, fallback a CSV:', error);
-                        const csvResponse = await fetch('data/codifica articoli.csv');
-                        const csvText = await csvResponse.text();
-                        articoli = parseArticoliCSV(csvText);
+                    console.error('❌ Errore caricamento articoli da API:', apiError.message);
+                    articoli = [];
+                }
+
+                // Carica ShelfEntries per disponibilità reale
+                try {
+                    const seResp = await fetch(`${API_URL}/inventory/shelf-entries`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (seResp.ok) {
+                        allShelfEntries = await seResp.json();
+                        console.log(`✅ ShelfEntries caricate: ${allShelfEntries.length}`);
+                    } else {
+                        allShelfEntries = [];
                     }
+                } catch (e) {
+                    console.warn('⚠️ Errore caricamento shelf-entries:', e.message);
+                    allShelfEntries = [];
                 }
             } catch (error) {
                 console.error('Errore caricamento dati:', error);
@@ -2752,7 +3100,7 @@
             clientSelect.innerHTML = '<option value="">-- Seleziona Cliente --</option>' +
                 clienti.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
 
-            // Popola dropdown articoli (usa dati già caricati da CSV/localStorage)
+            // Popola dropdown articoli
             const productSelect = document.getElementById('orderProduct');
             console.log('🔍 openOrderModal - articoli.length:', articoli.length);
             if (articoli.length > 0) {
@@ -2762,8 +3110,13 @@
                 .filter(a => !(a.codice || a.nome || '').startsWith('EMPTY-'))
                 .map(a => {
                     const cod = a.codice || a.nome || '???';
-                    const desc = a.descrizione || a.nome || '???';
-                    return `<option value="${cod}">${cod} - ${desc}</option>`;
+                    const desc = a.descrizione || '';
+                    const displayText = (desc && desc !== cod) ? `${cod} - ${desc}` : cod;
+                    const artId = a.id;
+                    const colli = artId ? allShelfEntries.filter(e => e.articleId === artId).reduce((s,e) => s + (e.quantity||0), 0) : 0;
+                    const kg = (colli * (a.weightPerUnit || 1)).toFixed(0);
+                    const stockInfo = ` [${colli} colli · ${kg} kg]`;
+                    return `<option value="${cod}">${displayText}${stockInfo}</option>`;
                 }).join('');
             productSelect.innerHTML = '<option value="">-- Seleziona Articolo --</option>' + optionsHTML;
 
@@ -2879,7 +3232,16 @@
             productSelect.innerHTML = '<option value="">-- Seleziona Articolo --</option>' +
                 articoli
                     .filter(a => !(a.codice || a.nome || '').startsWith('EMPTY-'))
-                    .map(a => `<option value="${a.codice || a.nome}">${a.codice || a.nome} - ${a.descrizione || a.nome}</option>`).join('');
+                    .map(a => {
+                        const cod = a.codice || a.nome;
+                        const desc = a.descrizione || '';
+                        const displayText = (desc && desc !== cod) ? `${cod} - ${desc}` : cod;
+                        const artId = a.id;
+                        const colli = artId ? allShelfEntries.filter(e => e.articleId === artId).reduce((s,e) => s + (e.quantity||0), 0) : 0;
+                        const kg = (colli * (a.weightPerUnit || 1)).toFixed(0);
+                        const stockInfo = ` [${colli} colli · ${kg} kg]`;
+                        return `<option value="${cod}">${displayText}${stockInfo}</option>`;
+                    }).join('');
 
             // Carica prodotti dell'ordine
             if (order.products && order.products.length > 0) {
@@ -3239,17 +3601,20 @@
             const article = articoli.find(a => a.codice === productCode);
             const productDesc = article?.descrizione || productCode;
 
-            // Calcola quanto è già stato assegnato da questo ordine per questo prodotto
+            // Calcola quanto è già stato assegnato da questo ordine per questo prodotto (per lotto+posizione)
             const alreadyAssignedPerBatch = {};
             currentOrderProducts
                 .filter(p => p.product === productCode && p.batch)
                 .forEach(p => {
-                    alreadyAssignedPerBatch[p.batch] = (alreadyAssignedPerBatch[p.batch] || 0) + p.quantity;
+                    const pos = p.batchData?.shelfPosition || p.shelfPosition || '';
+                    const posKey = `${p.batch}|${pos}`;
+                    alreadyAssignedPerBatch[posKey] = (alreadyAssignedPerBatch[posKey] || 0) + p.quantity;
                 });
 
             // Filtra i lotti ancora disponibili (con quantità residua > 0)
             const batchesStillAvailable = availableBatches.filter(batch => {
-                const alreadyUsed = alreadyAssignedPerBatch[batch.batch] || 0;
+                const posKey = `${batch.batch}|${batch.shelfPosition || ''}`;
+                const alreadyUsed = alreadyAssignedPerBatch[posKey] || 0;
                 const residual = (batch.quantityKg || 0) - alreadyUsed;
                 return residual > 0.01; // Considera > 0 se maggiore di 0.01kg
             });
@@ -3269,15 +3634,18 @@
                         
                         <div style="margin: 15px 0; max-height: 250px; overflow-y: auto; border: 1px solid #4d4d4d; border-radius: 4px; padding: 10px;" id="batchesContainer">
                             ${batchesStillAvailable.map((batch, idx) => {
-                                const alreadyUsed = alreadyAssignedPerBatch[batch.batch] || 0;
+                                const posKey2 = `${batch.batch}|${batch.shelfPosition || ''}`;
+                                const alreadyUsed = alreadyAssignedPerBatch[posKey2] || 0;
                                 const residual = (batch.quantityKg || 0) - alreadyUsed;
                                 const willAssign = Math.min(remainingQuantity, residual);
+                                // Indice reale in currentAvailableBatches
+                                const realIdx = currentAvailableBatches.indexOf(batch);
                                 
                                 return `
-                                    <div class="batch-item" data-product-code="${productCode}" data-remaining="${remainingQuantity}" data-batch-index="${idx}" data-batch-code="${batch.batch}" data-batch-available="${residual}" style="background: #1a1a1a; padding: 10px; margin-bottom: 8px; border-radius: 4px; border-left: 3px solid #3b82f6; cursor: pointer;">
+                                    <div class="batch-item" data-product-code="${productCode}" data-remaining="${remainingQuantity}" data-batch-index="${realIdx}" data-batch-code="${batch.batch}" data-batch-available="${residual}" data-batch-pos="${batch.shelfPosition || ''}" style="background: #1a1a1a; padding: 10px; margin-bottom: 8px; border-radius: 4px; border-left: 3px solid #3b82f6; cursor: pointer;">
                                         <div style="font-weight: bold; color: #3b82f6;">🏷️ Lotto: ${batch.batch}</div>
                                         <div style="font-size: 12px; color: #999; margin-top: 4px;">
-                                            Scadenza: ${batch.expiry || 'N/A'} | Disponibile: <span style="color: #86efac;">${residual.toFixed(1)} kg</span>
+                                            Scadenza: ${batch.expiry || 'N/A'} | Disponibile: <span style="color: #86efac;">${batch.quantity} colli · ${residual.toFixed(1)} kg</span>${batch.shelfPosition ? ` | 📍 ${batch.shelfPosition}` : ''}
                                         </div>
                                         <div style="font-size: 13px; color: #fbbf24; margin-top: 4px;">
                                             → Assegnerà: ${willAssign.toFixed(1)} kg
@@ -3305,14 +3673,20 @@
                         const batchIndex = parseInt(batchItem.dataset.batchIndex);
                         const batchCode = batchItem.dataset.batchCode;
                         const batchAvailable = parseFloat(batchItem.dataset.batchAvailable);
-                        selectBatchForProduct(productCode, remainingQuantity, batchIndex, batchCode, batchAvailable);
+                        const batchPos = batchItem.dataset.batchPos || '';
+                        selectBatchForProduct(productCode, remainingQuantity, batchIndex, batchCode, batchAvailable, batchPos);
                     }
                 });
             }
         }
 
-        function selectBatchForProduct(productCode, remainingQuantity, batchIndex, batchCode, batchAvailable) {
-            const batch = currentAvailableBatches[batchIndex];
+        function selectBatchForProduct(productCode, remainingQuantity, batchIndex, batchCode, batchAvailable, batchPos) {
+            let batch = currentAvailableBatches[batchIndex];
+            // Fallback: se l'indice non corrisponde al batch atteso, cerca per codice+posizione
+            if (!batch || batch.batch !== batchCode) {
+                batch = currentAvailableBatches.find(b => b.batch === batchCode && (b.shelfPosition || '') === (batchPos || ''));
+                if (!batch) batch = currentAvailableBatches.find(b => b.batch === batchCode);
+            }
             if (!batch) return;
 
             // Calcola quanto assegnare da questo lotto
@@ -3325,6 +3699,7 @@
                 product: productCode,
                 quantity: quantityToAssign,
                 batch: batch.batch,
+                shelfPosition: batch.shelfPosition || '',
                 batchData: batch
             });
 
@@ -3368,20 +3743,40 @@
             const totalQty = currentOrderProducts.reduce((sum, p) => sum + p.quantity, 0);
 
             tbody.innerHTML = currentOrderProducts.map((product, idx) => {
+                // Risolvi descrizione articolo da codice
+                const art = articoli.find(a => a.codice === product.product || a.nome === product.product);
+                const productDesc = art?.descrizione || product.product;
+                const productLabel = (productDesc && productDesc !== product.product) ? `${product.product} - ${productDesc}` : product.product;
+
                 // Mostra il lotto con la scadenza
                 let batchesDisplay = '<span style="color: #999; font-size: 13px;">-</span>';
+                let scadenzaDisplay = '';
+                let posizioneDisplay = '';
                 
                 if (product.batch) {
-                    // Usa i dati del batch salvati al momento dell'aggiunta
-                    const scadenza = product.batchData ? product.batchData.expiry : '';
-                    const batchLabel = scadenza ? `${product.batch} (${scadenza})` : product.batch;
+                    // Recupera scadenza e posizione da batchData, poi dai campi salvati, infine da allShelfEntries
+                    let scadenza = product.batchData?.expiry || product.expiry || '';
+                    let posizione = product.batchData?.shelfPosition || product.shelfPosition || '';
                     
-                    batchesDisplay = `<span style="display: inline-block; background: #2d5a3d; padding: 2px 6px; margin: 2px; border-radius: 3px; font-size: 13px; color: #86efac;">${batchLabel}</span>`;
+                    // Se non abbiamo né batchData né campi salvati, cerca in allShelfEntries
+                    if (!scadenza || !posizione) {
+                        if (art) {
+                            const matchingEntry = allShelfEntries.find(e => e.articleId === art.id && e.batch === product.batch && (!posizione || e.positionCode === posizione));
+                            if (matchingEntry) {
+                                if (!scadenza) scadenza = matchingEntry.expiry || '';
+                                if (!posizione) posizione = matchingEntry.positionCode || '';
+                            }
+                        }
+                    }
+                    
+                    batchesDisplay = `<span style="display:inline-block;background:#2d5a3d;padding:3px 8px;border-radius:4px;font-size:13px;color:#86efac;font-weight:600;letter-spacing:0.5px;">🏷️ ${product.batch}</span>`;
+                    if (scadenza) scadenzaDisplay = `<span style="display:inline-block;background:#1e3a2f;padding:2px 7px;border-radius:4px;font-size:12px;color:#6ee7b7;margin-top:4px;">📅 ${scadenza}</span>`;
+                    if (posizione) posizioneDisplay = `<span style="display:inline-block;background:#1e2d4a;padding:2px 7px;border-radius:4px;font-size:12px;color:#60a5fa;margin-top:4px;">📍 ${posizione}</span>`;
                 }
 
                 return `
                     <tr style="border-bottom: 1px solid #4d4d4d;">
-                        <td style="padding: 8px; text-align: left; color: #e0e0e0;">${product.product}</td>
+                        <td style="padding: 8px; text-align: left; color: #e0e0e0; min-width: 120px;">${productLabel}</td>
                         <td style="padding: 8px; text-align: right; color: #a0d4ff;">
                             ${(() => {
                                 const kg = product.quantity;
@@ -3390,7 +3785,13 @@
                                 return `${colli} colli • ${kg.toFixed(1)} kg`;
                             })()}
                         </td>
-                        <td style="padding: 8px; text-align: center; font-size: 13px;">${batchesDisplay}</td>
+                        <td style="padding: 8px; text-align: center; font-size: 13px;">
+                            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+                                ${batchesDisplay}
+                                ${scadenzaDisplay}
+                                ${posizioneDisplay}
+                            </div>
+                        </td>
                         <td style="padding: 8px; text-align: center;">
                             <button type="button" onclick="removeProductFromOrder(${idx})" style="background: #dc2626; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 12px;">🗑️ Rimuovi</button>
                         </td>
@@ -3419,9 +3820,12 @@
             const selectElement = document.getElementById('editProductName');
             selectElement.innerHTML = articoli
                 .filter(a => !(a.codice || a.nome || '').startsWith('EMPTY-'))
-                .map(a => `
-                <option value="${a.codice}" ${a.codice === product.product ? 'selected' : ''}>${a.codice} - ${a.descrizione}</option>
-            `).join('');
+                .map(a => {
+                    const cod = a.codice || a.nome;
+                    const desc = a.descrizione || '';
+                    const displayText = (desc && desc !== cod) ? `${cod} - ${desc}` : cod;
+                    return `<option value="${cod}" ${cod === product.product ? 'selected' : ''}>${displayText}</option>`;
+                }).join('');
 
             // Estrai peso per collo per calcolare i colli da kg
             const weightPerCollo = extractWeightPerCollo(product.product);
@@ -3435,30 +3839,38 @@
             // Aggiorna info conversione
             updateEditConversionInfo();
 
-            // Carica i lotti disponibili per l'articolo
-            (async () => {
-                try {
-                    if (token) {
-                        const response = await fetch(`${API_URL}/inventory/batches?code=${product.product}`, {
-                            headers: { 
-                                'Authorization': `Bearer ${token}`,
-                                'Content-Type': 'application/json'
-                            }
-                        });
-
-                        if (response.ok) {
-                            currentAvailableBatches = await response.json();
+            // Carica i lotti disponibili per l'articolo (da ShelfEntries)
+            (() => {
+                const art = articoli.find(a => a.codice === product.product);
+                if (art && art.id) {
+                    const weightPerUnit = art.weightPerUnit || 1;
+                    const entries = allShelfEntries.filter(e => e.articleId === art.id && (e.quantity || 0) > 0);
+                    const batchMap = new Map();
+                    entries.forEach(e => {
+                        const key = `${e.batch||''}|${e.expiry||''}|${e.positionCode||''}`;
+                        if (batchMap.has(key)) {
+                            const b = batchMap.get(key);
+                            b.quantity += e.quantity || 0;
+                            b.quantityKg += (e.quantity || 0) * weightPerUnit;
                         } else {
-                            currentAvailableBatches = [];
+                            batchMap.set(key, {
+                                batch: e.batch || '—',
+                                expiry: e.expiry || '',
+                                quantity: e.quantity || 0,
+                                quantityKg: (e.quantity || 0) * weightPerUnit,
+                                shelfPosition: e.positionCode || '',
+                                notes: e.notes || ''
+                            });
                         }
-                    } else {
-                        currentAvailableBatches = [];
-                    }
-                } catch (error) {
-                    console.error('❌ Errore caricamento lotti:', error);
+                    });
+                    currentAvailableBatches = Array.from(batchMap.values()).sort((a, b) => {
+                        if (!a.expiry) return 1;
+                        if (!b.expiry) return -1;
+                        return a.expiry.localeCompare(b.expiry);
+                    });
+                } else {
                     currentAvailableBatches = [];
                 }
-                
                 // Visualizza i lotti disponibili
                 renderEditProductBatches(product.product);
             })();
@@ -3569,12 +3981,13 @@
                 <div style="background: #0d2d3d; padding: 10px; margin-bottom: 8px; border-radius: 4px; border-left: 3px solid #a0d4ff;">
                     <div style="display: grid; grid-template-columns: 1fr auto; gap: 10px;">
                         <div>
-                            <div style="color: #a0d4ff; font-weight: bold; margin-bottom: 4px;">🏷️ Lotto: ${batch.batch || batch.lotto || 'N/A'}</div>
+                            <div style="color: #a0d4ff; font-weight: bold; margin-bottom: 4px;">🏷️ Lotto: ${batch.batch || '—'}</div>
                             <div style="color: #999; font-size: 13px;">
-                                Scadenza: ${batch.expiry || 'N/A'}
+                                Scadenza: ${batch.expiry || 'N/A'} | Pos: ${batch.shelfPosition || '—'}
                             </div>
                             <div style="color: #999; font-size: 13px;">
-                                Disponibile: <span style="color: #86efac; font-weight: bold;">${(batch.quantityKg || batch.quantity || 0).toFixed(1)} kg</span>
+                                Disponibile: <span style="color: #86efac; font-weight: bold;">${batch.quantity} colli</span>
+                                &nbsp;·&nbsp;<span style="color: #60a5fa; font-weight: bold;">${(batch.quantityKg || 0).toFixed(0)} kg</span>
                             </div>
                         </div>
                     </div>
@@ -3668,7 +4081,7 @@
             const availableBatchesForRemaining = currentAvailableBatches
                 .filter(batch => {
                     const alreadyAssigned = currentOrderBatches
-                        .filter(b => b.batch === batch.batch)
+                        .filter(b => b.batch === batch.batch && b.shelfPosition === (batch.shelfPosition || ''))
                         .reduce((sum, b) => sum + b.quantity, 0);
                     const available = (batch.quantityKg || 0) - alreadyAssigned;
                     return available > 0; // Deve avere disponibilità
@@ -3684,7 +4097,7 @@
             if (availableBatchesForRemaining.length === 1) {
                 const onlyBatch = availableBatchesForRemaining[0];
                 const alreadyAssigned = currentOrderBatches
-                    .filter(b => b.batch === onlyBatch.batch)
+                    .filter(b => b.batch === onlyBatch.batch && b.shelfPosition === (onlyBatch.shelfPosition || ''))
                     .reduce((sum, b) => sum + b.quantity, 0);
                 const maxAvailable = (onlyBatch.quantityKg || 0) - alreadyAssigned;
                 const quantityToAssign = Math.min(remainingQuantity, maxAvailable);
@@ -3734,13 +4147,13 @@
                 <div id="batchOptionsContainer" style="max-height: 300px; overflow-y: auto; margin-bottom: 15px;">
                     ${availableBatches.map((batch, idx) => {
                         const alreadyAssigned = currentOrderBatches
-                            .filter(b => b.batch === batch.batch)
+                            .filter(b => b.batch === batch.batch && b.shelfPosition === (batch.shelfPosition || ''))
                             .reduce((sum, b) => sum + b.quantity, 0);
                         const maxAvailable = (batch.quantityKg || 0) - alreadyAssigned;
                         const willAssign = Math.min(remainingQuantity, maxAvailable);
                         
                         // Trova l'indice reale in currentAvailableBatches
-                        const realIndex = currentAvailableBatches.findIndex(b => b.batch === batch.batch);
+                        const realIndex = currentAvailableBatches.findIndex(b => b.batch === batch.batch && b.shelfPosition === (batch.shelfPosition || ''));
                         
                         return `
                             <div onclick="selectBatchFromPopup(${realIndex}, ${remainingQuantity})"
@@ -3773,7 +4186,7 @@
         function selectBatchFromPopup(batchIndex, remainingQuantity) {
             const batch = currentAvailableBatches[batchIndex];
             const alreadyAssigned = currentOrderBatches
-                .filter(b => b.batch === batch.batch)
+                .filter(b => b.batch === batch.batch && b.shelfPosition === (batch.shelfPosition || ''))
                 .reduce((sum, b) => sum + b.quantity, 0);
             const maxAvailable = (batch.quantityKg || 0) - alreadyAssigned;
             
@@ -3824,7 +4237,7 @@
                 const stillAvailableBatches = currentAvailableBatches
                     .filter(batch => {
                         const assigned = currentOrderBatches
-                            .filter(b => b.batch === batch.batch)
+                            .filter(b => b.batch === batch.batch && b.shelfPosition === (batch.shelfPosition || ''))
                             .reduce((sum, b) => sum + b.quantity, 0);
                         const available = (batch.quantityKg || 0) - assigned;
                         return available > 0;
@@ -3893,31 +4306,44 @@
                 return;
             }
 
-            console.log('🔍 Caricamento lotti per articolo:', selectedProduct);
-
-            try {
-                // Prova a caricare dall'API
-                if (token) {
-                    const response = await fetch(`${API_URL}/inventory/batches?code=${selectedProduct}`, {
-                        headers: { 
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json'
-                        }
-                    });
-
-                    if (response.ok) {
-                        currentAvailableBatches = await response.json();
-                        console.log('✅ Lotti caricati da API:', currentAvailableBatches.length);
-                        console.log('📋 Struttura lotti:', currentAvailableBatches);
-                        return;
-                    } else {
-                        console.warn('⚠️ API ritorna errore:', response.status);
-                    }
-                }
-                
-            } catch (error) {
-                console.error('❌ Errore caricamento lotti:', error);
+            // Usa allShelfEntries (già caricato da loadCSVData) — unica fonte di verità
+            const art = articoli.find(a => a.codice === selectedProduct);
+            if (!art || !art.id) {
+                currentAvailableBatches = [];
+                console.warn('⚠️ Articolo non trovato in articoli:', selectedProduct);
+                return;
             }
+
+            const weightPerUnit = art.weightPerUnit || 1;
+            const entries = allShelfEntries.filter(e => e.articleId === art.id && (e.quantity || 0) > 0);
+
+            // Raggruppa per batch+expiry+posizione (ogni posizione separata)
+            const batchMap = new Map();
+            entries.forEach(e => {
+                const key = `${e.batch || ''}|${e.expiry || ''}|${e.positionCode || ''}`;
+                if (batchMap.has(key)) {
+                    const b = batchMap.get(key);
+                    b.quantity += e.quantity || 0;
+                    b.quantityKg += (e.quantity || 0) * weightPerUnit;
+                } else {
+                    batchMap.set(key, {
+                        batch: e.batch || '—',
+                        expiry: e.expiry || '',
+                        quantity: e.quantity || 0,
+                        quantityKg: (e.quantity || 0) * weightPerUnit,
+                        shelfPosition: e.positionCode || '',
+                        notes: e.notes || ''
+                    });
+                }
+            });
+
+            currentAvailableBatches = Array.from(batchMap.values()).sort((a, b) => {
+                if (!a.expiry) return 1;
+                if (!b.expiry) return -1;
+                return a.expiry.localeCompare(b.expiry);
+            });
+
+            console.log(`✅ Lotti da ShelfEntries: ${currentAvailableBatches.length} per ${selectedProduct}`);
         }
 
         // Renderizza i lotti disponibili (not used anymore - batches shown in modal)
@@ -4162,9 +4588,18 @@
                 console.log(`✅ [saveOrder] Final tripId: ${tripId}`);
             }
             
+            // Rimuovi batchData dagli oggetti prodotto prima di salvare (troppo grande per il DB)
+            const productsToSave = currentOrderProducts.map(p => ({
+                product: p.product,
+                quantity: p.quantity,
+                batch: p.batch || null,
+                shelfPosition: p.batchData?.shelfPosition || p.shelfPosition || null,
+                expiry: p.batchData?.expiry || p.expiry || null
+            }));
+            
             const orderData = {
                 client: document.getElementById('orderClient').value,
-                products: currentOrderProducts,  // Array di prodotti [{product, quantity}, ...]
+                products: productsToSave,  // Array di prodotti [{product, quantity, batch}]
                 quantity: totalQuantity,  // Quantità totale calcolata
                 type: document.getElementById('orderType').value,
                 dateTime: rawDateTime,
@@ -4288,7 +4723,8 @@
                 // Prenota inventario per ogni prodotto nell'ordine
                 orderInventoryReservations[order.id] = [];
                 for (const productItem of orderData.products) {
-                    const article = articoli.find(a => a.nome === productItem.product);
+                    // productItem.product contiene il CODICE dell'articolo (es. "F-0-10")
+                    const article = articoli.find(a => a.codice === productItem.product || a.nome === productItem.product);
                     if (article) {
                         try {
                             console.log(`⏱️ [saveOrder] Prenotando inventario: ${article.codice} ${productItem.quantity}kg`);
@@ -4334,6 +4770,17 @@
                 console.log('💾 Tentativo salvataggio ordine:', orderData);
                 const savedOrder = await DataSync.saveOrder(orderData);
                 console.log('✅ Ordine salvato dal backend:', savedOrder);
+                
+                // Controlla se è un fallback localStorage (order NON salvato nel DB)
+                if (savedOrder && savedOrder._pendingSync) {
+                    console.error('❌ [saveOrder] Ordine NON salvato nel database, solo in localStorage!', savedOrder);
+                    alert('⚠️ ATTENZIONE: L\'ordine non è stato salvato nel server.\nPotrebbe esserci un problema di connessione.\nRiprova tra poco o ricarica la pagina.');
+                    // Rimuovi dal localStorage per evitare fantasmi
+                    const cached = JSON.parse(localStorage.getItem('orders') || '[]');
+                    const cleaned = cached.filter(o => o.id !== savedOrder.id);
+                    localStorage.setItem('orders', JSON.stringify(cleaned));
+                    return;
+                }
                 
                 if (savedOrder && savedOrder.id) {
                     // Verifica che orders sia un array
@@ -4487,9 +4934,18 @@
         // Elimina viaggio
         async function deleteTrip(id) {
             try {
-                const trip = trips.find(t => t.id === id);
+                console.log('🗑️ [deleteTrip] Chiamata con id:', id, 'tipo:', typeof id);
+                console.log('🗑️ [deleteTrip] Viaggi disponibili:', trips.map(t => ({id: t.id, tipo: typeof t.id, name: t.name})));
+                
+                // Confronto robusto: converti entrambi a stringa o numero
+                const trip = trips.find(t => String(t.id) === String(id) || Number(t.id) === Number(id));
+                console.log('🗑️ [deleteTrip] Viaggio trovato:', trip);
+                
                 if (trip) {
-                    const ordersCount = trip.sequence?.length || 0;
+                    // Conta ordini: usa sequence MA anche trip.orders dal server (relazione DB)
+                    const seqCount = trip.sequence?.length || 0;
+                    const dbOrdersCount = trip.orders?.length || 0;
+                    const ordersCount = Math.max(seqCount, dbOrdersCount);
                     
                     // Mostra dialog con due opzioni
                     const message = ordersCount > 0 
@@ -4541,7 +4997,7 @@
                         };
                     } else {
                         // Nessun ordine, elimina direttamente il viaggio
-                        if (confirm('Elimina questo viaggio?')) {
+                        if (await customConfirm('Eliminare questo viaggio?')) {
                             await deleteTripOnly(id);
                         }
                     }
@@ -4557,14 +5013,14 @@
         // Elimina viaggio E tutti gli ordini associati
         async function deleteTripWithOrders(id) {
             try {
-                const trip = trips.find(t => t.id === id);
+                const trip = trips.find(t => String(t.id) === String(id) || Number(t.id) === Number(id));
                 if (trip) {
                     console.log(`🗑️ [deleteTripWithOrders] Eliminazione viaggio ${id} (${trip.name}) E ${trip.sequence?.length || 0} ordini`);
                     
                     // Elimina tutti gli ordini associati al viaggio
                     if (trip.sequence && trip.sequence.length > 0) {
                         for (const orderId of trip.sequence) {
-                            const order = orders.find(o => o.id === orderId);
+                            const order = orders.find(o => String(o.id) === String(orderId) || Number(o.id) === Number(orderId));
                             if (order) {
                                 console.log(`  → Eliminando ordine ${orderId} (${order.client})`);
                                 try {
@@ -4572,13 +5028,13 @@
                                 } catch (error) {
                                     console.error(`  ❌ Errore eliminazione ordine ${orderId}:`, error);
                                 }
-                                orders = orders.filter(o => o.id !== orderId);
+                                orders = orders.filter(o => String(o.id) !== String(orderId));
                             }
                         }
                     }
                     
                     // Elimina il viaggio
-                    trips = trips.filter(t => t.id !== id);
+                    trips = trips.filter(t => String(t.id) !== String(id));
                     await saveTrips();
                     await DataSync.deleteTrip(id);
                     
@@ -4599,14 +5055,14 @@
         // Elimina SOLO il viaggio, lascia gli ordini (come "senza viaggio")
         async function deleteTripOnly(id) {
             try {
-                const trip = trips.find(t => t.id === id);
+                const trip = trips.find(t => String(t.id) === String(id) || Number(t.id) === Number(id));
                 if (trip) {
                     console.log(`✂️ [deleteTripOnly] Eliminazione SOLO viaggio ${id}, mantenendo ${trip.sequence?.length || 0} ordini`);
                     
                     // Rimuovi la relazione tra ordini e viaggio (senza eliminarli)
                     if (trip.sequence && trip.sequence.length > 0) {
                         for (const orderId of trip.sequence) {
-                            const order = orders.find(o => o.id === orderId);
+                            const order = orders.find(o => String(o.id) === String(orderId) || Number(o.id) === Number(orderId));
                             if (order) {
                                 console.log(`  → Scollegando ordine ${orderId} dal viaggio`);
                                 order.tripId = null;
@@ -4622,7 +5078,7 @@
                     }
                     
                     // Elimina il viaggio
-                    trips = trips.filter(t => t.id !== id);
+                    trips = trips.filter(t => String(t.id) !== String(id));
                     await saveTrips();
                     await DataSync.deleteTrip(id);
                     
@@ -4740,10 +5196,10 @@
                                                 productsHTML = prods.map(p => {
                                                     const weight = extractWeightPerCollo(p.product);
                                                     const prodColli = Math.round(p.quantity / weight);
-                                                    const shelfPos = p.batchData?.shelfPosition || p.batch || '—';
-                                                    const batchNumber = p.batchData?.batch || p.lotto || '—';
-                                                    const expiryDate = p.batchData?.expiry || p.scadenza || '—';
-                                                    return `<div style="padding: 8px; margin: 4px 0; background: #fff9e6; border: 2px solid #38bdf8; border-radius: 4px; font-weight: bold; color: #0066cc; font-size: 16px;">${p.product} (${prodColli} colli • ${p.quantity}kg) <span style="color: #666; font-size: 14px;">📍 ${shelfPos} • 📦 Lotto: ${batchNumber} • 📅 Scad: ${expiryDate}</span></div>`;
+                                                    const shelfPos = p.batchData?.shelfPosition || p.shelfPosition || '—';
+                                                    const batchNumber = p.batchData?.batch || p.batch || '—';
+                                                    const expiryDate = p.batchData?.expiry || p.expiry || '—';
+                                                    return `<div style="padding: 8px; margin: 4px 0; background: #fff9e6; border: 2px solid #38bdf8; border-radius: 4px; font-weight: bold; color: #0066cc; font-size: 16px;">${p.product} (${prodColli} colli • ${p.quantity}kg) <span style="color: #666; font-size: 14px;">🚩 Lotto: ${batchNumber} • 📅 Scad: ${expiryDate} • 📍 ${shelfPos}</span></div>`;
                                                 }).join('');
                                             }
                                         }
@@ -5224,11 +5680,12 @@
                         <div class="order-title">${fullInfo?.client || 'Cliente'}</div>
                     </div>
                     <div class="order-details">
-                        <p><strong>📦 Prodotti:</strong> ${fullInfo?.products?.map(p => {
+                        <div style="margin-bottom: 4px;"><strong>📦 Prodotti:</strong></div>
+                        <div style="margin-left: 8px;">${fullInfo?.products?.map(p => {
                             const weight = extractWeightPerCollo(p.product);
                             const colli = Math.round(p.quantity / weight);
-                            return `${p.product} (${colli} colli • ${p.quantity}kg)`;
-                        }).join(' + ') || fullInfo?.product}</p>
+                            return `<div style="padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.06);">▸ <strong>${p.product}</strong> <span style="color: #93c5fd;">${colli} colli</span> • <span style="color: #fbbf24;">${p.quantity}kg</span></div>`;
+                        }).join('') || `<div>${fullInfo?.product || '—'}</div>`}</div>
                         <p><strong>Quantità Totale:</strong> ${(() => {
                             if (fullInfo?.products && fullInfo.products.length > 0) {
                                 const totalColli = fullInfo.products.reduce((sum, p) => {
@@ -5297,8 +5754,7 @@
         // Genera 15 ordini casuali per i prossimi 10 giorni
         async function generateSampleOrders() {
             if (orders.length > 0) {
-                const confirm = window.confirm('Ordini già presenti. Vuoi aggiungere 15 nuovi ordini?');
-                if (!confirm) return;
+                if (!await customConfirm('Ordini già presenti. Vuoi aggiungere 15 nuovi ordini?')) return;
             }
 
             const statuses = ['pending', 'completed'];
@@ -6050,6 +6506,31 @@
             renderTripOrdersList(tripId);
         }
 
+        function handleLogout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('currentUser');
+            window.location.href = '/index.html';
+        }
+
+        function toggleAdminMenu() {
+            const dropdown = document.getElementById('adminMenuDropdown');
+            if (!dropdown) return;
+            if (dropdown.style.display === 'none' || dropdown.style.display === '') {
+                dropdown.style.display = 'block';
+            } else {
+                dropdown.style.display = 'none';
+            }
+        }
+
+        // Chiudi il menu quando si clicca fuori
+        document.addEventListener('click', (event) => {
+            const dropdown = document.getElementById('adminMenuDropdown');
+            const gestButton = event.target.closest('.dropdown-menu-admin');
+            if (dropdown && !gestButton) {
+                dropdown.style.display = 'none';
+            }
+        });
+
         // Inizializza
         window.addEventListener('load', async () => {
                 // Display user info
@@ -6231,6 +6712,108 @@
     <div class="generate-btn-fixed">
         <button class="btn btn-warning" onclick="generateSampleOrders()" title="Genera dati di test">🔄 Genera Dati</button>
     </div>
+
+    <script>
+    // Global ESC key handler - chiude qualsiasi popup/modal aperto
+    function customConfirm(msg) {
+        return new Promise(resolve => {
+            const ov = document.createElement('div');
+            ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:99999;display:flex;align-items:center;justify-content:center;';
+            ov.innerHTML = `<div style="background:#2d2d2d;border-radius:12px;padding:28px 32px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.5);border:1px solid #4d4d4d;"><p style="color:#e0e0e0;font-size:15px;margin:0 0 24px;line-height:1.6;">${msg.replace(/\n/g,'<br>')}</p><div style="display:flex;gap:10px;justify-content:flex-end;"><button id="_ccNo" style="background:#374151;color:#e0e0e0;border:none;border-radius:6px;padding:9px 22px;font-size:14px;cursor:pointer;">Annulla</button><button id="_ccYes" style="background:#dc2626;color:#fff;border:none;border-radius:6px;padding:9px 22px;font-size:14px;font-weight:600;cursor:pointer;">Conferma</button></div></div>`;
+            document.body.appendChild(ov);
+            const done = r => { ov.remove(); resolve(r); };
+            ov.querySelector('#_ccYes').onclick = () => done(true);
+            ov.querySelector('#_ccNo').onclick = () => done(false);
+            ov.onclick = ev => { if (ev.target === ov) done(false); };
+            const kh = ev => { if (ev.key === 'Enter') { ev.preventDefault(); done(true); } else if (ev.key === 'Escape') done(false); document.removeEventListener('keydown', kh); };
+            document.addEventListener('keydown', kh);
+            ov.querySelector('#_ccYes').focus();
+        });
+    }
+
+    document.addEventListener('keydown', function(e) {
+        const tag = document.activeElement?.tagName;
+        const inInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+
+        if (e.key === 'Escape') {
+            // Dynamic batch modal overlay
+            const batchOverlay = document.getElementById('batchModalOverlay');
+            if (batchOverlay) { closeBatchModal(); return; }
+
+            // Dynamic batch selection modal
+            const batchSel = document.getElementById('batchSelectionModal');
+            if (batchSel) { batchSel.remove(); return; }
+
+            // Dynamic confirm dialogs
+            const confirmDialog = document.querySelector('[style*="position: fixed"][style*="z-index"]:not(.modal):not(.generate-btn-fixed)');
+            if (confirmDialog && confirmDialog.querySelector('[onclick*="removeChild"]')) { confirmDialog.parentElement.removeChild(confirmDialog); return; }
+
+            // New client modal
+            const newClientModal = document.getElementById('newClientModal');
+            if (newClientModal && newClientModal.classList.contains('active')) { closeNewClientModal(); return; }
+
+            // Edit product modal
+            const editProductModal = document.getElementById('editProductModal');
+            if (editProductModal && editProductModal.classList.contains('active')) { closeEditProductModal(); return; }
+
+            // Order modal
+            const orderModal = document.getElementById('orderModal');
+            if (orderModal && orderModal.classList.contains('active')) { closeOrderModal(); return; }
+
+            // Edit trip modal
+            const editTripModal = document.getElementById('editTripModal');
+            if (editTripModal && editTripModal.classList.contains('active')) { closeEditTripModal(); return; }
+
+            // Trip orders modal
+            const tripOrdersModal = document.getElementById('tripOrdersModal');
+            if (tripOrdersModal && tripOrdersModal.classList.contains('active')) { closeTripOrdersModal(); return; }
+
+            // Create trip modal
+            const createTripModal = document.getElementById('createTripModal');
+            if (createTripModal && createTripModal.classList.contains('active')) { closeCreateTripModal(); return; }
+
+            // Assign task modal
+            const assignTaskModal = document.getElementById('assignTaskModal');
+            if (assignTaskModal && assignTaskModal.classList.contains('active')) { closeAssignTaskModal(); return; }
+
+            // Trips manager modal
+            const tripsManagerModal = document.getElementById('tripsManagerModal');
+            if (tripsManagerModal && tripsManagerModal.classList.contains('active')) { closeTripsManager(); return; }
+
+        } else if (e.key === 'Enter' && !inInput) {
+            // ENTER confirm active modal
+            const editProductModal = document.getElementById('editProductModal');
+            if (editProductModal && editProductModal.classList.contains('active')) { e.preventDefault(); saveEditProduct(); return; }
+
+            const orderModal = document.getElementById('orderModal');
+            if (orderModal && orderModal.classList.contains('active')) {
+                const form = document.getElementById('orderForm');
+                if (form) { e.preventDefault(); form.dispatchEvent(new Event('submit', {cancelable: true})); }
+                return;
+            }
+        }
+    });
+    </script>
+    <script>
+    (function() {
+        var bar = document.querySelector('.sticky-top-bar');
+        if (!bar) return;
+        var locked = false;
+        window.addEventListener('scroll', function() {
+            if (locked) return;
+            if (window.scrollY > 60 && !bar.classList.contains('scrolled')) {
+                locked = true;
+                bar.classList.add('scrolled');
+                setTimeout(function() { locked = false; }, 400);
+            } else if (window.scrollY <= 5 && bar.classList.contains('scrolled')) {
+                locked = true;
+                bar.classList.remove('scrolled');
+                setTimeout(function() { locked = false; }, 400);
+            }
+        }, { passive: true });
+    })();
+    </script>
+
 </body>
 </html>
 

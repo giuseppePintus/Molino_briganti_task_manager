@@ -39,7 +39,7 @@ router.get('/', async (req: Request, res: Response) => {
     });
     
     // Converti orders.products da JSON string a array e sequence da JSON string a array
-    const tripsWithProducts = trips.map(trip => {
+    const tripsWithProducts = await Promise.all(trips.map(async trip => {
       let sequence = [];
       let orders = trip.orders;
       
@@ -68,6 +68,16 @@ router.get('/', async (req: Request, res: Response) => {
         console.warn(`Warning: Error parsing orders for trip ${trip.id}:`, parseError);
       }
       
+      // Se la sequence è vuota ma ci sono ordini collegati via tripId, ricostruiscila
+      if (sequence.length === 0 && orders.length > 0) {
+        sequence = orders.map((o: any) => o.id);
+        console.log(`🔧 Rebuilding sequence for trip ${trip.id} from DB orders: [${sequence.join(',')}]`);
+        await prisma.trip.update({
+          where: { id: trip.id },
+          data: { sequence: JSON.stringify(sequence) }
+        });
+      }
+      
       return {
         ...trip,
         sequence,
@@ -77,7 +87,7 @@ router.get('/', async (req: Request, res: Response) => {
         printedAt: trip.printedAt || null,
         orders
       };
-    });
+    }));
     
     res.json(tripsWithProducts);
   } catch (error: any) {
@@ -137,6 +147,16 @@ router.get('/:id', async (req: Request, res: Response) => {
       });
     } catch (parseError) {
       console.warn(`Warning: Error parsing orders for trip ${trip.id}:`, parseError);
+    }
+    
+    // Se la sequence è vuota ma ci sono ordini collegati via tripId, ricostruiscila
+    if (sequence.length === 0 && orders.length > 0) {
+      sequence = orders.map((o: any) => o.id);
+      console.log(`🔧 Rebuilding sequence for trip ${trip.id} from DB orders: [${sequence.join(',')}]`);
+      await prisma.trip.update({
+        where: { id: trip.id },
+        data: { sequence: JSON.stringify(sequence) }
+      });
     }
     
     res.json({

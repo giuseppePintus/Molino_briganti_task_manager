@@ -16,6 +16,7 @@ model User {
   username  String    @unique
   passwordHash String
   role      String    // 'master' or 'slave'
+  name      String?   // Nome visualizzato per l'operatore
   image     String?   // URL or base64 encoded image for operators carousel
   createdAt DateTime  @default(now())
   
@@ -86,10 +87,13 @@ model Article {
   description       String?
   category          String?   // Categoria (es. FARINE, SEMOLE, MANGIMI, ecc.)
   unit              String    @default("kg")  // Unità di misura
+  weightPerUnit     Float     @default(1)     // Peso singolo collo in kg (es. 10 per sacco da 10kg)
+  barcode           String?   // Codice a barre EAN/QR
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
   
   inventory         Inventory?
+  shelfEntries      ShelfEntry[]
   stockAlerts       StockAlert[]
   orderItems        OrderItem[]
 }
@@ -142,6 +146,32 @@ model StockAlert {
   @@index([createdAt])
 }
 
+// Posizioni scaffale del magazzino
+model ShelfPosition {
+  id                Int       @id @default(autoincrement())
+  code              String    @unique  // es. A1.1, B2.3, "Merce a terra"
+  description       String?   // Descrizione opzionale
+  isActive          Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+}
+
+// Entrate scaffale: articolo × posizione × lotto (possono esserci più lotti dello stesso articolo)
+model ShelfEntry {
+  id            Int      @id @default(autoincrement())
+  article       Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  articleId     Int
+  positionCode  String   // riferimento a ShelfPosition.code
+  quantity      Int      @default(0)
+  batch         String?  // Lotto
+  expiry        String?  // Scadenza
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([articleId, positionCode])
+  @@index([positionCode])
+}
+
 model OrderItem {
   id                Int       @id @default(autoincrement())
   order             Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
@@ -190,7 +220,7 @@ model Order {
   clientName        String?   // Nome cliente (per compatibilità se non in DB)
   
   // Prodotti (JSON string per flessibilità)
-  products          String?   // JSON array: [{product, quantity, unit}]
+  products          String?   @db.Text // JSON array: [{product, quantity, unit}]
   
   // Collegamento viaggio (solo per consegne)
   trip              Trip?     @relation(fields: [tripId], references: [id], onDelete: SetNull)
@@ -209,7 +239,7 @@ model Order {
   acceptedAt        DateTime? // Quando l'operatore ha accettato
   completedAt       DateTime?
   
-  notes             String?
+  notes             String?   @db.Text
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
   
@@ -230,7 +260,7 @@ model Trip {
   vehicleName       String?
   
   // Sequenza ordini nel viaggio (array JSON)
-  sequence          String?   // JSON array: [ordine_id1, ordine_id2, ...]
+  sequence          String?   @db.Text // JSON array: [ordine_id1, ordine_id2, ...]
   
   // Stato
   status            String    @default("planned")  // planned, in_progress, completed, cancelled
@@ -243,7 +273,7 @@ model Trip {
   printed           Boolean   @default(false)
   printedAt         DateTime?
   
-  notes             String?
+  notes             String?   @db.Text
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
   
@@ -253,7 +283,7 @@ model Trip {
 model CompanySettings {
   id                Int       @id @default(autoincrement())
   key               String    @unique  // Chiave impostazione
-  value             String    // Valore (JSON string per oggetti complessi)
+  value             String    @db.Text // Valore (JSON string per oggetti complessi)
   updatedAt         DateTime  @updatedAt
 }
 
