@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="css/common.css">
     <link rel="stylesheet" href="css/warehouse-management-custom.css">
     <script src="js/settings-utils.js"></script>
+    <script src="js/pages-indice.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <style>
         * {
@@ -172,14 +173,10 @@
         }
 
         .feature-card-sub {
-            display: none;
+            display: flex;
             margin-top: 12px;
             gap: 8px;
             flex-direction: column;
-        }
-
-        .feature-card-sub.open {
-            display: flex;
         }
 
         .feature-card-sub button {
@@ -196,6 +193,77 @@
 
         .feature-card-sub button:hover {
             background: #1d4ed8;
+        }
+
+        .gestione-tab-bar {
+            display: flex;
+            gap: 4px;
+            background: #111827;
+            border-radius: 10px;
+            padding: 6px;
+            margin-bottom: 8px;
+        }
+        .gestione-tab {
+            flex: 1;
+            padding: 10px 16px;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            color: #9ca3af;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s;
+        }
+        .gestione-tab.active {
+            background: #1e40af;
+            color: #fff;
+        }
+        .gestione-tab:hover:not(.active) {
+            background: #1f2937;
+            color: #e0e0e0;
+        }
+
+        /* Category filter bar (stato magazzino) */
+        .category-bar {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+        .cat-btn {
+            padding: 9px 16px;
+            border-radius: 10px;
+            border: 2px solid #374151;
+            background: #1f2937;
+            color: #9ca3af;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .cat-btn .cat-icon { font-size: 16px; }
+        .cat-btn .cat-count {
+            background: rgba(255,255,255,0.1);
+            padding: 1px 7px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 800;
+        }
+        .cat-btn:hover { border-color: #3b82f6; background: #2a2a4a; color: #fff; }
+        .cat-btn.active {
+            border-color: #38bdf8;
+            background: linear-gradient(135deg, #1e3a5f 0%, #1e40af 100%);
+            color: #fff;
+            box-shadow: 0 2px 10px rgba(56,189,248,0.25);
+        }
+        .cat-btn.active .cat-count {
+            background: rgba(56,189,248,0.3);
+            color: #7dd3fc;
         }
 
         .table-container {
@@ -1167,24 +1235,23 @@
                         <span class="menu-icon">💾</span>
                         <span>Gestione Backup</span>
                     </button>
+                    <button class="admin-menu-item" onclick="openIndiceModal(); toggleAdminMenu();">
+                        <span class="menu-icon">🗂️</span>
+                        <span>Indice</span>
+                    </button>
+                    <button class="admin-menu-item" onclick="resetAllReservations(); toggleAdminMenu();" style="color:#f87171;">
+                        <span class="menu-icon">🔓</span>
+                        <span>Azzera Prenotazioni</span>
+                    </button>
                 </div>
             </div>
             <button class="btn btn-customers" data-icon="👨‍💼" onclick="window.location.href='customers-management.html'"><span>Gestione Clienti</span></button>
             <button class="btn btn-tasks" data-icon="✅" onclick="window.location.href='admin-dashboard.html'"><span>Planner Task</span></button>
             <button class="btn btn-planner" data-icon="📦" onclick="window.location.href='orders-planner.html'"><span>Planner Ordini</span></button>
             <button class="btn btn-warehouse active" data-icon="🏭" onclick="window.location.href='warehouse-management.html'"><span>Gestione Magazzino</span></button>
+            <button class="btn btn-carico-main" onclick="window.location.href='warehouse-management-lite.html'" data-icon="📦"><span>⚡ Carico/Scarico Lite</span></button>
         </div>
         </div><!-- /.sticky-top-bar -->
-
-        <!-- Action Bar -->
-        <div class="action-bar">
-            <button class="btn btn-primary" onclick="refreshInventoryData()" id="refreshBtn" data-icon="🔄">
-                <span>Aggiorna</span>
-            </button>
-            <button class="btn btn-carico-main" onclick="window.location.href='warehouse-management-lite.html'" data-icon="📦">
-                <span>⚡ Carico/Scarico Lite</span>
-            </button>
-        </div>
 
         <!-- Action Bar -->
         <div class="card">
@@ -1192,14 +1259,10 @@
             <p class="overview-description">Gestisci l'inventario e monitora le giacenze di magazzino</p>
             
             <div class="content-section">
-                <div class="feature-card" id="fcGestione" onclick="toggleGestioneCard(event)">
+                <div class="feature-card" id="fcGestione" onclick="showGestione()">
                     <div class="icon">📦</div>
                     <h3>Gestione</h3>
                     <p>Gestisci prodotti e posizioni scaffali</p>
-                    <div class="feature-card-sub" id="fcGestioneSub">
-                        <button onclick="event.stopPropagation(); scrollToSection('gestioneProdottiCard')">📦 Gestione Prodotti</button>
-                        <button onclick="event.stopPropagation(); scrollToSection('gestionePosizioni')">📍 Posizioni Scaffali</button>
-                    </div>
                 </div>
                 <div class="feature-card" onclick="scrollToWarehouseStatus()">
                     <div class="icon">📊</div>
@@ -1232,6 +1295,8 @@
                 <button class="btn-view" id="btnViewScaffali" onclick="switchView('scaffali')">🏗️ Scaffali</button>
             </div>
             
+            <div id="categoryBarWarehouse" class="category-bar" style="display:none;"></div>
+
             <div class="warehouse-search-container" style="display:none;">
                 <input type="text" id="searchWarehouse" placeholder="🔍 Cerca per nome, codice o posizione..." 
                        class="warehouse-search-input"
@@ -1253,11 +1318,19 @@
         </div>
 
         <!-- ===== GESTIONE PRODOTTI CARD ===== -->
+        <div id="gestioneTabBar" style="display:none;">
+            <div class="gestione-tab-bar">
+                <button class="gestione-tab active" id="tabBtnProdotti" onclick="switchGestioneTab('prodotti')">📦 Gestione Prodotti</button>
+                <button class="gestione-tab" id="tabBtnPosizioni" onclick="switchGestioneTab('posizioni')">🏗️ Posizioni Scaffali</button>
+            </div>
+        </div>
+
         <div class="card" id="gestioneProdottiCard" style="display:none;">
             <div class="warehouse-header-section">
                 <h2>📦 Gestione Prodotti</h2>
                 <div style="display:flex;gap:8px;align-items:center;">
                     <span id="prodottiCount" style="background:#2563eb;color:#fff;border-radius:20px;padding:2px 12px;font-size:13px;font-weight:700;">0</span>
+                    <button class="btn btn-small" style="background:#374151;border:1px solid #4b5563;color:#e0e0e0;" onclick="openCategoryManager()">🏷️ Categorie</button>
                     <button class="btn btn-primary btn-small" onclick="openArticleModal(null)">➕ Nuovo</button>
                 </div>
             </div>
@@ -1460,7 +1533,9 @@
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                 <div class="cargo-field">
                     <label>Categoria</label>
-                    <input type="text" id="artCategory" placeholder="es. FARINE">
+                    <select id="artCategory">
+                        <option value="">-- Seleziona categoria --</option>
+                    </select>
                 </div>
                 <div class="cargo-field">
                     <label>Unità di misura</label>
@@ -1485,6 +1560,24 @@
                 <button class="btn btn-carico-confirm" id="articleModalConfirmBtn" onclick="submitArticleForm()">
                     <span id="articleModalConfirmText">✓ Salva</span>
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== GESTIONE CATEGORIE MODAL ===== -->
+    <div class="cargo-modal-overlay" id="categoryManagerOverlay" onclick="closeCategoryManager(event)">
+        <div class="cargo-modal" style="width:440px;max-height:85vh;overflow-y:auto;">
+            <h3>🏷️ Gestione Categorie Prodotti</h3>
+            <div id="categoryManagerList" style="margin-bottom:16px;"></div>
+            <div style="background:#1e293b;border-radius:8px;padding:12px;border:1px solid #374151;">
+                <label style="font-size:12px;color:#9ca3af;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px;">Nuova categoria</label>
+                <div style="display:flex;gap:8px;">
+                    <input type="text" id="newCategoryInput" placeholder="es. SPEZIE" style="flex:1;background:#111827;border:1px solid #374151;border-radius:6px;color:#e0e0e0;padding:8px 10px;font-size:13px;text-transform:uppercase;" onkeydown="if(event.key==='Enter')addNewCategory();">
+                    <button class="btn btn-carico-confirm" style="padding:0 16px;" onclick="addNewCategory()">➕ Aggiungi</button>
+                </div>
+            </div>
+            <div class="cargo-modal-actions" style="margin-top:16px;">
+                <button class="btn btn-gray" onclick="document.getElementById('categoryManagerOverlay').classList.remove('open')">✕ Chiudi</button>
             </div>
         </div>
     </div>
@@ -1573,6 +1666,101 @@
         let allArticles = [];
         let currentSortBy = 'position'; // Default sort by position
         let currentSortAsc = true; // true = crescente (▲), false = decrescente (▼)
+        let selectedWarehouseCategory = null;
+
+        // ===== GESTIONE CATEGORIE =====
+        const DEFAULT_CATEGORIES = ['FARINE', 'MIX FARINE', 'SEMOLE', 'CEREALI', 'CEREALI PERLATI', 'MANGIMI', 'ALTRO'];
+        let productCategories = JSON.parse(localStorage.getItem('warehouseCategories') || 'null') || [...DEFAULT_CATEGORIES];
+
+        function saveCategories() {
+            localStorage.setItem('warehouseCategories', JSON.stringify(productCategories));
+        }
+
+        function getCategorySelectHtml(currentCat) {
+            const cur = (currentCat || '').toUpperCase();
+            return '<option value="">—</option>' +
+                productCategories.map(c => `<option value="${c}"${c === cur ? ' selected' : ''}>${c}</option>`).join('');
+        }
+
+        function openCategoryManager() {
+            renderCategoryManagerList();
+            document.getElementById('categoryManagerOverlay').classList.add('open');
+        }
+
+        function closeCategoryManager(event) {
+            if (event && event.target !== document.getElementById('categoryManagerOverlay')) return;
+            document.getElementById('categoryManagerOverlay').classList.remove('open');
+        }
+
+        function renderCategoryManagerList() {
+            const list = document.getElementById('categoryManagerList');
+            list.innerHTML = productCategories.map(cat => {
+                const meta = CATEGORY_META[cat] || { icon: '📦', color: '#6b7280' };
+                const usedCount = allArticles.filter(a => (a.category || '').toUpperCase() === cat).length;
+                const isDefault = DEFAULT_CATEGORIES.includes(cat);
+                return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#1f2937;border-radius:8px;margin-bottom:6px;border:1px solid #374151;">
+                    <span style="font-size:18px;">${meta.icon}</span>
+                    <span style="flex:1;font-weight:700;color:#e0e0e0;">${cat}</span>
+                    <span style="font-size:12px;color:#9ca3af;">${usedCount} prodott${usedCount === 1 ? 'o' : 'i'}</span>
+                    ${isDefault
+                        ? '<span style="font-size:11px;color:#4b5563;padding:2px 8px;background:#111827;border-radius:4px;">predefinita</span>'
+                        : `<button onclick="deleteCategoryItem('${cat}')" style="background:#7f1d1d;color:#fca5a5;border:none;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:12px;">🗑️</button>`}
+                </div>`;
+            }).join('');
+        }
+
+        function deleteCategoryItem(cat) {
+            const usedCount = allArticles.filter(a => (a.category || '').toUpperCase() === cat).length;
+            if (usedCount > 0) {
+                showAlert(`⚠️ La categoria "${cat}" è usata da ${usedCount} prodotti. Cambia prima la categoria dei prodotti.`, 'error');
+                return;
+            }
+            productCategories = productCategories.filter(c => c !== cat);
+            saveCategories();
+            renderCategoryManagerList();
+        }
+
+        function addNewCategory() {
+            const input = document.getElementById('newCategoryInput');
+            const val = input.value.trim().toUpperCase();
+            if (!val) return;
+            if (productCategories.includes(val)) {
+                showAlert(`⚠️ La categoria "${val}" esiste già`, 'error');
+                return;
+            }
+            productCategories.push(val);
+            saveCategories();
+            input.value = '';
+            renderCategoryManagerList();
+            showAlert(`✅ Categoria "${val}" aggiunta`, 'success');
+        }
+
+        const CATEGORY_META = {
+            'FARINE':          { icon: '🌾', color: '#f59e0b' },
+            'MIX FARINE':      { icon: '🥣', color: '#d97706' },
+            'SEMOLE':          { icon: '🌽', color: '#84cc16' },
+            'CEREALI':         { icon: '🌿', color: '#10b981' },
+            'CEREALI PERLATI': { icon: '💎', color: '#06b6d4' },
+            'MANGIMI':         { icon: '🐄', color: '#8b5cf6' },
+            'ALTRO':           { icon: '📦', color: '#6b7280' },
+        };
+
+        function getArticleCategory(art) {
+            if (art.category) return art.category.toUpperCase();
+            const code = art.code || '';
+            if (code.startsWith('F-'))  return 'FARINE';
+            if (code.startsWith('FM-')) return 'MIX FARINE';
+            if (code.startsWith('GD-')) return 'SEMOLE';
+            if (code.startsWith('Z-'))  return 'CEREALI';
+            if (code.startsWith('MG-')) return 'MANGIMI';
+            if (code.startsWith('CP-')) return 'CEREALI PERLATI';
+            return 'ALTRO';
+        }
+
+        function selectWarehouseCategory(cat) {
+            selectedWarehouseCategory = (cat === selectedWarehouseCategory) ? null : cat;
+            renderWarehouseStatus(allArticles);
+        }
 
         // Check authorization
         window.addEventListener('load', async () => {
@@ -1623,6 +1811,26 @@
             }
         }
 
+        async function resetAllReservations() {
+            if (!confirm('⚠️ Azzera tutte le prenotazioni inventario?\n\nUsare solo se tutti gli ordini sono stati eliminati e il campo "prenotato" è rimasto bloccato.')) return;
+            try {
+                const token = localStorage.getItem('authToken') || localStorage.getItem('token') || '';
+                const res = await fetch(`${API_URL}/inventory/reset-reservations`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert(`✅ Prenotazioni azzerate (${data.count} articoli aggiornati).`);
+                    await loadInventoryData();
+                } else {
+                    alert('❌ Errore: ' + JSON.stringify(data));
+                }
+            } catch (e) {
+                alert('❌ Errore chiamata API: ' + e.message);
+            }
+        }
+
         // Chiudi il menu quando si clicca fuori
         document.addEventListener('click', (event) => {
             const dropdown = document.getElementById('adminMenuDropdown');
@@ -1635,11 +1843,6 @@
         function goHome() {
             window.location.href = 'admin-dashboard.html';
         }
-
-        function goToCodifiche() {
-            window.location.href = 'codifiche-management.html';
-        }
-
 
         function showAlert(message, type = 'info') {
             const alertEl = document.getElementById('alert');
@@ -1887,7 +2090,7 @@
                     if (!order.products || !Array.isArray(order.products)) return;
                     order.products.forEach(p => {
                         if (!p.product || !p.quantity) return;
-                        const key = `${p.product}|${p.batch || ''}`;
+                        const key = `${p.product}|${p.batch || ''}|${p.shelfPosition || ''}`;
                         reservationsByPosition[key] = (reservationsByPosition[key] || 0) + p.quantity;
                     });
                 });
@@ -1916,6 +2119,7 @@
 
         function renderWarehouseStatus(articles) {
             const container = document.getElementById('warehouseTable');
+            const catBar = document.getElementById('categoryBarWarehouse');
 
             // Article-centric view: one row per article
             const validArticles = articles.filter(a => !a.code?.startsWith('EMPTY-'));
@@ -1925,9 +2129,36 @@
                 return;
             }
 
+            // Build and render category bar
+            const catCounts = {};
+            validArticles.forEach(a => {
+                const cat = getArticleCategory(a);
+                catCounts[cat] = (catCounts[cat] || 0) + 1;
+            });
+            const catOrder = ['FARINE', 'MIX FARINE', 'SEMOLE', 'CEREALI', 'CEREALI PERLATI', 'MANGIMI', 'ALTRO'];
+            const activeCats = catOrder.filter(c => catCounts[c]);
+            if (catBar) {
+                catBar.style.display = 'flex';
+                catBar.innerHTML = `<button class="cat-btn ${selectedWarehouseCategory === null ? 'active' : ''}" onclick="selectWarehouseCategory(null)">
+                        <span class="cat-icon">📋</span> Tutti <span class="cat-count">${validArticles.length}</span>
+                    </button>` +
+                    activeCats.map(cat => {
+                        const meta = CATEGORY_META[cat] || { icon: '📦', color: '#6b7280' };
+                        const isActive = selectedWarehouseCategory === cat;
+                        return `<button class="cat-btn ${isActive ? 'active' : ''}" onclick="selectWarehouseCategory('${cat}')" style="${isActive ? '' : `border-color:${meta.color}40`}">
+                            <span class="cat-icon">${meta.icon}</span> ${cat} <span class="cat-count">${catCounts[cat]}</span>
+                        </button>`;
+                    }).join('');
+            }
+
+            // Filter by selected category
+            const filteredArticles = selectedWarehouseCategory
+                ? validArticles.filter(a => getArticleCategory(a) === selectedWarehouseCategory)
+                : validArticles;
+
             const getArrow = (col) => currentSortBy === col ? (currentSortAsc ? ' ▲' : ' ▼') : '';
 
-            const sorted = [...validArticles].sort((a, b) => {
+            const sorted = [...filteredArticles].sort((a, b) => {
                 let v = 0;
                 if (currentSortBy === 'name') v = (a.name || '').localeCompare(b.name || '', 'it');
                 else v = (a.code || '').localeCompare(b.code || '', 'it');
@@ -1984,7 +2215,7 @@
                         
                         // Prenotato per questa posizione: converti kg → colli
                         const entryBatch = e.batch || '';
-                        const reserveKey = `${artCode}|${entryBatch}`;
+                        const reserveKey = `${artCode}|${entryBatch}|${e.positionCode}`;
                         const entryReservedKg = reservationsByPosition[reserveKey] || 0;
                         const entryReserved = weightPerUnit > 0 ? Math.round(entryReservedKg / weightPerUnit) : entryReservedKg;
                         
@@ -2185,6 +2416,9 @@
         const MAIN_SECTIONS = ['statoMagazzinoCard', 'gestioneProdottiCard', 'gestionePosizioni'];
 
         function showOnlySection(id) {
+            // Nascondi tab bar gestione se si va su altra sezione
+            const tabBar = document.getElementById('gestioneTabBar');
+            if (tabBar) tabBar.style.display = 'none';
             MAIN_SECTIONS.forEach(sid => {
                 const el = document.getElementById(sid);
                 if (el) el.style.display = sid === id ? 'block' : 'none';
@@ -2203,6 +2437,36 @@
                 const el = document.getElementById(id);
                 if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }, 50);
+        }
+
+        function showGestione() {
+            MAIN_SECTIONS.forEach(sid => {
+                const el = document.getElementById(sid);
+                if (el) el.style.display = 'none';
+            });
+            document.getElementById('gestioneTabBar').style.display = 'block';
+            switchGestioneTab('prodotti');
+        }
+
+        function switchGestioneTab(tab) {
+            const isProdotti = tab === 'prodotti';
+            document.getElementById('tabBtnProdotti').classList.toggle('active', isProdotti);
+            document.getElementById('tabBtnPosizioni').classList.toggle('active', !isProdotti);
+            const prodCard = document.getElementById('gestioneProdottiCard');
+            const posCard = document.getElementById('gestionePosizioni');
+            if (isProdotti) {
+                prodCard.style.display = 'block';
+                posCard.style.display = 'none';
+                prodottiExpanded = true;
+                renderProdottiList();
+                setTimeout(() => prodCard.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+            } else {
+                prodCard.style.display = 'none';
+                posCard.style.display = 'block';
+                posizioniExpanded = true;
+                renderPosizioniList();
+                setTimeout(() => posCard.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+            }
         }
 
         function scrollToSection(id) {
@@ -2236,6 +2500,7 @@
             const scaffali = document.getElementById('scaffaliView');
             const searchContainer = document.querySelector('.warehouse-search-container');
             const viewToggleBar = document.getElementById('viewToggleBar');
+            const catBar = document.getElementById('categoryBarWarehouse');
 
             if (!table || !scaffali) return;
 
@@ -2249,11 +2514,13 @@
                     table.style.display = 'none';
                     scaffali.style.display = 'block';
                     if (searchContainer) searchContainer.style.display = 'none';
+                    if (catBar) catBar.style.display = 'none';
                     renderShelfMap(allArticles, allShelfPositions);
                 } else {
                     table.classList.remove('hidden-content');
                     scaffali.style.display = 'none';
                     if (searchContainer) searchContainer.style.display = 'flex';
+                    if (catBar) catBar.style.display = 'flex';
                 }
                 if (btn) btn.innerHTML = '<span>▼ Chiudi</span>';
             } else {
@@ -2261,6 +2528,7 @@
                 table.classList.add('hidden-content');
                 scaffali.style.display = 'none';
                 if (searchContainer) searchContainer.style.display = 'none';
+                if (catBar) catBar.style.display = 'none';
                 if (viewToggleBar) viewToggleBar.style.display = 'none';
                 if (btn) btn.innerHTML = '<span>▶ Apri</span>';
             }
@@ -2475,17 +2743,21 @@
             const tableContainer = document.getElementById('warehouseTable');
             const scaffaliView = document.getElementById('scaffaliView');
             const searchContainer = document.querySelector('.warehouse-search-container');
+            const catBar = document.getElementById('categoryBarWarehouse');
 
             if (view === 'tabella') {
                 tableContainer.style.display = '';
                 tableContainer.classList.remove('hidden-content');
                 scaffaliView.style.display = 'none';
                 if (searchContainer) searchContainer.style.display = 'flex';
+                if (catBar) catBar.style.display = 'flex';
                 renderWarehouseStatus(allArticles);
             } else {
                 tableContainer.style.display = 'none';
                 scaffaliView.style.display = 'block';
                 if (searchContainer) searchContainer.style.display = 'none';
+                if (catBar) catBar.style.display = 'none';
+                selectedWarehouseCategory = null;
                 renderShelfMap(allArticles, allShelfPositions);
             }
         }
@@ -2511,6 +2783,11 @@
             const container = document.getElementById('scaffaliView');
             if (!container) return;
 
+            // Natural sort helper: A1.2 before A10.1
+            function naturalCmp(a, b) {
+                return (a || '').localeCompare(b || '', undefined, { numeric: true, sensitivity: 'base' });
+            }
+
             // Build sectors from positions list (or fallback to entries)
             let sectors = {};
 
@@ -2527,7 +2804,7 @@
                 });
             } else {
                 // Fallback: derive positions from entries
-                const codes = [...new Set(allShelfEntries.map(e => e.positionCode))].sort();
+                const codes = [...new Set(allShelfEntries.map(e => e.positionCode))].sort((a,b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
                 codes.forEach(code => {
                     const sector = code.charAt(0).toUpperCase();
                     if (!sectors[sector]) sectors[sector] = [];
@@ -2547,7 +2824,10 @@
 
             let html = '<div class="shelf-map">';
 
-            Object.keys(sectors).sort().forEach(sector => {
+            // Sort positions within each sector naturally
+            Object.values(sectors).forEach(arr => arr.sort((a, b) => naturalCmp(a.code, b.code)));
+
+            Object.keys(sectors).sort(naturalCmp).forEach(sector => {
                 const sectorPositions = sectors[sector];
                 const occupied = sectorPositions.filter(p => p.entries.length > 0).length;
 
@@ -2586,7 +2866,7 @@
                             const qty = entry.quantity || 0;
                             // Prenotato per questo specifico batch: converti kg → colli
                             const entryBatch = entry.batch || '';
-                            const reserveKey = `${codice}|${entryBatch}`;
+                            const reserveKey = `${codice}|${entryBatch}|${pos.code}`;
                             const entryReservedKg = reservationsByPosition[reserveKey] || 0;
                             const artWeightPerUnit = art?.weightPerUnit || 1;
                             const entryReserved = artWeightPerUnit > 0 ? Math.round(entryReservedKg / artWeightPerUnit) : entryReservedKg;
@@ -2750,7 +3030,7 @@
             // Populate position select (exclude source)
             const sel = document.getElementById('copyEntryPosSelect');
             sel.innerHTML = '<option value="">-- Seleziona destinazione --</option>';
-            allShelfPositions.slice().sort((a,b) => a.code.localeCompare(b.code)).forEach(p => {
+            allShelfPositions.slice().sort((a,b) => a.code.localeCompare(b.code, undefined, { numeric: true, sensitivity: 'base' })).forEach(p => {
                 if (p.code === entry.positionCode) return;
                 sel.innerHTML += `<option value="${p.code}">${p.code}${p.description ? ' — ' + p.description : ''}</option>`;
             });
@@ -3097,7 +3377,7 @@
             // Populate position select
             const posSelect = document.getElementById('shelfEntryPosSelect');
             posSelect.innerHTML = '<option value="">-- Seleziona posizione --</option>';
-            allShelfPositions.forEach(pos => {
+            allShelfPositions.slice().sort((a,b) => a.code.localeCompare(b.code, undefined, { numeric: true, sensitivity: 'base' })).forEach(pos => {
                 const opt = document.createElement('option');
                 opt.value = pos.code;
                 opt.textContent = pos.description ? `${pos.code} — ${pos.description}` : pos.code;
@@ -3296,7 +3576,7 @@
                         <td style="padding:4px 8px;"><input id="pin-code-${a.id}" value="${(a.code||'').replace(/"/g,'&quot;')}" style="background:#1f2937;border:1px solid #374151;border-radius:5px;color:#60a5fa;padding:4px 8px;width:100%;font-size:13px;font-weight:700;" onkeydown="if(event.key==='Enter')saveInlineArticle(${a.id});else if(event.key==='Escape')renderProdottiList();"></td>
                         <td style="padding:4px 8px;"><input id="pin-name-${a.id}" value="${(a.name||'').replace(/"/g,'&quot;')}" style="background:#1f2937;border:1px solid #374151;border-radius:5px;color:#e0e0e0;padding:4px 8px;width:100%;font-size:13px;" onkeydown="if(event.key==='Enter')saveInlineArticle(${a.id});else if(event.key==='Escape')renderProdottiList();"></td>
                         <td style="padding:4px 8px;text-align:center;"><input id="pin-wpu-${a.id}" type="number" value="${getWeightPerUnit(a)}" min="0.01" step="0.01" style="background:#1f2937;border:1px solid #374151;border-radius:5px;color:#4ade80;padding:4px 6px;width:64px;font-size:13px;text-align:center;" onkeydown="if(event.key==='Enter')saveInlineArticle(${a.id});else if(event.key==='Escape')renderProdottiList();"></td>
-                        <td style="padding:4px 8px;"><input id="pin-cat-${a.id}" value="${(a.category||'').replace(/"/g,'&quot;')}" style="background:#1f2937;border:1px solid #374151;border-radius:5px;color:#9ca3af;padding:4px 8px;width:100%;font-size:13px;" onkeydown="if(event.key==='Enter')saveInlineArticle(${a.id});else if(event.key==='Escape')renderProdottiList();"></td>
+                        <td style="padding:4px 8px;"><select id="pin-cat-${a.id}" style="background:#1f2937;border:1px solid #374151;border-radius:5px;color:#9ca3af;padding:4px 8px;width:100%;font-size:13px;">${getCategorySelectHtml(a.category)}</select></td>
                         <td style="padding:4px 8px;text-align:right;white-space:nowrap;">
                             <button class="btn btn-small" style="background:#16a34a;color:#fff;margin-right:4px;font-size:12px;" onclick="saveInlineArticle(${a.id})">✓ Salva</button>
                             <button class="btn btn-small" style="background:#7f1d1d;color:#fca5a5;" onclick="deleteArticleConfirm(${a.id},'${(a.name||'').replace(/'/g,"\\'")}')">🗑️</button>
@@ -3338,10 +3618,15 @@
             document.getElementById('articleModalId').value = articleId || '';
             document.getElementById('articleModalError').style.display = 'none';
 
+            // Popola select categorie
+            const catSel = document.getElementById('artCategory');
+            catSel.innerHTML = '<option value="">-- Seleziona categoria --</option>' +
+                productCategories.map(c => `<option value="${c}">${c}</option>`).join('');
+
             if (isNew) {
                 document.getElementById('artCode').value = '';
                 document.getElementById('artName').value = '';
-                document.getElementById('artCategory').value = '';
+                catSel.value = '';
                 document.getElementById('artUnit').value = 'kg';
                 document.getElementById('artWeightPerUnit').value = '1';
                 document.getElementById('artBarcode').value = '';
@@ -3351,7 +3636,7 @@
                 if (!a) return;
                 document.getElementById('artCode').value = a.code || '';
                 document.getElementById('artName').value = a.name || '';
-                document.getElementById('artCategory').value = a.category || '';
+                catSel.value = (a.category || '').toUpperCase();
                 document.getElementById('artUnit').value = a.unit || 'kg';
                 document.getElementById('artWeightPerUnit').value = getWeightPerUnit(a);
                 document.getElementById('artBarcode').value = a.barcode || '';
@@ -3515,7 +3800,7 @@
             // Populate select with all positions, select current
             const sel = document.getElementById('editPosCode');
             sel.innerHTML = allShelfPositions
-                .slice().sort((a,b) => a.code.localeCompare(b.code))
+                .slice().sort((a,b) => a.code.localeCompare(b.code, undefined, { numeric: true, sensitivity: 'base' }))
                 .map(p => `<option value="${p.id}" data-code="${p.code}"${p.id === pos.id ? ' selected' : ''}>${p.code}</option>`)
                 .join('');
 

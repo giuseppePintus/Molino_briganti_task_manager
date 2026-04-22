@@ -81,6 +81,8 @@ Write-Host "      Copia trips-management.html aggiornato..." -ForegroundColor Gr
 ssh admin@192.168.1.248 '/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker cp /share/Container/public/trips-management.html molino-task-manager-nas:/app/public/trips-management.html'
 Write-Host "      Copia operators.html aggiornato..." -ForegroundColor Gray
 ssh admin@192.168.1.248 '/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker cp /share/Container/public/operators.html molino-task-manager-nas:/app/public/operators.html'
+Write-Host "      Copia cartella js/ aggiornata..." -ForegroundColor Gray
+ssh admin@192.168.1.248 '/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker cp /share/Container/public/js/. molino-task-manager-nas:/app/public/js/'
 Write-Host "      Copia package.json aggiornato..." -ForegroundColor Gray
 ssh admin@192.168.1.248 '/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker cp /share/Container/package.json molino-task-manager-nas:/app/package.json'
 Write-Host "      Copia server/dist aggiornato..." -ForegroundColor Gray

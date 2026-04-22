@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma';
 import { socketService } from '../services/socketService';
+import { InventoryService } from '../services/inventoryService';
 
 const router = Router();
 
@@ -270,11 +271,38 @@ router.put('/:id', async (req: Request, res: Response) => {
 
 /**
  * DELETE /api/orders/:id
- * Elimina ordine
+ * Elimina ordine e rilascia eventuali prenotazioni inventario
  */
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    
+    // Leggi l'ordine prima di eliminarlo per rilasciare le prenotazioni
+    const order = await prisma.order.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    // Rilascia le prenotazioni di inventario se l'ordine non è completato
+    if (order && order.status !== 'completed' && order.products) {
+      try {
+        const products = JSON.parse(order.products);
+        for (const item of products) {
+          const code = item.product || item.code;
+          const quantity = item.quantity;
+          if (code && quantity) {
+            try {
+              await InventoryService.releaseReservation(code, quantity);
+              console.log(`✅ Prenotazione rilasciata: ${code} ${quantity}kg`);
+            } catch (releaseErr) {
+              // Non bloccare la cancellazione per errori di rilascio
+              console.warn(`⚠️ Rilascio prenotazione fallito per ${code}:`, releaseErr);
+            }
+          }
+        }
+      } catch (parseErr) {
+        console.warn('⚠️ Impossibile parsare products per rilascio prenotazioni:', parseErr);
+      }
+    }
     
     await prisma.order.delete({
       where: { id: parseInt(id) }

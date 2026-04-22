@@ -553,6 +553,10 @@
                         <span class="menu-icon">💾</span>
                         <span>Gestione Backup</span>
                     </button>
+                    <button class="admin-menu-item" onclick="openIndiceModal(); toggleAdminMenu();">
+                        <span class="menu-icon">🗂️</span>
+                        <span>Indice</span>
+                    </button>
                 </div>
             </div>
             <button class="btn btn-customers active" data-icon="👨‍💼" onclick="window.location.href='customers-management.html'"><span>Gestione Clienti</span></button>
@@ -638,6 +642,7 @@
 
     <script src="js/data-sync.js"></script>
     <script src="js/settings-utils.js"></script>
+    <script src="js/pages-indice.js"></script>
     <script>
         const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
 

@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import com.molinobriganti.inventory.data.model.Article
 import com.molinobriganti.inventory.data.model.ShelfEntry
 import com.molinobriganti.inventory.data.model.ShelfPosition
+import com.molinobriganti.inventory.util.NaturalOrderComparator
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -395,8 +396,8 @@ private fun buildRows(
     }
 
     return rows.sortedWith(when (sort) {
-        PrintSort.POSITION  -> compareBy({ it.position })
-        PrintSort.CODE      -> compareBy({ it.code })
+        PrintSort.POSITION  -> compareBy(NaturalOrderComparator) { it.position }
+        PrintSort.CODE      -> compareBy(NaturalOrderComparator) { it.code }
         PrintSort.NAME      -> compareBy({ it.name })
         PrintSort.CATEGORY  -> compareBy({ it.category }, { it.name })
         PrintSort.STOCK_DESC -> compareByDescending({ it.quantity })

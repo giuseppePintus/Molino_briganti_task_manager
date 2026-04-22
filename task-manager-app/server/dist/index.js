@@ -158,6 +158,28 @@ app.use('/api/orders', orders_1.default);
 app.use('/api/trips', trips_1.default);
 app.use('/api/customers', customers_1.default);
 app.use('/api/debug', debug_1.default);
+// Inline endpoint - List all HTML pages in public dir (for Indice feature)
+app.get('/api/pages', (req, res) => {
+    try {
+        const publicDir = path_1.default.join(process.cwd(), 'public');
+        const files = fs.readdirSync(publicDir).filter((f) => f.endsWith('.html'));
+        const pages = files.map((f) => {
+            let title = f.replace('.html', '').replace(/-/g, ' ');
+            try {
+                const content = fs.readFileSync(path_1.default.join(publicDir, f), 'utf8');
+                const match = content.match(/<title>([^<]+)<\/title>/i);
+                if (match)
+                    title = match[1].replace(/ - Molino Briganti/i, '').trim();
+            }
+            catch (_a) { }
+            return { file: f, title };
+        });
+        res.json(pages);
+    }
+    catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 // Inline endpoint - Import warehouse from PDF
 app.post('/api/warehouse/import-from-pdf', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {

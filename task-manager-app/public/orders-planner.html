@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="css/common-styles.css">
     <link rel="stylesheet" href="css/orders-planner-custom.css">
     <script src="js/settings-utils.js"></script>
+    <script src="js/pages-indice.js"></script>
     <style>
         * {
             margin: 0;
@@ -939,6 +940,10 @@
                         <span class="menu-icon">💾</span>
                         <span>Gestione Backup</span>
                     </button>
+                    <button class="admin-menu-item" onclick="openIndiceModal(); toggleAdminMenu();">
+                        <span class="menu-icon">🗂️</span>
+                        <span>Indice</span>
+                    </button>
                 </div>
             </div>
             <button class="btn btn-customers" data-icon="👨‍💼" onclick="window.location.href='customers-management.html'"><span>Gestione Clienti</span></button>
@@ -1257,6 +1262,8 @@
         </div>
     </div>
 
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="js/socket-client.js"></script>
     <script src="js/data-sync.js"></script>
     <script>
         let orders = [];
@@ -1278,7 +1285,16 @@
         
         // Tracking inventario e prenotazioni
         let currentAvailableBatches = [];
-        let orderInventoryReservations = {}; // {orderId: {productCode, quantity}}
+        // Persistiamo le prenotazioni in localStorage per sopravvivere ai reload
+        function loadInventoryReservations() {
+            try {
+                return JSON.parse(localStorage.getItem('orderInventoryReservations') || '{}');
+            } catch { return {}; }
+        }
+        function saveInventoryReservations(data) {
+            localStorage.setItem('orderInventoryReservations', JSON.stringify(data));
+        }
+        let orderInventoryReservations = loadInventoryReservations(); // {orderId: {productCode, quantity}}
         
         // Helper per ottenere il nome cliente in modo sicuro (compatibile con server API)
         function getClientName(order) {
@@ -2408,7 +2424,14 @@
                 const trip = trips.find(t => t.id === tripId);
                 if (!trip) return;
                 
-                trip.acceptedAt = new Date().toISOString();
+                // Persiste nel backend (sopravvive ai reload di pagina)
+                const updatedTrip = await DataSync.updateTrip(tripId, { accepted: true });
+                if (updatedTrip && updatedTrip.acceptedAt) {
+                    trip.acceptedAt = updatedTrip.acceptedAt;
+                } else {
+                    trip.acceptedAt = new Date().toISOString();
+                }
+                trip.accepted = true;
                 await saveTrips();
                 alert('✅ Viaggio accettato!');
                 renderTrips(); // Ricarica la visualizzazione
@@ -2425,34 +2448,66 @@
 
                 // Ottieni gli ordini del viaggio
                 const tripOrders = getTripOrders(tripId);
-                
-                // Consuma i prodotti dall'inventario
+                console.log(`🚚 [completeTrip] tripId=${tripId}, ordini nel viaggio:`, tripOrders.map(o => o.id));
+
+                // Per ogni ordine del viaggio:
+                // 1. Consuma inventario (sottrae da currentStock + reserved)
+                // 2. Segna ordine come "completed" nel backend 
+                //    (la warehouse mostra "prenotato" in base agli ordini status=pending → 
+                //     se l'ordine rimane pending, la merce rimane prenotata anche dopo il viaggio)
+                let consumeOk = 0, consumeErr = 0;
                 for (const order of tripOrders) {
                     try {
+                        // Solo consuma se l'ordine non è già completato
+                        if (order.status === 'completed') {
+                            console.log(`⏭️ [completeTrip] Ordine ${order.id} già completato → skip`);
+                            continue;
+                        }
+                        
                         const fullInfo = getOrderFullInfo(order.id);
-                        if (fullInfo && fullInfo.products) {
+                        console.log(`📦 [completeTrip] ordine ${order.id} → prodotti:`, fullInfo?.products);
+                        
+                        if (fullInfo && fullInfo.products && fullInfo.products.length > 0) {
                             for (const product of fullInfo.products) {
-                                // Chiama API per consumare il prodotto
+                                const code = product.product || product.code;
+                                if (!code || !product.quantity) {
+                                    console.warn('⚠️ [completeTrip] Skip prodotto senza codice/quantità:', product);
+                                    continue;
+                                }
                                 const response = await fetch(`${API_URL}/inventory/consume`, {
                                     method: 'POST',
                                     headers: {
                                         'Content-Type': 'application/json',
                                         'Authorization': `Bearer ${token}`
                                     },
-                                    body: JSON.stringify({
-                                        code: product.product,
-                                        quantity: product.quantity
-                                    })
+                                    body: JSON.stringify({ code: code, quantity: product.quantity })
                                 });
                                 
                                 if (!response.ok) {
-                                    console.warn(`Avviso: Impossibile consumare ${product.product}`, await response.text());
+                                    const errText = await response.text();
+                                    console.error(`❌ [completeTrip] Impossibile consumare ${code}:`, errText);
+                                    consumeErr++;
+                                } else {
+                                    const result = await response.json();
+                                    console.log(`✅ [completeTrip] Consumato ${code} - ${product.quantity}kg →`, result);
+                                    consumeOk++;
                                 }
                             }
+                        } else {
+                            console.warn(`⚠️ [completeTrip] Ordine ${order.id} senza prodotti → skip consume`);
                         }
+                        
+                        // Segna l'ordine come completato nel backend
+                        // FONDAMENTALE: la warehouse legge gli ordini status=pending per calcolare "prenotato"
+                        // Se non aggiorniamo lo status dell'ordine, la merce resterà "prenotata" nella warehouse
+                        const orderObj = orders.find(o => o.id === order.id);
+                        if (orderObj) orderObj.status = 'completed';
+                        await DataSync.updateOrder(order.id, { status: 'completed' });
+                        console.log(`✅ [completeTrip] Ordine ${order.id} marcato come completato nel backend`);
+                        
                     } catch (e) {
-                        console.warn('Errore durante il consumo prodotto:', e);
-                        // Continua comunque - non interrompere il completamento del viaggio
+                        console.error(`❌ [completeTrip] Errore su ordine ${order.id}:`, e);
+                        consumeErr++;
                     }
                 }
 
@@ -2461,9 +2516,17 @@
                 trip.completedAt = new Date().toISOString();
                 trip.completedBy = currentUser.id;
 
+                await DataSync.updateTrip(tripId, { status: 'completed' });
                 await saveTrips();
-                alert('✅ Viaggio completato e prodotti scaricati dall\'inventario!');
-                renderTrips(); // Ricarica la visualizzazione
+                
+                if (consumeErr > 0) {
+                    alert(`✅ Viaggio completato.\n⚠️ ${consumeErr} operazione/i con errori (vedi console F12).`);
+                } else if (consumeOk > 0) {
+                    alert(`✅ Viaggio completato! ${consumeOk} prodotti scaricati dall'inventario.`);
+                } else {
+                    alert('✅ Viaggio completato.');
+                }
+                renderTrips();
             } catch (error) {
                 alert('Errore nel completamento: ' + error.message);
             }
@@ -2836,7 +2899,7 @@
                 // Prova a caricare direttamente dall'API
                 const loadedTrips = await DataSync.Trips.getAll();
                 if (loadedTrips && loadedTrips.length > 0) {
-                    trips = loadedTrips;
+                    trips = loadedTrips.map(t => ({ ...t, completed: t.status === 'completed' || !!t.completed }));
                     // Salva in localStorage per backup offline
                     localStorage.setItem('trips', JSON.stringify(trips));
                     console.log('✅ [loadTrips] Viaggi caricati da API. Totale:', trips.length);
@@ -4758,6 +4821,7 @@
                                 quantity: productItem.quantity,
                                 product: productItem.product
                             });
+                            saveInventoryReservations(orderInventoryReservations);
                         } catch (error) {
                             console.error('❌ Errore prenotazione inventario:', error);
                             alert(`⚠️ Attenzione: ${error.message}`);
@@ -4783,6 +4847,14 @@
                 }
                 
                 if (savedOrder && savedOrder.id) {
+                    // Migra la prenotazione inventario dal temp ID al real DB ID
+                    if (orderInventoryReservations[order.id]) {
+                        orderInventoryReservations[savedOrder.id] = orderInventoryReservations[order.id];
+                        delete orderInventoryReservations[order.id];
+                        saveInventoryReservations(orderInventoryReservations);
+                        console.log(`🔄 Reservation migrata: tempId=${order.id} → realId=${savedOrder.id}`);
+                    }
+                    
                     // Verifica che orders sia un array
                     if (!Array.isArray(orders)) {
                         console.error('❌ CRITICO: orders non è un array!', typeof orders);
@@ -4883,29 +4955,34 @@
             if (order && order.status !== 'completed') {
                 const reservation = orderInventoryReservations[id];
                 if (reservation) {
-                    try {
-                        const releaseResponse = await fetch(`${API_URL}/inventory/release`, {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': `Bearer ${token}`,
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                code: reservation.productCode,
-                                quantity: reservation.quantity
-                            })
-                        });
+                    // reservation è un array di { productCode, quantity }
+                    const items = Array.isArray(reservation) ? reservation : [reservation];
+                    for (const item of items) {
+                        try {
+                            const releaseResponse = await fetch(`${API_URL}/inventory/release`, {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': `Bearer ${token}`,
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    code: item.productCode,
+                                    quantity: item.quantity
+                                })
+                            });
 
-                        if (!releaseResponse.ok) {
-                            const errData = await releaseResponse.json();
-                            console.error('❌ Errore rilascio inventario:', errData);
-                        } else {
-                            console.log('✅ Prenotazione liberata');
-                            delete orderInventoryReservations[id];
+                            if (!releaseResponse.ok) {
+                                const errData = await releaseResponse.json();
+                                console.error('❌ Errore rilascio inventario:', errData);
+                            } else {
+                                console.log('✅ Prenotazione liberata:', item.productCode);
+                            }
+                        } catch (error) {
+                            console.error('❌ Errore durante rilascio inventario:', error);
                         }
-                    } catch (error) {
-                        console.error('❌ Errore durante rilascio inventario:', error);
                     }
+                    delete orderInventoryReservations[id];
+                    saveInventoryReservations(orderInventoryReservations);
                 }
             }
             
@@ -5518,7 +5595,7 @@
                 console.log('✅ [forceRefreshTrips] Viaggi caricati da API:', loadedTrips);
                 
                 if (loadedTrips && loadedTrips.length > 0) {
-                    trips = loadedTrips;
+                    trips = loadedTrips.map(t => ({ ...t, completed: t.status === 'completed' || !!t.completed }));
                     // Log dettagliato di ogni viaggio
                     trips.forEach(t => {
                         // Assicura che sequence sia sempre un array
@@ -5568,10 +5645,26 @@
                 const oldStatus = order.status;
                 order.status = newStatus;
                 
-                // Se marca come completato, CONSUMA l'inventario prenotato
+                // Se marca come completato, CONSUMA l'inventario
                 if (newStatus === 'completed' && oldStatus !== 'completed') {
-                    const reservation = orderInventoryReservations[id];
-                    if (reservation) {
+                    // Usa la prenotazione in memoria se disponibile, altrimenti i prodotti dell'ordine direttamente
+                    const reservations = orderInventoryReservations[id];
+                    const productsToConsume = (reservations && reservations.length > 0)
+                        ? reservations.map(r => ({ code: r.productCode, quantity: r.quantity }))
+                        : (Array.isArray(order.products) ? order.products.map(p => ({ code: p.product || p.code, quantity: p.quantity })) : []);
+                    
+                    console.log(`🔍 [updateOrderStatus] orderId=${id}, prodotti da consumare:`, JSON.stringify(productsToConsume));
+                    
+                    if (productsToConsume.length === 0) {
+                        console.warn('⚠️ [updateOrderStatus] Nessun prodotto trovato da consumare per ordine', id, 'products:', order.products);
+                    }
+                    
+                    let consumeOk = 0, consumeErr = 0;
+                    for (const item of productsToConsume) {
+                        if (!item.code || !item.quantity) {
+                            console.warn('⚠️ [updateOrderStatus] Skip prodotto (code/quantity mancante):', item);
+                            continue;
+                        }
                         try {
                             const consumeResponse = await fetch(`${API_URL}/inventory/consume`, {
                                 method: 'POST',
@@ -5579,24 +5672,31 @@
                                     'Authorization': `Bearer ${token}`,
                                     'Content-Type': 'application/json'
                                 },
-                                body: JSON.stringify({
-                                    code: reservation.productCode,
-                                    quantity: reservation.quantity
-                                })
+                                body: JSON.stringify({ code: item.code, quantity: item.quantity })
                             });
 
                             if (!consumeResponse.ok) {
-                                const errData = await consumeResponse.json();
-                                console.error('❌ Errore consumo inventario:', errData);
+                                const errData = await consumeResponse.json().catch(() => ({}));
+                                console.error('❌ Errore consumo inventario:', item.code, errData);
+                                consumeErr++;
                             } else {
                                 const result = await consumeResponse.json();
-                                console.log('✅ Inventario consumato:', result);
-                                delete orderInventoryReservations[id];
+                                console.log('✅ Inventario consumato:', item.code, '-', item.quantity, 'kg →', result);
+                                consumeOk++;
                             }
                         } catch (error) {
-                            console.error('❌ Errore durante consumo inventario:', error);
+                            console.error('❌ Errore durante consumo inventario:', item.code, error);
+                            consumeErr++;
                         }
                     }
+                    
+                    if (consumeErr > 0) {
+                        alert(`⚠️ Completato, ma ${consumeErr} prodotto/i non scaricato/i dall'inventario (vedi console F12).`);
+                    } else if (consumeOk > 0) {
+                        console.log(`✅ [updateOrderStatus] Inventario scaricato per ${consumeOk} prodotti.`);
+                    }
+                    delete orderInventoryReservations[id];
+                    saveInventoryReservations(orderInventoryReservations);
                 }
                 
                 await DataSync.updateOrder(id, { status: newStatus });
@@ -6562,6 +6662,20 @@
             renderCalendar();
             // Admin: assicura che gli ordini 'ritira' siano sincronizzati nel DB e visibili
             await syncRitiroOrdersToDb();
+
+            // Sincronizzazione in tempo reale via Socket.IO
+            LiveUpdates.init({
+                onTripChange: async (action, trip) => {
+                    console.log(`🔄 [Socket] trip:${action} ricevuto, aggiorno lista viaggi...`);
+                    await forceRefreshTrips();
+                },
+                onOrderChange: async (action, order) => {
+                    console.log(`🔄 [Socket] order:${action} ricevuto, aggiorno lista ordini...`);
+                    await loadOrders();
+                    renderCalendar();
+                    updateStats();
+                }
+            });
         });
 
         // Sincronizza dati quando cambiano da un'altra pagina (storage event listener)

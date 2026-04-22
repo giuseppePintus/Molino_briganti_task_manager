@@ -961,22 +961,26 @@ export class InventoryService {
       }
 
       const inv = article.inventory;
-      const reserved = (inv.reserved || 0) + quantity;
-      const available = (inv.currentStock || 0) - reserved;
+      // reserved è in KG, currentStock è in COLLI
+      const weightPerUnit = article.weightPerUnit || 1;
+      const colliToReserve = Math.ceil(quantity / weightPerUnit);
+      const alreadyReservedColli = Math.ceil((inv.reserved || 0) / weightPerUnit);
+      const available = (inv.currentStock || 0) - alreadyReservedColli - colliToReserve;
 
       if (available < 0) {
         // Stock insufficiente - logga warning ma non bloccare
-        console.log(`⚠️ [reserveInventory] Stock insufficiente per ${articleCode}: disponibili ${inv.currentStock || 0} - già prenotati ${inv.reserved || 0}`);
-        return { success: true, skipped: true, reason: `Stock insufficiente: disponibili ${inv.currentStock || 0}kg` };
+        console.log(`⚠️ [reserveInventory] Stock insufficiente per ${articleCode}: disponibili ${inv.currentStock || 0} colli - da prenotare ${colliToReserve} colli`);
+        return { success: true, skipped: true, reason: `Stock insufficiente: disponibili ${inv.currentStock || 0} colli (${(inv.currentStock || 0) * weightPerUnit}kg)` };
       }
 
-      // Aggiorna il campo reserved
-      const updated = await prisma.inventory.update({
+      // Aggiorna il campo reserved (manteniamo in KG per compatibilità)
+      const newReservedKg = (inv.reserved || 0) + quantity;
+      await prisma.inventory.update({
         where: { id: inv.id },
-        data: { reserved }
+        data: { reserved: newReservedKg }
       });
 
-      return { success: true, reserved, available, quantity };
+      return { success: true, reserved: newReservedKg, available, quantity };
     } catch (error) {
       // Non bloccare l'ordine per errori di inventario
       console.error(`❌ [reserveInventory] Errore: ${error}`);
@@ -1013,29 +1017,66 @@ export class InventoryService {
   }
 
   /**
-   * Consuma inventario prenotato (quando ordine completato)
+   * Azzera TUTTE le prenotazioni (usare quando gli ordini sono stati eliminati senza rilascio)
    */
-  static async consumeReservedInventory(articleCode: string, quantity: number) {
+  static async resetAllReservations() {
+    const result = await prisma.inventory.updateMany({
+      where: { reserved: { gt: 0 } },
+      data: { reserved: 0 }
+    });
+    console.log(`✅ [resetAllReservations] Azzerate ${result.count} prenotazioni`);
+    return { success: true, count: result.count };
+  }
+
+  /**
+   * Consuma inventario prenotato (quando ordine completato)
+   * quantity è in KG; currentStock e ShelfEntries sono in COLLI
+   */
+  static async consumeReservedInventory(articleCode: string, quantityKg: number) {
     try {
       const article = await prisma.article.findFirst({
         where: { code: articleCode },
-        include: { inventory: true }
+        include: {
+          inventory: true,
+          shelfEntries: { orderBy: { id: 'asc' } }
+        }
       });
 
       if (!article || !article.inventory) {
         throw new Error('Articolo non trovato');
       }
 
-      const inv = article.inventory;
-      const reserved = Math.max(0, (inv.reserved || 0) - quantity);
-      const currentStock = Math.max(0, (inv.currentStock || 0) - quantity);
+      const weightPerUnit = article.weightPerUnit || 1;
+      // Converti kg → colli (arrotonda per eccesso per non lasciare frazioni)
+      const colliToConsume = Math.ceil(quantityKg / weightPerUnit);
 
-      const updated = await prisma.inventory.update({
+      const inv = article.inventory;
+      // reserved è in KG (salvato direttamente dall'ordine)
+      const reservedKg = Math.max(0, (inv.reserved || 0) - quantityKg);
+      // currentStock è in COLLI
+      const newCurrentStock = Math.max(0, (inv.currentStock || 0) - colliToConsume);
+
+      await prisma.inventory.update({
         where: { id: inv.id },
-        data: { reserved, currentStock }
+        data: { reserved: reservedKg, currentStock: newCurrentStock }
       });
 
-      return { success: true, reserved, currentStock };
+      // Riduci le ShelfEntry in ordine (svuota la prima, poi la seconda, ecc.)
+      let remaining = colliToConsume;
+      for (const entry of article.shelfEntries) {
+        if (remaining <= 0) break;
+        const toSubtract = Math.min(entry.quantity, remaining);
+        const newQty = entry.quantity - toSubtract;
+        await prisma.shelfEntry.update({
+          where: { id: entry.id },
+          data: { quantity: newQty }
+        });
+        remaining -= toSubtract;
+        console.log(`📦 [consume] ShelfEntry ${entry.id} (${entry.positionCode}): ${entry.quantity} → ${newQty} colli`);
+      }
+
+      console.log(`✅ [consume] ${articleCode}: -${quantityKg}kg = -${colliToConsume} colli. currentStock: ${inv.currentStock} → ${newCurrentStock}`);
+      return { success: true, reserved: reservedKg, currentStock: newCurrentStock, colliConsumed: colliToConsume };
     } catch (error) {
       throw new Error(`Errore consumo inventario: ${error}`);
     }

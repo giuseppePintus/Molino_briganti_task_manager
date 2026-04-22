@@ -56,6 +56,7 @@ router.get('/batches', InventoryController.getBatches);
 router.post('/reserve', InventoryController.reserveInventory);
 router.post('/release', InventoryController.releaseReservation);
 router.post('/consume', InventoryController.consumeReservedInventory);
+router.post('/reset-reservations', InventoryController.resetAllReservations);
 
 // Allarmi
 router.get('/alerts', InventoryController.getArticlesOnAlert);

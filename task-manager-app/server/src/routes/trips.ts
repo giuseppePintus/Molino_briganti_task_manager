@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma';
+import { socketService } from '../services/socketService';
 
 const router = Router();
 
@@ -211,14 +212,16 @@ router.post('/', async (req: Request, res: Response) => {
       }
     });
     
-    res.status(201).json({
+    const tripResponse = {
       ...fullTrip,
       sequence: fullTrip?.sequence ? JSON.parse(fullTrip.sequence) : [],
       orders: fullTrip?.orders.map(order => ({
         ...order,
         products: order.products ? JSON.parse(order.products) : []
       }))
-    });
+    };
+    socketService.notifyTripCreated(tripResponse);
+    res.status(201).json(tripResponse);
   } catch (error: any) {
     console.error('Error creating trip:', error);
     res.status(500).json({ error: error.message });
@@ -299,7 +302,7 @@ router.put('/:id', async (req: Request, res: Response) => {
     
     console.log('🟢 Trip updated successfully - id=%s, accepted=%s, acceptedAt=%s', trip.id, trip.accepted, trip.acceptedAt);
     
-    res.json({
+    const tripResponse = {
       ...trip,
       sequence: trip.sequence ? JSON.parse(trip.sequence) : [],
       accepted: trip.accepted !== undefined ? trip.accepted : false,
@@ -310,7 +313,9 @@ router.put('/:id', async (req: Request, res: Response) => {
         ...order,
         products: order.products ? JSON.parse(order.products) : []
       }))
-    });
+    };
+    socketService.notifyTripUpdated(tripResponse);
+    res.json(tripResponse);
   } catch (error: any) {
     console.error('Error updating trip:', error);
     res.status(500).json({ error: error.message });

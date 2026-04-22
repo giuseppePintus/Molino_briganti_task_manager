@@ -382,6 +382,18 @@ export class InventoryController {
   }
 
   /**
+   * Reset tutte le prenotazioni a 0 (utile quando ordini eliminati senza rilascio)
+   */
+  static async resetAllReservations(req: Request, res: Response) {
+    try {
+      const result = await InventoryService.resetAllReservations();
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  /**
    * Importa inventario dal PDF sul NAS
    * Azzerasii il master-Inventory.csv e lo ricrea dal PDF
    */

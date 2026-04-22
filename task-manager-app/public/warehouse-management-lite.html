@@ -197,6 +197,72 @@
         .stat-card .lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; }
 
         /* ===== PRODUCT LIST (carico/scarico view) ===== */
+        /* Category filter bar */
+        .category-bar {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+        .cat-btn {
+            padding: 9px 16px;
+            border-radius: 10px;
+            border: 2px solid var(--border);
+            background: var(--card);
+            color: var(--muted);
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s;
+            white-space: nowrap;
+            touch-action: manipulation;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .cat-btn .cat-icon { font-size: 16px; }
+        .cat-btn .cat-count {
+            background: rgba(255,255,255,0.1);
+            padding: 1px 7px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 800;
+        }
+        .cat-btn:hover { border-color: var(--primary); background: #2a2a4a; color: #fff; }
+        .cat-btn.active {
+            border-color: #38bdf8;
+            background: linear-gradient(135deg, #1e3a5f 0%, #1e40af 100%);
+            color: #fff;
+            box-shadow: 0 2px 10px rgba(56,189,248,0.25);
+        }
+        .cat-btn.active .cat-count {
+            background: rgba(56,189,248,0.3);
+            color: #7dd3fc;
+        }
+
+        /* Category group header */
+        .category-group-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            margin-top: 6px;
+            margin-bottom: 2px;
+            background: linear-gradient(135deg, #1a2e5a 0%, #1e40af 100%);
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 800;
+            color: #fff;
+            letter-spacing: 0.5px;
+        }
+        .category-group-header .cat-h-icon { font-size: 17px; }
+        .category-group-header .cat-h-count {
+            margin-left: auto;
+            font-size: 12px;
+            color: #93c5fd;
+            font-weight: 600;
+        }
+
         .product-list {
             display: flex;
             flex-direction: column;
@@ -715,6 +781,7 @@
 
         <!-- TAB: Prodotti -->
         <div class="tab-panel active" id="panelProdotti">
+            <div class="category-bar" id="categoryBar"></div>
             <div class="product-list" id="productList">
                 <div class="empty-state">⏳ Caricamento...</div>
             </div>
@@ -828,6 +895,7 @@
     let recentMovements = [];  // local log of this session
     let currentTab = 'prodotti';
     let searchTerm = '';
+    let selectedCategory = null; // null = Tutti
 
     // Modal state
     let modalType = 'CARICO';  // CARICO | SCARICO
@@ -948,57 +1016,144 @@
         renderCurrentTab();
     }
 
+    // ===== CATEGORY HELPERS =====
+    const CATEGORY_META = {
+        'FARINE':         { icon: '🌾', color: '#f59e0b' },
+        'MIX FARINE':     { icon: '🥣', color: '#d97706' },
+        'SEMOLE':         { icon: '🌽', color: '#84cc16' },
+        'CEREALI':        { icon: '🌿', color: '#10b981' },
+        'CEREALI PERLATI':{ icon: '💎', color: '#06b6d4' },
+        'MANGIMI':        { icon: '🐄', color: '#8b5cf6' },
+        'ALTRO':          { icon: '📦', color: '#6b7280' },
+    };
+
+    function getArticleCategory(art) {
+        if (art.category) return art.category.toUpperCase();
+        const code = art.code || '';
+        if (code.startsWith('F-')) return 'FARINE';
+        if (code.startsWith('FM-')) return 'MIX FARINE';
+        if (code.startsWith('GD-')) return 'SEMOLE';
+        if (code.startsWith('Z-')) return 'CEREALI';
+        if (code.startsWith('MG-')) return 'MANGIMI';
+        if (code.startsWith('CP-')) return 'CEREALI PERLATI';
+        return 'ALTRO';
+    }
+
+    function selectCategory(cat) {
+        selectedCategory = cat === selectedCategory ? null : cat;
+        renderProductList();
+    }
+
     // ===== RENDER: PRODUCT LIST =====
     function renderProductList() {
         const container = document.getElementById('productList');
+        const catBar = document.getElementById('categoryBar');
         const valid = allArticles
             .filter(a => !a.code?.startsWith('EMPTY-'))
             .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'it'));
 
-        const filtered = searchTerm
+        // Build category counts
+        const catCounts = {};
+        valid.forEach(a => {
+            const cat = getArticleCategory(a);
+            catCounts[cat] = (catCounts[cat] || 0) + 1;
+        });
+
+        // Ordered category list
+        const catOrder = ['FARINE', 'MIX FARINE', 'SEMOLE', 'CEREALI', 'CEREALI PERLATI', 'MANGIMI', 'ALTRO'];
+        const activeCats = catOrder.filter(c => catCounts[c]);
+
+        // Render category bar
+        catBar.innerHTML = `<button class="cat-btn ${selectedCategory === null ? 'active' : ''}" onclick="selectCategory(null)">
+                <span class="cat-icon">📋</span> Tutti <span class="cat-count">${valid.length}</span>
+            </button>` +
+            activeCats.map(cat => {
+                const meta = CATEGORY_META[cat] || { icon: '📦', color: '#6b7280' };
+                const isActive = selectedCategory === cat;
+                return `<button class="cat-btn ${isActive ? 'active' : ''}" onclick="selectCategory('${cat}')" style="${isActive ? '' : `border-color:${meta.color}40`}">
+                    <span class="cat-icon">${meta.icon}</span> ${cat} <span class="cat-count">${catCounts[cat]}</span>
+                </button>`;
+            }).join('');
+
+        // Filter by search
+        let filtered = searchTerm
             ? valid.filter(a => {
                 const text = `${a.name} ${a.code} ${a.category || ''}`.toLowerCase();
-                // Also check shelf positions
                 const entries = allShelfEntries.filter(e => e.articleId === a.id);
                 const posText = entries.map(e => e.positionCode).join(' ').toLowerCase();
                 return text.includes(searchTerm) || posText.includes(searchTerm);
             })
             : valid;
 
+        // Filter by selected category
+        if (selectedCategory) {
+            filtered = filtered.filter(a => getArticleCategory(a) === selectedCategory);
+        }
+
         if (!filtered.length) {
-            container.innerHTML = `<div class="empty-state">${searchTerm ? '🔍 Nessun risultato per "' + searchTerm + '"' : '📦 Nessun prodotto trovato'}</div>`;
+            container.innerHTML = `<div class="empty-state">${searchTerm ? '🔍 Nessun risultato per "' + searchTerm + '"' : selectedCategory ? '📦 Nessun prodotto in ' + selectedCategory : '📦 Nessun prodotto trovato'}</div>`;
             return;
         }
 
-        container.innerHTML = filtered.map(art => {
-            const entries = allShelfEntries.filter(e => e.articleId === art.id);
-            const totalQty = entries.reduce((s, e) => s + (e.quantity || 0), 0);
-            const totalKg = calcKg(totalQty, art);
-            const positions = entries.map(e => e.positionCode).join(', ') || '—';
-            const qtyClass = totalQty === 0 ? 'zero' : totalQty < 5 ? 'low' : 'ok';
+        // Group by category
+        const grouped = {};
+        filtered.forEach(a => {
+            const cat = getArticleCategory(a);
+            if (!grouped[cat]) grouped[cat] = [];
+            grouped[cat].push(a);
+        });
 
-            return `
-            <div class="product-row">
-                <div class="product-info">
-                    <div class="product-name">${art.name || '—'}</div>
-                    <div class="product-code">${art.code || '—'} · 📍 ${positions}</div>
-                </div>
-                <div class="product-stock">
-                    <div class="qty ${qtyClass}">${totalQty}</div>
-                    <div class="unit">${totalKg} kg</div>
-                </div>
-                <div class="product-actions">
-                    <button class="btn-carico" title="Carico" onclick="openModal(${art.id}, 'CARICO')">+</button>
-                    <button class="btn-scarico" title="Scarico" onclick="openModal(${art.id}, 'SCARICO')" ${totalQty === 0 ? 'disabled style="opacity:0.4;cursor:not-allowed;"' : ''}>−</button>
-                </div>
+        // Render grouped
+        let html = '';
+        const renderCats = selectedCategory ? [selectedCategory] : catOrder.filter(c => grouped[c]);
+
+        renderCats.forEach(cat => {
+            const arts = grouped[cat];
+            if (!arts) return;
+            const meta = CATEGORY_META[cat] || { icon: '📦', color: '#6b7280' };
+
+            html += `<div class="category-group-header" style="border-left: 4px solid ${meta.color};">
+                <span class="cat-h-icon">${meta.icon}</span> ${cat}
+                <span class="cat-h-count">${arts.length} articol${arts.length === 1 ? 'o' : 'i'}</span>
             </div>`;
-        }).join('');
+
+            html += arts.map(art => {
+                const entries = allShelfEntries.filter(e => e.articleId === art.id);
+                const totalQty = entries.reduce((s, e) => s + (e.quantity || 0), 0);
+                const totalKg = calcKg(totalQty, art);
+                const positions = entries.map(e => e.positionCode).join(', ') || '—';
+                const qtyClass = totalQty === 0 ? 'zero' : totalQty < 5 ? 'low' : 'ok';
+
+                return `
+                <div class="product-row">
+                    <div class="product-info">
+                        <div class="product-name">${art.name || '—'}</div>
+                        <div class="product-code">${art.code || '—'} · 📍 ${positions}</div>
+                    </div>
+                    <div class="product-stock">
+                        <div class="qty ${qtyClass}">${totalQty}</div>
+                        <div class="unit">${totalKg} kg</div>
+                    </div>
+                    <div class="product-actions">
+                        <button class="btn-carico" title="Carico" onclick="openModal(${art.id}, 'CARICO')">+</button>
+                        <button class="btn-scarico" title="Scarico" onclick="openModal(${art.id}, 'SCARICO')" ${totalQty === 0 ? 'disabled style="opacity:0.4;cursor:not-allowed;"' : ''}>−</button>
+                    </div>
+                </div>`;
+            }).join('');
+        });
+
+        container.innerHTML = html;
     }
 
     // ===== RENDER: SHELF VIEW =====
     function renderShelfView() {
         const container = document.getElementById('shelfContainer');
         const sectors = {};
+
+        // Natural sort helper: A1.2 before A10.1
+        function naturalCmp(a, b) {
+            return (a || '').localeCompare(b || '', undefined, { numeric: true, sensitivity: 'base' });
+        }
 
         allShelfPositions.forEach(pos => {
             const sector = pos.code.charAt(0).toUpperCase();
@@ -1009,12 +1164,15 @@
             });
         });
 
+        // Sort positions within each sector
+        Object.values(sectors).forEach(arr => arr.sort((a, b) => naturalCmp(a.code, b.code)));
+
         if (!Object.keys(sectors).length) {
             container.innerHTML = '<div class="empty-state">🏗️ Nessuna posizione scaffale configurata</div>';
             return;
         }
 
-        container.innerHTML = Object.keys(sectors).sort().map(sector => {
+        container.innerHTML = Object.keys(sectors).sort(naturalCmp).map(sector => {
             const positions = sectors[sector];
             const occupied = positions.filter(p => p.entries.length > 0).length;
 

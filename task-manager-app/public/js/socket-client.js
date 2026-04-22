@@ -181,6 +181,12 @@ const LiveUpdates = {
             socketClient.on('order:statusChanged', (data) => options.onOrderChange('statusChanged', data.order));
         }
 
+        // Trip events
+        if (options.onTripChange) {
+            socketClient.on('trip:created', (data) => options.onTripChange('created', data.trip));
+            socketClient.on('trip:updated', (data) => options.onTripChange('updated', data.trip));
+        }
+
         // Generic refresh
         if (options.onRefresh) {
             socketClient.on('refresh:data', (data) => options.onRefresh(data.dataType));

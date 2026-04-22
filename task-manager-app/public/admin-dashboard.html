@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="css/common-styles.css">
     <link rel="stylesheet" href="css/admin-dashboard-custom.css">
     <script src="js/settings-utils.js"></script>
+    <script src="js/pages-indice.js"></script>
     <style>
         * {
             margin: 0;
@@ -1773,6 +1774,10 @@
                         <span class="menu-icon">💾</span>
                         <span>Gestione Backup</span>
                     </button>
+                    <button class="admin-menu-item" onclick="openIndiceModal(); toggleAdminMenu();">
+                        <span class="menu-icon">🗂️</span>
+                        <span>Indice</span>
+                    </button>
                 </div>
             </div>
             <button class="btn btn-customers" data-icon="👨‍💼" onclick="window.location.href='customers-management.html'"><span>Gestione Clienti</span></button>
@@ -1922,7 +1927,7 @@
         let allOperators = [];
         let allAssignees = []; // Operatori + Admin
         let allTasks = [];
-        let currentViewMode = 'operatorTasks'; // 'myTasks' o 'operatorTasks'
+        let currentViewMode = 'myTasks'; // 'myTasks' o 'operatorTasks'
         let mobileComfortMode = (localStorage.getItem('mobileComfortMode') || 'false') === 'true';
         let lastViewedDayDate = null; // Memorizza l'ultima data del giorno visualizzato
         

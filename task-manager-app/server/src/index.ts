@@ -128,6 +128,26 @@ app.use('/api/trips', tripsRoutes);
 app.use('/api/customers', customersRoutes);
 app.use('/api/debug', debugRoutes);
 
+// Inline endpoint - List all HTML pages in public dir (for Indice feature)
+app.get('/api/pages', (req, res) => {
+  try {
+    const publicDir = path.join(process.cwd(), 'public');
+    const files = fs.readdirSync(publicDir).filter((f: string) => f.endsWith('.html'));
+    const pages = files.map((f: string) => {
+      let title = f.replace('.html', '').replace(/-/g, ' ');
+      try {
+        const content = fs.readFileSync(path.join(publicDir, f), 'utf8');
+        const match = content.match(/<title>([^<]+)<\/title>/i);
+        if (match) title = match[1].replace(/ - Molino Briganti/i, '').trim();
+      } catch {}
+      return { file: f, title };
+    });
+    res.json(pages);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Inline endpoint - Import warehouse from PDF
 app.post('/api/warehouse/import-from-pdf', async (req, res) => {
   try {

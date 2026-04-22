@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import com.molinobriganti.inventory.data.model.Article
 import com.molinobriganti.inventory.data.model.ShelfEntry
 import com.molinobriganti.inventory.data.model.ShelfPosition
+import com.molinobriganti.inventory.util.NaturalOrderComparator
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,7 +37,8 @@ fun ShelfMapScreen(
     onCopyEntry: (articleId: Int, positionCode: String, quantity: Int, batch: String?, expiry: String?) -> Unit = { _, _, _, _, _ -> }
 ) {
     val grouped = remember(shelfPositions) {
-        shelfPositions.sortedBy { it.code }.groupBy { it.code.first().toString() }
+        shelfPositions.sortedWith(compareBy(NaturalOrderComparator) { it.code })
+            .groupBy { it.code.first().toString() }
     }
     val expandedSectors = remember {
         mutableStateMapOf<String, Boolean>().also { map ->
