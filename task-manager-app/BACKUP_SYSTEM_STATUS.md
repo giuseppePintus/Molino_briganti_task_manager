@@ -73,9 +73,10 @@ Il backup include tutte le tabelle del database:
 ### Opzione 1: Script PowerShell Schedulato (Windows)
 Creare un task schedulato su Windows che esegue:
 ```powershell
-$password = ConvertTo-SecureString "***REDACTED_NAS_PASSWORD***" -AsPlainText -Force
-$credential = New-Object System.Management.Automation.PSCredential("admin", $password)
-Invoke-Command -ComputerName 192.168.1.248 -Credential $credential -ScriptBlock {
+. .\nas-config.local.ps1   # carica $NAS_USER, $NAS_PASSWORD, $NAS_IP
+$secure = ConvertTo-SecureString $NAS_PASSWORD -AsPlainText -Force
+$cred   = New-Object System.Management.Automation.PSCredential($NAS_USER, $secure)
+Invoke-Command -ComputerName $NAS_IP -Credential $cred -ScriptBlock {
     /share/Public/molino-data/mariadb-backup.sh
 }
 ```

@@ -51,6 +51,21 @@ temp/
 .git/
 .gitkeep
 
+# === Segreti / config locali (NON committare) ===
+.nas_ssh_config
+nas-config.local.ps1
+nas-config.local.sh
+*.local.ps1
+*.local.sh
+secrets/
+.env.nas
+backup-logs.txt
+.git-history-replacements.txt
+
+# Artefatti di build/deploy
+*.tar.gz
+task-manager-update.tar.gz
+
 # Package manager lock files (optional - uncomment if needed)
 # package-lock.json
 # yarn.lock
@@ -79,6 +94,7 @@ out/
 !QUICK_TEST.sh
 !QUICKREF.sh
 !TEST_*.sh
+!nas-config.example.sh
 
 # Compiled output
 out/

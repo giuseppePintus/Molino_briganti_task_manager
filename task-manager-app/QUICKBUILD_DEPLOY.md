@@ -107,7 +107,7 @@ curl http://192.168.1.248:5000/api/health
 - **Deploy directory**: `/share/Container/`
 - **NAS IP**: `192.168.1.248`
 - **SSH User**: `admin`
-- **SSH Password**: `***REDACTED_NAS_PASSWORD***`
+- **SSH Password**: vedi `nas-config.local.ps1` / `nas-config.local.sh` (gitignored)
 
 ### Comandi Docker NAS
 ```bash

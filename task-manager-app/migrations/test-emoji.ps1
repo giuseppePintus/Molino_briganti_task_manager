@@ -1,6 +1,13 @@
 $ErrorActionPreference = 'Stop'
-$base = 'http://192.168.1.248:5000'
-$body = @{ username = 'admin'; password = '***REDACTED_NAS_PASSWORD***' } | ConvertTo-Json
+# Carica credenziali dal config locale (gitignored)
+$configPath = Join-Path (Resolve-Path (Join-Path $PSScriptRoot '..\..')) 'nas-config.local.ps1'
+if (-not (Test-Path $configPath)) {
+    throw "Config mancante: $configPath. Copia nas-config.example.ps1 e popolalo."
+}
+. $configPath
+
+$base = "http://$($NAS_IP):5000"
+$body = @{ username = $NAS_USER; password = $NAS_PASSWORD } | ConvertTo-Json
 $resp = Invoke-RestMethod -Uri "$base/api/auth/login" -Method POST -ContentType 'application/json' -Body $body
 $token = $resp.token
 Write-Host "Token OK: $($token.Substring(0,20))..."

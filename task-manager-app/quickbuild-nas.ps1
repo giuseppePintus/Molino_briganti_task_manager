@@ -4,6 +4,13 @@
 
 $ErrorActionPreference = 'Stop'
 
+# Carica credenziali dal config locale (gitignored). Vedi nas-config.example.ps1
+$configPath = Join-Path (Split-Path -Parent $PSScriptRoot) 'nas-config.local.ps1'
+if (-not (Test-Path $configPath)) {
+    throw "Config mancante: $configPath. Copia nas-config.example.ps1 e popolalo."
+}
+. $configPath
+
 Write-Host "[QUICKBUILD] Quick Build + Deploy NAS (senza dati)" -ForegroundColor Cyan
 Write-Host "=====================================================" -ForegroundColor Cyan
 Write-Host ""
@@ -81,14 +88,14 @@ Write-Host "[OK] Archivio verificato (nessun dato incluso)" -ForegroundColor Gre
 Write-Host ""
 
 # 4. Upload al NAS
-Write-Host "[4/5] Upload al NAS (utente: admin)..." -ForegroundColor Yellow
-scp task-manager-update.tar.gz admin@192.168.1.248:/share/Container/
+Write-Host "[4/5] Upload al NAS (utente: $NAS_USER)..." -ForegroundColor Yellow
+scp task-manager-update.tar.gz "$($NAS_USER)@$($NAS_IP):/share/Container/"
 Write-Host "[OK] File caricato" -ForegroundColor Green
 Write-Host ""
 
 # 5. Extract sul NAS (il restart avviene a fine sincronizzazione, evita race condition)
 Write-Host "[5/5] Estrazione archivio sul NAS..." -ForegroundColor Yellow
-ssh admin@192.168.1.248 'cd /share/Container && tar -xzf task-manager-update.tar.gz'
+ssh "$($NAS_USER)@$($NAS_IP)" 'cd /share/Container && tar -xzf task-manager-update.tar.gz'
 Write-Host "[OK] Archivio estratto" -ForegroundColor Green
 Write-Host ""
 
@@ -130,7 +137,7 @@ if $DOCKER restart $CT; then echo "     restart OK"; elif sleep 3 && $DOCKER res
 # Convertire CRLF -> LF altrimenti bash interpreta \r come parte dei comandi
 # Aggiunge newline finale per evitare che bash veda EOF prima dell'ultimo comando
 $remoteScriptLF = ($remoteScript -replace "`r`n", "`n") + "`n"
-$remoteScriptLF | ssh -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4 admin@192.168.1.248 "bash -s"
+$remoteScriptLF | ssh -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4 "$($NAS_USER)@$($NAS_IP)" "bash -s"
 Write-Host "[OK] File sincronizzati" -ForegroundColor Green
 Write-Host ""
 
@@ -139,8 +146,8 @@ Write-Host "[WAIT] Attesa 5 secondi per startup..." -ForegroundColor Cyan
 Start-Sleep -Seconds 5
 
 Write-Host "[DONE] DEPLOY COMPLETATO!" -ForegroundColor Green
-Write-Host "       URL: http://192.168.1.248:5000" -ForegroundColor Cyan
-Write-Host "       Credenziali: admin / ***REDACTED_NAS_PASSWORD***" -ForegroundColor Cyan
+Write-Host "       URL: http://$($NAS_IP):5000" -ForegroundColor Cyan
+Write-Host "       (credenziali NAS in nas-config.local.ps1)" -ForegroundColor DarkGray
 Write-Host ""
 Write-Host "✅ Passaggi completati:" -ForegroundColor Green
 Write-Host "   1. TypeScript compilato" -ForegroundColor Green

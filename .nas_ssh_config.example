@@ -1,0 +1,16 @@
+# QNAP NAS SSH Configuration — TEMPLATE
+# Le credenziali reali stanno in:
+#   - nas-config.local.ps1   (per script PowerShell)
+#   - nas-config.local.sh    (per script bash)
+# Questo file resta come riferimento/documentazione.
+
+NAS_IP=192.168.1.248
+NAS_HOST=NAS71F89C
+NAS_USER=admin
+NAS_PASSWORD=<vedi nas-config.local.*>
+NAS_DOCKER_PATH=/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker
+CONTAINER_NAME=molino-task-manager-nas
+
+# Comandi utili (carica prima i segreti):
+#   . .\nas-config.local.ps1                           # PowerShell
+#   ssh "$NAS_USER@$NAS_IP" "source /etc/profile; docker ps"

@@ -1,9 +1,16 @@
 # Script per aggiornare backup-management.html sul container Docker NAS
 
-$sourceFile = "C:\Users\manue\Molino_briganti_task_manager\task-manager-app\public\backup-management.html"
-$nasHost = "admin@192.168.1.248"
-$password = "***REDACTED_NAS_PASSWORD***"
-$containerName = "molino-task-manager-nas"
+# Carica credenziali dal config locale (gitignored). Vedi nas-config.example.ps1
+$configPath = Join-Path (Split-Path -Parent $PSScriptRoot) 'nas-config.local.ps1'
+if (-not (Test-Path $configPath)) {
+    throw "Config mancante: $configPath. Copia nas-config.example.ps1 e popolalo."
+}
+. $configPath
+
+$sourceFile    = Join-Path $PSScriptRoot 'public\backup-management.html'
+$nasHost       = "$NAS_USER@$NAS_IP"
+$password      = $NAS_PASSWORD
+$containerName = $NAS_CONTAINER
 
 Write-Host "Caricamento file sul container Docker..." -ForegroundColor Cyan
 

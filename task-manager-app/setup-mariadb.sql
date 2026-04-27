@@ -1,7 +1,10 @@
 -- SQL Commands per configurare MariaDB
 -- Database: molino_production
 -- User: molino_user
--- Password: ***REDACTED_DB_PASSWORD***
+-- Password: <CONFIGURATA IN nas-config.local.sh come $DB_PASSWORD>
+--
+-- Sostituisci i placeholder <DB_PASSWORD> prima dell'esecuzione,
+-- oppure usa setup-mariadb.sh che li valorizza dalle env vars.
 
 -- 1. Creare database
 CREATE DATABASE IF NOT EXISTS molino_production 
@@ -9,7 +12,7 @@ CREATE DATABASE IF NOT EXISTS molino_production
   COLLATE utf8mb4_unicode_ci;
 
 -- 2. Creare utente applicazione (accesso da qualsiasi host)
-CREATE USER IF NOT EXISTS 'molino_user'@'%' IDENTIFIED BY '***REDACTED_DB_PASSWORD***';
+CREATE USER IF NOT EXISTS 'molino_user'@'%' IDENTIFIED BY '<DB_PASSWORD>';
 
 -- 3. Garantire privilegi completi sul database
 GRANT ALL PRIVILEGES ON molino_production.* TO 'molino_user'@'%';

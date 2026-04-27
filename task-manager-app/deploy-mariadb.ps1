@@ -2,11 +2,14 @@
 
 Write-Host "[DEPLOY] Starting deployment to NAS with MariaDB..." -ForegroundColor Green
 
-# Configurazione
-$NAS_IP = "192.168.1.248"
-$NAS_USER = "admin"
-$NAS_PASSWORD = "***REDACTED_NAS_PASSWORD***"
-$IMAGE_NAME = "molino-task-manager:mariadb"
+# Carica credenziali dal config locale (gitignored). Vedi nas-config.example.ps1
+$configPath = Join-Path (Split-Path -Parent $PSScriptRoot) 'nas-config.local.ps1'
+if (-not (Test-Path $configPath)) {
+    throw "Config mancante: $configPath. Copia nas-config.example.ps1 e popolalo."
+}
+. $configPath
+
+$IMAGE_NAME     = "molino-task-manager:mariadb"
 $CONTAINER_NAME = "molino-briganti-task-manager"
 
 # 1. Build dell'immagine Docker
@@ -35,8 +38,8 @@ if ($LASTEXITCODE -ne 0) {
 # 4. Avvia il nuovo container con MariaDB
 Write-Host "[START] Starting new container with MariaDB..." -ForegroundColor Cyan
 $runCmd = "docker run -d --name $CONTAINER_NAME --restart unless-stopped -p 5000:5000 " +
-  "-e DATABASE_URL=`"mysql://molino_user:***REDACTED_DB_PASSWORD***@192.168.1.248:3306/molino_production`" " +
-  "-e JWT_SECRET=`"***REDACTED_JWT_SECRET***`" " +
+  "-e DATABASE_URL=`"mysql://$($DB_USER):$($DB_PASSWORD)@$($NAS_IP):$($DB_PORT)/$($DB_NAME)`" " +
+  "-e JWT_SECRET=`"$JWT_SECRET`" " +
   "-e PORT=5000 -e NODE_ENV=production -e DEFAULT_MASTER_USER=`"master`" -e DEFAULT_MASTER_PASS=`"masterpass`" " +
   "-v /share/Public/molino-data/uploads:/app/uploads -v /share/Public/molino-data/backups:/app/backups " +
   "$IMAGE_NAME"
