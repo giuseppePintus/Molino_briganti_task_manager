@@ -3211,15 +3211,18 @@
             }
             const optionsHTML = articoli
                 .filter(a => !(a.codice || a.nome || '').startsWith('EMPTY-'))
-                .filter(a => getAvailableColli(a) > 0)
                 .map(a => {
                     const cod = a.codice || a.nome || '???';
                     const desc = a.descrizione || '';
                     const displayText = (desc && desc !== cod) ? `${cod} - ${desc}` : cod;
                     const availColli = getAvailableColli(a);
                     const kg = (availColli * (a.weightPerUnit || 1)).toFixed(0);
-                    const stockInfo = ` [${availColli} colli · ${kg} kg disponibili]`;
-                    return `<option value="${cod}">${displayText}${stockInfo}</option>`;
+                    const isOut = availColli <= 0;
+                    const stockInfo = isOut
+                        ? ' [ESAURITO]'
+                        : ` [${availColli} colli · ${kg} kg disponibili]`;
+                    const disabled = isOut ? ' disabled style="color:#888;"' : '';
+                    return `<option value="${cod}"${disabled}>${displayText}${stockInfo}</option>`;
                 }).join('');
             productSelect.innerHTML = '<option value="">-- Seleziona Articolo --</option>' + optionsHTML;
 
@@ -3339,20 +3342,20 @@
             productSelect.innerHTML = '<option value="">-- Seleziona Articolo --</option>' +
                 articoli
                     .filter(a => !(a.codice || a.nome || '').startsWith('EMPTY-'))
-                    .filter(a => {
-                        const cod = a.codice || a.nome || '';
-                        // Se il prodotto è già in questo ordine, mostralo sempre (è prenotato da questo stesso ordine)
-                        if (thisOrderProductCodes.has(cod)) return true;
-                        return getAvailableColli(a) > 0;
-                    })
                     .map(a => {
                         const cod = a.codice || a.nome;
                         const desc = a.descrizione || '';
                         const displayText = (desc && desc !== cod) ? `${cod} - ${desc}` : cod;
                         const availColli = getAvailableColli(a);
                         const kg = (availColli * (a.weightPerUnit || 1)).toFixed(0);
-                        const stockInfo = availColli > 0 ? ` [${availColli} colli · ${kg} kg disponibili]` : ` [prenotato in questo ordine]`;
-                        return `<option value="${cod}">${displayText}${stockInfo}</option>`;
+                        const isInThisOrder = thisOrderProductCodes.has(cod);
+                        const isOut = availColli <= 0 && !isInThisOrder;
+                        let stockInfo;
+                        if (isInThisOrder && availColli <= 0) stockInfo = ' [prenotato in questo ordine]';
+                        else if (isOut) stockInfo = ' [ESAURITO]';
+                        else stockInfo = ` [${availColli} colli · ${kg} kg disponibili]`;
+                        const disabled = isOut ? ' disabled style="color:#888;"' : '';
+                        return `<option value="${cod}"${disabled}>${displayText}${stockInfo}</option>`;
                     }).join('');
 
             // Carica prodotti dell'ordine

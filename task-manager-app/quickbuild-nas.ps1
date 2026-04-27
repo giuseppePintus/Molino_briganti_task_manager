@@ -124,18 +124,12 @@ echo "  -> schema.prisma";                 $DOCKER cp $SRC/server/prisma/schema.
 echo "  -> prisma generate";               $DOCKER exec $CT npx prisma@6.19.0 generate --schema /app/server/prisma/schema.prisma
 echo "  -> prisma db push";                $DOCKER exec $CT npx prisma@6.19.0 db push --accept-data-loss --schema /app/server/prisma/schema.prisma
 echo "  -> restart (with retry)"
-for i in 1 2 3 4 5; do
-    if $DOCKER restart $CT 2>/dev/null; then
-        echo "     restart OK (attempt $i)"
-        break
-    fi
-    echo "     attempt $i failed, retrying in 3s..."
-    sleep 3
-done
+if $DOCKER restart $CT; then echo "     restart OK"; elif sleep 3 && $DOCKER restart $CT; then echo "     restart OK (retry 1)"; elif sleep 3 && $DOCKER restart $CT; then echo "     restart OK (retry 2)"; else echo "     restart FAILED"; fi
 '@
 # ConnectTimeout + ServerAliveInterval per evitare stalli su rete
 # Convertire CRLF -> LF altrimenti bash interpreta \r come parte dei comandi
-$remoteScriptLF = $remoteScript -replace "`r`n", "`n"
+# Aggiunge newline finale per evitare che bash veda EOF prima dell'ultimo comando
+$remoteScriptLF = ($remoteScript -replace "`r`n", "`n") + "`n"
 $remoteScriptLF | ssh -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4 admin@192.168.1.248 "bash -s"
 Write-Host "[OK] File sincronizzati" -ForegroundColor Green
 Write-Host ""

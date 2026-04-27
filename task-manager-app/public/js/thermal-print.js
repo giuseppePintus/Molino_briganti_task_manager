@@ -818,10 +818,8 @@
                         const t = await fetchTask(taskId);
                         if (t && isInternalOrderTask(t) && !t.completed) {
                             openCompleteInternalOrderModal(t, () => {
-                                try {
-                                    if (typeof window.loadTasks === 'function') window.loadTasks();
-                                    if (typeof window.renderTasks === 'function') window.renderTasks();
-                                } catch (_) {}
+                                // Ricarica l'intera pagina per riflettere lo stato aggiornato
+                                setTimeout(() => { try { window.location.reload(); } catch(_) {} }, 400);
                             });
                             return;
                         }
@@ -839,10 +837,8 @@
                             const t = await fetchTask(taskId);
                             if (t && isInternalOrderTask(t) && !t.completed) {
                                 openCompleteInternalOrderModal(t, () => {
-                                    try {
-                                        if (typeof window.loadTasks === 'function') window.loadTasks();
-                                        if (typeof window.updateStats === 'function') window.updateStats();
-                                    } catch (_) {}
+                                    // Ricarica l'intera pagina per riflettere lo stato aggiornato
+                                    setTimeout(() => { try { window.location.reload(); } catch(_) {} }, 400);
                                 });
                                 return;
                             }

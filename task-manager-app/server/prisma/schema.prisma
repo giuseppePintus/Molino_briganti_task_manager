@@ -34,7 +34,7 @@ model User {
 model Task {
   id                Int     @id @default(autoincrement())
   title             String
-  description       String?
+  description       String?  @db.Text
   scheduledAt       DateTime?
   assignedOperator  User?   @relation("AssignedTo", fields: [assignedOperatorId], references: [id])
   assignedOperatorId Int?
