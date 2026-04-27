@@ -1,6 +1,6 @@
 ---
 applyTo: "**/*.ps1"
-description: "Convenzioni per gli script PowerShell di deploy, backup e sync verso il NAS Synology."
+description: "Convenzioni per gli script PowerShell di deploy, backup e sync verso il NAS QNAP."
 ---
 
 # Script PowerShell

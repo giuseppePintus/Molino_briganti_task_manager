@@ -139,3 +139,26 @@ task-manager-app/server/.env
 # Prisma
 prisma/migrations/
 .prisma/
+
+# === Cleanup repo: artefatti pesanti ===
+# Gradle cache (rigenerata in locale)
+.gradle/
+**/.gradle/
+android-inventory-app/build/
+android-inventory-app/app/build/
+# Dump SQL backup (NON committare mai)
+*.sql
+!task-manager-app/setup-mariadb.sql
+!task-manager-app/migrations/utf8mb4-migration.sql
+backups/*.sql
+**/backups/*.sql
+molino-data/backups/
+task-manager-app/backups/
+# DB SQLite test/locale
+**/prisma/data/
+**/prisma/**/data/
+*.db
+*.db-shm
+*.db-wal
+# File temporanei vari
+android-inventory-app/cat-resp.txt
