@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma';
 import * as CustomersFile from '../services/customersFile';
+import { DuplicateNameError } from '../services/customersFile';
 
 const router = Router();
 
@@ -124,24 +125,32 @@ router.post('/', async (req: Request, res: Response) => {
     }
     
     // Salva nel file statico
-    const customer = CustomersFile.addCustomer({
-      code: code || null,
-      name,
-      address: address || null,
-      city: city || null,
-      province: province || null,
-      cap: cap || null,
-      phone: phone || null,
-      email: email || null,
-      piva: piva || null,
-      cf: cf || null,
-      notes: notes || null,
-      openingTime: openingTime || null,
-      closingTime: closingTime || null,
-      deliveryStartTime: deliveryStartTime || null,
-      deliveryEndTime: deliveryEndTime || null,
-      isActive: true
-    });
+    let customer;
+    try {
+      customer = CustomersFile.addCustomer({
+        code: code || null,
+        name,
+        address: address || null,
+        city: city || null,
+        province: province || null,
+        cap: cap || null,
+        phone: phone || null,
+        email: email || null,
+        piva: piva || null,
+        cf: cf || null,
+        notes: notes || null,
+        openingTime: openingTime || null,
+        closingTime: closingTime || null,
+        deliveryStartTime: deliveryStartTime || null,
+        deliveryEndTime: deliveryEndTime || null,
+        isActive: true
+      });
+    } catch (err: any) {
+      if (err instanceof DuplicateNameError) {
+        return res.status(409).json({ error: err.message, code: 'DUPLICATE_NAME' });
+      }
+      throw err;
+    }
     
     if (!customer) {
       return res.status(500).json({ error: 'Errore nel salvataggio del cliente' });
@@ -210,7 +219,15 @@ router.put('/:id', async (req: Request, res: Response) => {
     if (deliveryEndTime !== undefined) updateData.deliveryEndTime = deliveryEndTime;
     
     // Aggiorna nel file statico
-    const customer = CustomersFile.updateCustomer(parseInt(id), updateData);
+    let customer;
+    try {
+      customer = CustomersFile.updateCustomer(parseInt(id), updateData);
+    } catch (err: any) {
+      if (err instanceof DuplicateNameError) {
+        return res.status(409).json({ error: err.message, code: 'DUPLICATE_NAME' });
+      }
+      throw err;
+    }
     
     if (!customer) {
       return res.status(404).json({ error: 'Customer not found' });
@@ -437,6 +454,76 @@ router.post('/import-csv', async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('Error importing CSV:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================
+// DESTINAZIONI MULTIPLE
+// ============================================================
+
+/**
+ * GET /api/customers/:id/destinations
+ */
+router.get('/:id/destinations', async (req: Request, res: Response) => {
+  try {
+    const customerId = parseInt(req.params.id);
+    const customer = CustomersFile.getCustomerById(customerId);
+    if (!customer) return res.status(404).json({ error: 'Cliente non trovato' });
+    res.json(customer.destinations || []);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/customers/:id/destinations
+ */
+router.post('/:id/destinations', async (req: Request, res: Response) => {
+  try {
+    const customerId = parseInt(req.params.id);
+    const customer = CustomersFile.getCustomerById(customerId);
+    if (!customer) return res.status(404).json({ error: 'Cliente non trovato' });
+
+    const { label } = req.body;
+    if (!label || !label.trim()) {
+      return res.status(400).json({ error: 'Nome destinazione obbligatorio' });
+    }
+
+    const dest = CustomersFile.addDestination(customerId, req.body);
+    if (!dest) return res.status(500).json({ error: 'Errore nel salvataggio destinazione' });
+    res.status(201).json(dest);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * PUT /api/customers/:id/destinations/:destId
+ */
+router.put('/:id/destinations/:destId', async (req: Request, res: Response) => {
+  try {
+    const customerId = parseInt(req.params.id);
+    const destId = parseInt(req.params.destId);
+    const dest = CustomersFile.updateDestination(customerId, destId, req.body);
+    if (!dest) return res.status(404).json({ error: 'Destinazione non trovata' });
+    res.json(dest);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * DELETE /api/customers/:id/destinations/:destId
+ */
+router.delete('/:id/destinations/:destId', async (req: Request, res: Response) => {
+  try {
+    const customerId = parseInt(req.params.id);
+    const destId = parseInt(req.params.destId);
+    const ok = CustomersFile.deleteDestination(customerId, destId);
+    if (!ok) return res.status(404).json({ error: 'Destinazione non trovata' });
+    res.json({ success: true });
+  } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });

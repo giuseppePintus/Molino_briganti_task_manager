@@ -72,10 +72,10 @@ fun ShelfMapScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
-            title = { Text("Mappa Scaffali") },
-            navigationIcon = {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Indietro")
+            title = {
+                androidx.compose.foundation.layout.Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    com.molinobriganti.inventory.ui.components.TopBarCompanyLogo()
+                    Text("Mappa Scaffali")
                 }
             },
             actions = {
@@ -100,7 +100,7 @@ fun ShelfMapScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
-                                expandedSectors[sector] = !(expandedSectors[sector] ?: true)
+                                expandedSectors[sector] = !(expandedSectors[sector] ?: false)
                             },
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.primaryContainer

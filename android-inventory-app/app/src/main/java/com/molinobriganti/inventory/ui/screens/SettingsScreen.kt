@@ -78,7 +78,14 @@ fun SettingsScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        TopAppBar(title = { Text("Impostazioni") })
+        TopAppBar(
+            title = {
+                androidx.compose.foundation.layout.Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    com.molinobriganti.inventory.ui.components.TopBarCompanyLogo()
+                    Text("Impostazioni")
+                }
+            }
+        )
 
         LazyColumn(
             modifier = Modifier

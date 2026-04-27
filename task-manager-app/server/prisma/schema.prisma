@@ -65,6 +65,10 @@ model Task {
   completedById     Int?
   completedAt       DateTime?  // Ora di chiusura automatica
   actualMinutes     Int?
+
+  // Stampa scontrino "ordine interno" (operatori possono stamparlo una sola volta su termica)
+  internalOrderPrintedAt DateTime?
+  internalOrderPrintedById Int?
   
   notes             TaskNote[]
 }
@@ -103,7 +107,8 @@ model Inventory {
   article           Article   @relation(fields: [articleId], references: [id], onDelete: Cascade)
   articleId         Int       @unique
   currentStock      Int       @default(0)  // Quantità attuale in magazzino
-  minimumStock      Int       @default(0)  // Soglia minima per avviso
+  minimumStock      Int       @default(0)  // Soglia di avviso (LOW_STOCK)
+  criticalStock     Int       @default(0)  // Soglia critica (CRITICAL) - più bassa di minimumStock
   reserved          Int       @default(0)  // Quantità prenotata (assegnata a ordini non completati)
   // position          String?   // Posizione fisica (es. A1.1) - USATO COME CHIAVE DI MATCHING - TEMPORANEAMENTE DISABILITATO
   shelfPosition     String?   // Posizione scaffale unica combinata con codice (es. A1.1-F-0-5) - MANTENUTO PER COMPATIBILITÀ
@@ -111,6 +116,11 @@ model Inventory {
   expiry            String?   // Scadenza
   lastUpdated       DateTime  @updatedAt
   notes             String?
+  // Snooze avvisi: settato quando viene creato un ordine interno dalla pagina Avvisi.
+  // L'avviso resta visibile ma non incide sul contatore finché il magazzino
+  // non viene ricaricato (shelfTotal > snoozedAtStock).
+  snoozedAt         DateTime?
+  snoozedAtStock    Int?
   
   movements         StockMovement[]
   alerts            StockAlert[]

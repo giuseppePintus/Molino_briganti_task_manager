@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -28,6 +29,7 @@ fun AppNavGraph(
     val authState by authViewModel.uiState.collectAsStateWithLifecycle()
 
     val serverUrl by tokenManager.serverUrl.collectAsStateWithLifecycle(initialValue = "")
+    val serverUrlHistory by tokenManager.serverUrlHistory.collectAsStateWithLifecycle(initialValue = emptyList())
 
     // Company logo
     val companyViewModel: CompanyViewModel = hiltViewModel()
@@ -49,9 +51,11 @@ fun AppNavGraph(
         LoginScreen(
             uiState = authState,
             currentServerUrl = serverUrl ?: "",
+            serverUrlHistory = serverUrlHistory,
             logoUrl = fullLogoUrl,
             onLogin = authViewModel::login,
-            onClearError = authViewModel::clearError
+            onClearError = authViewModel::clearError,
+            onRemoveServerUrl = authViewModel::removeServerUrlFromHistory
         )
         return
     }
@@ -72,16 +76,87 @@ fun AppNavGraph(
         currentDestination?.hierarchy?.any { it.route == screen.route } == true
     }
 
+    com.molinobriganti.inventory.ui.components.ProvideCompanyLogo(fullLogoUrl) {
     Scaffold(
         bottomBar = {
             if (showBottomBar) {
+                // Polling leggero per il count avvisi (badge rosso sull'icona Avvisi)
+                var alertCount by remember { mutableStateOf(0) }
+                var alertTotal by remember { mutableStateOf(0) }
+                var alertCritical by remember { mutableStateOf(false) }
+                val ctx = LocalContext.current
+                val baseUrlForAlerts = baseUrl
+                LaunchedEffect(baseUrlForAlerts) {
+                    if (baseUrlForAlerts.isBlank()) return@LaunchedEffect
+                    val normalizedBase = if (
+                        baseUrlForAlerts.startsWith("http://") ||
+                        baseUrlForAlerts.startsWith("https://")
+                    ) baseUrlForAlerts else "http://$baseUrlForAlerts"
+                    while (true) {
+                        try {
+                            val txt = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                val url = java.net.URL("$normalizedBase/api/alerts")
+                                val conn = url.openConnection() as java.net.HttpURLConnection
+                                conn.connectTimeout = 4000; conn.readTimeout = 4000
+                                try {
+                                    conn.inputStream.bufferedReader().use { it.readText() }
+                                } finally {
+                                    conn.disconnect()
+                                }
+                            }
+                            val cMatch = Regex("\"count\"\\s*:\\s*(\\d+)").find(txt)
+                            val tMatch = Regex("\"total\"\\s*:\\s*(\\d+)").find(txt)
+                            alertCount = cMatch?.groupValues?.get(1)?.toIntOrNull() ?: 0
+                            alertTotal = tMatch?.groupValues?.get(1)?.toIntOrNull() ?: 0
+                            alertCritical = txt.contains("\"level\":\"CRITICAL\"")
+                        } catch (e: Exception) {
+                            android.util.Log.w("AlertsPolling", "fetch failed: ${e.message}")
+                        }
+                        kotlinx.coroutines.delay(15_000)
+                    }
+                }
                 NavigationBar {
                     bottomNavItems.forEach { screen ->
+                        val isAlerts = screen.route == Screen.Alerts.route
+                        // Verde = nessun avviso, Arancione = solo snoozed (no badge), Rosso = avvisi attivi
+                        val isUrgent = isAlerts && alertCount > 0
+                        val isSnoozed = isAlerts && alertCount == 0 && alertTotal > 0
+                        val isOk = isAlerts && alertTotal == 0
+                        val tintColor = when {
+                            isUrgent -> Color(0xFFDC2626)   // rosso
+                            isSnoozed -> Color(0xFFEA580C)  // arancione (solo icona)
+                            isOk -> Color(0xFF16A34A)       // verde
+                            else -> Color.Unspecified
+                        }
+                        // Badge solo per avvisi attivi (non per ordini in corso)
+                        val showBadge = isUrgent
                         NavigationBarItem(
                             icon = {
-                                screen.icon?.let { Icon(it, contentDescription = screen.title) }
+                                screen.icon?.let { ic ->
+                                    if (showBadge) {
+                                        BadgedBox(badge = {
+                                            Badge(
+                                                containerColor = tintColor,
+                                                contentColor = Color.White
+                                            ) { Text((if (isUrgent) alertCount else alertTotal).toString()) }
+                                        }) {
+                                            Icon(
+                                                ic,
+                                                contentDescription = screen.title,
+                                                tint = tintColor
+                                            )
+                                        }
+                                    } else {
+                                        Icon(ic, contentDescription = screen.title, tint = tintColor)
+                                    }
+                                }
                             },
-                            label = { Text(screen.title) },
+                            label = {
+                                Text(
+                                    screen.title,
+                                    color = if (isAlerts) tintColor else Color.Unspecified
+                                )
+                            },
                             selected = currentDestination?.hierarchy?.any {
                                 it.route == screen.route
                             } == true,
@@ -205,9 +280,10 @@ fun AppNavGraph(
                 ArticleEditScreen(
                     article = null,
                     isLoading = uiState.isLoading,
+                    knownCategories = uiState.categories,
                     onBack = { navController.popBackStack() },
-                    onSave = { code, name, description, category, unit, weightPerUnit, barcode ->
-                        viewModel.createArticle(code, name, description, category, unit, weightPerUnit, barcode)
+                    onSave = { code, name, description, category, unit, weightPerUnit, barcode, minStock, critStock ->
+                        viewModel.createArticle(code, name, description, category, unit, weightPerUnit, barcode, minStock, critStock)
                     }
                 )
             }
@@ -234,9 +310,10 @@ fun AppNavGraph(
                     ArticleEditScreen(
                         article = article,
                         isLoading = uiState.isLoading,
+                        knownCategories = uiState.categories,
                         onBack = { navController.popBackStack() },
-                    onSave = { code, name, description, category, unit, weightPerUnit, barcode ->
-                        viewModel.updateArticle(article.id, code, name, description, category, unit, weightPerUnit, barcode)
+                    onSave = { code, name, description, category, unit, weightPerUnit, barcode, minStock, critStock ->
+                        viewModel.updateArticle(article.id, code, name, description, category, unit, weightPerUnit, barcode, minStock, critStock)
                         }
                     )
                 }
@@ -314,7 +391,11 @@ fun AppNavGraph(
                 AlertsScreen(
                     uiState = uiState,
                     onRefresh = viewModel::loadAlerts,
-                    onResolveAlert = viewModel::resolveAlert
+                    onCreateOrder = viewModel::createOrderTask,
+                    onDismissRestock = viewModel::dismissRestock,
+                    onUnsnooze = viewModel::unsnoozeAlert,
+                    onClearToast = viewModel::clearToast,
+                    onClearError = viewModel::clearError
                 )
             }
 
@@ -404,5 +485,6 @@ fun AppNavGraph(
                 )
             }
         }
+    }
     }
 }

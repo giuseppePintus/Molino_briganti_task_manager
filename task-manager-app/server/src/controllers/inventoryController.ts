@@ -171,7 +171,7 @@ export class InventoryController {
    */
   static async setMinimumStock(req: Request, res: Response) {
     try {
-      const { articleId, minimumStock } = req.body;
+      const { articleId, minimumStock, criticalStock } = req.body;
 
       if (!articleId || minimumStock === undefined) {
         return res.status(400).json({ error: 'Campi obbligatori: articleId, minimumStock' });
@@ -179,7 +179,10 @@ export class InventoryController {
 
       const result = await InventoryService.setMinimumStock(
         parseInt(articleId),
-        parseInt(minimumStock)
+        parseInt(minimumStock),
+        criticalStock !== undefined && criticalStock !== null && criticalStock !== ''
+          ? parseInt(criticalStock)
+          : undefined
       );
 
       res.json(result);

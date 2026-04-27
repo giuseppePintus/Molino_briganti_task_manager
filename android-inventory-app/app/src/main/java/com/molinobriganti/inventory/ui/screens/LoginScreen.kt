@@ -5,6 +5,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
@@ -25,13 +26,16 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.molinobriganti.inventory.viewmodel.AuthUiState
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
     uiState: AuthUiState,
     currentServerUrl: String,
+    serverUrlHistory: List<String> = emptyList(),
     logoUrl: String? = null,
     onLogin: (serverUrl: String, username: String, password: String) -> Unit,
-    onClearError: () -> Unit
+    onClearError: () -> Unit,
+    onRemoveServerUrl: (String) -> Unit = {}
 ) {
     var serverUrl by remember(currentServerUrl) { mutableStateOf(currentServerUrl) }
     var username by remember { mutableStateOf("") }
@@ -39,6 +43,10 @@ fun LoginScreen(
     var passwordVisible by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
 
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+    ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -60,9 +68,13 @@ fun LoginScreen(
                     .clip(CircleShape)
             )
         } else {
-            Text(
-                text = "\uD83C\uDF3E",
-                fontSize = 64.sp
+            androidx.compose.foundation.Image(
+                painter = androidx.compose.ui.res.painterResource(id = com.molinobriganti.inventory.R.drawable.molino_logo),
+                contentDescription = "Logo aziendale",
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .size(96.dp)
+                    .clip(CircleShape)
             )
         }
         Spacer(modifier = Modifier.height(8.dp))
@@ -80,19 +92,52 @@ fun LoginScreen(
 
         Spacer(modifier = Modifier.height(48.dp))
 
-        // Server URL
-        OutlinedTextField(
-            value = serverUrl,
-            onValueChange = {
-                serverUrl = it
-                onClearError()
-            },
-            label = { Text("URL Server") },
-            placeholder = { Text("http://192.168.1.x:5000") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-            modifier = Modifier.fillMaxWidth()
-        )
+        // Server URL (with previously-used URLs dropdown)
+        var serverUrlExpanded by remember { mutableStateOf(false) }
+        ExposedDropdownMenuBox(
+            expanded = serverUrlExpanded && serverUrlHistory.isNotEmpty(),
+            onExpandedChange = { serverUrlExpanded = !serverUrlExpanded }
+        ) {
+            OutlinedTextField(
+                value = serverUrl,
+                onValueChange = {
+                    serverUrl = it
+                    onClearError()
+                },
+                label = { Text("URL Server") },
+                placeholder = { Text("http://192.168.1.x:5000") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                trailingIcon = {
+                    if (serverUrlHistory.isNotEmpty()) {
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = serverUrlExpanded)
+                    }
+                },
+                modifier = Modifier
+                    .menuAnchor()
+                    .fillMaxWidth()
+            )
+            ExposedDropdownMenu(
+                expanded = serverUrlExpanded && serverUrlHistory.isNotEmpty(),
+                onDismissRequest = { serverUrlExpanded = false }
+            ) {
+                serverUrlHistory.forEach { url ->
+                    DropdownMenuItem(
+                        text = { Text(url) },
+                        onClick = {
+                            serverUrl = url
+                            serverUrlExpanded = false
+                            onClearError()
+                        },
+                        trailingIcon = {
+                            IconButton(onClick = { onRemoveServerUrl(url) }) {
+                                Icon(Icons.Default.Close, contentDescription = "Rimuovi")
+                            }
+                        }
+                    )
+                }
+            }
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -175,5 +220,6 @@ fun LoginScreen(
                 Text("Accedi", fontSize = 16.sp)
             }
         }
+    }
     }
 }

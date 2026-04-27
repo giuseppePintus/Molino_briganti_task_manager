@@ -108,7 +108,12 @@ fun PrintInventoryScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Stampa Inventario") },
+                title = {
+                    androidx.compose.foundation.layout.Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        com.molinobriganti.inventory.ui.components.TopBarCompanyLogo()
+                        Text("Stampa Inventario")
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Indietro")

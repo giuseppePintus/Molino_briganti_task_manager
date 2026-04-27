@@ -1,8 +1,21 @@
 "use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const tasksController_1 = require("../controllers/tasksController");
 const auth_1 = require("../middleware/auth");
+const prisma_1 = __importDefault(require("../lib/prisma"));
 const router = (0, express_1.Router)();
 const tasksController = new tasksController_1.TasksController();
 // All routes require authentication
@@ -23,4 +36,209 @@ router.post('/move-overdue', (req, res) => tasksController.moveOverdueTasks(req,
 // Task notes routes
 router.post('/:id/notes', (req, res) => tasksController.addNote(req, res));
 router.get('/:id/notes', (req, res) => tasksController.getNotes(req, res));
+/**
+ * POST /api/tasks/:id/mark-printed
+ * Marca un task "Ordine interno" come stampato. Gli operatori possono farlo
+ * una sola volta (errore 409 se gi\u00e0 stampato). Gli admin possono ristampare
+ * sempre (riaggiornano comunque internalOrderPrintedAt).
+ */
+router.post('/:id/mark-printed', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const id = Number(req.params.id);
+        const user = req.user;
+        if (!id)
+            return res.status(400).json({ error: 'id mancante' });
+        const rows = yield prisma_1.default.$queryRawUnsafe('SELECT id, internalOrderPrintedAt, internalOrderPrintedById FROM Task WHERE id = ? LIMIT 1', id);
+        if (!rows.length)
+            return res.status(404).json({ error: 'task non trovato' });
+        const isAdmin = (user === null || user === void 0 ? void 0 : user.role) === 'master' || (user === null || user === void 0 ? void 0 : user.role) === 'ADMIN';
+        const already = rows[0].internalOrderPrintedAt;
+        if (already && !isAdmin) {
+            return res.status(409).json({
+                error: 'gi\u00e0 stampato',
+                printedAt: already,
+                printedById: rows[0].internalOrderPrintedById
+            });
+        }
+        const now = new Date();
+        yield prisma_1.default.$executeRawUnsafe('UPDATE Task SET internalOrderPrintedAt = ?, internalOrderPrintedById = ? WHERE id = ?', now, (user === null || user === void 0 ? void 0 : user.id) || null, id);
+        res.json({ ok: true, printedAt: now, printedById: (user === null || user === void 0 ? void 0 : user.id) || null });
+    }
+    catch (e) {
+        console.error('[tasks/mark-printed] errore', e);
+        res.status(500).json({ error: e.message });
+    }
+}));
+/**
+ * POST /api/tasks/internal-order
+ * Endpoint dedicato per creare un task "Ordine interno" da Avvisi.
+ * Qualunque utente autenticato pu\u00f2 chiamarlo (anche operatori dall'app Android).
+ * Body: { articleId, title, description?, scheduledAt?, assignedOperatorId?, priority?, estimatedMinutes? }
+ */
+router.post('/internal-order', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    try {
+        const user = req.user;
+        if (!user)
+            return res.status(401).json({ error: 'non autenticato' });
+        const { articleId, title, description, scheduledAt, assignedOperatorId, priority, estimatedMinutes } = req.body || {};
+        if (!title)
+            return res.status(400).json({ error: 'title mancante' });
+        // Trova un master a cui attribuire la creazione (createdById deve esistere)
+        let createdById = user.id;
+        const master = yield prisma_1.default.user.findFirst({ where: { role: 'master' } });
+        if (master && user.role !== 'master')
+            createdById = master.id;
+        const created = yield prisma_1.default.task.create({
+            data: {
+                title,
+                description: description || null,
+                priority: priority || 'NORMAL',
+                estimatedMinutes: estimatedMinutes ? Number(estimatedMinutes) : 30,
+                scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+                createdById,
+                assignedOperatorId: assignedOperatorId ? Number(assignedOperatorId) : null,
+            }
+        });
+        // Snooze: l'avviso resta in lista ma non incide sul contatore campanella
+        if (articleId) {
+            try {
+                const inv = yield prisma_1.default.inventory.findFirst({
+                    where: { articleId: Number(articleId) },
+                    include: { article: { include: { shelfEntries: true } } }
+                });
+                if (inv) {
+                    const shelfTotal = (((_a = inv.article) === null || _a === void 0 ? void 0 : _a.shelfEntries) || [])
+                        .reduce((s, e) => s + (e.quantity || 0), 0);
+                    yield prisma_1.default.$executeRawUnsafe('UPDATE Inventory SET snoozedAt = ?, snoozedAtStock = ? WHERE id = ?', new Date(), shelfTotal, inv.id);
+                }
+            }
+            catch (e) {
+                console.warn('[internal-order] snooze fallito', e);
+            }
+        }
+        res.json({ ok: true, taskId: created.id });
+    }
+    catch (e) {
+        console.error('[tasks/internal-order] errore', e);
+        res.status(500).json({ error: e.message });
+    }
+}));
+/**
+ * POST /api/tasks/:id/complete-internal-order
+ * Completa un task "Ordine interno" registrando il carico merce sullo scaffale.
+ * Body: { quantity, positionCode, batch?, expiry?, notes? }
+ * - Aggiunge la quantità (in colli) alla ShelfEntry esistente con stesso
+ *   articolo+posizione+lotto; altrimenti crea una nuova entry.
+ * - Rimuove lo snooze sull'Inventory (la merce è arrivata).
+ * - Marca il task come completato.
+ */
+router.post('/:id/complete-internal-order', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const user = req.user;
+        if (!user)
+            return res.status(401).json({ error: 'non autenticato' });
+        const taskId = Number(req.params.id);
+        if (!taskId)
+            return res.status(400).json({ error: 'id mancante' });
+        const { quantity, positionCode, batch, expiry, notes } = req.body || {};
+        const qty = Number(quantity);
+        if (!qty || qty <= 0)
+            return res.status(400).json({ error: 'quantità non valida' });
+        const pos = String(positionCode || '').trim();
+        if (!pos)
+            return res.status(400).json({ error: 'posizione scaffale mancante' });
+        const task = yield prisma_1.default.task.findUnique({ where: { id: taskId } });
+        if (!task)
+            return res.status(404).json({ error: 'task non trovato' });
+        if (task.completed) {
+            return res.status(409).json({ error: 'task già completato' });
+        }
+        if (!/ordine interno/i.test(task.title || '')) {
+            return res.status(400).json({ error: 'non è un ordine interno' });
+        }
+        // Estrai codice articolo dalla descrizione
+        const m = (task.description || '').match(/Codice:\s*(\S+)/i);
+        if (!m)
+            return res.status(400).json({ error: 'codice articolo non trovato nel task' });
+        const articleCode = m[1];
+        const article = yield prisma_1.default.article.findFirst({ where: { code: articleCode } });
+        if (!article)
+            return res.status(404).json({ error: `articolo con codice ${articleCode} non trovato` });
+        // Verifica che la posizione esista (avviso non bloccante)
+        const posExists = yield prisma_1.default.shelfPosition.findFirst({ where: { code: pos } });
+        if (!posExists) {
+            // Creala al volo (così non blocchiamo il flusso operatore)
+            try {
+                yield prisma_1.default.shelfPosition.create({ data: { code: pos } });
+            }
+            catch (_) { /* ignore */ }
+        }
+        // Aggiungi (o somma) alla ShelfEntry
+        const batchVal = batch && String(batch).trim() ? String(batch).trim() : null;
+        const expVal = expiry && String(expiry).trim() ? String(expiry).trim() : null;
+        const notesVal = notes && String(notes).trim() ? String(notes).trim() : null;
+        const existing = yield prisma_1.default.shelfEntry.findFirst({
+            where: { articleId: article.id, positionCode: pos, batch: batchVal }
+        });
+        if (existing) {
+            yield prisma_1.default.shelfEntry.update({
+                where: { id: existing.id },
+                data: {
+                    quantity: existing.quantity + qty,
+                    expiry: expVal || existing.expiry,
+                    notes: notesVal || existing.notes
+                }
+            });
+        }
+        else {
+            yield prisma_1.default.shelfEntry.create({
+                data: {
+                    articleId: article.id,
+                    positionCode: pos,
+                    batch: batchVal,
+                    expiry: expVal,
+                    quantity: qty,
+                    notes: notesVal
+                }
+            });
+        }
+        // Rimuovi snooze (merce arrivata)
+        try {
+            yield prisma_1.default.$executeRawUnsafe('UPDATE Inventory SET snoozedAt = NULL, snoozedAtStock = NULL WHERE articleId = ?', article.id);
+        }
+        catch (e) {
+            console.warn('[complete-internal-order] unsnooze fallito', e);
+        }
+        // Marca task completato + appendi nota di carico alla descrizione
+        const stamp = new Date().toLocaleString('it-IT');
+        const carico = `\n\n--- CARICO ${stamp} (${user.username || user.id}) ---\n` +
+            `Caricati: ${qty} colli in ${pos}` +
+            (batchVal ? ` · Lotto: ${batchVal}` : '') +
+            (expVal ? ` · Scadenza: ${expVal}` : '') +
+            (notesVal ? `\nNote carico: ${notesVal}` : '');
+        const newDescription = (task.description || '') + carico;
+        const updated = yield prisma_1.default.task.update({
+            where: { id: taskId },
+            data: {
+                completed: true,
+                completedAt: new Date(),
+                completedById: user.id || null,
+                paused: false,
+                description: newDescription
+            }
+        });
+        res.json({
+            ok: true,
+            task: updated,
+            articleId: article.id,
+            addedQuantity: qty,
+            positionCode: pos
+        });
+    }
+    catch (e) {
+        console.error('[tasks/complete-internal-order] errore', e);
+        res.status(500).json({ error: e.message });
+    }
+}));
 exports.default = router;

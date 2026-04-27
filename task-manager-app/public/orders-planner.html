@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="css/orders-planner-custom.css">
     <script src="js/settings-utils.js"></script>
     <script src="js/pages-indice.js"></script>
+    <script src="js/alerts-badge.js" defer></script>
     <style>
         * {
             margin: 0;
@@ -983,7 +984,6 @@
         <div class="card card-cyan-border">
             <div class="card-header-flex">
                 <h2 class="card-title-flex">🚐 Viaggi <span id="tripsCount" class="card-count-badge"></span></h2>
-                <button class="btn btn-primary btn-close-small" onclick="forceRefreshTrips()">🔄 Sincronizza</button>
             </div>
             <div class="orders-grid" id="tripsGrid">
                 <!-- Trips will appear here -->
@@ -1117,6 +1117,15 @@
                                 <option value="">-- Nessun viaggio disponibile --</option>
                             </select>
                         </div>
+                    </div>
+
+                    <!-- Sezione Assegnazione Operatore (solo per ordini di Ritiro) -->
+                    <div class="form-group form-group-highlighted card-hidden" id="pickupOperatorSection" style="border: 1px solid #16a34a; background: #1a2d1f; padding: 12px; border-radius: 6px;">
+                        <label for="assignToOperator" class="form-label" style="color: #16a34a;">👤 Assegna a operatore (Ritiro)</label>
+                        <select id="assignToOperator" class="form-input-full font-size-14">
+                            <option value="">-- Non assegnato --</option>
+                        </select>
+                        <div style="font-size: 12px; color: #86efac; margin-top: 6px;">Lascia vuoto per assegnare in seguito.</div>
                     </div>
 
                     <div class="form-group form-group-spaced">
@@ -1264,6 +1273,7 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="js/socket-client.js"></script>
+    <script src="js/thermal-print.js"></script>
     <script src="js/data-sync.js"></script>
     <script>
         let orders = [];
@@ -1295,6 +1305,13 @@
             localStorage.setItem('orderInventoryReservations', JSON.stringify(data));
         }
         let orderInventoryReservations = loadInventoryReservations(); // {orderId: {productCode, quantity}}
+
+        // Calcola colli disponibili (stock totale - prenotati) per un articolo
+        function getAvailableColli(art) {
+            const weightPerUnit = art.weightPerUnit || 1;
+            const reservedColli = Math.ceil((art.reservedKg || 0) / weightPerUnit);
+            return (art.currentStock || 0) - reservedColli;
+        }
         
         // Helper per ottenere il nome cliente in modo sicuro (compatibile con server API)
         function getClientName(order) {
@@ -1402,14 +1419,17 @@
         function updateTripOptions() {
             const orderType = document.getElementById('orderType').value;
             const tripSection = document.getElementById('tripSection');
+            const pickupOperatorSection = document.getElementById('pickupOperatorSection');
             
             // Mostra sezione viaggio solo per consegnati
             if (orderType === 'consegnato') {
                 tripSection.style.display = 'block';
+                if (pickupOperatorSection) pickupOperatorSection.style.display = 'none';
                 // Reset selezione
                 document.getElementById('tripOptions').value = '';
             } else {
                 tripSection.style.display = 'none';
+                if (pickupOperatorSection) pickupOperatorSection.style.display = 'block';
                 // Reset per ritiri
                 document.getElementById('tripOptions').value = '';
             }
@@ -2049,6 +2069,8 @@
                         </div>
                         <div class="order-actions" style="display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap;">
                             <button class="btn btn-secondary btn-small" onclick="openEditOrderModal(${order.id})" style="flex: 1; min-width: 80px; padding: 6px 8px;">✏️ Modifica</button>
+                            <button class="btn btn-secondary btn-small" onclick="printPickupOrder(${order.id})" style="flex: 1; min-width: 80px; padding: 6px 8px; background: #8b5cf6; color: white; border: none; border-radius: 3px; cursor: pointer;">🖨️ Stampa</button>
+                            <button class="btn btn-secondary btn-small" onclick="printPickupOrderThermal(${order.id})" style="flex: 1; min-width: 80px; padding: 6px 8px; background: #475569; color: white; border: none; border-radius: 3px; cursor: pointer;" title="Stampante termica 72mm">🧾 Termica</button>
                             <button class="btn btn-danger btn-small" onclick="deleteOrder(${order.id})" style="flex: 1; min-width: 80px; padding: 6px 8px;">🗑️ Elimina</button>
                         </div>
                     </div>
@@ -2327,6 +2349,8 @@
                             </div>
                             <div class="order-actions" style="display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap;">
                                 <button class="btn btn-secondary btn-small" onclick="openEditOrderModal(${order.id})" style="flex: 1; min-width: 80px; padding: 6px 8px; background: #3b82f6; color: white; border: none; border-radius: 3px; cursor: pointer;">✏️ Modifica</button>
+                                <button class="btn btn-secondary btn-small" onclick="printPickupOrder(${order.id})" style="flex: 1; min-width: 80px; padding: 6px 8px; background: #8b5cf6; color: white; border: none; border-radius: 3px; cursor: pointer;">🖨️ Stampa</button>
+                                <button class="btn btn-secondary btn-small" onclick="printPickupOrderThermal(${order.id})" style="flex: 1; min-width: 80px; padding: 6px 8px; background: #475569; color: white; border: none; border-radius: 3px; cursor: pointer;" title="Stampante termica 72mm">🧾 Termica</button>
                                 <button class="btn btn-danger btn-small" onclick="deleteOrder(${order.id})" style="flex: 1; min-width: 80px; padding: 6px 8px;">🗑️ Elimina</button>
                             </div>
                         </div>
@@ -2409,6 +2433,7 @@
                             ${trip.acceptedAt && !trip.completed ? `<button class="btn btn-warning btn-small" onclick="completeTrip(${trip.id})" style="background: #16a34a; flex: 1; min-width: 80px;">🏁 Completato</button>` : ''}
                             <button class="btn btn-primary btn-small" onclick="openEditTripModal(${trip.id})" style="flex: 1; min-width: 100px;">✏️ Modifica</button>
                             <button class="btn btn-secondary btn-small" onclick="printTrip(${trip.id})" style="flex: 1; min-width: 100px;">🖨️ Stampa</button>
+                            <button class="btn btn-secondary btn-small" onclick="printTripThermal(${trip.id})" style="flex: 1; min-width: 100px; background: #475569; color: white;" title="Stampante termica 72mm">🧾 Termica</button>
                             <button class="btn btn-danger btn-small" onclick="deleteTrip(${trip.id})" style="flex: 1; min-width: 100px;">🗑️ Elimina</button>
                         </div>
                     </div>
@@ -2833,7 +2858,9 @@
                                         descrizione: a.name || a.descrizione || a.description || '',
                                         nome: a.name || a.nome || '',
                                         unit: a.unit || 'pz',
-                                        weightPerUnit: parseFloat(a.weightPerUnit) || 1
+                                        weightPerUnit: parseFloat(a.weightPerUnit) || 1,
+                                        currentStock: (a.inventory && a.inventory.currentStock != null) ? a.inventory.currentStock : (a.totalQuantityAllPositions || 0),
+                                        reservedKg: (a.inventory && a.inventory.reserved != null) ? a.inventory.reserved : 0
                                     });
                                 }
                             });
@@ -3142,20 +3169,33 @@
             // Aggiorna header modal
             const headerEl = document.querySelector('#orderModalHeader h2');
             if (headerEl) headerEl.textContent = '📝 Nuovo Ordine';
+            // Reset form PRIMA di impostare i valori (altrimenti reset li cancella)
+            document.getElementById('orderForm').reset();
             document.getElementById('orderForm').dataset.editingId = '';
             
             console.log('🔍 DEBUG openOrderModal - articoli.length:', articoli.length);
-            
+
+            // Ricarica dati magazzino aggiornati (stock + prenotazioni) prima di aprire il modal
+            try { await loadCSVData(); } catch (e) { console.warn('⚠️ Errore refresh dati magazzino:', e); }
+
             // Resetta i prodotti
             currentOrderProducts = [];
             renderOrderProducts();
             
-            // Se c'è una data selezionata dal calendario, preselezionala
+            // Se c'è una data selezionata dal calendario, preselezionala. Altrimenti default = oggi
             if (selectedDate) {
                 // Formato atteso: YYYY-MM-DD da calendario
                 document.getElementById('orderDate').value = selectedDate;
                 document.getElementById('orderTime').value = '12:00';
                 console.log(`📅 [openOrderModal] Data preselezionata: ${selectedDate} ore 12:00`);
+            } else {
+                const today = new Date();
+                const yyyy = today.getFullYear();
+                const mm = String(today.getMonth() + 1).padStart(2, '0');
+                const dd = String(today.getDate()).padStart(2, '0');
+                document.getElementById('orderDate').value = `${yyyy}-${mm}-${dd}`;
+                document.getElementById('orderTime').value = '12:00';
+                console.log(`📅 [openOrderModal] Data default = oggi: ${yyyy}-${mm}-${dd}`);
             }
             
             // Popola dropdown clienti (usa dati già caricati da CSV/localStorage)
@@ -3171,20 +3211,19 @@
             }
             const optionsHTML = articoli
                 .filter(a => !(a.codice || a.nome || '').startsWith('EMPTY-'))
+                .filter(a => getAvailableColli(a) > 0)
                 .map(a => {
                     const cod = a.codice || a.nome || '???';
                     const desc = a.descrizione || '';
                     const displayText = (desc && desc !== cod) ? `${cod} - ${desc}` : cod;
-                    const artId = a.id;
-                    const colli = artId ? allShelfEntries.filter(e => e.articleId === artId).reduce((s,e) => s + (e.quantity||0), 0) : 0;
-                    const kg = (colli * (a.weightPerUnit || 1)).toFixed(0);
-                    const stockInfo = ` [${colli} colli · ${kg} kg]`;
+                    const availColli = getAvailableColli(a);
+                    const kg = (availColli * (a.weightPerUnit || 1)).toFixed(0);
+                    const stockInfo = ` [${availColli} colli · ${kg} kg disponibili]`;
                     return `<option value="${cod}">${displayText}${stockInfo}</option>`;
                 }).join('');
             productSelect.innerHTML = '<option value="">-- Seleziona Articolo --</option>' + optionsHTML;
 
             document.getElementById('orderModal').classList.add('active');
-            document.getElementById('orderForm').reset();
 
             // Popola dropdown operatori
             const assignToOperator = document.getElementById('assignToOperator');
@@ -3291,18 +3330,28 @@
             clientSelect.innerHTML = clientOptions;
 
             // Popola dropdown articoli (usa dati già caricati da CSV/localStorage)
+            // Calcola i codici già prenotati da questo stesso ordine (escludi dalla riduzione disponibile)
+            const thisOrderProductCodes = new Set(
+                (order.products ? (typeof order.products === 'string' ? JSON.parse(order.products) : order.products) : [])
+                    .map(p => p.product)
+            );
             const productSelect = document.getElementById('orderProduct');
             productSelect.innerHTML = '<option value="">-- Seleziona Articolo --</option>' +
                 articoli
                     .filter(a => !(a.codice || a.nome || '').startsWith('EMPTY-'))
+                    .filter(a => {
+                        const cod = a.codice || a.nome || '';
+                        // Se il prodotto è già in questo ordine, mostralo sempre (è prenotato da questo stesso ordine)
+                        if (thisOrderProductCodes.has(cod)) return true;
+                        return getAvailableColli(a) > 0;
+                    })
                     .map(a => {
                         const cod = a.codice || a.nome;
                         const desc = a.descrizione || '';
                         const displayText = (desc && desc !== cod) ? `${cod} - ${desc}` : cod;
-                        const artId = a.id;
-                        const colli = artId ? allShelfEntries.filter(e => e.articleId === artId).reduce((s,e) => s + (e.quantity||0), 0) : 0;
-                        const kg = (colli * (a.weightPerUnit || 1)).toFixed(0);
-                        const stockInfo = ` [${colli} colli · ${kg} kg]`;
+                        const availColli = getAvailableColli(a);
+                        const kg = (availColli * (a.weightPerUnit || 1)).toFixed(0);
+                        const stockInfo = availColli > 0 ? ` [${availColli} colli · ${kg} kg disponibili]` : ` [prenotato in questo ordine]`;
                         return `<option value="${cod}">${displayText}${stockInfo}</option>`;
                     }).join('');
 
@@ -3856,7 +3905,7 @@
                             </div>
                         </td>
                         <td style="padding: 8px; text-align: center;">
-                            <button type="button" onclick="removeProductFromOrder(${idx})" style="background: #dc2626; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 12px;">🗑️ Rimuovi</button>
+                            <button type="button" onclick="removeProductFromOrder(${idx})" style="background: #dc2626; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 12px;">🗑️ Elimina</button>
                         </td>
                     </tr>
                 `;
@@ -4406,7 +4455,43 @@
                 return a.expiry.localeCompare(b.expiry);
             });
 
-            console.log(`✅ Lotti da ShelfEntries: ${currentAvailableBatches.length} per ${selectedProduct}`);
+            // Sottrai le quantità già prenotate da altri ordini ancora attivi
+            // (ordini non completati/consegnati che usano lo stesso lotto+posizione)
+            const editingId = document.getElementById('orderForm')?.dataset?.editingId || '';
+            const reservedByOtherOrders = {};
+            (orders || []).forEach(o => {
+                if (!o || String(o.id) === String(editingId)) return;
+                const status = (o.status || '').toLowerCase();
+                if (status === 'completed' || status === 'delivered' || status === 'cancelled') return;
+                let prods = o.products;
+                if (typeof prods === 'string') {
+                    try { prods = JSON.parse(prods); } catch { prods = []; }
+                }
+                if (!Array.isArray(prods)) return;
+                prods.forEach(p => {
+                    if (!p || p.product !== selectedProduct) return;
+                    const batch = p.batch || (p.batchData && p.batchData.batch) || '';
+                    const pos = p.shelfPosition || (p.batchData && p.batchData.shelfPosition) || '';
+                    if (!batch) return;
+                    const key = `${batch}|${pos}`;
+                    reservedByOtherOrders[key] = (reservedByOtherOrders[key] || 0) + (Number(p.quantity) || 0);
+                });
+            });
+
+            currentAvailableBatches = currentAvailableBatches
+                .map(b => {
+                    const key = `${b.batch}|${b.shelfPosition || ''}`;
+                    const reservedKg = reservedByOtherOrders[key] || 0;
+                    if (reservedKg > 0) {
+                        const remainingKg = Math.max(0, (b.quantityKg || 0) - reservedKg);
+                        const remainingColli = weightPerUnit > 0 ? (remainingKg / weightPerUnit) : 0;
+                        return { ...b, quantityKg: remainingKg, quantity: remainingColli };
+                    }
+                    return b;
+                })
+                .filter(b => (b.quantityKg || 0) > 0.01);
+
+            console.log(`✅ Lotti da ShelfEntries: ${currentAvailableBatches.length} per ${selectedProduct} (dopo deduzione prenotazioni)`);
         }
 
         // Renderizza i lotti disponibili (not used anymore - batches shown in modal)
@@ -4670,6 +4755,13 @@
                 notes: document.getElementById('orderNotes').value,
                 tripId: tripId  // ← NUOVO CAMPO
             };
+
+            // Per gli ordini di Ritiro, includi l'operatore assegnato (se selezionato)
+            if (orderData.type === 'ritira') {
+                const pickupOpEl = document.getElementById('assignToOperator');
+                const pickupOpVal = pickupOpEl ? pickupOpEl.value : '';
+                orderData.assignedOperatorId = pickupOpVal ? parseInt(pickupOpVal) : null;
+            }
 
             if (editingId) {
                 // Modifica ordine esistente
@@ -5341,6 +5433,155 @@
             printWindow.document.close();
         }
 
+        // Stampa singolo ordine di Ritiro - usa lo stesso formato della stampa Viaggio
+        function printPickupOrder(orderId) {
+            const order = orders.find(o => o.id === orderId);
+            if (!order) {
+                alert('Ordine non trovato');
+                return;
+            }
+
+            const colli = (typeof getOrderTotalColli === 'function') ? getOrderTotalColli(order) : 0;
+            const kg = (typeof getOrderTotalQuantity === 'function') ? getOrderTotalQuantity(order) : (order.quantity || 0);
+            const clientName = getClientName(order);
+            const orderDate = order.dateTime ? new Date(order.dateTime) : new Date();
+
+            let operatorName = 'Non assegnato';
+            if (order.assignedOperatorId && allOperators) {
+                const op = allOperators.find(o => o.id === order.assignedOperatorId);
+                if (op) operatorName = op.name || op.username;
+            } else if (order.assignedOperator) {
+                operatorName = order.assignedOperator.name || order.assignedOperator.username || operatorName;
+            }
+
+            const totals = {};
+            try {
+                if (order.products) {
+                    const prods = typeof order.products === 'string' ? JSON.parse(order.products) : order.products;
+                    if (Array.isArray(prods)) {
+                        prods.forEach(p => {
+                            if (!p || !p.product) return;
+                            totals[p.product] = (totals[p.product] || 0) + (Number(p.quantity) || 0);
+                        });
+                    }
+                }
+            } catch (e) { /* noop */ }
+
+            let productsHTML = '';
+            try {
+                if (order.products) {
+                    const prods = typeof order.products === 'string' ? JSON.parse(order.products) : order.products;
+                    if (Array.isArray(prods) && prods.length > 0) {
+                        productsHTML = prods.map(p => {
+                            const weight = extractWeightPerCollo(p.product);
+                            const prodColli = Math.round((p.quantity || 0) / weight);
+                            const shelfPos = p.batchData?.shelfPosition || p.shelfPosition || '—';
+                            const batchNumber = p.batchData?.batch || p.batch || '—';
+                            const expiryDate = p.batchData?.expiry || p.expiry || '—';
+                            return `<div style="padding: 8px; margin: 4px 0; background: #dcfce7; border: 2px solid #16a34a; border-radius: 4px; font-weight: bold; color: #14532d; font-size: 16px;">${p.product} (${prodColli} colli • ${p.quantity}kg) <span style="color: #666; font-size: 14px;">🏷️ Lotto: ${batchNumber} • 📅 Scad: ${expiryDate} • 📍 ${shelfPos}</span></div>`;
+                        }).join('');
+                    }
+                }
+            } catch (e) {
+                productsHTML = `<div style="padding: 8px; margin: 4px 0; background: #dcfce7; border: 2px solid #16a34a; border-radius: 4px; font-weight: bold; color: #14532d; font-size: 16px;">${getOrderProductName(order)}</div>`;
+            }
+
+            const printHTML = `
+                <html>
+                    <head>
+                        <meta charset="UTF-8">
+                        <title>Stampa Ritiro - ${clientName}</title>
+                        <style>
+                            body { font-family: Arial, sans-serif; margin: 20px; color: #333; }
+                            .header { border-bottom: 3px solid #16a34a; padding-bottom: 15px; margin-bottom: 20px; }
+                            .header h1 { margin: 0; color: #16a34a; font-size: 24px; }
+                            .header p { margin: 5px 0; color: #666; }
+                            .details { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+                            .detail-box { padding: 10px; background: #f5f5f5; border-radius: 4px; }
+                            .detail-label { font-weight: bold; color: #16a34a; font-size: 12px; }
+                            .detail-value { font-size: 16px; margin-top: 5px; }
+                            .orders-section { margin: 20px 0; }
+                            .orders-section h2 { color: #16a34a; border-bottom: 2px solid #16a34a; padding-bottom: 10px; }
+                            .order-item { padding: 12px; margin: 8px 0; background: #f9f9f9; border-left: 4px solid #16a34a; border-radius: 4px; }
+                            .order-item strong { color: #333; }
+                            .order-item p { margin: 5px 0; color: #666; font-size: 14px; }
+                            .totals { margin-top: 20px; padding: 15px; background: #dcfce7; border-radius: 6px; border: 2px solid #16a34a; }
+                            .totals h3 { color: #16a34a; margin-top: 0; }
+                            .total-row { display: flex; justify-content: space-between; padding: 5px 0; }
+                            @media print { body { margin: 0; } .no-print { display: none; } }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="header">
+                            <h1>📥 Ritiro - ${clientName}</h1>
+                            <p>Stampa Ordine Ritiro • ${orderDate.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                        </div>
+
+                        <div class="details">
+                            <div class="detail-box">
+                                <div class="detail-label">📅 DATA RITIRO</div>
+                                <div class="detail-value">${orderDate.toLocaleDateString('it-IT')}</div>
+                            </div>
+                            <div class="detail-box">
+                                <div class="detail-label">⏰ ORARIO</div>
+                                <div class="detail-value">${orderDate.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</div>
+                            </div>
+                            <div class="detail-box">
+                                <div class="detail-label">👤 OPERATORE</div>
+                                <div class="detail-value">${operatorName}</div>
+                            </div>
+                            <div class="detail-box">
+                                <div class="detail-label">📦 TIPO</div>
+                                <div class="detail-value">Ritiro Cliente</div>
+                            </div>
+                        </div>
+
+                        <div class="orders-section">
+                            <h2>📋 DETTAGLIO RITIRO</h2>
+                            <div class="order-item">
+                                <strong>${clientName}</strong>
+                                <p style="margin-top: 10px; margin-bottom: 5px;"><strong style="color: #333;">📦 PRODOTTI:</strong></p>
+                                ${productsHTML || '<p style="color: #999;">Nessun prodotto</p>'}
+                                <p style="margin-top: 10px;"><strong>Quantità Totali:</strong> ${colli} colli • <strong style="color: #16a34a;">${kg} kg</strong></p>
+                                <p><strong>Data/Ora:</strong> ${orderDate.toLocaleString('it-IT')}</p>
+                                <p><strong>Note:</strong> ${order.notes || '—'}</p>
+                            </div>
+                        </div>
+
+                        <div class="totals">
+                            <h3>📊 TOTALI PRODOTTI</h3>
+                            ${Object.entries(totals).length > 0
+                                ? Object.entries(totals).map(([product, qty]) => {
+                                    const weight = extractWeightPerCollo(product);
+                                    const c = Math.round(qty / weight);
+                                    return `<div class="total-row"><span><strong>${product}</strong></span><span style="color: #16a34a; font-weight: bold;">${c} colli • ${qty.toFixed(1)} kg</span></div>`;
+                                }).join('')
+                                : '<p style="color: #999;">Nessun prodotto</p>'
+                            }
+                            ${(() => {
+                                const totalKg = Object.values(totals).reduce((a, b) => a + b, 0);
+                                const totalColli = Object.entries(totals).reduce((sum, [product, qty]) => {
+                                    const weight = extractWeightPerCollo(product);
+                                    return sum + Math.round(qty / weight);
+                                }, 0);
+                                return `<div class="total-row" style="border-top: 1px solid #16a34a; padding-top: 10px; margin-top: 10px; font-weight: bold; font-size: 16px;"><span>TOTALE</span><span style="color: #16a34a;">${totalColli} colli • ${totalKg.toFixed(1)} kg</span></div>`;
+                            })()}
+                        </div>
+
+                        <div style="margin-top: 40px; text-align: center; color: #999; font-size: 12px;" class="no-print">
+                            <p>Stampato il ${new Date().toLocaleString('it-IT')}</p>
+                            <button onclick="window.print()" style="padding: 10px 20px; background: #16a34a; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">🖨️ Stampa</button>
+                            <button onclick="window.close()" style="padding: 10px 20px; background: #999; color: white; border: none; border-radius: 4px; cursor: pointer; margin-left: 10px; font-size: 14px;">❌ Chiudi</button>
+                        </div>
+                    </body>
+                </html>
+            `;
+
+            const printWindow = window.open('', 'PrintPickup', 'height=800,width=900');
+            printWindow.document.write(printHTML);
+            printWindow.document.close();
+        }
+
         // Apri modal per modificare viaggio
         function openEditTripModal(tripId) {
             const trip = trips.find(t => t.id === tripId);
@@ -5854,7 +6095,7 @@
         // Genera 15 ordini casuali per i prossimi 10 giorni
         async function generateSampleOrders() {
             if (orders.length > 0) {
-                if (!await customConfirm('Ordini già presenti. Vuoi aggiungere 15 nuovi ordini?')) return;
+                // (rimossa conferma: l'utente ha richiesto pochi popup)
             }
 
             const statuses = ['pending', 'completed'];
@@ -6674,6 +6915,17 @@
                     await loadOrders();
                     renderCalendar();
                     updateStats();
+                },
+                onRefresh: async (dataType) => {
+                    console.log(`🔄 [Socket] refresh:data (${dataType}) ricevuto, ricarico tutto...`);
+                    if (!dataType || dataType === 'trips') {
+                        await forceRefreshTrips();
+                    }
+                    if (!dataType || dataType === 'orders') {
+                        await loadOrders();
+                        renderCalendar();
+                        updateStats();
+                    }
                 }
             });
         });
@@ -6822,10 +7074,7 @@
         </div>
     </div>
 
-    <!-- Genera Dati Button at Bottom -->
-    <div class="generate-btn-fixed">
-        <button class="btn btn-warning" onclick="generateSampleOrders()" title="Genera dati di test">🔄 Genera Dati</button>
-    </div>
+
 
     <script>
     // Global ESC key handler - chiude qualsiasi popup/modal aperto
@@ -6928,6 +7177,7 @@
     })();
     </script>
 
+    <script src="js/ui-confirm.js"></script>
 </body>
 </html>
 

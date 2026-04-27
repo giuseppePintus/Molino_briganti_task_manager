@@ -39,7 +39,8 @@ data class ShelfPositionRequest(
 @Serializable
 data class SetMinimumStockRequest(
     val articleId: Int,
-    val minimumStock: Int
+    val minimumStock: Int,
+    val criticalStock: Int? = null
 )
 
 @Serializable
@@ -76,6 +77,30 @@ data class UpdateShelfPositionRequest(
     val description: String? = null,
     val isActive: Boolean? = null
 )
+
+@Serializable
+data class CreateTaskRequest(
+    val title: String,
+    val description: String? = null,
+    val scheduledAt: String? = null,
+    val assignedOperatorId: Int? = null,
+    val priority: String = "HIGH",
+    val estimatedMinutes: Int? = 30
+)
+
+@Serializable
+data class CreateInternalOrderRequest(
+    val articleId: Int? = null,
+    val title: String,
+    val description: String? = null,
+    val scheduledAt: String? = null,
+    val assignedOperatorId: Int? = null,
+    val priority: String = "HIGH",
+    val estimatedMinutes: Int? = 30
+)
+
+@Serializable
+data class ArticleIdRequest(val articleId: Int)
 
 @Serializable
 data class CreateShelfEntryRequest(

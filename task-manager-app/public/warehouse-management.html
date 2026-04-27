@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="css/warehouse-management-custom.css">
     <script src="js/settings-utils.js"></script>
     <script src="js/pages-indice.js"></script>
+    <script src="js/alerts-badge.js" defer></script>
     <script src="/socket.io/socket.io.js"></script>
     <style>
         * {
@@ -135,14 +136,14 @@
 
         .content-section {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
             margin-bottom: 20px;
         }
 
         .feature-card {
             background: #3d3d3d;
-            padding: 15px;
+            padding: 10px;
             border-radius: 8px;
             border: 1px solid #4d4d4d;
             text-align: center;
@@ -157,18 +158,18 @@
         }
 
         .feature-card .icon {
-            font-size: 36px;
-            margin-bottom: 10px;
+            font-size: 24px;
+            margin-bottom: 6px;
         }
 
         .feature-card h3 {
-            font-size: 16px;
+            font-size: 14px;
             color: #e0e0e0;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
         }
 
         .feature-card p {
-            font-size: 14px;
+            font-size: 12px;
             color: #a0a0a0;
         }
 
@@ -193,6 +194,66 @@
 
         .feature-card-sub button:hover {
             background: #1d4ed8;
+        }
+
+        /* ===== Avvisi (sezione embedded) ===== */
+        .av-filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+        .av-filters input, .av-filters select {
+            background: #1f2937; color: #e5e7eb; border: 1px solid #374151;
+            padding: 8px 10px; border-radius: 6px; font-size: 14px;
+        }
+        .av-filters input { flex: 1; min-width: 180px; }
+        #avvisiCard table { width: 100%; border-collapse: collapse; }
+        #avvisiCard thead th {
+            text-align: left; padding: 10px 12px; font-size: 12px; text-transform: uppercase;
+            color: #9ca3af; border-bottom: 1px solid #374151; letter-spacing: 0.4px;
+        }
+        #avvisiCard tbody td { padding: 12px; border-bottom: 1px solid #1f2937; vertical-align: middle; font-size: 14px; }
+        #avvisiCard tbody tr:hover { background: #232b36; }
+        .av-level-badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; text-transform: uppercase;
+        }
+        .av-level-badge.critical { background: rgba(239,68,68,0.15); color: #fca5a5; border: 1px solid #ef4444; }
+        .av-level-badge.low      { background: rgba(245,158,11,0.15); color: #fcd34d; border: 1px solid #f59e0b; }
+        .av-stock-now { font-weight: 700; }
+        .av-stock-now.zero { color: #ef4444; }
+        .av-empty { text-align: center; padding: 40px; color: #9ca3af; }
+        .av-empty .big-icon { font-size: 48px; margin-bottom: 12px; }
+        #avvisiCard .av-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 14px; }
+        #avvisiCard .av-stat-card {
+            background: #1f2937; border: 1px solid #374151; border-radius: 8px;
+            padding: 10px 12px; text-align: center;
+        }
+        #avvisiCard .av-stat-card.critical { border-color: #ef4444; }
+        #avvisiCard .av-stat-card.low { border-color: #f59e0b; }
+        #avvisiCard .av-stat-card .label { font-size: 11px; text-transform: uppercase; color: #9ca3af; letter-spacing: 0.4px; }
+        #avvisiCard .av-stat-card .value { font-size: 22px; font-weight: 700; color: #e0e0e0; }
+        .av-modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.65); display: none;
+            align-items: center; justify-content: center; z-index: 1000;
+        }
+        .av-modal-overlay.open { display: flex; }
+        .av-modal {
+            background: #2d2d2d; border-radius: 12px; padding: 22px; width: min(560px, 92vw);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6); max-height: 90vh; overflow-y: auto;
+        }
+        .av-modal h2 { margin-bottom: 6px; font-size: 18px; }
+        .av-modal p.sub { color: #9ca3af; font-size: 13px; margin-bottom: 14px; }
+        .av-modal .field { margin-bottom: 12px; display: flex; flex-direction: column; gap: 4px; }
+        .av-modal .field label { font-size: 12px; color: #d1d5db; text-transform: uppercase; letter-spacing: 0.4px; }
+        .av-modal .field input, .av-modal .field select, .av-modal .field textarea {
+            background: #1f2937; color: #e5e7eb; border: 1px solid #374151;
+            padding: 9px 10px; border-radius: 6px; font-size: 14px;
+        }
+        .av-modal .field-row { display: flex; gap: 10px; }
+        .av-modal .field-row .field { flex: 1; }
+        .av-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+        @media (max-width: 700px) {
+            #avvisiCard thead { display: none; }
+            #avvisiCard tbody tr { display: block; padding: 12px; border-bottom: 1px solid #374151; }
+            #avvisiCard tbody td { display: flex; justify-content: space-between; padding: 6px 0; border: none; }
+            #avvisiCard tbody td::before { content: attr(data-label); font-weight: 600; color: #9ca3af; margin-right: 12px; }
         }
 
         .gestione-tab-bar {
@@ -874,6 +935,7 @@
             padding: 12px 16px;
             background: linear-gradient(135deg, #1a2e5a 0%, #1e40af 100%);
             cursor: pointer;
+            -webkit-user-select: none;
             user-select: none;
         }
         .shelf-sector-header .sector-icon { font-size: 16px; }
@@ -1201,18 +1263,18 @@
         <!-- Statistics Bar -->
         <div class="stats-bar" id="statsBar">
             <div class="stat-item">
-                <div class="value" id="statsArticles">0</div>
-                <div class="label">Articoli</div>
+                <div class="value" id="statsColli">0</div>
+                <div class="label">Colli Tot</div>
             </div>
-            <div class="stat-item" style="border-left-color: #0891b2;">
-                <div class="value" id="statsQuantity">0</div>
-                <div class="label">Colli / Kg</div>
+            <div class="stat-item" style="border-left-color: #16a34a;">
+                <div class="value" id="statsKg">0</div>
+                <div class="label">Kg Tot</div>
             </div>
             <div class="stat-item" style="border-left-color: #dc2626;">
                 <div class="value" id="statsEmpty">0</div>
-                <div class="label">Giacenze Vuote</div>
+                <div class="label">Scaffali Vuoti</div>
             </div>
-            <div class="stat-item" style="border-left-color: #16a34a;">
+            <div class="stat-item" style="border-left-color: #0891b2;">
                 <div class="value" id="statsLastUpdate">-</div>
                 <div class="label">Aggiornato</div>
             </div>
@@ -1249,7 +1311,6 @@
             <button class="btn btn-tasks" data-icon="✅" onclick="window.location.href='admin-dashboard.html'"><span>Planner Task</span></button>
             <button class="btn btn-planner" data-icon="📦" onclick="window.location.href='orders-planner.html'"><span>Planner Ordini</span></button>
             <button class="btn btn-warehouse active" data-icon="🏭" onclick="window.location.href='warehouse-management.html'"><span>Gestione Magazzino</span></button>
-            <button class="btn btn-carico-main" onclick="window.location.href='warehouse-management-lite.html'" data-icon="📦"><span>⚡ Carico/Scarico Lite</span></button>
         </div>
         </div><!-- /.sticky-top-bar -->
 
@@ -1274,10 +1335,15 @@
                     <h3>Movimenti</h3>
                     <p>Traccia gli ingressi e le uscite dal magazzino</p>
                 </div>
-                <div class="feature-card">
+                <div class="feature-card" onclick="showAvvisi()" style="cursor:pointer;">
                     <div class="icon">⚠️</div>
                     <h3>Avvisi</h3>
                     <p>Ricevi notifiche per articoli in esaurimento</p>
+                </div>
+                <div class="feature-card" onclick="window.location.href='warehouse-management-lite.html'" style="cursor:pointer; border-left:4px solid #16a34a;">
+                    <div class="icon">⚡</div>
+                    <h3>Carico/Scarico Lite</h3>
+                    <p>Operazioni rapide di carico e scarico magazzino</p>
                 </div>
             </div>
         </div>
@@ -1363,6 +1429,92 @@
             </div>
             <div id="posizioniList" style="margin-top:16px;">
                 <div class="empty-state">Caricamento...</div>
+            </div>
+        </div>
+
+        <!-- ===== AVVISI GIACENZA CARD ===== -->
+        <div class="card" id="avvisiCard" style="display:none;">
+            <div class="warehouse-header-section">
+                <h2>⚠️ Avvisi di Giacenza</h2>
+            </div>
+            <p class="overview-description">Articoli sotto soglia o in esaurimento — crea ordini interni di riassortimento</p>
+
+            <div class="av-stats">
+                <div class="av-stat-card critical"><div class="label">Critici</div><div class="value" id="avStatCritical">–</div></div>
+                <div class="av-stat-card low"><div class="label">In esaurimento</div><div class="value" id="avStatLow">–</div></div>
+                <div class="av-stat-card" style="border-color:#34d399;"><div class="label">Ordini in corso</div><div class="value" id="avStatOrders" style="color:#34d399;">–</div></div>
+                <div class="av-stat-card"><div class="label">Totale</div><div class="value" id="avStatTotal">–</div></div>
+            </div>
+
+            <div class="av-filters">
+                <input id="avFilterText" placeholder="Cerca per nome, codice o categoria…" oninput="avRenderAlerts()">
+                <select id="avFilterLevel" onchange="avRenderAlerts()">
+                    <option value="">Tutti i livelli</option>
+                    <option value="CRITICAL">Solo CRITICI</option>
+                    <option value="LOW">Solo in esaurimento</option>
+                </select>
+                <button class="btn btn-secondary" onclick="avLoadAlerts()" style="background:#374151;border:1px solid #4d4d4d;color:#e0e0e0;">🔄 Aggiorna</button>
+            </div>
+
+            <div id="avAlertsTableWrap">
+                <div class="av-empty"><div class="big-icon">⏳</div>Caricamento…</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== AVVISI: Modal ordine interno ===== -->
+    <div class="av-modal-overlay" id="avOrderModal" onclick="if(event.target===this) avCloseOrderModal()">
+        <div class="av-modal">
+            <h2>📝 Nuovo Ordine Interno</h2>
+            <p class="sub" id="avOrderModalSub">Crea un task per riordinare l'articolo</p>
+
+            <div class="field">
+                <label>Articolo</label>
+                <input id="avOmArticle" type="text" disabled>
+            </div>
+
+            <div class="field-row">
+                <div class="field">
+                    <label>Quantità (colli)</label>
+                    <input id="avOmQty" type="number" min="1" step="1" value="10">
+                </div>
+                <div class="field">
+                    <label>Operatore assegnato</label>
+                    <select id="avOmOperator"></select>
+                </div>
+            </div>
+
+            <div class="field-row">
+                <div class="field">
+                    <label>Data</label>
+                    <input id="avOmDate" type="date">
+                </div>
+                <div class="field">
+                    <label>Ora</label>
+                    <input id="avOmTime" type="time" value="09:00">
+                </div>
+            </div>
+
+            <div class="field">
+                <label>Priorità</label>
+                <select id="avOmPriority">
+                    <option value="MEDIUM">Media</option>
+                    <option value="HIGH" selected>Alta</option>
+                    <option value="URGENT">Urgente</option>
+                    <option value="LOW">Bassa</option>
+                </select>
+            </div>
+
+            <div class="field">
+                <label>Note aggiuntive</label>
+                <textarea id="avOmNotes" rows="2" placeholder="Opzionale"></textarea>
+            </div>
+
+            <div id="avOmError" style="display:none;color:#fca5a5;font-size:13px;margin-top:6px;"></div>
+
+            <div class="av-modal-actions">
+                <button class="btn btn-gray" onclick="avCloseOrderModal()">✕ Annulla</button>
+                <button class="btn btn-success" id="avOmSubmitBtn" onclick="avSubmitOrderTask()">✓ Crea Task</button>
             </div>
         </div>
     </div>
@@ -1550,6 +1702,16 @@
                     <input type="text" id="artBarcode" placeholder="EAN/barcode">
                 </div>
             </div>
+            <div class="cargo-field-row" style="display:flex;gap:12px;">
+                <div class="cargo-field" style="flex:1;">
+                    <label>⚠️ Soglia avviso (colli)</label>
+                    <input type="number" id="artMinimumStock" placeholder="es. 10" min="0" step="1" value="0">
+                </div>
+                <div class="cargo-field" style="flex:1;">
+                    <label>🚨 Soglia critica (colli)</label>
+                    <input type="number" id="artCriticalStock" placeholder="es. 3" min="0" step="1" value="0">
+                </div>
+            </div>
             <div class="cargo-field">
                 <label>Descrizione</label>
                 <input type="text" id="artDescription" placeholder="Descrizione opzionale">
@@ -1566,7 +1728,7 @@
 
     <!-- ===== GESTIONE CATEGORIE MODAL ===== -->
     <div class="cargo-modal-overlay" id="categoryManagerOverlay" onclick="closeCategoryManager(event)">
-        <div class="cargo-modal" style="width:440px;max-height:85vh;overflow-y:auto;">
+        <div class="cargo-modal" style="width:480px;max-height:85vh;overflow-y:auto;">
             <h3>🏷️ Gestione Categorie Prodotti</h3>
             <div id="categoryManagerList" style="margin-bottom:16px;"></div>
             <div style="background:#1e293b;border-radius:8px;padding:12px;border:1px solid #374151;">
@@ -1578,6 +1740,17 @@
             </div>
             <div class="cargo-modal-actions" style="margin-top:16px;">
                 <button class="btn btn-gray" onclick="document.getElementById('categoryManagerOverlay').classList.remove('open')">✕ Chiudi</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== ICON PICKER MODAL ===== -->
+    <div class="cargo-modal-overlay" id="iconPickerOverlay" onclick="closeIconPicker(event)" style="z-index:10000;">
+        <div class="cargo-modal" style="width:520px;max-height:85vh;overflow-y:auto;">
+            <h3 id="iconPickerTitle">🎨 Scegli icona</h3>
+            <div id="iconPickerGrid" style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px;"></div>
+            <div class="cargo-modal-actions">
+                <button class="btn btn-gray" onclick="document.getElementById('iconPickerOverlay').classList.remove('open')">✕ Annulla</button>
             </div>
         </div>
     </div>
@@ -1672,8 +1845,68 @@
         const DEFAULT_CATEGORIES = ['FARINE', 'MIX FARINE', 'SEMOLE', 'CEREALI', 'CEREALI PERLATI', 'MANGIMI', 'ALTRO'];
         let productCategories = JSON.parse(localStorage.getItem('warehouseCategories') || 'null') || [...DEFAULT_CATEGORIES];
 
+        // Carica categorie dal server (sincronizzato con app Android)
+        async function loadCategoriesFromServer() {
+            try {
+                const r = await fetch('/api/categories');
+                if (!r.ok) return;
+                const items = await r.json();
+                if (Array.isArray(items) && items.length) {
+                    productCategories = items.map(c => String(c.name || '').toUpperCase()).filter(Boolean);
+                    // Aggiorna anche meta override (icone/colori)
+                    items.forEach(c => {
+                        if (c.icon || c.color) {
+                            categoriesMetaOverrides[c.name.toUpperCase()] = {
+                                icon: c.icon || (categoriesMetaOverrides[c.name.toUpperCase()]?.icon),
+                                color: c.color || (categoriesMetaOverrides[c.name.toUpperCase()]?.color)
+                            };
+                        }
+                    });
+                    localStorage.setItem('warehouseCategories', JSON.stringify(productCategories));
+                    saveCategoriesMeta();
+                    refreshCategoryConsumers();
+                }
+            } catch (e) { console.warn('loadCategoriesFromServer', e); }
+        }
+
+        // Sincronizza intera lista (con icone/colori) sul server
+        async function syncCategoriesToServer() {
+            try {
+                const payload = productCategories.map(name => {
+                    const meta = getCategoryMeta(name);
+                    return { name, icon: meta.icon, color: meta.color };
+                });
+                const token = localStorage.getItem('authToken') || localStorage.getItem('token') || '';
+                await fetch('/api/categories', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': token ? `Bearer ${token}` : '' },
+                    body: JSON.stringify(payload)
+                });
+            } catch (e) { console.warn('syncCategoriesToServer', e); }
+        }
+
         function saveCategories() {
             localStorage.setItem('warehouseCategories', JSON.stringify(productCategories));
+            // fire-and-forget sync
+            syncCategoriesToServer();
+        }
+
+        // Sposta categoria su/giù
+        function moveCategoryUp(cat) {
+            const idx = productCategories.indexOf(cat);
+            if (idx <= 0) return;
+            [productCategories[idx-1], productCategories[idx]] = [productCategories[idx], productCategories[idx-1]];
+            saveCategories();
+            renderCategoryManagerList();
+            refreshCategoryConsumers();
+        }
+        function moveCategoryDown(cat) {
+            const idx = productCategories.indexOf(cat);
+            if (idx < 0 || idx >= productCategories.length - 1) return;
+            [productCategories[idx], productCategories[idx+1]] = [productCategories[idx+1], productCategories[idx]];
+            saveCategories();
+            renderCategoryManagerList();
+            refreshCategoryConsumers();
         }
 
         function getCategorySelectHtml(currentCat) {
@@ -1694,17 +1927,24 @@
 
         function renderCategoryManagerList() {
             const list = document.getElementById('categoryManagerList');
-            list.innerHTML = productCategories.map(cat => {
-                const meta = CATEGORY_META[cat] || { icon: '📦', color: '#6b7280' };
+            list.innerHTML = productCategories.map((cat, idx) => {
+                const meta = getCategoryMeta(cat);
                 const usedCount = allArticles.filter(a => (a.category || '').toUpperCase() === cat).length;
                 const isDefault = DEFAULT_CATEGORIES.includes(cat);
-                return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#1f2937;border-radius:8px;margin-bottom:6px;border:1px solid #374151;">
-                    <span style="font-size:18px;">${meta.icon}</span>
+                const safeCat = cat.replace(/'/g, "\\'");
+                const isFirst = idx === 0;
+                const isLast = idx === productCategories.length - 1;
+                return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#1f2937;border-radius:8px;margin-bottom:6px;border:1px solid #374151;">
+                    <div style="display:flex;flex-direction:column;gap:2px;">
+                        <button title="Sposta su" onclick="moveCategoryUp('${safeCat}')" ${isFirst ? 'disabled' : ''} style="background:#111827;border:1px solid #374151;border-radius:4px;width:24px;height:18px;cursor:${isFirst?'not-allowed':'pointer'};font-size:10px;color:${isFirst?'#4b5563':'#e5e7eb'};padding:0;line-height:1;">▲</button>
+                        <button title="Sposta giù" onclick="moveCategoryDown('${safeCat}')" ${isLast ? 'disabled' : ''} style="background:#111827;border:1px solid #374151;border-radius:4px;width:24px;height:18px;cursor:${isLast?'not-allowed':'pointer'};font-size:10px;color:${isLast?'#4b5563':'#e5e7eb'};padding:0;line-height:1;">▼</button>
+                    </div>
+                    <button title="Cambia icona" onclick="openIconPicker('${safeCat}')" style="background:#111827;border:1px solid #374151;border-radius:6px;width:36px;height:36px;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;">${iconHtml(meta.icon)}</button>
                     <span style="flex:1;font-weight:700;color:#e0e0e0;">${cat}</span>
                     <span style="font-size:12px;color:#9ca3af;">${usedCount} prodott${usedCount === 1 ? 'o' : 'i'}</span>
-                    ${isDefault
-                        ? '<span style="font-size:11px;color:#4b5563;padding:2px 8px;background:#111827;border-radius:4px;">predefinita</span>'
-                        : `<button onclick="deleteCategoryItem('${cat}')" style="background:#7f1d1d;color:#fca5a5;border:none;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:12px;">🗑️</button>`}
+                    <button title="Rinomina" onclick="renameCategoryItem('${safeCat}')" style="background:#1e3a8a;color:#bfdbfe;border:none;border-radius:4px;padding:6px 8px;cursor:pointer;font-size:12px;">✏️</button>
+                    <button title="Elimina" onclick="deleteCategoryItem('${safeCat}')" style="background:#7f1d1d;color:#fca5a5;border:none;border-radius:4px;padding:6px 8px;cursor:pointer;font-size:12px;">🗑️</button>
+                    ${isDefault ? '<span title="categoria predefinita" style="font-size:11px;color:#4b5563;">★</span>' : ''}
                 </div>`;
             }).join('');
         }
@@ -1715,9 +1955,203 @@
                 showAlert(`⚠️ La categoria "${cat}" è usata da ${usedCount} prodotti. Cambia prima la categoria dei prodotti.`, 'error');
                 return;
             }
+            const isDefault = DEFAULT_CATEGORIES.includes(cat);
+            const msg = isDefault
+                ? `Eliminare la categoria predefinita "${cat}"? Potrai ripristinarla resettando il browser.`
+                : `Eliminare la categoria "${cat}"?`;
+            if (!confirm(msg)) return;
             productCategories = productCategories.filter(c => c !== cat);
+            // rimuovi anche meta override se presente
+            if (categoriesMetaOverrides[cat]) { delete categoriesMetaOverrides[cat]; saveCategoriesMeta(); }
             saveCategories();
             renderCategoryManagerList();
+            refreshCategoryConsumers();
+        }
+
+        function renameCategoryItem(cat) {
+            const newName = prompt(`Nuovo nome per "${cat}":`, cat);
+            if (!newName) return;
+            const val = newName.trim().toUpperCase();
+            if (!val || val === cat) return;
+            if (productCategories.includes(val)) {
+                showAlert(`⚠️ La categoria "${val}" esiste già`, 'error');
+                return;
+            }
+            // Rinomina nella lista
+            productCategories = productCategories.map(c => c === cat ? val : c);
+            // Sposta il meta override (se c'è) sul nuovo nome
+            const meta = getCategoryMeta(cat);
+            categoriesMetaOverrides[val] = { icon: meta.icon, color: meta.color };
+            if (categoriesMetaOverrides[cat]) delete categoriesMetaOverrides[cat];
+            // Aggiorna i prodotti che usano la vecchia categoria
+            let updatedProducts = 0;
+            allArticles.forEach(a => {
+                if ((a.category || '').toUpperCase() === cat) {
+                    a.category = val;
+                    updatedProducts++;
+                }
+            });
+            saveCategories();
+            saveCategoriesMeta();
+            renderCategoryManagerList();
+            refreshCategoryConsumers();
+            // Propaga la rinomina sul server (aggiorna articoli + lista persistente)
+            (async () => {
+                try {
+                    const token = localStorage.getItem('authToken') || localStorage.getItem('token') || '';
+                    const r = await fetch('/api/categories/rename', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': token ? `Bearer ${token}` : '' },
+                        body: JSON.stringify({ from: cat, to: val })
+                    });
+                    if (r.ok) {
+                        const data = await r.json();
+                        if (data.articlesUpdated) {
+                            showAlert(`🔁 Sincronizzati ${data.articlesUpdated} articoli sul server`, 'success');
+                        }
+                    }
+                } catch (_) {}
+            })();
+            showAlert(`✅ Categoria rinominata in "${val}"${updatedProducts ? ` (${updatedProducts} prodotti aggiornati localmente)` : ''}`, 'success');
+        }
+
+        // ===== ICON PICKER =====
+        // Libreria SVG inline: icone custom (mucchietti farina, spighe varie, sacchi, mulino...)
+        // Le chiavi iniziano con "svg:" in modo da distinguerle dalle emoji nello storage.
+        const SVG_ICONS = {
+            // ----- MUCCHIETTI DI FARINA -----
+            'svg:flour-pile-white':   '<svg viewBox="0 0 32 24" width="22" height="22"><ellipse cx="16" cy="22" rx="14" ry="2" fill="#374151"/><path d="M2 22 Q10 6 16 8 Q22 6 30 22 Z" fill="#f5f5f5" stroke="#d4d4d4" stroke-width="0.6"/><circle cx="11" cy="16" r="0.8" fill="#e5e5e5"/><circle cx="20" cy="14" r="0.8" fill="#e5e5e5"/><circle cx="16" cy="11" r="0.6" fill="#e5e5e5"/></svg>',
+            'svg:flour-pile-cream':   '<svg viewBox="0 0 32 24" width="22" height="22"><ellipse cx="16" cy="22" rx="14" ry="2" fill="#374151"/><path d="M2 22 Q10 6 16 8 Q22 6 30 22 Z" fill="#fef3c7" stroke="#fde68a" stroke-width="0.6"/><circle cx="11" cy="16" r="0.8" fill="#fde68a"/><circle cx="20" cy="14" r="0.8" fill="#fde68a"/></svg>',
+            'svg:flour-pile-yellow':  '<svg viewBox="0 0 32 24" width="22" height="22"><ellipse cx="16" cy="22" rx="14" ry="2" fill="#374151"/><path d="M2 22 Q10 6 16 8 Q22 6 30 22 Z" fill="#facc15" stroke="#eab308" stroke-width="0.6"/><circle cx="11" cy="16" r="0.8" fill="#eab308"/><circle cx="20" cy="14" r="0.8" fill="#eab308"/></svg>',
+            'svg:flour-pile-brown':   '<svg viewBox="0 0 32 24" width="22" height="22"><ellipse cx="16" cy="22" rx="14" ry="2" fill="#374151"/><path d="M2 22 Q10 6 16 8 Q22 6 30 22 Z" fill="#a16207" stroke="#854d0e" stroke-width="0.6"/><circle cx="11" cy="16" r="0.8" fill="#854d0e"/><circle cx="20" cy="14" r="0.8" fill="#854d0e"/></svg>',
+            'svg:flour-pile-darkbrown': '<svg viewBox="0 0 32 24" width="22" height="22"><ellipse cx="16" cy="22" rx="14" ry="2" fill="#374151"/><path d="M2 22 Q10 6 16 8 Q22 6 30 22 Z" fill="#78350f" stroke="#451a03" stroke-width="0.6"/><circle cx="11" cy="16" r="0.8" fill="#451a03"/><circle cx="20" cy="14" r="0.8" fill="#451a03"/></svg>',
+            'svg:flour-piles-three':  '<svg viewBox="0 0 36 24" width="26" height="22"><ellipse cx="18" cy="22" rx="17" ry="1.8" fill="#374151"/><path d="M1 22 Q5 14 9 22 Z" fill="#f5f5f5"/><path d="M11 22 Q18 8 25 22 Z" fill="#fef3c7"/><path d="M27 22 Q31 14 35 22 Z" fill="#a16207"/></svg>',
+            'svg:flour-bowl':         '<svg viewBox="0 0 32 24" width="22" height="22"><path d="M3 12 Q3 22 16 22 Q29 22 29 12 Z" fill="#9ca3af" stroke="#6b7280" stroke-width="0.8"/><path d="M5 12 Q10 6 16 8 Q22 6 27 12 Z" fill="#f5f5f5"/><circle cx="12" cy="10" r="0.8" fill="#e5e5e5"/><circle cx="20" cy="9" r="0.7" fill="#e5e5e5"/></svg>',
+            'svg:flour-scoop':        '<svg viewBox="0 0 32 24" width="22" height="22"><path d="M4 18 Q4 8 14 8 Q24 8 24 18 Z" fill="#f5f5f5" stroke="#d4d4d4" stroke-width="0.6"/><rect x="22" y="11" width="8" height="3" rx="1" fill="#9ca3af"/><ellipse cx="14" cy="18" rx="10" ry="1.5" fill="#374151"/></svg>',
+
+            // ----- SPIGHE / VARIETÀ DI GRANO -----
+            'svg:wheat-tender':       '<svg viewBox="0 0 24 32" width="20" height="24"><line x1="12" y1="14" x2="12" y2="32" stroke="#a16207" stroke-width="1"/><ellipse cx="9"  cy="6"  rx="2" ry="3" fill="#fbbf24" transform="rotate(-25 9 6)"/><ellipse cx="15" cy="6"  rx="2" ry="3" fill="#fbbf24" transform="rotate(25 15 6)"/><ellipse cx="8"  cy="11" rx="2" ry="3" fill="#fbbf24" transform="rotate(-25 8 11)"/><ellipse cx="16" cy="11" rx="2" ry="3" fill="#fbbf24" transform="rotate(25 16 11)"/><ellipse cx="9"  cy="16" rx="2" ry="3" fill="#fbbf24" transform="rotate(-25 9 16)"/><ellipse cx="15" cy="16" rx="2" ry="3" fill="#fbbf24" transform="rotate(25 15 16)"/><ellipse cx="12" cy="3"  rx="2" ry="3" fill="#fbbf24"/></svg>',
+            'svg:wheat-durum':        '<svg viewBox="0 0 24 32" width="20" height="24"><line x1="12" y1="14" x2="12" y2="32" stroke="#854d0e" stroke-width="1"/><ellipse cx="9"  cy="6"  rx="2.2" ry="3.5" fill="#eab308" transform="rotate(-25 9 6)"/><ellipse cx="15" cy="6"  rx="2.2" ry="3.5" fill="#eab308" transform="rotate(25 15 6)"/><ellipse cx="8"  cy="11" rx="2.2" ry="3.5" fill="#eab308" transform="rotate(-25 8 11)"/><ellipse cx="16" cy="11" rx="2.2" ry="3.5" fill="#eab308" transform="rotate(25 16 11)"/><ellipse cx="9"  cy="16" rx="2.2" ry="3.5" fill="#eab308" transform="rotate(-25 9 16)"/><ellipse cx="15" cy="16" rx="2.2" ry="3.5" fill="#eab308" transform="rotate(25 15 16)"/><ellipse cx="12" cy="3"  rx="2.2" ry="3.5" fill="#eab308"/><line x1="12" y1="0" x2="12" y2="4" stroke="#854d0e" stroke-width="0.5"/><line x1="6" y1="2" x2="9" y2="6" stroke="#854d0e" stroke-width="0.4"/><line x1="18" y1="2" x2="15" y2="6" stroke="#854d0e" stroke-width="0.4"/></svg>',
+            'svg:wheat-spelt':        '<svg viewBox="0 0 24 32" width="20" height="24"><line x1="12" y1="16" x2="12" y2="32" stroke="#92400e" stroke-width="1"/><ellipse cx="10" cy="4"  rx="1.6" ry="3" fill="#d97706" transform="rotate(-15 10 4)"/><ellipse cx="14" cy="4"  rx="1.6" ry="3" fill="#d97706" transform="rotate(15 14 4)"/><ellipse cx="9"  cy="9"  rx="1.6" ry="3" fill="#d97706" transform="rotate(-15 9 9)"/><ellipse cx="15" cy="9"  rx="1.6" ry="3" fill="#d97706" transform="rotate(15 15 9)"/><ellipse cx="9"  cy="14" rx="1.6" ry="3" fill="#d97706" transform="rotate(-15 9 14)"/><ellipse cx="15" cy="14" rx="1.6" ry="3" fill="#d97706" transform="rotate(15 15 14)"/></svg>',
+            'svg:wheat-rye':          '<svg viewBox="0 0 24 32" width="20" height="24"><line x1="12" y1="14" x2="12" y2="32" stroke="#6b7280" stroke-width="1"/><ellipse cx="10" cy="4"  rx="1.4" ry="3" fill="#94a3b8" transform="rotate(-20 10 4)"/><ellipse cx="14" cy="4"  rx="1.4" ry="3" fill="#94a3b8" transform="rotate(20 14 4)"/><ellipse cx="9"  cy="8"  rx="1.4" ry="3" fill="#94a3b8" transform="rotate(-20 9 8)"/><ellipse cx="15" cy="8"  rx="1.4" ry="3" fill="#94a3b8" transform="rotate(20 15 8)"/><ellipse cx="9"  cy="12" rx="1.4" ry="3" fill="#94a3b8" transform="rotate(-20 9 12)"/><ellipse cx="15" cy="12" rx="1.4" ry="3" fill="#94a3b8" transform="rotate(20 15 12)"/><line x1="12" y1="-1" x2="12" y2="3" stroke="#6b7280" stroke-width="0.4"/><line x1="6" y1="0" x2="10" y2="4" stroke="#6b7280" stroke-width="0.3"/><line x1="18" y1="0" x2="14" y2="4" stroke="#6b7280" stroke-width="0.3"/></svg>',
+            'svg:wheat-barley':       '<svg viewBox="0 0 24 32" width="20" height="24"><line x1="12" y1="14" x2="12" y2="32" stroke="#a16207" stroke-width="1"/><ellipse cx="12" cy="4"  rx="1.5" ry="3" fill="#fde047"/><ellipse cx="10" cy="8"  rx="1.5" ry="3" fill="#fde047" transform="rotate(-20 10 8)"/><ellipse cx="14" cy="8"  rx="1.5" ry="3" fill="#fde047" transform="rotate(20 14 8)"/><ellipse cx="10" cy="12" rx="1.5" ry="3" fill="#fde047" transform="rotate(-20 10 12)"/><ellipse cx="14" cy="12" rx="1.5" ry="3" fill="#fde047" transform="rotate(20 14 12)"/><line x1="12" y1="-2" x2="12" y2="2" stroke="#a16207" stroke-width="0.5"/><line x1="6" y1="-1" x2="10" y2="6" stroke="#a16207" stroke-width="0.3"/><line x1="18" y1="-1" x2="14" y2="6" stroke="#a16207" stroke-width="0.3"/><line x1="4" y1="3" x2="9" y2="10" stroke="#a16207" stroke-width="0.3"/><line x1="20" y1="3" x2="15" y2="10" stroke="#a16207" stroke-width="0.3"/></svg>',
+            'svg:wheat-oat':          '<svg viewBox="0 0 24 32" width="20" height="24"><line x1="12" y1="16" x2="12" y2="32" stroke="#a16207" stroke-width="1"/><circle cx="6" cy="6" r="2" fill="#fef3c7" stroke="#d97706" stroke-width="0.5"/><circle cx="18" cy="6" r="2" fill="#fef3c7" stroke="#d97706" stroke-width="0.5"/><circle cx="4" cy="11" r="2" fill="#fef3c7" stroke="#d97706" stroke-width="0.5"/><circle cx="20" cy="11" r="2" fill="#fef3c7" stroke="#d97706" stroke-width="0.5"/><circle cx="12" cy="3" r="2" fill="#fef3c7" stroke="#d97706" stroke-width="0.5"/><line x1="12" y1="14" x2="6" y2="6" stroke="#a16207" stroke-width="0.5"/><line x1="12" y1="14" x2="18" y2="6" stroke="#a16207" stroke-width="0.5"/><line x1="12" y1="16" x2="4" y2="11" stroke="#a16207" stroke-width="0.5"/><line x1="12" y1="16" x2="20" y2="11" stroke="#a16207" stroke-width="0.5"/></svg>',
+            'svg:wheat-corn':         '<svg viewBox="0 0 24 32" width="20" height="24"><ellipse cx="12" cy="16" rx="6" ry="13" fill="#facc15" stroke="#a16207" stroke-width="0.6"/><g fill="#a16207"><circle cx="9" cy="8" r="0.8"/><circle cx="12" cy="7" r="0.8"/><circle cx="15" cy="8" r="0.8"/><circle cx="9" cy="12" r="0.8"/><circle cx="12" cy="11" r="0.8"/><circle cx="15" cy="12" r="0.8"/><circle cx="9" cy="16" r="0.8"/><circle cx="12" cy="15" r="0.8"/><circle cx="15" cy="16" r="0.8"/><circle cx="9" cy="20" r="0.8"/><circle cx="12" cy="19" r="0.8"/><circle cx="15" cy="20" r="0.8"/><circle cx="10" cy="24" r="0.8"/><circle cx="14" cy="24" r="0.8"/></g><path d="M6 4 Q4 0 8 2 Q10 -1 12 3" fill="#22c55e"/><path d="M18 4 Q20 0 16 2 Q14 -1 12 3" fill="#16a34a"/></svg>',
+            'svg:wheat-rice':         '<svg viewBox="0 0 24 32" width="20" height="24"><line x1="12" y1="16" x2="12" y2="32" stroke="#16a34a" stroke-width="1"/><ellipse cx="9"  cy="4"  rx="1.2" ry="2.5" fill="#f5f5f5" stroke="#a3a3a3" stroke-width="0.3" transform="rotate(-20 9 4)"/><ellipse cx="15" cy="4"  rx="1.2" ry="2.5" fill="#f5f5f5" stroke="#a3a3a3" stroke-width="0.3" transform="rotate(20 15 4)"/><ellipse cx="8"  cy="9"  rx="1.2" ry="2.5" fill="#f5f5f5" stroke="#a3a3a3" stroke-width="0.3" transform="rotate(-20 8 9)"/><ellipse cx="16" cy="9"  rx="1.2" ry="2.5" fill="#f5f5f5" stroke="#a3a3a3" stroke-width="0.3" transform="rotate(20 16 9)"/><ellipse cx="9"  cy="14" rx="1.2" ry="2.5" fill="#f5f5f5" stroke="#a3a3a3" stroke-width="0.3" transform="rotate(-20 9 14)"/><ellipse cx="15" cy="14" rx="1.2" ry="2.5" fill="#f5f5f5" stroke="#a3a3a3" stroke-width="0.3" transform="rotate(20 15 14)"/></svg>',
+            'svg:wheat-buckwheat':    '<svg viewBox="0 0 24 32" width="20" height="24"><line x1="12" y1="20" x2="12" y2="32" stroke="#65a30d" stroke-width="1"/><polygon points="12,2 14,6 11,6" fill="#78350f"/><polygon points="6,5 9,8 5,9" fill="#78350f"/><polygon points="18,5 19,8 15,8" fill="#78350f"/><polygon points="5,10 8,12 4,13" fill="#78350f"/><polygon points="19,10 20,13 16,12" fill="#78350f"/><polygon points="6,15 9,17 5,18" fill="#78350f"/><polygon points="18,15 19,18 15,17" fill="#78350f"/><polygon points="9,18 12,20 8,21" fill="#78350f"/><polygon points="15,18 16,21 12,20" fill="#78350f"/></svg>',
+            'svg:wheat-quinoa':       '<svg viewBox="0 0 24 32" width="20" height="24"><line x1="12" y1="20" x2="12" y2="32" stroke="#dc2626" stroke-width="1"/><circle cx="12" cy="4"  r="1.2" fill="#dc2626"/><circle cx="9"  cy="6"  r="1.2" fill="#fb923c"/><circle cx="15" cy="6"  r="1.2" fill="#fb923c"/><circle cx="7"  cy="9"  r="1.2" fill="#dc2626"/><circle cx="12" cy="8"  r="1.2" fill="#fb923c"/><circle cx="17" cy="9"  r="1.2" fill="#dc2626"/><circle cx="9"  cy="12" r="1.2" fill="#fb923c"/><circle cx="15" cy="12" r="1.2" fill="#fb923c"/><circle cx="7"  cy="15" r="1.2" fill="#dc2626"/><circle cx="12" cy="14" r="1.2" fill="#fb923c"/><circle cx="17" cy="15" r="1.2" fill="#dc2626"/><circle cx="9"  cy="18" r="1.2" fill="#fb923c"/><circle cx="15" cy="18" r="1.2" fill="#fb923c"/></svg>',
+
+            // ----- CHICCHI / GRANI SPARSI -----
+            'svg:grains-wheat':       '<svg viewBox="0 0 32 24" width="24" height="20"><g fill="#eab308" stroke="#a16207" stroke-width="0.4"><ellipse cx="6"  cy="10" rx="2" ry="3.5" transform="rotate(20 6 10)"/><ellipse cx="12" cy="6"  rx="2" ry="3.5" transform="rotate(-30 12 6)"/><ellipse cx="18" cy="10" rx="2" ry="3.5" transform="rotate(40 18 10)"/><ellipse cx="24" cy="6"  rx="2" ry="3.5" transform="rotate(-15 24 6)"/><ellipse cx="9"  cy="18" rx="2" ry="3.5" transform="rotate(60 9 18)"/><ellipse cx="16" cy="16" rx="2" ry="3.5" transform="rotate(10 16 16)"/><ellipse cx="22" cy="18" rx="2" ry="3.5" transform="rotate(-40 22 18)"/><ellipse cx="28" cy="14" rx="2" ry="3.5" transform="rotate(25 28 14)"/></g></svg>',
+            'svg:grains-mixed':       '<svg viewBox="0 0 32 24" width="24" height="20"><ellipse cx="6"  cy="8"  rx="2" ry="3" fill="#eab308" transform="rotate(20 6 8)"/><circle cx="12" cy="6"  r="2" fill="#facc15"/><polygon points="18,4 20,8 16,8" fill="#78350f"/><ellipse cx="24" cy="7"  rx="2" ry="3" fill="#fef3c7" stroke="#a3a3a3" stroke-width="0.3" transform="rotate(-15 24 7)"/><ellipse cx="9"  cy="16" rx="2" ry="3" fill="#dc2626" transform="rotate(60 9 16)"/><circle cx="16" cy="18" r="2" fill="#fb923c"/><polygon points="22,16 24,20 20,20" fill="#22c55e"/><ellipse cx="28" cy="14" rx="2" ry="3" fill="#a16207" transform="rotate(-25 28 14)"/></svg>',
+            'svg:grains-corn':        '<svg viewBox="0 0 32 24" width="24" height="20"><g fill="#facc15" stroke="#a16207" stroke-width="0.3"><circle cx="6"  cy="6"  r="2"/><circle cx="12" cy="9"  r="2"/><circle cx="18" cy="5"  r="2"/><circle cx="24" cy="9"  r="2"/><circle cx="9"  cy="14" r="2"/><circle cx="16" cy="17" r="2"/><circle cx="22" cy="14" r="2"/><circle cx="28" cy="17" r="2"/><circle cx="4"  cy="18" r="2"/></g></svg>',
+            'svg:grains-rice':        '<svg viewBox="0 0 32 24" width="24" height="20"><g fill="#f5f5f5" stroke="#a3a3a3" stroke-width="0.4"><ellipse cx="6"  cy="8"  rx="1.5" ry="3" transform="rotate(30 6 8)"/><ellipse cx="11" cy="6"  rx="1.5" ry="3" transform="rotate(-20 11 6)"/><ellipse cx="16" cy="9"  rx="1.5" ry="3" transform="rotate(50 16 9)"/><ellipse cx="22" cy="6"  rx="1.5" ry="3" transform="rotate(-10 22 6)"/><ellipse cx="27" cy="10" rx="1.5" ry="3" transform="rotate(40 27 10)"/><ellipse cx="8"  cy="16" rx="1.5" ry="3" transform="rotate(-40 8 16)"/><ellipse cx="14" cy="18" rx="1.5" ry="3" transform="rotate(20 14 18)"/><ellipse cx="20" cy="16" rx="1.5" ry="3" transform="rotate(-30 20 16)"/><ellipse cx="26" cy="18" rx="1.5" ry="3" transform="rotate(15 26 18)"/></g></svg>',
+
+            // ----- SACCHI E CONTENITORI -----
+            'svg:sack-flour':         '<svg viewBox="0 0 24 28" width="20" height="24"><path d="M5 8 Q5 4 9 4 L15 4 Q19 4 19 8 L20 26 Q12 28 4 26 Z" fill="#f5e7c5" stroke="#a16207" stroke-width="0.6"/><line x1="9" y1="4" x2="9" y2="2" stroke="#a16207" stroke-width="0.6"/><line x1="15" y1="4" x2="15" y2="2" stroke="#a16207" stroke-width="0.6"/><rect x="9" y="14" width="6" height="4" fill="#fff" stroke="#a16207" stroke-width="0.4"/></svg>',
+            'svg:sack-grain':         '<svg viewBox="0 0 24 28" width="20" height="24"><path d="M5 8 Q5 4 9 4 L15 4 Q19 4 19 8 L20 26 Q12 28 4 26 Z" fill="#a16207" stroke="#451a03" stroke-width="0.6"/><line x1="9" y1="4" x2="9" y2="2" stroke="#451a03" stroke-width="0.6"/><line x1="15" y1="4" x2="15" y2="2" stroke="#451a03" stroke-width="0.6"/><circle cx="10" cy="16" r="1" fill="#fde047"/><circle cx="14" cy="14" r="1" fill="#fde047"/><circle cx="12" cy="19" r="1" fill="#fde047"/></svg>',
+            'svg:sack-jute':          '<svg viewBox="0 0 24 28" width="20" height="24"><path d="M5 8 Q5 4 9 4 L15 4 Q19 4 19 8 L20 26 Q12 28 4 26 Z" fill="#d6b178" stroke="#92400e" stroke-width="0.6"/><line x1="9" y1="4" x2="9" y2="2" stroke="#451a03" stroke-width="0.6"/><line x1="15" y1="4" x2="15" y2="2" stroke="#451a03" stroke-width="0.6"/><line x1="6"  y1="10" x2="18" y2="10" stroke="#92400e" stroke-width="0.3" stroke-dasharray="1,1"/><line x1="6"  y1="14" x2="19" y2="14" stroke="#92400e" stroke-width="0.3" stroke-dasharray="1,1"/><line x1="6"  y1="18" x2="19" y2="18" stroke="#92400e" stroke-width="0.3" stroke-dasharray="1,1"/><line x1="5"  y1="22" x2="20" y2="22" stroke="#92400e" stroke-width="0.3" stroke-dasharray="1,1"/></path></svg>',
+            'svg:bag-paper':          '<svg viewBox="0 0 24 28" width="20" height="24"><rect x="5" y="6" width="14" height="20" fill="#fef3c7" stroke="#a16207" stroke-width="0.6"/><path d="M5 6 Q12 2 19 6" fill="none" stroke="#a16207" stroke-width="0.6"/><line x1="9" y1="11" x2="15" y2="11" stroke="#a16207" stroke-width="0.4"/><line x1="9" y1="14" x2="15" y2="14" stroke="#a16207" stroke-width="0.4"/></svg>',
+            'svg:silo':               '<svg viewBox="0 0 24 28" width="20" height="24"><rect x="6" y="8" width="12" height="18" fill="#cbd5e1" stroke="#475569" stroke-width="0.6"/><path d="M6 8 L12 2 L18 8 Z" fill="#94a3b8" stroke="#475569" stroke-width="0.6"/><line x1="6" y1="14" x2="18" y2="14" stroke="#475569" stroke-width="0.3"/><line x1="6" y1="20" x2="18" y2="20" stroke="#475569" stroke-width="0.3"/><rect x="10" y="22" width="4" height="4" fill="#475569"/></svg>',
+            'svg:windmill':           '<svg viewBox="0 0 24 28" width="22" height="24"><polygon points="6,28 18,28 16,12 8,12" fill="#dc2626" stroke="#7f1d1d" stroke-width="0.5"/><rect x="11" y="22" width="2" height="6" fill="#451a03"/><circle cx="12" cy="10" r="1.5" fill="#451a03"/><line x1="12" y1="10" x2="12" y2="2" stroke="#451a03" stroke-width="1"/><line x1="12" y1="10" x2="20" y2="10" stroke="#451a03" stroke-width="1"/><line x1="12" y1="10" x2="12" y2="18" stroke="#451a03" stroke-width="1"/><line x1="12" y1="10" x2="4" y2="10" stroke="#451a03" stroke-width="1"/><polygon points="12,2 14,8 12,10 10,8" fill="#fde047"/><polygon points="20,10 14,12 12,10 14,8" fill="#fde047"/><polygon points="12,18 10,12 12,10 14,12" fill="#fde047"/><polygon points="4,10 10,8 12,10 10,12" fill="#fde047"/></svg>',
+            'svg:millstone':          '<svg viewBox="0 0 28 24" width="24" height="22"><ellipse cx="14" cy="20" rx="13" ry="3" fill="#6b7280"/><ellipse cx="14" cy="14" rx="13" ry="3" fill="#9ca3af" stroke="#4b5563" stroke-width="0.5"/><ellipse cx="14" cy="14" rx="2" ry="0.6" fill="#374151"/></svg>'
+        };
+
+        // Restituisce HTML pronto da inserire come icona
+        function iconHtml(icon) {
+            if (typeof icon !== 'string') return '📦';
+            if (icon.startsWith('svg:')) return SVG_ICONS[icon] || '📦';
+            return icon;
+        }
+        // espongo globalmente per uso da template literal in altri punti
+        window.iconHtml = iconHtml;
+
+        const ICON_LIBRARY = {
+            'Mucchietti di farina (custom)': [
+                'svg:flour-pile-white','svg:flour-pile-cream','svg:flour-pile-yellow','svg:flour-pile-brown','svg:flour-pile-darkbrown','svg:flour-piles-three','svg:flour-bowl','svg:flour-scoop'
+            ],
+            'Spighe & cereali (custom)': [
+                'svg:wheat-tender','svg:wheat-durum','svg:wheat-spelt','svg:wheat-rye','svg:wheat-barley','svg:wheat-oat','svg:wheat-corn','svg:wheat-rice','svg:wheat-buckwheat','svg:wheat-quinoa'
+            ],
+            'Chicchi sparsi (custom)': [
+                'svg:grains-wheat','svg:grains-mixed','svg:grains-corn','svg:grains-rice'
+            ],
+            'Sacchi & molino (custom)': [
+                'svg:sack-flour','svg:sack-grain','svg:sack-jute','svg:bag-paper','svg:silo','svg:windmill','svg:millstone'
+            ],
+            'Cereali, Farine & Affini': [
+                // Grani, cereali, semi
+                '🌾','🌽','🌿','🌱','🪴','🌳','🌲','🍀','🍃','🍂','🍁','🌻','🌼','🌷','🌸','🌹','💐','🪻','🪷','🪺',
+                '🥜','🌰','🫘','🫛','🥥','🫚','🧄','🧅','🌶️','🫑',
+                // Farine, mix, polveri (rappresentate)
+                '🥣','💎','⚪','⚫','🟤','🟡','🟠','🟢','🔵','🟣','🔘','⬜','◻️','◽','▫️','🔳','🔲',
+                // Pane e prodotti da forno
+                '🍞','🥖','🥐','🥯','🫓','🥞','🧇','🍘','🍙','🥧',
+                '🍰','🎂','🧁','🥮','🍪','🍩','🍫','🍬','🍭','🍮','🍯',
+                // Pasta, primi, pietanze
+                '🍝','🍜','🍲','🍛','🍚','🍱','🍣','🍤','🍥','🍡',
+                '🥟','🥠','🥡','🌭','🍕','🥪','🥙','🌮','🌯','🫔',
+                '🍔','🍟','🥗','🥘','🫕','🍳','🥚','🧈','🧀','🥓',
+                // Cottura, mulini, utensili
+                '🧂','🥄','🍴','🍽️','🥢','🥛','🍼','🫗','🫙','🍶',
+                '☕','🍵','🧉','🥤','🧃','🍯','🪔','🔥','♨️','🌡️',
+                '⚖️','📏','📐','🧪','🧫','🪣','🪥','🧹','🧺','🧊',
+                // Confezioni, sacchi, magazzino
+                '📦','🛍️','👜','🎒','🥫','🫙','🏷️','🔖','📋','🧾',
+                // Fattoria / mulino / agricoltura
+                '🚜','🏭','🏚️','🏠','🛖','⛺','🌄','🌅','☀️','🌞'
+            ],
+            'Mangimi & Animali': [
+                '🐄','🐂','🐃','🐎','🐖','🐏','🐑','🐐','🐓','🐔',
+                '🐣','🐥','🦆','🦃','🐇','🐰','🐕','🐈','🦙','🦌',
+                '🐝','🦢','🦜','🐀','🐁','🐭','🐹','🦝','🦡','🐿️',
+                '🦔','🦦','🦥','🐧','🦅','🦉','🐦','🐤','🦚','🦤',
+                '🐗','🐴','🐮','🦬','🦣','🦒','🐪','🐫','🐘','🦘',
+                '🐢','🐍','🦎','🐊','🐸','🦂','🕷️','🦗','🪳','🦟',
+                '🪲','🐞','🐛','🦋','🐠','🐟','🐡','🦈','🐬','🐳',
+                '🐋','🦭','🦞','🦀','🦑','🐙','🦐','🐚','🌾','🍖',
+                '🍗','🥩','🦴','🥚'
+            ],
+            'Frutta & Verdura':         ['🍎','🍐','🍊','🍋','🍌','🍉','🍇','🍓','🫐','🍈','🍒','🍑','🥭','🍍','🥥','🥝','🍅','🍆','🥑','🥦','🥬','🥒','🌶️','🫑','🌽','🥕','🫒','🧄','🧅','🥔','🍠'],
+            'Spezie, Erbe & Condimenti':['🧂','🌶️','🫚','🍯','🫙','🧈','🥚','🧀','🌿','🍃','🌱','🌼'],
+            'Bevande & Liquidi':        ['💧','🥛','☕','🍵','🧃','🥤','🍶','🍾','🍷','🍺','🍻','🧉','🫗','🛢️'],
+            'Confezionamento & Magazzino':['📦','🗳️','🛒','🛍️','👜','🧺','🪣','🪤','🛢️','📫','🏷️','🔖','📋','🧾','📊'],
+            'Strumenti & Lavoro':       ['⚙️','🔧','🔨','🛠️','⚒️','🪓','🔩','🔗','🧰','🪛','📏','📐','⚖️','🌡️','🧪','🧫','🧬','🔬','🔭','🧯','🪜'],
+            'Trasporti':                ['🚚','🛻','🚛','🚜','🚐','🛺','🚲','🛵','✈️','🚢','⛵','🛳️','⚓','🗺️','📍'],
+            'Generale & Simboli':       ['⭐','✨','💫','🔥','❄️','☀️','🌙','☁️','⚡','🌈','🎯','🏆','🎁','🎈','🎉','💼','🏭','🏬','🏪','🏠','🏛️','📌','🔔','💡','🔋','🔌','📱','💻','🖥️','⌚','📷','🎵','🎼','🎨','🖼️','📚','📖','📝','✏️','🖊️','🖋️','📅','📆','🗓️','🕐','🕑','🕒','♻️','✅','❌','⚠️','❤️','💚','💛','💙','💜','🧡','🤍','🖤','🤎']
+        };
+
+        let _iconPickerCurrentCat = null;
+
+        function openIconPicker(cat) {
+            _iconPickerCurrentCat = cat;
+            document.getElementById('iconPickerTitle').textContent = `🎨 Icona per "${cat}"`;
+            const grid = document.getElementById('iconPickerGrid');
+            grid.innerHTML = Object.entries(ICON_LIBRARY).map(([groupName, icons]) => `
+                <div>
+                    <div style="font-size:11px;color:#9ca3af;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">${groupName}</div>
+                    <div style="display:grid;grid-template-columns:repeat(10, minmax(0, 1fr));gap:4px;">
+                        ${icons.map(ic => `<button onclick="pickIcon('${ic}')" style="background:#1f2937;border:1px solid #374151;border-radius:6px;padding:6px 0;font-size:20px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;min-height:36px;" onmouseover="this.style.background='#374151'" onmouseout="this.style.background='#1f2937'">${iconHtml(ic)}</button>`).join('')}
+                    </div>
+                </div>
+            `).join('');
+            document.getElementById('iconPickerOverlay').classList.add('open');
+        }
+
+        function closeIconPicker(event) {
+            if (event && event.target !== document.getElementById('iconPickerOverlay')) return;
+            document.getElementById('iconPickerOverlay').classList.remove('open');
+        }
+
+        function pickIcon(icon) {
+            if (!_iconPickerCurrentCat) return;
+            const cat = _iconPickerCurrentCat;
+            const meta = getCategoryMeta(cat);
+            categoriesMetaOverrides[cat] = { icon: icon, color: meta.color };
+            saveCategoriesMeta();
+            document.getElementById('iconPickerOverlay').classList.remove('open');
+            renderCategoryManagerList();
+            refreshCategoryConsumers();
         }
 
         function addNewCategory() {
@@ -1732,10 +2166,25 @@
             saveCategories();
             input.value = '';
             renderCategoryManagerList();
+            refreshCategoryConsumers();
             showAlert(`✅ Categoria "${val}" aggiunta`, 'success');
         }
 
-        const CATEGORY_META = {
+        // Aggiorna tutti i punti dove le categorie vengono mostrate
+        function refreshCategoryConsumers() {
+            try { if (typeof prodottiExpanded !== 'undefined' && prodottiExpanded && typeof renderProdottiList === 'function') renderProdottiList(); } catch (_) {}
+            try {
+                const catSel = document.getElementById('artCategory');
+                if (catSel) {
+                    const prev = catSel.value;
+                    catSel.innerHTML = '<option value="">-- Seleziona categoria --</option>' +
+                        productCategories.map(c => `<option value="${c}"${c === prev ? ' selected' : ''}>${c}</option>`).join('');
+                }
+            } catch (_) {}
+            try { if (typeof renderWarehouseStatus === 'function' && typeof allArticles !== 'undefined') renderWarehouseStatus(allArticles); } catch (_) {}
+        }
+
+        const CATEGORY_META_DEFAULTS = {
             'FARINE':          { icon: '🌾', color: '#f59e0b' },
             'MIX FARINE':      { icon: '🥣', color: '#d97706' },
             'SEMOLE':          { icon: '🌽', color: '#84cc16' },
@@ -1744,6 +2193,24 @@
             'MANGIMI':         { icon: '🐄', color: '#8b5cf6' },
             'ALTRO':           { icon: '📦', color: '#6b7280' },
         };
+
+        let categoriesMetaOverrides = JSON.parse(localStorage.getItem('warehouseCategoriesMeta') || '{}') || {};
+
+        function saveCategoriesMeta() {
+            localStorage.setItem('warehouseCategoriesMeta', JSON.stringify(categoriesMetaOverrides));
+        }
+
+        function getCategoryMeta(cat) {
+            return categoriesMetaOverrides[cat] || CATEGORY_META_DEFAULTS[cat] || { icon: '📦', color: '#6b7280' };
+        }
+
+        // Proxy retro-compatibile: codice esistente usa CATEGORY_META[cat]
+        const CATEGORY_META = new Proxy({}, {
+            get(_t, key) {
+                if (typeof key !== 'string') return undefined;
+                return getCategoryMeta(key);
+            }
+        });
 
         function getArticleCategory(art) {
             if (art.category) return art.category.toUpperCase();
@@ -1777,6 +2244,8 @@
             if (window.SettingsUtils && window.SettingsUtils.loadAndApplyBranding) {
                 await window.SettingsUtils.loadAndApplyBranding();
             }
+            // Carica categorie ordinate dal server (sincronizzate con app Android)
+            await loadCategoriesFromServer();
             loadInventoryData();
             loadMasterCsvInfo(); // Carica info file master CSV selezionato
 
@@ -1812,7 +2281,7 @@
         }
 
         async function resetAllReservations() {
-            if (!confirm('⚠️ Azzera tutte le prenotazioni inventario?\n\nUsare solo se tutti gli ordini sono stati eliminati e il campo "prenotato" è rimasto bloccato.')) return;
+            if (!await customConfirm('⚠️ Azzera tutte le prenotazioni inventario?\n\nUsare solo se tutti gli ordini sono stati eliminati e il campo "prenotato" è rimasto bloccato.')) return;
             try {
                 const token = localStorage.getItem('authToken') || localStorage.getItem('token') || '';
                 const res = await fetch(`${API_URL}/inventory/reset-reservations`, {
@@ -1962,19 +2431,27 @@
 
             document.getElementById('statsBar').style.display = 'grid';
 
-            // Calcola statistiche
-            const totalArticles = articles.length;
-            const totalQuantity = articles.reduce((sum, a) => {
-                const qty = parseInt(a.inventory?.currentStock) || parseInt(a.quantita) || parseInt(a.quantity) || 0;
-                return sum + qty;
-            }, 0);
-            const emptyCount = articles.filter(a => {
-                const qty = parseInt(a.inventory?.currentStock) || parseInt(a.quantita) || parseInt(a.quantity) || 0;
-                return qty === 0;
-            }).length;
+            // Calcola statistiche: usa shelf entries quando disponibili (più accurato)
+            const valid = articles.filter(a => !(a.code && a.code.startsWith('EMPTY-')));
+            let totalColli = 0;
+            let totalKg = 0;
+            let emptyCount = 0;
+            valid.forEach(a => {
+                let qty = 0;
+                if (Array.isArray(allShelfEntries) && allShelfEntries.length > 0) {
+                    qty = allShelfEntries
+                        .filter(e => e.articleId === a.id)
+                        .reduce((s, e) => s + (parseInt(e.quantity) || 0), 0);
+                } else {
+                    qty = parseInt(a.inventory?.currentStock) || parseInt(a.quantita) || parseInt(a.quantity) || 0;
+                }
+                totalColli += qty;
+                totalKg += calculateTotalWeight(qty, getWeightPerUnit(a));
+                if (qty === 0) emptyCount++;
+            });
 
-            document.getElementById('statsArticles').textContent = totalArticles;
-            document.getElementById('statsQuantity').textContent = totalQuantity.toLocaleString('it-IT');
+            document.getElementById('statsColli').textContent = totalColli.toLocaleString('it-IT');
+            document.getElementById('statsKg').textContent = Math.round(totalKg).toLocaleString('it-IT');
             document.getElementById('statsEmpty').textContent = emptyCount;
             document.getElementById('statsLastUpdate').textContent = new Date().toLocaleTimeString('it-IT', { 
                 hour: '2-digit', 
@@ -2146,7 +2623,7 @@
                         const meta = CATEGORY_META[cat] || { icon: '📦', color: '#6b7280' };
                         const isActive = selectedWarehouseCategory === cat;
                         return `<button class="cat-btn ${isActive ? 'active' : ''}" onclick="selectWarehouseCategory('${cat}')" style="${isActive ? '' : `border-color:${meta.color}40`}">
-                            <span class="cat-icon">${meta.icon}</span> ${cat} <span class="cat-count">${catCounts[cat]}</span>
+                            <span class="cat-icon">${iconHtml(meta.icon)}</span> ${cat} <span class="cat-count">${catCounts[cat]}</span>
                         </button>`;
                     }).join('');
             }
@@ -2413,7 +2890,7 @@
             }
         }
 
-        const MAIN_SECTIONS = ['statoMagazzinoCard', 'gestioneProdottiCard', 'gestionePosizioni'];
+        const MAIN_SECTIONS = ['statoMagazzinoCard', 'gestioneProdottiCard', 'gestionePosizioni', 'avvisiCard'];
 
         function showOnlySection(id) {
             // Nascondi tab bar gestione se si va su altra sezione
@@ -2433,10 +2910,6 @@
                 posizioniExpanded = true;
                 renderPosizioniList();
             }
-            setTimeout(() => {
-                const el = document.getElementById(id);
-                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 50);
         }
 
         function showGestione() {
@@ -2459,13 +2932,11 @@
                 posCard.style.display = 'none';
                 prodottiExpanded = true;
                 renderProdottiList();
-                setTimeout(() => prodCard.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
             } else {
                 prodCard.style.display = 'none';
                 posCard.style.display = 'block';
                 posizioniExpanded = true;
                 renderPosizioniList();
-                setTimeout(() => posCard.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
             }
         }
 
@@ -3569,19 +4040,27 @@
                         <th style="text-align:left;padding:6px 8px;">Nome</th>
                         <th style="text-align:center;padding:6px 8px;">kg/collo</th>
                         <th style="text-align:left;padding:6px 8px;">Categoria</th>
+                        <th style="text-align:center;padding:6px 8px;color:#fb923c;" title="Soglia avviso (in colli): scatta lo stato 'In esaurimento'">⚠️ Avviso</th>
+                        <th style="text-align:center;padding:6px 8px;color:#ef4444;" title="Soglia critica (in colli): scatta lo stato 'Critico'">🚨 Critica</th>
                         <th style="text-align:right;padding:6px 8px;">Azioni</th>
                     </tr></thead>
-                    <tbody>${valid.map(a => `
+                    <tbody>${valid.map(a => {
+                        const minS = (a.inventory && a.inventory.minimumStock) || 0;
+                        const critS = (a.inventory && a.inventory.criticalStock) || 0;
+                        return `
                     <tr style="border-bottom:1px solid #1f2937;" class="prodotto-row" id="prow-${a.id}">
                         <td style="padding:4px 8px;"><input id="pin-code-${a.id}" value="${(a.code||'').replace(/"/g,'&quot;')}" style="background:#1f2937;border:1px solid #374151;border-radius:5px;color:#60a5fa;padding:4px 8px;width:100%;font-size:13px;font-weight:700;" onkeydown="if(event.key==='Enter')saveInlineArticle(${a.id});else if(event.key==='Escape')renderProdottiList();"></td>
                         <td style="padding:4px 8px;"><input id="pin-name-${a.id}" value="${(a.name||'').replace(/"/g,'&quot;')}" style="background:#1f2937;border:1px solid #374151;border-radius:5px;color:#e0e0e0;padding:4px 8px;width:100%;font-size:13px;" onkeydown="if(event.key==='Enter')saveInlineArticle(${a.id});else if(event.key==='Escape')renderProdottiList();"></td>
                         <td style="padding:4px 8px;text-align:center;"><input id="pin-wpu-${a.id}" type="number" value="${getWeightPerUnit(a)}" min="0.01" step="0.01" style="background:#1f2937;border:1px solid #374151;border-radius:5px;color:#4ade80;padding:4px 6px;width:64px;font-size:13px;text-align:center;" onkeydown="if(event.key==='Enter')saveInlineArticle(${a.id});else if(event.key==='Escape')renderProdottiList();"></td>
                         <td style="padding:4px 8px;"><select id="pin-cat-${a.id}" style="background:#1f2937;border:1px solid #374151;border-radius:5px;color:#9ca3af;padding:4px 8px;width:100%;font-size:13px;">${getCategorySelectHtml(a.category)}</select></td>
+                        <td style="padding:4px 8px;text-align:center;"><input id="pin-min-${a.id}" type="number" value="${minS}" min="0" step="1" placeholder="0" style="background:#1f2937;border:1px solid #fb923c33;border-radius:5px;color:#fb923c;padding:4px 6px;width:64px;font-size:13px;text-align:center;font-weight:700;" onkeydown="if(event.key==='Enter')saveInlineArticle(${a.id});else if(event.key==='Escape')renderProdottiList();"></td>
+                        <td style="padding:4px 8px;text-align:center;"><input id="pin-crit-${a.id}" type="number" value="${critS}" min="0" step="1" placeholder="0" style="background:#1f2937;border:1px solid #ef444433;border-radius:5px;color:#ef4444;padding:4px 6px;width:64px;font-size:13px;text-align:center;font-weight:700;" onkeydown="if(event.key==='Enter')saveInlineArticle(${a.id});else if(event.key==='Escape')renderProdottiList();"></td>
                         <td style="padding:4px 8px;text-align:right;white-space:nowrap;">
                             <button class="btn btn-small" style="background:#16a34a;color:#fff;margin-right:4px;font-size:12px;" onclick="saveInlineArticle(${a.id})">✓ Salva</button>
                             <button class="btn btn-small" style="background:#7f1d1d;color:#fca5a5;" onclick="deleteArticleConfirm(${a.id},'${(a.name||'').replace(/'/g,"\\'")}')">🗑️</button>
                         </td>
-                    </tr>`).join('')}</tbody>
+                    </tr>`;
+                    }).join('')}</tbody>
                 </table>`;
         }
 
@@ -3592,8 +4071,11 @@
             const name = document.getElementById(`pin-name-${id}`)?.value.trim();
             const wpu  = parseFloat(document.getElementById(`pin-wpu-${id}`)?.value) || 1;
             const cat  = document.getElementById(`pin-cat-${id}`)?.value.trim();
+            const minS = parseInt(document.getElementById(`pin-min-${id}`)?.value) || 0;
+            const critS = parseInt(document.getElementById(`pin-crit-${id}`)?.value) || 0;
             if (!code) { showAlert('❌ Il codice è obbligatorio', 'error'); return; }
             if (!name) { showAlert('❌ Il nome è obbligatorio', 'error'); return; }
+            if (critS > 0 && minS > 0 && critS > minS) { showAlert('⚠️ La soglia critica deve essere ≤ soglia avviso', 'error'); return; }
             const btn = document.querySelector(`#prow-${id} button`);
             if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
             try {
@@ -3603,6 +4085,14 @@
                     body: JSON.stringify({ code, name, category: cat || null, unit: a.unit || 'kg', weightPerUnit: wpu, barcode: a.barcode || null, description: a.description || null })
                 });
                 if (!resp.ok) { const e = await resp.json().catch(()=>{}); throw new Error(e?.error || `HTTP ${resp.status}`); }
+                // Aggiorna soglie (sempre, anche se 0 per disattivare)
+                try {
+                    await fetch(`${API_URL}/inventory/stock/set-minimum`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ articleId: id, minimumStock: minS, criticalStock: critS })
+                    });
+                } catch (eMin) { console.warn('set-minimum failed', eMin); }
                 showAlert('✅ Articolo aggiornato', 'success');
                 await loadWarehouseStatus();
                 renderProdottiList();
@@ -3631,6 +4121,8 @@
                 document.getElementById('artWeightPerUnit').value = '1';
                 document.getElementById('artBarcode').value = '';
                 document.getElementById('artDescription').value = '';
+                document.getElementById('artMinimumStock').value = '0';
+                document.getElementById('artCriticalStock').value = '0';
             } else {
                 const a = allArticles.find(x => x.id === articleId);
                 if (!a) return;
@@ -3641,6 +4133,8 @@
                 document.getElementById('artWeightPerUnit').value = getWeightPerUnit(a);
                 document.getElementById('artBarcode').value = a.barcode || '';
                 document.getElementById('artDescription').value = a.description || '';
+                document.getElementById('artMinimumStock').value = (a.inventory && a.inventory.minimumStock) || 0;
+                document.getElementById('artCriticalStock').value = (a.inventory && a.inventory.criticalStock) || 0;
             }
             document.getElementById('articleModalOverlay').classList.add('open');
         }
@@ -3686,6 +4180,21 @@
                     body: JSON.stringify(payload)
                 });
                 if (!resp.ok) { const e = await resp.json().catch(()=>{}); throw new Error(e?.error || `HTTP ${resp.status}`); }
+
+                // Salva soglie su inventory (solo se articolo esiste/aggiornato e ha già inventario)
+                const savedArticle = id ? { id: parseInt(id) } : (await resp.clone().json().catch(()=>null));
+                const savedId = savedArticle?.id || (savedArticle?.data?.id);
+                const minVal = parseInt(document.getElementById('artMinimumStock').value) || 0;
+                const critVal = parseInt(document.getElementById('artCriticalStock').value) || 0;
+                if (savedId) {
+                    try {
+                        await fetch(`${API_URL}/inventory/stock/set-minimum`, {
+                            method: 'POST',
+                            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ articleId: savedId, minimumStock: minVal, criticalStock: critVal })
+                        });
+                    } catch (e) { console.warn('soglie non salvate:', e); }
+                }
 
                 showAlert(id ? `✅ Articolo aggiornato` : `✅ Articolo creato`, 'success');
                 document.getElementById('articleModalOverlay').classList.remove('open');
@@ -3968,6 +4477,254 @@
                 }
             }
         }
+
+        // ============================================================
+        // ===== AVVISI GIACENZA (sezione integrata) ==================
+        // ============================================================
+        let avCurrentAlerts = [];
+        let avOperatorsList = [];
+        let avPendingAlert = null;
+        let avLoaded = false;
+
+        function avEscapeHtml(s) {
+            return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        }
+
+        async function avLoadAlerts() {
+            const wrap = document.getElementById('avAlertsTableWrap');
+            if (!wrap) return;
+            wrap.innerHTML = '<div class="av-empty"><div class="big-icon">⏳</div>Caricamento…</div>';
+            try {
+                const r = await fetch(`${API_URL}/alerts`, { cache: 'no-store' });
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                const data = await r.json();
+                avCurrentAlerts = Array.isArray(data.alerts) ? data.alerts : [];
+                avUpdateStats();
+                avRenderAlerts();
+            } catch (e) {
+                wrap.innerHTML = `<div class="av-empty"><div class="big-icon">❌</div>Errore: ${avEscapeHtml(e.message)}</div>`;
+            }
+        }
+        window.avLoadAlerts = avLoadAlerts;
+
+        function avUpdateStats() {
+            const active = avCurrentAlerts.filter(a => !a.snoozed);
+            const snoozed = avCurrentAlerts.filter(a => a.snoozed).length;
+            const crit = active.filter(a => a.level === 'CRITICAL').length;
+            const low  = active.filter(a => a.level === 'LOW').length;
+            const sc = document.getElementById('avStatCritical');
+            const sl = document.getElementById('avStatLow');
+            const so = document.getElementById('avStatOrders');
+            const st = document.getElementById('avStatTotal');
+            if (sc) sc.textContent = crit;
+            if (sl) sl.textContent = low;
+            if (so) so.textContent = snoozed;
+            if (st) st.textContent = active.length;
+        }
+
+        async function avUnsnoozeAlert(articleId) {
+            try {
+                const tk = localStorage.getItem('authToken') || localStorage.getItem('token') || '';
+                await fetch(`${API_URL}/alerts/unsnooze`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tk}` },
+                    body: JSON.stringify({ articleId })
+                });
+                await avLoadAlerts();
+            } catch (e) { alert('Errore: ' + e.message); }
+        }
+        window.avUnsnoozeAlert = avUnsnoozeAlert;
+
+        function avRenderAlerts() {
+            const wrap = document.getElementById('avAlertsTableWrap');
+            if (!wrap) return;
+            const q = (document.getElementById('avFilterText').value || '').toLowerCase().trim();
+            const lvl = document.getElementById('avFilterLevel').value;
+            const list = avCurrentAlerts.filter(a => {
+                if (lvl && a.level !== lvl) return false;
+                if (!q) return true;
+                return [a.name, a.code, a.category].filter(Boolean).join(' ').toLowerCase().includes(q);
+            });
+            if (list.length === 0) {
+                wrap.innerHTML = '<div class="av-empty"><div class="big-icon">✅</div>Nessun avviso</div>';
+                return;
+            }
+            const rows = list.map(a => {
+                const reserved = a.reservedStock || 0;
+                const available = (a.availableStock != null) ? a.availableStock : a.currentStock;
+                const reasonBadge = (a.reason === 'RESERVED' && !a.snoozed)
+                    ? `<div style="font-size:11px;color:#a78bfa;margin-top:2px;" title="L'avviso è dovuto alle prenotazioni: la giacenza fisica è sopra soglia ma una volta scalati i colli prenotati scende sotto.">📅 per prenotazioni</div>`
+                    : '';
+                const snoozedRowStyle = a.snoozed ? 'opacity:0.55;' : '';
+                const snoozedBadge = a.snoozed
+                    ? `<div style="font-size:11px;color:#34d399;margin-top:2px;" title="Ordine interno già creato.">✅ ordine in corso</div>`
+                    : '';
+                const actionBtn = a.snoozed
+                    ? `<button class="btn" style="background:#374151;color:#d1d5db;" onclick='avUnsnoozeAlert(${a.articleId})' title="Rimuovi lo stato 'ordine in corso'">↻ Riapri</button>`
+                    : `<button class="btn btn-success" onclick='avOpenOrderModal(${JSON.stringify(a)})'>📝 Ordina</button>`;
+                return `
+                <tr style="${snoozedRowStyle}">
+                    <td data-label="Livello">
+                        <span class="av-level-badge ${a.level === 'CRITICAL' ? 'critical' : 'low'}">
+                            ${a.level === 'CRITICAL' ? '🚨 CRITICO' : '⚠️ Esaurim.'}
+                        </span>
+                        ${snoozedBadge}
+                        ${reasonBadge}
+                    </td>
+                    <td data-label="Articolo">
+                        <div style="font-weight:600;">${avEscapeHtml(a.name || '–')}</div>
+                        <div style="font-size:12px;color:#9ca3af;">${avEscapeHtml(a.code || '')} ${a.category ? '· '+avEscapeHtml(a.category) : ''}</div>
+                    </td>
+                    <td data-label="Giacenza">
+                        <div><span class="av-stock-now ${available === 0 ? 'zero' : ''}">${available}</span><span style="color:#9ca3af;font-size:12px;"> disp.</span></div>
+                        <div style="font-size:11px;color:#9ca3af;margin-top:2px;">
+                            Fisica: <strong style="color:#e0e0e0;">${a.currentStock}</strong>
+                            ${reserved > 0 ? ` · 📅 Pren.: <strong style="color:#a78bfa;">${reserved}</strong>` : ''}
+                        </div>
+                    </td>
+                    <td data-label="Soglie" style="font-size:12px;color:#9ca3af;">
+                        Avviso: <strong style="color:#fcd34d;">${a.minimumStock || 0}</strong><br>
+                        Critica: <strong style="color:#fca5a5;">${a.criticalStock || 0}</strong>
+                    </td>
+                    <td data-label="Azione" style="text-align:right;">
+                        ${actionBtn}
+                    </td>
+                </tr>`;
+            }).join('');
+            wrap.innerHTML = `
+                <table>
+                    <thead>
+                        <tr><th>Livello</th><th>Articolo</th><th>Giacenza</th><th>Soglie</th><th></th></tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            `;
+        }
+        window.avRenderAlerts = avRenderAlerts;
+
+        async function avLoadOperators() {
+            try {
+                const [opsR, admR] = await Promise.all([
+                    fetch(`${API_URL}/auth/operators/public`),
+                    fetch(`${API_URL}/auth/admins/public`)
+                ]);
+                const ops = opsR.ok ? await opsR.json() : [];
+                const adm = admR.ok ? await admR.json() : [];
+                avOperatorsList = [
+                    ...adm.map(a => ({ id: a.id, username: a.username, role: 'master' })),
+                    ...ops.map(o => ({ id: o.id, username: o.username, role: 'slave' }))
+                ];
+            } catch (_) { avOperatorsList = []; }
+        }
+
+        function avOpenOrderModal(alertObj) {
+            avPendingAlert = alertObj;
+            document.getElementById('avOmArticle').value = `${alertObj.name} (${alertObj.code})`;
+            document.getElementById('avOrderModalSub').textContent =
+                `Giacenza attuale: ${alertObj.currentStock} colli · Soglia: ${alertObj.minimumStock || 0}`;
+            const suggested = Math.max(10, ((alertObj.minimumStock || 0) * 2) - (alertObj.availableStock != null ? alertObj.availableStock : (alertObj.currentStock || 0)));
+            document.getElementById('avOmQty').value = suggested > 0 ? suggested : 10;
+            const now = new Date();
+            const yyyy = now.getFullYear();
+            const mm = String(now.getMonth() + 1).padStart(2, '0');
+            const dd = String(now.getDate()).padStart(2, '0');
+            document.getElementById('avOmDate').value = `${yyyy}-${mm}-${dd}`;
+            if (!document.getElementById('avOmTime').value) document.getElementById('avOmTime').value = '09:00';
+            const sel = document.getElementById('avOmOperator');
+            sel.innerHTML = '<option value="">— Non assegnato —</option>' +
+                avOperatorsList.map(o => `<option value="${o.id}">${avEscapeHtml(o.username)} ${o.role === 'master' ? '(Admin)' : ''}</option>`).join('');
+            document.getElementById('avOmNotes').value = '';
+            document.getElementById('avOmError').style.display = 'none';
+            document.getElementById('avOrderModal').classList.add('open');
+        }
+        window.avOpenOrderModal = avOpenOrderModal;
+
+        function avCloseOrderModal() {
+            document.getElementById('avOrderModal').classList.remove('open');
+            avPendingAlert = null;
+        }
+        window.avCloseOrderModal = avCloseOrderModal;
+
+        async function avSubmitOrderTask() {
+            if (!avPendingAlert) return;
+            const qty = parseInt(document.getElementById('avOmQty').value);
+            const opId = document.getElementById('avOmOperator').value;
+            const date = document.getElementById('avOmDate').value;
+            const time = document.getElementById('avOmTime').value || '09:00';
+            const prio = document.getElementById('avOmPriority').value;
+            const notes = document.getElementById('avOmNotes').value.trim();
+            const err = document.getElementById('avOmError');
+            err.style.display = 'none';
+            if (!qty || qty <= 0) { err.textContent = 'Quantità non valida'; err.style.display = 'block'; return; }
+            if (!date) { err.textContent = 'Data obbligatoria'; err.style.display = 'block'; return; }
+            const scheduledAt = new Date(`${date}T${time}:00`);
+            const a = avPendingAlert;
+            const title = `🛒 Ordine interno: ${a.name} × ${qty} colli`;
+            const description =
+                `Articolo: ${a.name}\n` +
+                `Codice: ${a.code}\n` +
+                `Categoria: ${a.category || '–'}\n` +
+                `Quantità da riordinare: ${qty} colli\n` +
+                `Giacenza attuale: ${a.currentStock} colli\n` +
+                `Soglia avviso: ${a.minimumStock || 0} · Soglia critica: ${a.criticalStock || 0}` +
+                (notes ? `\n\nNote: ${notes}` : '');
+            const btn = document.getElementById('avOmSubmitBtn');
+            btn.disabled = true; btn.textContent = '⏳ Creazione…';
+            try {
+                const tk = localStorage.getItem('authToken') || localStorage.getItem('token') || '';
+                const r = await fetch(`${API_URL}/tasks/internal-order`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tk}` },
+                    body: JSON.stringify({
+                        articleId: a.articleId,
+                        title,
+                        description,
+                        scheduledAt: scheduledAt.toISOString(),
+                        assignedOperatorId: opId ? parseInt(opId) : null,
+                        priority: prio,
+                        estimatedMinutes: 30
+                    })
+                });
+                if (!r.ok) {
+                    const j = await r.json().catch(()=> ({}));
+                    throw new Error(j.message || j.error || `HTTP ${r.status}`);
+                }
+                avCloseOrderModal();
+                await avLoadAlerts();
+                alert('✅ Task ordine interno creato');
+            } catch (e) {
+                err.textContent = `❌ ${e.message}`;
+                err.style.display = 'block';
+            } finally {
+                btn.disabled = false; btn.textContent = '✓ Crea Task';
+            }
+        }
+        window.avSubmitOrderTask = avSubmitOrderTask;
+
+        async function showAvvisi() {
+            showOnlySection('avvisiCard');
+            if (!avLoaded) {
+                avLoaded = true;
+                await avLoadOperators();
+            }
+            await avLoadAlerts();
+        }
+        window.showAvvisi = showAvvisi;
+
+        // Apertura automatica via query string ?section=avvisi
+        (function avMaybeAutoOpen() {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                if (params.get('section') === 'avvisi') {
+                    // Aspetta caricamento DOM completo
+                    if (document.readyState === 'loading') {
+                        document.addEventListener('DOMContentLoaded', () => setTimeout(showAvvisi, 200));
+                    } else {
+                        setTimeout(showAvvisi, 200);
+                    }
+                }
+            } catch (_) {}
+        })();
     </script>
     <script>
     (function() {
@@ -4233,5 +4990,6 @@
     }
     </script>
 
+    <script src="js/ui-confirm.js"></script>
     </body>
 </html>

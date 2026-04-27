@@ -390,6 +390,14 @@
           body: JSON.stringify(customerData)
         });
         
+        if (response.status === 409) {
+          const data = await response.json();
+          const err = new Error(data.error || 'Ragione sociale già esistente');
+          err.status = 409;
+          err.code = data.code;
+          throw err;
+        }
+        
         if (response.ok) {
           const customer = await response.json();
           const cached = JSON.parse(localStorage.getItem('customers') || '[]');
@@ -399,6 +407,7 @@
         }
         throw new Error('Failed to create customer');
       } catch (error) {
+        if (error.status === 409) throw error;
         console.warn('⚠️ CustomersAPI.create fallback to localStorage:', error.message);
         const cached = JSON.parse(localStorage.getItem('customers') || '[]');
         const newCustomer = {
@@ -424,6 +433,14 @@
           body: JSON.stringify(updates)
         });
         
+        if (response.status === 409) {
+          const data = await response.json();
+          const err = new Error(data.error || 'Ragione sociale già esistente');
+          err.status = 409;
+          err.code = data.code;
+          throw err;
+        }
+        
         if (response.ok) {
           const customer = await response.json();
           const cached = JSON.parse(localStorage.getItem('customers') || '[]');
@@ -434,6 +451,7 @@
         }
         throw new Error('Failed to update customer');
       } catch (error) {
+        if (error.status === 409) throw error;
         console.warn('⚠️ CustomersAPI.update fallback to localStorage:', error.message);
         const cached = JSON.parse(localStorage.getItem('customers') || '[]');
         const idx = cached.findIndex(c => c.id === id);
@@ -449,7 +467,7 @@
     /**
      * Elimina cliente
      */
-    async delete(id, hard = false) {
+    async delete(id, hard = true) {
       try {
         const response = await fetch(`${API_URL}/customers/${id}?hard=${hard}`, {
           method: 'DELETE',

@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="css/admin-dashboard-custom.css">
     <script src="js/settings-utils.js"></script>
     <script src="js/pages-indice.js"></script>
+    <script src="js/alerts-badge.js" defer></script>
     <style>
         * {
             margin: 0;
@@ -120,8 +121,6 @@
             letter-spacing: 0.3px;
             min-width: -webkit-fill-available;
             min-width: -moz-available;
-            min-width: stretch;
-            min-width: fit-content;
         }
 
         /* Base button styles moved to css/common.css. */
@@ -1283,27 +1282,6 @@
             }
 
             /* First two buttons span full width on first row */
-            .quick-actions .btn:nth-child(1) {
-                grid-column: 1 / 2;
-                grid-row: 1;
-            }
-
-            .quick-actions .btn:nth-child(2) {
-                grid-column: 2 / 3;
-                grid-row: 1;
-            }
-
-            /* Last two buttons on second row, half width each */
-            .quick-actions .btn:nth-child(3) {
-                grid-column: 1 / 2;
-                grid-row: 2;
-            }
-
-            .quick-actions .btn:nth-child(4) {
-                grid-column: 2 / 3;
-                grid-row: 2;
-            }
-
             .quick-actions .btn::before {
                 font-size: 36px !important;
                 margin: 0 !important;
@@ -1352,7 +1330,6 @@
                 font-size: 12px;
                 min-width: -webkit-fill-available;
                 min-width: -moz-available;
-                min-width: fit-content;
             }
 
             .header .btn-danger {
@@ -1710,10 +1687,24 @@
             margin-top: 0 !important;
             margin-bottom: 0 !important;
         }
+        /* Task collapsible cards */
+        details.task-collapsible > summary { -webkit-user-select: none; user-select: none; }
+        details.task-collapsible > summary::-webkit-details-marker { display: none; }
+        details.task-collapsible > summary > div > span:first-child {
+            display: inline-block;
+            transition: transform 0.15s ease;
+        }
+        details.task-collapsible[open] > summary > div > span:first-child {
+            transform: rotate(90deg);
+        }
+        details.task-collapsible > summary:hover {
+            background: rgba(255,255,255,0.03);
+        }
     </style>
     <!-- Socket.io Client -->
     <script src="/socket.io/socket.io.js"></script>
     <script src="js/socket-client.js"></script>
+    <script src="js/thermal-print.js"></script>
 </head>
 <body>
     <div class="container">
@@ -1778,6 +1769,10 @@
                         <span class="menu-icon">🗂️</span>
                         <span>Indice</span>
                     </button>
+                    <a class="admin-menu-item" href="/MolinoInventory.apk" download="MolinoInventory.apk" onclick="toggleAdminMenu();" style="text-decoration:none;color:inherit;">
+                        <span class="menu-icon">📱</span>
+                        <span>Scarica APK Inventario (Android)</span>
+                    </a>
                 </div>
             </div>
             <button class="btn btn-customers" data-icon="👨‍💼" onclick="window.location.href='customers-management.html'"><span>Gestione Clienti</span></button>
@@ -1826,14 +1821,7 @@
             </div>
         </div>
 
-        <!-- My Tasks (Admin Personal Tasks) - Outside main-content for full width -->
-        <div class="card card-hidden" id="myTasksCard">
-            <div class="card-header">
-                <h2 id="myTasksTitle">📋 Task da Assegnare</h2>
-            </div>
-            <div id="adminTasksList" class="task-list">
-            </div>
-        </div>
+        <!-- Sezione "Task da Assegnare" rimossa: contenuto duplicato di Planner Task -->
     </div>
 
     <!-- Task Modal -->
@@ -1954,6 +1942,7 @@
         let articoli = [];
         let currentOrderProducts = []; // Array di prodotti: {product: "nome", quantity: N}
         let currentAvailableBatches = [];
+        let allShelfEntries = []; // ShelfEntries dal magazzino, usate per calcolare i lotti disponibili
 
         // Helper per ottenere il nome cliente in modo sicuro (compatibile con server API)
         function getClientName(order) {
@@ -2081,9 +2070,11 @@
                             const code = a.code || a.codice || a.name || '';
                             if (code && !uniqueByCode.has(code)) {
                                 uniqueByCode.set(code, {
+                                    id: a.id,
                                     codice: code,
                                     descrizione: a.name || a.descrizione || a.description || '',
-                                    nome: a.name || a.nome || ''
+                                    nome: a.name || a.nome || '',
+                                    weightPerUnit: a.weightPerUnit || a.peso || 1
                                 });
                             }
                         });
@@ -2101,6 +2092,120 @@
                 console.error('❌ Errore caricamento articoli da API:', apiError.message);
                 articoli = [];
             }
+
+            // Carica ShelfEntries per disponibilità reale dei lotti
+            try {
+                const seResp = await fetch(`${API_URL}/inventory/shelf-entries`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (seResp.ok) {
+                    allShelfEntries = await seResp.json();
+                    console.log(`✅ Admin-dashboard: ShelfEntries caricate: ${allShelfEntries.length}`);
+                } else {
+                    console.warn('⚠️ Admin-dashboard: API shelf-entries non disponibile');
+                    allShelfEntries = [];
+                }
+            } catch (e) {
+                console.warn('⚠️ Admin-dashboard: errore caricamento shelf-entries:', e.message);
+                allShelfEntries = [];
+            }
+        }
+
+        // Carica e calcola i lotti disponibili per l'articolo selezionato (da ShelfEntries)
+        async function loadAvailableBatches() {
+            const selectedProduct = document.getElementById('orderProduct').value;
+
+            if (!selectedProduct) {
+                currentAvailableBatches = [];
+                return;
+            }
+
+            // Se le shelf-entries non sono ancora caricate, riprova a caricarle
+            if (!allShelfEntries || allShelfEntries.length === 0) {
+                try {
+                    const seResp = await fetch(`${API_URL}/inventory/shelf-entries`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (seResp.ok) {
+                        allShelfEntries = await seResp.json();
+                    }
+                } catch (e) {
+                    console.warn('⚠️ Errore reload shelf-entries:', e.message);
+                }
+            }
+
+            const art = articoli.find(a => a.codice === selectedProduct);
+            if (!art || !art.id) {
+                currentAvailableBatches = [];
+                console.warn('⚠️ Articolo non trovato o senza id:', selectedProduct);
+                return;
+            }
+
+            const weightPerUnit = art.weightPerUnit || 1;
+            const entries = allShelfEntries.filter(e => e.articleId === art.id && (e.quantity || 0) > 0);
+
+            // Raggruppa per batch+expiry+posizione
+            const batchMap = new Map();
+            entries.forEach(e => {
+                const key = `${e.batch || ''}|${e.expiry || ''}|${e.positionCode || ''}`;
+                if (batchMap.has(key)) {
+                    const b = batchMap.get(key);
+                    b.quantity += e.quantity || 0;
+                    b.quantityKg += (e.quantity || 0) * weightPerUnit;
+                } else {
+                    batchMap.set(key, {
+                        batch: e.batch || '—',
+                        expiry: e.expiry || '',
+                        quantity: e.quantity || 0,
+                        quantityKg: (e.quantity || 0) * weightPerUnit,
+                        shelfPosition: e.positionCode || '',
+                        notes: e.notes || ''
+                    });
+                }
+            });
+
+            currentAvailableBatches = Array.from(batchMap.values()).sort((a, b) => {
+                if (!a.expiry) return 1;
+                if (!b.expiry) return -1;
+                return a.expiry.localeCompare(b.expiry);
+            });
+
+            // Sottrai le quantità già prenotate da altri ordini ancora attivi
+            const editingId = document.getElementById('orderForm')?.dataset?.editingId || '';
+            const reservedByOtherOrders = {};
+            (typeof orders !== 'undefined' ? orders : []).forEach(o => {
+                if (!o || String(o.id) === String(editingId)) return;
+                const status = (o.status || '').toLowerCase();
+                if (status === 'completed' || status === 'delivered' || status === 'cancelled') return;
+                let prods = o.products;
+                if (typeof prods === 'string') {
+                    try { prods = JSON.parse(prods); } catch { prods = []; }
+                }
+                if (!Array.isArray(prods)) return;
+                prods.forEach(p => {
+                    if (!p || p.product !== selectedProduct) return;
+                    const batch = p.batch || (p.batchData && p.batchData.batch) || '';
+                    const pos = p.shelfPosition || (p.batchData && p.batchData.shelfPosition) || '';
+                    if (!batch) return;
+                    const key = `${batch}|${pos}`;
+                    reservedByOtherOrders[key] = (reservedByOtherOrders[key] || 0) + (Number(p.quantity) || 0);
+                });
+            });
+
+            currentAvailableBatches = currentAvailableBatches
+                .map(b => {
+                    const key = `${b.batch}|${b.shelfPosition || ''}`;
+                    const reservedKg = reservedByOtherOrders[key] || 0;
+                    if (reservedKg > 0) {
+                        const remainingKg = Math.max(0, (b.quantityKg || 0) - reservedKg);
+                        const remainingColli = weightPerUnit > 0 ? (remainingKg / weightPerUnit) : 0;
+                        return { ...b, quantityKg: remainingKg, quantity: remainingColli };
+                    }
+                    return b;
+                })
+                .filter(b => (b.quantityKg || 0) > 0.01);
+
+            console.log(`✅ Lotti disponibili per ${selectedProduct}: ${currentAvailableBatches.length} (dopo deduzione prenotazioni)`);
         }
 
         // Helper per generare timeline/storico degli ordini
@@ -2718,7 +2823,7 @@
                             </div>
                         </td>
                         <td style="padding: 8px; text-align: center;">
-                            <button type="button" style="background: #dc2626; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 12px;" onclick="removeProductFromOrder(${idx})">🗑️ Rimuovi</button>
+                            <button type="button" style="background: #dc2626; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 12px;" onclick="removeProductFromOrder(${idx})">🗑️ Elimina</button>
                         </td>
                     </tr>
                 `;
@@ -2783,6 +2888,13 @@
                 updates.tripId = parseInt(tripId);
             }
 
+            // Per ordini di Ritiro, includi l'operatore assegnato
+            if (type === 'ritira') {
+                const pickupOpEl = document.getElementById('assignToOperator');
+                const pickupOpVal = pickupOpEl ? pickupOpEl.value : '';
+                updates.assignedOperatorId = pickupOpVal ? parseInt(pickupOpVal) : null;
+            }
+
             try {
                 const token = localStorage.getItem('token') || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
                 const response = await fetch(`${API_URL}/orders/${orderId}`, {
@@ -2812,12 +2924,15 @@
         function updateTripOptions() {
             const orderType = document.getElementById('orderType').value;
             const tripSection = document.getElementById('tripSection');
+            const pickupOperatorSection = document.getElementById('pickupOperatorSection');
             
             if (orderType === 'consegnato') {
                 tripSection.style.display = 'block';
+                if (pickupOperatorSection) pickupOperatorSection.style.display = 'none';
                 document.getElementById('tripOptions').value = '';
             } else {
                 tripSection.style.display = 'none';
+                if (pickupOperatorSection) pickupOperatorSection.style.display = 'block';
                 document.getElementById('tripOptions').value = '';
             }
         }
@@ -3373,7 +3488,6 @@
 
         async function initDashboard() {
             document.getElementById('userInfo').textContent = `👤 ${currentUser.username}`;
-            document.getElementById('myTasksTitle').textContent = `📋 Task da Assegnare`;
             
             // Carica impostazioni aziendali (logo, nome)
             await loadCompanyBranding();
@@ -3398,21 +3512,70 @@
         
         function initLiveUpdates() {
             if (typeof LiveUpdates !== 'undefined') {
+                // Debounce per evitare ricariche multiple ravvicinate
+                let dayModalRefreshTimer = null;
+                const scheduleDayModalRefresh = () => {
+                    if (!lastViewedDayDate) return;
+                    // Solo se il pannello giornaliero è visibile, evita di riaprirlo dopo che l'utente l'ha chiuso
+                    const dayCard = document.getElementById('dayTasksCard');
+                    if (!dayCard || dayCard.style.display === 'none') return;
+                    if (dayModalRefreshTimer) clearTimeout(dayModalRefreshTimer);
+                    dayModalRefreshTimer = setTimeout(() => {
+                        try { showDayTasksModal(lastViewedDayDate); } catch (e) { console.warn(e); }
+                    }, 250);
+                };
+
                 LiveUpdates.init({
                     onTaskChange: async (action, task) => {
                         console.log(`🔄 Task ${action}:`, task);
                         // Ricarica i task e aggiorna la UI
                         await loadTasks();
                         await updateStats();
-                        await renderCalendar();
+                        // renderCalendar è già chiamato da loadTasks; evitiamo doppia chiamata
+                        // Aggiorna anche il pannello del giorno se aperto
+                        scheduleDayModalRefresh();
                         
                         // Mostra notifica
                         showLiveNotification(`Task ${getActionLabel(action)}: ${task?.title || 'ID ' + task?.id}`);
                     },
                     onOrderChange: async (action, order) => {
                         console.log(`🔄 Order ${action}:`, order);
-                        // Ricarica eventuali ordini visibili
+                        try {
+                            // Ricarica trips e orders dal server
+                            await loadTripsFromPlanner();
+                            await renderCalendar();
+                        } catch (e) {
+                            console.warn('Errore refresh ordini:', e);
+                        }
+                        scheduleDayModalRefresh();
                         showLiveNotification(`Ordine ${getActionLabel(action)}`);
+                    },
+                    onTripChange: async (action, trip) => {
+                        console.log(`🔄 Trip ${action}:`, trip);
+                        try {
+                            await loadTripsFromPlanner();
+                            await renderCalendar();
+                        } catch (e) {
+                            console.warn('Errore refresh viaggi:', e);
+                        }
+                        scheduleDayModalRefresh();
+                        showLiveNotification(`Viaggio ${getActionLabel(action)}`);
+                    },
+                    onRefresh: async (dataType) => {
+                        console.log(`🔄 Refresh richiesto: ${dataType}`);
+                        try {
+                            if (!dataType || dataType === 'tasks') {
+                                await loadTasks();
+                                await updateStats();
+                            }
+                            if (!dataType || dataType === 'orders' || dataType === 'trips') {
+                                await loadTripsFromPlanner();
+                                await renderCalendar();
+                            }
+                        } catch (e) {
+                            console.warn('Errore refresh dati:', e);
+                        }
+                        scheduleDayModalRefresh();
                     },
                     onConnect: () => {
                         console.log('✅ Live updates connected');
@@ -3675,7 +3838,6 @@
                 }
                 
                 renderTasks();
-                renderAdminTasks();
                 await renderCalendar();
             } catch (error) {
                 showAlert('Errore: ' + error.message, 'error');
@@ -3835,6 +3997,7 @@
                             <button class="btn btn-primary btn-small" onclick="openEditTripModal(${trip.id})" style="background: #3b82f6;">✏️ Modifica Viaggio</button>
                             <button class="btn btn-primary btn-small" onclick="openEditOrdersModal(${trip.id})" style="background: #3b82f6;">📦 Modifica Ordine</button>
                             <button class="btn btn-secondary btn-small" onclick="printTrip(${trip.id})" style="background: #8b5cf6;">🖨️ Stampa</button>
+                            <button class="btn btn-secondary btn-small" onclick="printTripThermal(${trip.id})" style="background: #475569;" title="Stampa su stampante termica 72mm">🧾 Termica</button>
                             <button class="btn btn-secondary btn-small" onclick="handleDeleteTrip(${trip.id})" style="background: #6b7280;">🗑️ Elimina</button>
                         </div>
                     </div>
@@ -3980,7 +4143,7 @@
                 return `
                     <div class=\"task-card\" style=\"${cardStyle}\">
                         <div class=\"task-header\">
-                            <div class=\"task-title\">${task.title}</div>
+                            <div class=\"task-title\">${(window.formatInternalOrderTitle ? window.formatInternalOrderTitle(task.title) : task.title)}</div>
                             <span class=\"task-status\">${statusIcon} ${status}${overdueLabel}</span>
                         </div>
                         ${task.description ? `<div style=\"margin-top: 8px; color: #a0a0a0; font-size: 16px;\">${task.description}</div>` : ''}
@@ -3991,7 +4154,7 @@
                         ${noteHtml}
                         <div class=\"task-actions\" style=\"margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;\">
                             <button class=\"btn btn-primary btn-small\" onclick=\"openEditTaskModal(${task.id})\">✏️ Modifica</button>
-                            <button class=\"btn btn-danger btn-small\" onclick=\"handleDeleteTask(${task.id})\">🗑️ Rimuovi</button>
+                            <button class=\"btn btn-danger btn-small\" onclick=\"handleDeleteTask(${task.id})\">🗑️ Elimina</button>
                         </div>
                     </div>
                 `;
@@ -4071,7 +4234,7 @@
                 return `
                     <div class="task-card">
                         <div class="task-header">
-                            <div class="task-title">${task.title}</div>
+                            <div class="task-title">${(window.formatInternalOrderTitle ? window.formatInternalOrderTitle(task.title) : task.title)}</div>
                             <span class="task-status">${statusIcon} ${status}</span>
                         </div>
                         ${task.scheduledAt ? `<div style="margin-top: 8px; color: #a0a0a0; font-size: 13px;">📅 ${new Date(task.scheduledAt).toLocaleString('it-IT', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</div>` : ''}
@@ -4086,7 +4249,8 @@
                             ${task.paused ? `<button class="btn btn-info btn-small" onclick="handleTaskStatusChange(${task.id}, 'resume')" style="background: #3b82f6;">▶️ Riprendi</button>` : ''}
                             ${!task.completed ? `<button class="btn btn-success btn-small" onclick="handleTaskStatusChange(${task.id}, 'complete')" style="background: #22c55e;">✅ Completa</button>` : `<button class="btn btn-danger btn-small" onclick="handleTaskStatusChange(${task.id}, 'complete')" style="background: #dc2626;">🗑️ Elimina</button>`}
                             <button class="btn btn-primary btn-small" onclick="openEditTaskModal(${task.id})">✏️ Modifica</button>
-                            <button class="btn btn-danger btn-small" onclick="handleDeleteTask(${task.id})">🗑️ Rimuovi</button>
+                            ${window.taskOrdineInternoButtons ? window.taskOrdineInternoButtons(task) : ''}
+                            <button class="btn btn-danger btn-small" onclick="handleDeleteTask(${task.id})">🗑️ Elimina</button>
                         </div>
                     </div>
                 `;
@@ -5291,7 +5455,7 @@
                     <div class="form-group">
                         <label>Task</label>
                         <div style="padding: 10px; background: #3d3d3d; border-radius: 6px; border: 1px solid #4d4d4d; color: #e0e0e0;">
-                            ${task.title}
+                            ${(window.formatInternalOrderTitle ? window.formatInternalOrderTitle(task.title) : task.title)}
                         </div>
                     </div>
                     <div class="form-group">
@@ -5332,6 +5496,12 @@
                 showAlert('Task assegnato con successo!', 'success');
                 document.getElementById('taskModal').classList.remove('active');
                 await loadTasks();
+                await updateStats();
+                
+                // Riaprire la vista giornaliera con i dati aggiornati se una data era selezionata
+                if (lastViewedDayDate) {
+                    showDayTasksModal(lastViewedDayDate);
+                }
             } catch (error) {
                 showAlert('Errore: ' + error.message, 'error');
             }
@@ -5549,20 +5719,35 @@
 
         async function handleDeleteTask(taskId) {
             try {
-                // Controlla se è un ordine da orders-planner (ID molto grande = timestamp)
-                const order = orders.find(o => o.id === taskId);
+                // Controlla se è un ordine
+                const order = orders.find(o => String(o.id) === String(taskId));
                 if (order) {
-                    // È un ordine, eliminalo da localStorage
-                    orders = orders.filter(o => o.id !== taskId);
-                    await saveOrders();
+                    const ok = await customConfirm('Eliminare definitivamente questo ordine?', { title: 'Elimina ordine' });
+                    if (!ok) return;
+                    // Elimina dal backend
+                    const resp = await fetch(`${API_URL}/orders/${taskId}`, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (!resp.ok) {
+                        let msg = 'Errore eliminazione ordine';
+                        try { const j = await resp.json(); msg = j.error || j.message || msg; } catch(_){}
+                        throw new Error(msg);
+                    }
+                    // Aggiorna stato locale
+                    orders = orders.filter(o => String(o.id) !== String(taskId));
+                    try { localStorage.setItem('orders', JSON.stringify(orders)); } catch(_){}
                     showAlert('Ordine eliminato!', 'success');
+                    await loadTripsFromPlanner();
                     await renderCalendar();
-                    // Aggiorna la card del giorno se visibile
                     if (lastViewedDayDate) {
                         showDayTasksModal(lastViewedDayDate);
                     }
                     return;
                 }
+                
+                const okTask = await customConfirm('Eliminare definitivamente questo task?', { title: 'Elimina task' });
+                if (!okTask) return;
                 
                 // Altrimenti è un task del database
                 const response = await fetch(`${API_URL}/tasks/${taskId}`, {
@@ -6052,14 +6237,15 @@
                         if (task.paused) {
                             buttonsHtml += `<button class="btn btn-warning btn-small" onclick="handleTaskStatusChange(${task.id}, 'resume')" style="background: #f59e0b; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">▶️ Riprendi</button>`;
                         }
-                        buttonsHtml += `<button class="btn btn-secondary btn-small" onclick="handleDeleteTask(${task.id})" style="background: #6b7280; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">🗑️ Rimuovi</button>`;
+                        buttonsHtml += `<button class="btn btn-danger btn-small" onclick="handleDeleteTask(${task.id})" style="background: #dc2626; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">🗑️ Elimina</button>`;
+                        if (window.taskOrdineInternoButtons) buttonsHtml += window.taskOrdineInternoButtons(task);
                         buttonsHtml += `</div>`;
                         
                         html += `
                             <div style="background: #1a1a1a; border-left: 3px solid ${statusColor}; padding: 12px; margin: 8px 0; border-radius: 4px;">
                                 <div style="display: flex; justify-content: space-between; align-items: start;">
                                     <div style="flex: 1;">
-                                        <h4 style="margin: 0 0 4px 0; color: #fff;">${task.title}</h4>
+                                        <h4 style="margin: 0 0 4px 0; color: #fff;">${(window.formatInternalOrderTitle ? window.formatInternalOrderTitle(task.title) : task.title)}</h4>
                                         <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 4px;">
                                             <span style="background: ${statusColor}; color: white; padding: 2px 8px; border-radius: 3px; font-size: 13px;">${statusIcon} ${status}</span>
                                             ${operatorInfo}
@@ -6625,30 +6811,32 @@
                             timelineHtml += '</div>';
                             
                             return `
-                                <div style="background: #1a1a1a; border-left: 3px solid ${statusColor}; padding: 12px; margin: 8px 0; border-radius: 4px;">
-                                    <div style="display: flex; justify-content: space-between; align-items: start;">
-                                        <div style="flex: 1;">
-                                            <h4 style="margin: 0 0 4px 0; color: #fff;">${task.title}</h4>
-                                            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 4px;">
-                                                <span style="background: ${statusColor}; color: white; padding: 2px 8px; border-radius: 3px; font-size: 13px;">${statusIcon} ${status}</span>
-                                                ${operatorInfo}
-                                            </div>
-                                            ${task.description ? `<p style="margin: 4px 0; color: #a0a0a0; font-size: 13px;">${task.description}</p>` : ''}
-                                            ${task.estimatedMinutes ? `<p style="margin: 2px 0; color: #fbbf24; font-size: 12px;">⏱️ ${task.estimatedMinutes} min</p>` : ''}
-                                            ${task.priority ? `<p style="margin: 2px 0; color: #a0a0a0; font-size: 12px;">${formatPriority(task.priority)}</p>` : ''}
-                                            ${timelineHtml}
+                                <details class="task-collapsible" style="background: #1a1a1a; border-left: 3px solid ${statusColor}; padding: 0; margin: 8px 0; border-radius: 4px;">
+                                    <summary style="padding: 10px 12px; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: 1; min-width: 0;">
+                                            <span style="font-size: 14px;">▸</span>
+                                            <strong style="color: #fff; font-size: 14px;">${(window.formatInternalOrderTitle ? window.formatInternalOrderTitle(task.title) : task.title)}</strong>
+                                            <span style="background: ${statusColor}; color: white; padding: 2px 8px; border-radius: 3px; font-size: 12px;">${statusIcon} ${status}</span>
+                                            ${operatorInfo}
+                                        </div>
+                                    </summary>
+                                    <div style="padding: 0 12px 12px 12px;">
+                                        ${task.description ? `<p style="margin: 4px 0; color: #a0a0a0; font-size: 13px;">${task.description}</p>` : ''}
+                                        ${task.estimatedMinutes ? `<p style="margin: 2px 0; color: #fbbf24; font-size: 12px;">⏱️ ${task.estimatedMinutes} min</p>` : ''}
+                                        ${task.priority ? `<p style="margin: 2px 0; color: #a0a0a0; font-size: 12px;">${formatPriority(task.priority)}</p>` : ''}
+                                        ${timelineHtml}
+                                        <div style="margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap;">
+                                            <button class="btn btn-primary btn-small" onclick="openEditTaskModal(${task.id})" style="background: #3b82f6; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">✏️ Modifica</button>
+                                            ${!task.assignedOperator ? `<button class="btn btn-info btn-small" onclick="openAssignTaskModal(${task.id})" style="background: #0ea5e9; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">👤 Assegna</button>` : ''}
+                                            ${task.assignedOperator && !task.acceptedAt ? `<button class="btn btn-success btn-small" onclick="handleTaskStatusChange(${task.id}, 'accept')" style="background: #22c55e; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">👍 Accetta</button>` : ''}
+                                            ${task.acceptedAt && !task.completed && !task.paused ? `<button class="btn btn-success btn-small" onclick="handleTaskStatusChange(${task.id}, 'complete')" style="background: #22c55e; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">✅ Completa</button>` : ''}
+                                            ${task.acceptedAt && !task.completed && !task.paused ? `<button class="btn btn-warning btn-small" onclick="handleTaskStatusChange(${task.id}, 'pause')" style="background: #f59e0b; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">⏸️ Pausa</button>` : ''}
+                                            ${task.paused ? `<button class="btn btn-warning btn-small" onclick="handleTaskStatusChange(${task.id}, 'resume')" style="background: #f59e0b; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">▶️ Riprendi</button>` : ''}
+                                            ${window.taskOrdineInternoButtons ? window.taskOrdineInternoButtons(task) : ''}
+                                            <button class="btn btn-danger btn-small" onclick="handleDeleteTask(${task.id})" style="background: #dc2626; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">🗑️ Elimina</button>
                                         </div>
                                     </div>
-                                    <div style="margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap;">
-                                        <button class="btn btn-primary btn-small" onclick="openEditTaskModal(${task.id})" style="background: #3b82f6; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">✏️ Modifica</button>
-                                        ${!task.assignedOperator ? `<button class="btn btn-info btn-small" onclick="openAssignTaskModal(${task.id})" style="background: #0ea5e9; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">👤 Assegna</button>` : ''}
-                                        ${task.assignedOperator && !task.acceptedAt ? `<button class="btn btn-success btn-small" onclick="handleTaskStatusChange(${task.id}, 'accept')" style="background: #22c55e; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">👍 Accetta</button>` : ''}
-                                        ${task.acceptedAt && !task.completed && !task.paused ? `<button class="btn btn-success btn-small" onclick="handleTaskStatusChange(${task.id}, 'complete')" style="background: #22c55e; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">✅ Completa</button>` : ''}
-                                        ${task.acceptedAt && !task.completed && !task.paused ? `<button class="btn btn-warning btn-small" onclick="handleTaskStatusChange(${task.id}, 'pause')" style="background: #f59e0b; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">⏸️ Pausa</button>` : ''}
-                                        ${task.paused ? `<button class="btn btn-warning btn-small" onclick="handleTaskStatusChange(${task.id}, 'resume')" style="background: #f59e0b; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">▶️ Riprendi</button>` : ''}
-                                        <button class="btn btn-secondary btn-small" onclick="handleDeleteTask(${task.id})" style="background: #6b7280; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">🗑️ Rimuovi</button>
-                                    </div>
-                                </div>
+                                </details>
                             `;
                         }).join('')}
                     </div>
@@ -6673,22 +6861,24 @@
                                 : `<span style="color: #f59e0b; font-size: 12px;">👤 Non assegnato</span>`;
                             
                             return `
-                                <div style="background: #1a1a1a; border-left: 3px solid #86efac; padding: 12px; margin: 8px 0; border-radius: 4px;">
-                                    <div style="display: flex; justify-content: space-between; align-items: start;">
-                                        <div style="flex: 1;">
-                                            <h4 style="margin: 0 0 4px 0; color: #fff;">${task.title}</h4>
-                                            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 4px;">
-                                                <span style="background: ${statusColor}; color: white; padding: 2px 8px; border-radius: 3px; font-size: 13px;">${statusIcon} ${status}</span>
-                                                ${operatorInfo}
-                                            </div>
-                                            ${task.description ? `<p style="margin: 4px 0; color: #a0a0a0; font-size: 13px;">${task.description}</p>` : ''}
+                                <details class="task-collapsible" style="background: #1a1a1a; border-left: 3px solid #86efac; padding: 0; margin: 8px 0; border-radius: 4px;">
+                                    <summary style="padding: 10px 12px; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: 1; min-width: 0;">
+                                            <span style="font-size: 14px;">▸</span>
+                                            <strong style="color: #fff; font-size: 14px;">${(window.formatInternalOrderTitle ? window.formatInternalOrderTitle(task.title) : task.title)}</strong>
+                                            <span style="background: ${statusColor}; color: white; padding: 2px 8px; border-radius: 3px; font-size: 12px;">${statusIcon} ${status}</span>
+                                            ${operatorInfo}
+                                        </div>
+                                    </summary>
+                                    <div style="padding: 0 12px 12px 12px;">
+                                        ${task.description ? `<p style="margin: 4px 0; color: #a0a0a0; font-size: 13px;">${task.description}</p>` : ''}
+                                        <div style="margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap;">
+                                            <button class="btn btn-primary btn-small" onclick="openEditTaskModal(${task.id})" style="background: #3b82f6; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">✏️ Modifica</button>
+                                            ${window.taskOrdineInternoButtons ? window.taskOrdineInternoButtons(task) : ''}
+                                            <button class="btn btn-danger btn-small" onclick="handleDeleteTask(${task.id})" style="background: #dc2626; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">🗑️ Elimina</button>
                                         </div>
                                     </div>
-                                    <div style="margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap;">
-                                        <button class="btn btn-primary btn-small" onclick="openEditTaskModal(${task.id})" style="background: #3b82f6; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">✏️ Modifica</button>
-                                        <button class="btn btn-secondary btn-small" onclick="handleDeleteTask(${task.id})" style="background: #6b7280; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">🗑️ Rimuovi</button>
-                                    </div>
-                                </div>
+                                </details>
                             `;
                         }).join('')}
                     </div>
@@ -6831,6 +7021,7 @@
                                     <div style="display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap;">
                                         <button class="btn btn-primary btn-small" onclick="openEditTripModal(${trip.id})" style="background: #3b82f6; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 11px; flex: 1; min-width: 60px;">✏️ Modifica</button>
                                         <button class="btn btn-secondary btn-small" onclick="printTrip(${trip.id})" style="background: #6b7280; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 11px; flex: 1; min-width: 60px;">🖨️ Stampa</button>
+                                        <button class="btn btn-secondary btn-small" onclick="printTripThermal(${trip.id})" style="background: #475569; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 11px; flex: 1; min-width: 60px;" title="Stampante termica 72mm">🧾 Termica</button>
                                         <button class="btn btn-danger btn-small" onclick="deleteTrip(${trip.id})" style="background: #dc2626; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 11px; flex: 1; min-width: 60px;">🗑️ Elimina</button>
                                     </div>
                                 </div>
@@ -6867,7 +7058,7 @@
                                 <div style="margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap;">
                                     <button class="btn btn-info btn-small" onclick="createNewTripWithOrder(${order.id})" style="background: #0ea5e9; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">🆕 Nuovo viaggio</button>
                                     <button class="btn btn-primary btn-small" onclick="openEditDeliveryOrderModal(${order.id})" style="background: #3b82f6; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">✏️ Modifica</button>
-                                    <button class="btn btn-secondary btn-small" onclick="handleDeleteTask(${order.id})" style="background: #6b7280; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">🗑️ Rimuovi</button>
+                                    <button class="btn btn-danger btn-small" onclick="handleDeleteTask(${order.id})" style="background: #dc2626; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">🗑️ Elimina</button>
                                 </div>
                             </div>
                         `;
@@ -6919,7 +7110,7 @@
                         ${dayUnassignedPickupOrders.length > 0 ? `<div style="color: #86efac; font-size: 12px; margin-bottom: 8px; font-weight: bold;">📍 Da Assegnare:</div>` : ''}
                         ${dayUnassignedPickupOrders.map(order => {
                             const fullInfo = getOrderFullInfo(order.id);
-                            const operatorName = fullInfo?.operator?.name || 'Non assegnato';
+                            const operatorName = fullInfo?.operator?.username || fullInfo?.operator?.name || 'Non assegnato';
                             const timelineHtml = getOrderTimelineHtml(order);
                             return `
                             <div style="background: #0f1f15; border-left: 3px solid #16a34a; padding: 12px; margin: 8px 0; border-radius: 4px;">
@@ -6931,7 +7122,9 @@
                                 <div style="margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap;">
                                     <button class="btn btn-info btn-small" onclick="openAssignOrderModal(${order.id})" style="background: #0ea5e9; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">👤 Assegna</button>
                                     <button class="btn btn-primary btn-small" onclick="openEditOrderModal(${order.id})" style="background: #3b82f6; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">✏️ Modifica</button>
-                                    <button class="btn btn-secondary btn-small" onclick="handleDeleteTask(${order.id})" style="background: #6b7280; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">🗑️ Rimuovi</button>
+                                    <button class="btn btn-secondary btn-small" onclick="printPickupOrder(${order.id})" style="background: #8b5cf6; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">🖨️ Stampa</button>
+                                    <button class="btn btn-secondary btn-small" onclick="printPickupOrderThermal(${order.id})" style="background: #475569; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;" title="Stampante termica 72mm">🧾 Termica</button>
+                                    <button class="btn btn-danger btn-small" onclick="handleDeleteTask(${order.id})" style="background: #dc2626; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">🗑️ Elimina</button>
                                 </div>
                             </div>
                         `;
@@ -6939,7 +7132,7 @@
                         ${dayRitiroOrders.length > 0 ? `<div style="color: #fbbf24; font-size: 12px; margin: 12px 0 8px 0; font-weight: bold;">✓ Assegnati:</div>` : ''}
                         ${dayRitiroOrders.map(order => {
                             const fullInfo = getOrderFullInfo(order.id);
-                            const operatorName = fullInfo?.operator?.name || 'Non assegnato';
+                            const operatorName = fullInfo?.operator?.username || fullInfo?.operator?.name || 'Non assegnato';
                             const timelineHtml = getOrderTimelineHtml(order);
                             return `
                             <div style="background: #1a1410; border-left: 3px solid #f59e0b; padding: 12px; margin: 8px 0; border-radius: 4px;">
@@ -6950,8 +7143,11 @@
                                 ${fullInfo?.notes ? `<p style="margin: 4px 0; color: #fbbf24; font-size: 13px;">📝 ${fullInfo.notes}</p>` : ''}
                                 ${timelineHtml}
                                 <div style="margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap;">
+                                    <button class="btn btn-info btn-small" onclick="openAssignOrderModal(${order.id})" style="background: #0ea5e9; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">🔄 Cambia operatore</button>
                                     <button class="btn btn-primary btn-small" onclick="openEditOrderModal(${order.id})" style="background: #3b82f6; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">✏️ Modifica</button>
-                                    <button class="btn btn-secondary btn-small" onclick="handleDeleteTask(${order.id})" style="background: #6b7280; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">🗑️ Rimuovi</button>
+                                    <button class="btn btn-secondary btn-small" onclick="printPickupOrder(${order.id})" style="background: #8b5cf6; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">🖨️ Stampa</button>
+                                    <button class="btn btn-secondary btn-small" onclick="printPickupOrderThermal(${order.id})" style="background: #475569; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;" title="Stampante termica 72mm">🧾 Termica</button>
+                                    <button class="btn btn-danger btn-small" onclick="handleDeleteTask(${order.id})" style="background: #dc2626; padding: 4px 8px; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 12px;">🗑️ Elimina</button>
                                 </div>
                             </div>
                         `;
@@ -7269,6 +7465,158 @@
             printWindow.document.close();
         }
 
+        // Stampa singolo ordine di Ritiro - usa lo stesso formato della stampa Viaggio
+        function printPickupOrder(orderId) {
+            const order = orders.find(o => o.id === orderId);
+            if (!order) {
+                alert('Ordine non trovato');
+                return;
+            }
+
+            const colli = getOrderTotalColli(order);
+            const kg = getOrderTotalQuantity(order);
+            const clientName = getClientName(order);
+            const orderDate = order.dateTime ? new Date(order.dateTime) : new Date();
+
+            // Operatore assegnato
+            let operatorName = 'Non assegnato';
+            if (order.assignedOperatorId && allOperators) {
+                const op = allOperators.find(o => o.id === order.assignedOperatorId);
+                if (op) operatorName = op.name || op.username;
+            } else if (order.assignedOperator) {
+                operatorName = order.assignedOperator.name || order.assignedOperator.username || operatorName;
+            }
+
+            // Calcola totali per prodotto (per box "TOTALI PRODOTTI")
+            const totals = {};
+            try {
+                if (order.products) {
+                    const prods = typeof order.products === 'string' ? JSON.parse(order.products) : order.products;
+                    if (Array.isArray(prods)) {
+                        prods.forEach(p => {
+                            if (!p || !p.product) return;
+                            totals[p.product] = (totals[p.product] || 0) + (Number(p.quantity) || 0);
+                        });
+                    }
+                }
+            } catch (e) { /* noop */ }
+
+            // Costruisci HTML prodotti
+            let productsHTML = '';
+            try {
+                if (order.products) {
+                    const prods = typeof order.products === 'string' ? JSON.parse(order.products) : order.products;
+                    if (Array.isArray(prods) && prods.length > 0) {
+                        productsHTML = prods.map(p => {
+                            const weight = extractWeightPerCollo(p.product);
+                            const prodColli = Math.round((p.quantity || 0) / weight);
+                            const shelfPos = p.batchData?.shelfPosition || p.shelfPosition || '—';
+                            const batchNumber = p.batchData?.batch || p.batch || '—';
+                            const expiryDate = p.batchData?.expiry || p.expiry || '—';
+                            return `<div style="padding: 8px; margin: 4px 0; background: #dcfce7; border: 2px solid #16a34a; border-radius: 4px; font-weight: bold; color: #14532d; font-size: 16px;">${p.product} (${prodColli} colli • ${p.quantity}kg) <span style="color: #666; font-size: 14px;">🏷️ Lotto: ${batchNumber} • 📅 Scad: ${expiryDate} • 📍 ${shelfPos}</span></div>`;
+                        }).join('');
+                    }
+                }
+            } catch (e) {
+                productsHTML = `<div style="padding: 8px; margin: 4px 0; background: #dcfce7; border: 2px solid #16a34a; border-radius: 4px; font-weight: bold; color: #14532d; font-size: 16px;">${getOrderProductName(order)}</div>`;
+            }
+
+            const printHTML = `
+                <html>
+                    <head>
+                        <meta charset="UTF-8">
+                        <title>Stampa Ritiro - ${clientName}</title>
+                        <style>
+                            body { font-family: Arial, sans-serif; margin: 20px; color: #333; }
+                            .header { border-bottom: 3px solid #16a34a; padding-bottom: 15px; margin-bottom: 20px; }
+                            .header h1 { margin: 0; color: #16a34a; font-size: 24px; }
+                            .header p { margin: 5px 0; color: #666; }
+                            .details { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+                            .detail-box { padding: 10px; background: #f5f5f5; border-radius: 4px; }
+                            .detail-label { font-weight: bold; color: #16a34a; font-size: 12px; }
+                            .detail-value { font-size: 16px; margin-top: 5px; }
+                            .orders-section { margin: 20px 0; }
+                            .orders-section h2 { color: #16a34a; border-bottom: 2px solid #16a34a; padding-bottom: 10px; }
+                            .order-item { padding: 12px; margin: 8px 0; background: #f9f9f9; border-left: 4px solid #16a34a; border-radius: 4px; }
+                            .order-item strong { color: #333; }
+                            .order-item p { margin: 5px 0; color: #666; font-size: 14px; }
+                            .totals { margin-top: 20px; padding: 15px; background: #dcfce7; border-radius: 6px; border: 2px solid #16a34a; }
+                            .totals h3 { color: #16a34a; margin-top: 0; }
+                            .total-row { display: flex; justify-content: space-between; padding: 5px 0; }
+                            @media print { body { margin: 0; } .no-print { display: none; } }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="header">
+                            <h1>📥 Ritiro - ${clientName}</h1>
+                            <p>Stampa Ordine Ritiro • ${orderDate.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                        </div>
+
+                        <div class="details">
+                            <div class="detail-box">
+                                <div class="detail-label">📅 DATA RITIRO</div>
+                                <div class="detail-value">${orderDate.toLocaleDateString('it-IT')}</div>
+                            </div>
+                            <div class="detail-box">
+                                <div class="detail-label">⏰ ORARIO</div>
+                                <div class="detail-value">${orderDate.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</div>
+                            </div>
+                            <div class="detail-box">
+                                <div class="detail-label">👤 OPERATORE</div>
+                                <div class="detail-value">${operatorName}</div>
+                            </div>
+                            <div class="detail-box">
+                                <div class="detail-label">📦 TIPO</div>
+                                <div class="detail-value">Ritiro Cliente</div>
+                            </div>
+                        </div>
+
+                        <div class="orders-section">
+                            <h2>📋 DETTAGLIO RITIRO</h2>
+                            <div class="order-item">
+                                <strong>${clientName}</strong>
+                                <p style="margin-top: 10px; margin-bottom: 5px;"><strong style="color: #333;">📦 PRODOTTI:</strong></p>
+                                ${productsHTML || '<p style="color: #999;">Nessun prodotto</p>'}
+                                <p style="margin-top: 10px;"><strong>Quantità Totali:</strong> ${colli} colli • <strong style="color: #16a34a;">${kg} kg</strong></p>
+                                <p><strong>Data/Ora:</strong> ${orderDate.toLocaleString('it-IT')}</p>
+                                <p><strong>Note:</strong> ${order.notes || '—'}</p>
+                            </div>
+                        </div>
+
+                        <div class="totals">
+                            <h3>📊 TOTALI PRODOTTI</h3>
+                            ${Object.entries(totals).length > 0
+                                ? Object.entries(totals).map(([product, qty]) => {
+                                    const weight = extractWeightPerCollo(product);
+                                    const c = Math.round(qty / weight);
+                                    return `<div class="total-row"><span><strong>${product}</strong></span><span style="color: #16a34a; font-weight: bold;">${c} colli • ${qty.toFixed(1)} kg</span></div>`;
+                                }).join('')
+                                : '<p style="color: #999;">Nessun prodotto</p>'
+                            }
+                            ${(() => {
+                                const totalKg = Object.values(totals).reduce((a, b) => a + b, 0);
+                                const totalColli = Object.entries(totals).reduce((sum, [product, qty]) => {
+                                    const weight = extractWeightPerCollo(product);
+                                    return sum + Math.round(qty / weight);
+                                }, 0);
+                                return `<div class="total-row" style="border-top: 1px solid #16a34a; padding-top: 10px; margin-top: 10px; font-weight: bold; font-size: 16px;"><span>TOTALE</span><span style="color: #16a34a;">${totalColli} colli • ${totalKg.toFixed(1)} kg</span></div>`;
+                            })()}
+                        </div>
+
+                        <div style="margin-top: 40px; text-align: center; color: #999; font-size: 12px;" class="no-print">
+                            <p>Stampato il ${new Date().toLocaleString('it-IT')}</p>
+                            <button onclick="window.print()" style="padding: 10px 20px; background: #16a34a; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">🖨️ Stampa</button>
+                            <button onclick="window.close()" style="padding: 10px 20px; background: #999; color: white; border: none; border-radius: 4px; cursor: pointer; margin-left: 10px; font-size: 14px;">❌ Chiudi</button>
+                        </div>
+                    </body>
+                </html>
+            `;
+
+            const printWindow = window.open('', 'PrintPickup', 'height=800,width=900');
+            printWindow.document.write(printHTML);
+            printWindow.document.close();
+        }
+
         // Elimina viaggio
         async function deleteTrip(id) {
             try {
@@ -7455,7 +7803,7 @@
                     </div>
                     <div style="display: flex; gap: 8px; margin-top: 8px;">
                         <button type="button" class="btn btn-secondary" onclick="openEditOrderModal(${order.id})" style="flex: 1; padding: 6px 8px; background: #3b82f6; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 0.85em;">✏️ Modifica</button>
-                        <button type="button" class="btn btn-danger btn-small" onclick="removeOrderFromTrip(${tripId}, ${index})" style="flex: 1; background: #dc2626;">🗑️ Rimuovi Ordine</button>
+                        <button type="button" class="btn btn-danger btn-small" onclick="removeOrderFromTrip(${tripId}, ${index})" style="flex: 1; background: #dc2626;">🗑️ Elimina Ordine</button>
                     </div>
                 </div>
             `).join('');
@@ -7824,6 +8172,15 @@
                         </div>
                     </div>
 
+                    <!-- Sezione Assegnazione Operatore (solo per ordini di Ritiro) -->
+                    <div class="form-group form-group-highlighted hidden" id="pickupOperatorSection" style="border: 1px solid #16a34a; background: #1a2d1f; padding: 12px; border-radius: 6px;">
+                        <label for="assignToOperator" class="form-label" style="color: #16a34a;">👤 Assegna a operatore (Ritiro)</label>
+                        <select id="assignToOperator" class="form-input-full">
+                            <option value="">-- Non assegnato --</option>
+                        </select>
+                        <div style="font-size: 12px; color: #86efac; margin-top: 6px;">Lascia vuoto per assegnare in seguito.</div>
+                    </div>
+
                     <div class="form-group form-group-spaced">
                         <label for="orderNotes" class="form-label">📝 Note</label>
                         <textarea id="orderNotes" rows="3" placeholder="Note aggiuntive..." class="form-input-full"></textarea>
@@ -7965,6 +8322,7 @@
     })();
     </script>
 
+    <script src="js/ui-confirm.js"></script>
 </body>
 </html>
 

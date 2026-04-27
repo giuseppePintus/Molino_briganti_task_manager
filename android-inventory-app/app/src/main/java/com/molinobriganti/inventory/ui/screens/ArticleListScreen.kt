@@ -43,6 +43,16 @@ fun ArticleListScreen(
     onCreateNew: () -> Unit
 ) {
     Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        com.molinobriganti.inventory.ui.components.TopBarCompanyLogo()
+                        Text("Articoli")
+                    }
+                }
+            )
+        },
         floatingActionButton = {
             FloatingActionButton(onClick = onCreateNew) {
                 Icon(Icons.Default.Add, contentDescription = "Nuovo articolo")
@@ -50,34 +60,6 @@ fun ArticleListScreen(
         }
     ) { scaffoldPadding ->
     Column(modifier = Modifier.fillMaxSize().padding(scaffoldPadding)) {
-        // Top bar
-        TopAppBar(
-            title = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (logoUrl != null) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(logoUrl)
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = "Logo aziendale",
-                            contentScale = ContentScale.Fit,
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                        )
-                        Spacer(modifier = Modifier.width(10.dp))
-                    }
-                    Text("Articoli")
-                }
-            },
-            actions = {
-                IconButton(onClick = onRefresh) {
-                    Icon(Icons.Default.Refresh, contentDescription = "Aggiorna")
-                }
-            }
-        )
-
         // Search bar
         OutlinedTextField(
             value = uiState.searchQuery,
@@ -118,7 +100,7 @@ fun ArticleListScreen(
         when {
             uiState.isLoading -> {
                 Box(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxWidth().weight(1f),
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator()
@@ -127,7 +109,7 @@ fun ArticleListScreen(
 
             uiState.error != null -> {
                 Box(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxWidth().weight(1f),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -146,7 +128,7 @@ fun ArticleListScreen(
 
             uiState.filteredArticles.isEmpty() -> {
                 Box(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxWidth().weight(1f),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -167,6 +149,7 @@ fun ArticleListScreen(
 
             else -> {
                 LazyColumn(
+                    modifier = Modifier.fillMaxWidth().weight(1f),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {

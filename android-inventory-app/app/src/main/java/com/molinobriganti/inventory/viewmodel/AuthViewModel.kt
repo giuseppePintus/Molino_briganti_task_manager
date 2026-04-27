@@ -58,6 +58,12 @@ class AuthViewModel @Inject constructor(
         }
     }
 
+    fun removeServerUrlFromHistory(url: String) {
+        viewModelScope.launch {
+            tokenManager.removeServerUrlFromHistory(url)
+        }
+    }
+
     fun logout() {
         viewModelScope.launch {
             authRepository.logout()

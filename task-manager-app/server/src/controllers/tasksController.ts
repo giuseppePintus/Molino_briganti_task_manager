@@ -311,9 +311,10 @@ export class TasksController {
 
             // Mark completed if requested
             if (markCompleted) {
+                let updatedTask;
                 // If operator marks task complete, it goes back to admin task (unassigned)
                 if (req.user.role === 'slave') {
-                    await prisma.task.update({
+                    updatedTask = await prisma.task.update({
                         where: { id: parseInt(id) },
                         data: {
                             completed: true,
@@ -326,10 +327,16 @@ export class TasksController {
                             paused: false,
                             pausedAt: null,
                         },
+                        include: {
+                            assignedOperator: { select: { id: true, username: true } },
+                            acceptedBy: { select: { id: true, username: true } },
+                            createdBy: { select: { id: true, username: true } },
+                            completedBy: { select: { id: true, username: true } },
+                        },
                     });
                 } else {
                     // Master can mark tasks directly as completed
-                    await prisma.task.update({
+                    updatedTask = await prisma.task.update({
                         where: { id: parseInt(id) },
                         data: {
                             completed: true,
@@ -337,8 +344,17 @@ export class TasksController {
                             actualMinutes: actualMinutes || null,
                             completedAt: new Date(),
                         },
+                        include: {
+                            assignedOperator: { select: { id: true, username: true } },
+                            acceptedBy: { select: { id: true, username: true } },
+                            createdBy: { select: { id: true, username: true } },
+                            completedBy: { select: { id: true, username: true } },
+                        },
                     });
                 }
+
+                // Notifica WebSocket: task completato
+                socketService.notifyTaskUpdated(updatedTask);
             }
 
             res.status(201).json(newNote);

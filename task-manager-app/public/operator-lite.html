@@ -521,6 +521,10 @@
         }
     </style>
     <script src="js/settings-utils.js"></script>
+    <!-- Socket.io Client per aggiornamenti in tempo reale -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="js/socket-client.js"></script>
+    <script src="js/thermal-print.js"></script>
 </head>
 <body>
     
@@ -878,9 +882,40 @@
                 loadTasks();
                 startAutoRefresh();
                 startInactivityTimer();
+                initLiveUpdates();
             } else {
                 showLogin();
                 loadOperators();
+            }
+        }
+
+        // Aggiornamenti live via WebSocket
+        function initLiveUpdates() {
+            if (typeof LiveUpdates === 'undefined') return;
+            try {
+                LiveUpdates.init({
+                    onTaskChange: function(action, task) {
+                        console.log('🔄 Task ' + action, task);
+                        loadTasks();
+                    },
+                    onOrderChange: function(action, order) {
+                        console.log('🔄 Order ' + action, order);
+                        if (typeof loadOrders === 'function') loadOrders();
+                        if (typeof loadTrips === 'function') loadTrips();
+                    },
+                    onTripChange: function(action, trip) {
+                        console.log('🔄 Trip ' + action, trip);
+                        if (typeof loadTrips === 'function') loadTrips();
+                        if (typeof loadOrders === 'function') loadOrders();
+                    },
+                    onRefresh: function() {
+                        loadTasks();
+                        if (typeof loadOrders === 'function') loadOrders();
+                        if (typeof loadTrips === 'function') loadTrips();
+                    }
+                });
+            } catch (e) {
+                console.warn('LiveUpdates init failed:', e);
             }
         }
         
@@ -1203,6 +1238,7 @@
                     buttons += '<button class="btn btn-pause" onclick="pauseTask(' + task.id + ')">⏸️ Pausa</button>';
                 }
             }
+            if (window.taskOrdineInternoButtons) buttons += window.taskOrdineInternoButtons(task);
             
             // Timeline
             var timeline = '<div class="task-timeline">';
@@ -1277,7 +1313,7 @@
         }
         
         async function completeTask(taskId) {
-            if (await customConfirm('Confermi di aver completato questo task?')) {
+            if (true) {
                 sendTaskAction(taskId, 'complete');
             }
         }
@@ -1936,5 +1972,6 @@
         // Start app
         init();
     </script>
+    <script src="js/ui-confirm.js"></script>
 </body>
 </html>

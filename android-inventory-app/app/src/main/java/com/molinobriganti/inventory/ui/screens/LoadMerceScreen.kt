@@ -101,7 +101,12 @@ fun LoadMerceScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
-            title = { Text("Carico Merce") },
+            title = {
+                androidx.compose.foundation.layout.Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    com.molinobriganti.inventory.ui.components.TopBarCompanyLogo()
+                    Text("Carico Merce")
+                }
+            },
             navigationIcon = {
                 IconButton(onClick = {
                     if (state.currentStep == LoadStep.SCAN_SHELF) onBack()

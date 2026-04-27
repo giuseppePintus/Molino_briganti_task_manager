@@ -49,7 +49,12 @@ fun ArticleDetailScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
-            title = { Text(article.name, maxLines = 1) },
+            title = {
+                androidx.compose.foundation.layout.Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    com.molinobriganti.inventory.ui.components.TopBarCompanyLogo()
+                    Text(article.name, maxLines = 1)
+                }
+            },
             navigationIcon = {
                 IconButton(onClick = onBack) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Indietro")

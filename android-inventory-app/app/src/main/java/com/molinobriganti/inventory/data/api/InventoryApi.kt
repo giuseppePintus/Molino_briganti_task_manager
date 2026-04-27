@@ -23,6 +23,10 @@ interface InventoryApi {
     @DELETE("api/inventory/articles/{id}")
     suspend fun deleteArticle(@Path("id") id: Int): Response<Unit>
 
+    // Categorie ordinate (sincronizzate col web)
+    @GET("api/categories")
+    suspend fun getCategories(): Response<List<CategoryDto>>
+
     // Stock
     @POST("api/inventory/stock/update")
     suspend fun updateStock(@Body request: StockUpdateRequest): Response<Map<String, String>>
@@ -40,6 +44,29 @@ interface InventoryApi {
 
     @POST("api/inventory/alerts/{alertId}/resolve")
     suspend fun resolveAlert(@Path("alertId") alertId: Int): Response<Map<String, String>>
+
+    // Avvisi calcolati live (web parity)
+    @GET("api/alerts")
+    suspend fun getLiveAlerts(): Response<AlertsResponse>
+
+    // Rimuove lo snooze (utile per dismissare un "restock effettuato")
+    @POST("api/alerts/unsnooze")
+    suspend fun unsnoozeAlert(@Body req: ArticleIdRequest): Response<Map<String, String>>
+
+    // Operatori pubblici (per assegnazione task)
+    @GET("api/auth/operators/public")
+    suspend fun getPublicOperators(): Response<List<OperatorPublic>>
+
+    @GET("api/auth/admins/public")
+    suspend fun getPublicAdmins(): Response<List<OperatorPublic>>
+
+    // Crea task (ordine interno)
+    @POST("api/tasks")
+    suspend fun createTask(@Body req: CreateTaskRequest): Response<Map<String, String>>
+
+    // Crea ordine interno (qualunque utente autenticato; auto-snooze avviso)
+    @POST("api/tasks/internal-order")
+    suspend fun createInternalOrder(@Body req: CreateInternalOrderRequest): Response<Map<String, String>>
 
     // Batches
     @GET("api/inventory/batches")

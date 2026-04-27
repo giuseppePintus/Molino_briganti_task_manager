@@ -405,6 +405,7 @@
     <script src="/socket.io/socket.io.js"></script>
     <script src="js/socket-client.js"></script>
     <script src="js/settings-utils.js"></script>
+    <script src="js/thermal-print.js"></script>
 </head>
 <body>
     <div class="container">
@@ -551,10 +552,23 @@
                     },
                     onOrderChange: (action, order) => {
                         console.log(`🔄 Order ${action}:`, order);
-                        // Se ci sono ordini nella dashboard, ricarica
+                        // Ricarica sempre ordini/viaggi quando cambiano
+                        if (typeof loadOrders === 'function') loadOrders();
+                        if (typeof loadTrips === 'function') loadTrips();
                         if (order && order.assignedOperatorId === currentUser.id) {
                             showNotification('order_' + action, order);
                         }
+                    },
+                    onTripChange: (action, trip) => {
+                        console.log(`🔄 Trip ${action}:`, trip);
+                        if (typeof loadTrips === 'function') loadTrips();
+                        if (typeof loadOrders === 'function') loadOrders();
+                    },
+                    onRefresh: () => {
+                        console.log('🔄 Refresh richiesto dal server');
+                        loadTasks();
+                        if (typeof loadOrders === 'function') loadOrders();
+                        if (typeof loadTrips === 'function') loadTrips();
                     },
                     onConnect: () => {
                         console.log('✅ Live updates connected');
@@ -716,6 +730,7 @@
                             <button class="btn btn-warning btn-small" onclick="handlePauseTask(${currentTask.id})">⏸️ Metti in Pausa</button>
                             <button class="btn btn-success btn-small" onclick="openCompleteModal(${currentTask.id})">✅ Completa</button>
                             <button class="btn btn-secondary btn-small" onclick="openTaskModal(${currentTask.id})">📋 Dettagli</button>
+                            ${window.taskOrdineInternoButtons ? window.taskOrdineInternoButtons(currentTask) : ''}
                         </div>
                     </div>
                 `;
@@ -769,6 +784,7 @@
                             ${!task.completed && !task.acceptedAt ? `<button class="btn btn-success btn-small" onclick="handleAcceptTask(${task.id})">👍 Accetta</button>` : ''}
                             ${!task.completed && !task.acceptedAt && task.scheduledAt ? `<button class="btn btn-secondary btn-small" onclick="handlePostponeTask(${task.id})">📅 Posticipa</button>` : ''}
                             ${!task.completed ? `<button class="btn btn-secondary btn-small" onclick="openTaskModal(${task.id})">📋 Dettagli</button>` : ''}
+                            ${window.taskOrdineInternoButtons ? window.taskOrdineInternoButtons(task) : ''}
                         </div>
                     </div>
                 `;
@@ -1625,5 +1641,6 @@
             }
         });
     </script>
+    <script src="js/ui-confirm.js"></script>
 </body>
 </html>

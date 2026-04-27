@@ -592,16 +592,29 @@ export class InventoryService {
   /**
    * Imposta soglia minima per un articolo
    */
-  static async setMinimumStock(articleId: number, minimumStock: number) {
+  static async setMinimumStock(articleId: number, minimumStock: number, criticalStock?: number) {
     try {
-      const inventory = await prisma.inventory.update({
+      const data: any = { minimumStock };
+      if (criticalStock !== undefined && criticalStock !== null && !Number.isNaN(criticalStock)) {
+        data.criticalStock = criticalStock;
+      }
+      const inventory = await prisma.inventory.upsert({
         where: { articleId },
-        data: { minimumStock },
+        update: data,
+        create: {
+          articleId,
+          currentStock: 0,
+          minimumStock,
+          criticalStock: data.criticalStock ?? 0,
+        },
         include: { article: true }
       });
 
-      // Se lo stock attuale è già sotto il nuovo minimo, crea allarme
-      if (inventory.currentStock < minimumStock) {
+      // Crea allarme se sotto soglia
+      const crit = (inventory as any).criticalStock ?? 0;
+      if (crit > 0 && inventory.currentStock <= crit) {
+        await this.createStockAlert(articleId, inventory.id, 'CRITICAL', inventory.currentStock, crit);
+      } else if (minimumStock > 0 && inventory.currentStock <= minimumStock) {
         await this.createStockAlert(articleId, inventory.id, 'LOW_STOCK', inventory.currentStock, minimumStock);
       }
 

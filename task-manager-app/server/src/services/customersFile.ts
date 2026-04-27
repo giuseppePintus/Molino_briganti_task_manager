@@ -6,6 +6,32 @@ import path from 'path';
  * File: /app/data/customers.json (bind mount da NAS)
  */
 
+export class DuplicateNameError extends Error {
+  constructor(name: string) {
+    super(`Cliente con ragione sociale "${name}" già esistente`);
+    this.name = 'DuplicateNameError';
+  }
+}
+
+export interface Destination {
+  id: number;
+  label: string;
+  address?: string | null;
+  city?: string | null;
+  province?: string | null;
+  cap?: string | null;
+  phone?: string | null;
+  notes?: string | null;
+  openMorningStart?: string | null;
+  openMorningEnd?: string | null;
+  openAfternoonStart?: string | null;
+  openAfternoonEnd?: string | null;
+  deliveryMorningStart?: string | null;
+  deliveryMorningEnd?: string | null;
+  deliveryAfternoonStart?: string | null;
+  deliveryAfternoonEnd?: string | null;
+}
+
 export interface Customer {
   id: number;
   code?: string | null;
@@ -23,6 +49,7 @@ export interface Customer {
   closingTime?: string | null;
   deliveryStartTime?: string | null;
   deliveryEndTime?: string | null;
+  destinations?: Destination[];
   isActive: boolean;
   createdAt?: Date;
   updatedAt?: Date;
@@ -95,6 +122,12 @@ export function addCustomer(customer: Omit<Customer, 'id' | 'createdAt' | 'updat
   try {
     const customers = loadCustomers();
     
+    // Controllo unicità ragione sociale (case-insensitive)
+    const duplicate = customers.find(c => c.name.trim().toLowerCase() === customer.name.trim().toLowerCase());
+    if (duplicate) {
+      throw new DuplicateNameError(customer.name);
+    }
+    
     // Genera nuovo ID (max id + 1)
     const maxId = customers.length > 0 ? Math.max(...customers.map(c => c.id)) : 0;
     const newId = maxId + 1;
@@ -102,6 +135,7 @@ export function addCustomer(customer: Omit<Customer, 'id' | 'createdAt' | 'updat
     const newCustomer: Customer = {
       id: newId,
       ...customer,
+      destinations: customer.destinations || [],
       isActive: customer.isActive !== false,
       createdAt: new Date(),
       updatedAt: new Date()
@@ -112,6 +146,7 @@ export function addCustomer(customer: Omit<Customer, 'id' | 'createdAt' | 'updat
     
     return newCustomer;
   } catch (error) {
+    if (error instanceof DuplicateNameError) throw error;
     console.error('Error adding customer:', error);
     return null;
   }
@@ -129,6 +164,14 @@ export function updateCustomer(id: number, updates: Partial<Customer>): Customer
       return null;
     }
     
+    // Controllo unicità ragione sociale se si sta cambiando il nome
+    if (updates.name !== undefined) {
+      const duplicate = customers.find(c => c.id !== id && c.name.trim().toLowerCase() === updates.name!.trim().toLowerCase());
+      if (duplicate) {
+        throw new DuplicateNameError(updates.name);
+      }
+    }
+    
     customers[index] = {
       ...customers[index],
       ...updates,
@@ -140,6 +183,7 @@ export function updateCustomer(id: number, updates: Partial<Customer>): Customer
     saveCustomers(customers);
     return customers[index];
   } catch (error) {
+    if (error instanceof DuplicateNameError) throw error;
     console.error('Error updating customer:', error);
     return null;
   }
@@ -246,5 +290,87 @@ export function importCustomers(newCustomers: Omit<Customer, 'id' | 'createdAt' 
   } catch (error) {
     console.error('Error importing customers:', error);
     return 0;
+  }
+}
+
+// ============================================================
+// DESTINAZIONI MULTIPLE
+// ============================================================
+
+/**
+ * Restituisce le destinazioni di un cliente
+ */
+export function getDestinations(customerId: number): Destination[] {
+  const customer = getCustomerById(customerId);
+  if (!customer) return [];
+  return customer.destinations || [];
+}
+
+/**
+ * Aggiunge una destinazione a un cliente
+ */
+export function addDestination(customerId: number, dest: Omit<Destination, 'id'>): Destination | null {
+  try {
+    const customers = loadCustomers();
+    const index = customers.findIndex(c => c.id === customerId);
+    if (index === -1) return null;
+
+    const destinations = customers[index].destinations || [];
+    const maxId = destinations.length > 0 ? Math.max(...destinations.map(d => d.id)) : 0;
+    const newDest: Destination = { id: maxId + 1, ...dest };
+
+    customers[index].destinations = [...destinations, newDest];
+    customers[index].updatedAt = new Date();
+    saveCustomers(customers);
+    return newDest;
+  } catch (error) {
+    console.error('Error adding destination:', error);
+    return null;
+  }
+}
+
+/**
+ * Aggiorna una destinazione
+ */
+export function updateDestination(customerId: number, destId: number, updates: Partial<Destination>): Destination | null {
+  try {
+    const customers = loadCustomers();
+    const custIndex = customers.findIndex(c => c.id === customerId);
+    if (custIndex === -1) return null;
+
+    const destinations = customers[custIndex].destinations || [];
+    const destIndex = destinations.findIndex(d => d.id === destId);
+    if (destIndex === -1) return null;
+
+    destinations[destIndex] = { ...destinations[destIndex], ...updates, id: destId };
+    customers[custIndex].destinations = destinations;
+    customers[custIndex].updatedAt = new Date();
+    saveCustomers(customers);
+    return destinations[destIndex];
+  } catch (error) {
+    console.error('Error updating destination:', error);
+    return null;
+  }
+}
+
+/**
+ * Elimina una destinazione
+ */
+export function deleteDestination(customerId: number, destId: number): boolean {
+  try {
+    const customers = loadCustomers();
+    const custIndex = customers.findIndex(c => c.id === customerId);
+    if (custIndex === -1) return false;
+
+    const before = (customers[custIndex].destinations || []).length;
+    customers[custIndex].destinations = (customers[custIndex].destinations || []).filter(d => d.id !== destId);
+    if ((customers[custIndex].destinations || []).length === before) return false;
+
+    customers[custIndex].updatedAt = new Date();
+    saveCustomers(customers);
+    return true;
+  } catch (error) {
+    console.error('Error deleting destination:', error);
+    return false;
   }
 }

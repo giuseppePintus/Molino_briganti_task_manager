@@ -339,7 +339,11 @@ router.delete('/:id', async (req: Request, res: Response) => {
     await prisma.trip.delete({
       where: { id: parseInt(id) }
     });
-    
+
+    // Notifica WebSocket: viaggio eliminato (refresh generico per trips e orders)
+    socketService.requestDataRefresh('trips');
+    socketService.requestDataRefresh('orders');
+
     res.json({ success: true, message: 'Trip deleted' });
   } catch (error: any) {
     console.error('Error deleting trip:', error);
@@ -376,7 +380,13 @@ router.post('/:id/orders', async (req: Request, res: Response) => {
         }
       }
     });
-    
+
+    // Notifica WebSocket: viaggio aggiornato e ordini riassegnati
+    if (trip) {
+      socketService.notifyTripUpdated(trip);
+    }
+    socketService.requestDataRefresh('orders');
+
     res.json(trip);
   } catch (error: any) {
     console.error('Error adding orders to trip:', error);
@@ -396,7 +406,11 @@ router.delete('/:id/orders/:orderId', async (req: Request, res: Response) => {
       where: { id: parseInt(orderId) },
       data: { tripId: null }
     });
-    
+
+    // Notifica WebSocket: ordine rimosso dal viaggio
+    socketService.requestDataRefresh('trips');
+    socketService.requestDataRefresh('orders');
+
     res.json({ success: true, message: 'Order removed from trip' });
   } catch (error: any) {
     console.error('Error removing order from trip:', error);

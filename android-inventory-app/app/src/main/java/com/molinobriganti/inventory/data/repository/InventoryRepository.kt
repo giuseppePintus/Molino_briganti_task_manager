@@ -19,6 +19,15 @@ class InventoryRepository @Inject constructor(
         }
     }
 
+    suspend fun getCategories(): Result<List<CategoryDto>> = runCatching {
+        val response = api.getCategories()
+        if (response.isSuccessful) {
+            response.body() ?: emptyList()
+        } else {
+            throw Exception("Errore ${response.code()}: ${response.message()}")
+        }
+    }
+
     suspend fun getArticle(id: Int): Result<Article> = runCatching {
         val response = api.getArticle(id)
         if (response.isSuccessful) {
@@ -60,8 +69,8 @@ class InventoryRepository @Inject constructor(
         }
     }
 
-    suspend fun setMinimumStock(articleId: Int, minimumStock: Int): Result<Unit> = runCatching {
-        val response = api.setMinimumStock(SetMinimumStockRequest(articleId, minimumStock))
+    suspend fun setMinimumStock(articleId: Int, minimumStock: Int, criticalStock: Int? = null): Result<Unit> = runCatching {
+        val response = api.setMinimumStock(SetMinimumStockRequest(articleId, minimumStock, criticalStock))
         if (!response.isSuccessful) {
             throw Exception("Errore ${response.code()}: ${response.message()}")
         }
@@ -80,6 +89,55 @@ class InventoryRepository @Inject constructor(
             response.body() ?: emptyList()
         } else {
             throw Exception("Errore ${response.code()}: ${response.message()}")
+        }
+    }
+
+    /**
+     * Avvisi calcolati live dal server (endpoint /api/alerts) — usati nella UI Avvisi.
+     */
+    suspend fun getLiveAlerts(): Result<List<AlertItem>> = runCatching {
+        val response = api.getLiveAlerts()
+        if (response.isSuccessful) {
+            response.body()?.alerts ?: emptyList()
+        } else {
+            throw Exception("Errore ${response.code()}: ${response.message()}")
+        }
+    }
+
+    suspend fun getLiveAlertsFull(): Result<AlertsResponse> = runCatching {
+        val response = api.getLiveAlerts()
+        if (response.isSuccessful) {
+            response.body() ?: AlertsResponse()
+        } else {
+            throw Exception("Errore ${response.code()}: ${response.message()}")
+        }
+    }
+
+    suspend fun unsnoozeAlert(articleId: Int): Result<Unit> = runCatching {
+        val r = api.unsnoozeAlert(ArticleIdRequest(articleId))
+        if (!r.isSuccessful) throw Exception("Errore ${r.code()}")
+    }
+
+    suspend fun getPublicOperators(): Result<List<OperatorPublic>> = runCatching {
+        val ops = api.getPublicOperators()
+        val adm = api.getPublicAdmins()
+        val list = mutableListOf<OperatorPublic>()
+        if (adm.isSuccessful) list.addAll(adm.body() ?: emptyList())
+        if (ops.isSuccessful) list.addAll(ops.body() ?: emptyList())
+        list
+    }
+
+    suspend fun createTask(req: CreateTaskRequest): Result<Unit> = runCatching {
+        val r = api.createTask(req)
+        if (!r.isSuccessful) {
+            throw Exception("Errore ${r.code()}: ${r.message()}")
+        }
+    }
+
+    suspend fun createInternalOrder(req: CreateInternalOrderRequest): Result<Unit> = runCatching {
+        val r = api.createInternalOrder(req)
+        if (!r.isSuccessful) {
+            throw Exception("Errore ${r.code()}: ${r.message()}")
         }
     }
 

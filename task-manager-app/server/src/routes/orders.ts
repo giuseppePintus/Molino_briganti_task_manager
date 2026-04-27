@@ -307,7 +307,10 @@ router.delete('/:id', async (req: Request, res: Response) => {
     await prisma.order.delete({
       where: { id: parseInt(id) }
     });
-    
+
+    // Notifica WebSocket: ordine eliminato (refresh generico)
+    socketService.requestDataRefresh('orders');
+
     res.json({ success: true, message: 'Order deleted' });
   } catch (error: any) {
     console.error('Error deleting order:', error);

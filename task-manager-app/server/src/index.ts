@@ -66,6 +66,8 @@ import authRoutes from './routes/auth';
 import backupRoutes from './routes/backup';
 import settingsRoutes from './routes/settings';
 import inventoryRoutes from './routes/inventory';
+import categoriesRoutes from './routes/categories';
+import alertsRoutes from './routes/alerts';
 import codificheRoutes from './routes/codifiche';
 import uploadRoutes, { UPLOAD_DIR } from './routes/upload';
 import ordersRoutes from './routes/orders';
@@ -121,6 +123,8 @@ app.use('/api/tasks', tasksRoutes);
 app.use('/api/backup', backupRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/inventory', inventoryRoutes);
+app.use('/api/categories', categoriesRoutes);
+app.use('/api/alerts', alertsRoutes);
 app.use('/api/codifiche', codificheRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/orders', ordersRoutes);
@@ -290,6 +294,54 @@ httpServer.listen(PORT, undefined, async () => {
       }
     } catch (err: any) {
       console.warn('⚠️  Error checking Trip columns:', err.message);
+    }
+
+    // Aggiungi i campi snooze a Inventory se non esistono
+    console.log('🔧 Checking Inventory snooze columns...');
+    try {
+      const invFields = [
+        ['snoozedAt', 'DATETIME'],
+        ['snoozedAtStock', 'INT']
+      ];
+      for (const [fieldName, fieldType] of invFields) {
+        try {
+          await prisma.$executeRawUnsafe(`ALTER TABLE \`Inventory\` ADD COLUMN \`${fieldName}\` ${fieldType}`);
+          console.log(`✅ Added Inventory column: ${fieldName}`);
+        } catch (_e: any) { /* exists */ }
+      }
+    } catch (err: any) {
+      console.warn('⚠️  Error checking Inventory columns:', err.message);
+    }
+
+    // Aggiungi i campi stampa ordine interno a Task
+    console.log('🔧 Checking Task internalOrder print columns...');
+    try {
+      const taskFields = [
+        ['internalOrderPrintedAt', 'DATETIME'],
+        ['internalOrderPrintedById', 'INT']
+      ];
+      for (const [fieldName, fieldType] of taskFields) {
+        try {
+          await prisma.$executeRawUnsafe(`ALTER TABLE \`Task\` ADD COLUMN \`${fieldName}\` ${fieldType}`);
+          console.log(`✅ Added Task column: ${fieldName}`);
+        } catch (_e: any) { /* exists */ }
+      }
+    } catch (err: any) {
+      console.warn('⚠️  Error checking Task columns:', err.message);
+    }
+
+    // Fix legacy "Ordine interno" task titles/descriptions: kg -> colli
+    console.log('🔧 Normalizing legacy ordine interno units (kg -> colli)...');
+    try {
+      const tFix = await prisma.$executeRawUnsafe(
+        "UPDATE `Task` SET `title` = REGEXP_REPLACE(`title`, '(Ordine interno:.*\\\\s[×x]\\\\s*[0-9]+)\\\\s*kg', '\\\\1 colli') WHERE `title` LIKE '%Ordine interno:%' AND `title` REGEXP '[×x][[:space:]]*[0-9]+[[:space:]]*kg'"
+      );
+      const dFix = await prisma.$executeRawUnsafe(
+        "UPDATE `Task` SET `description` = REGEXP_REPLACE(`description`, '(Giacenza attuale:\\\\s*[0-9]+)\\\\s*kg', '\\\\1 colli') WHERE `description` LIKE '%Giacenza attuale:%kg%'"
+      );
+      console.log(`✅ Normalizzati: ${tFix} titoli, ${dFix} descrizioni`);
+    } catch (err: any) {
+      console.warn('⚠️  Normalize ordini interni fallito:', err.message);
     }
 
     // Inizializza database con utenti di default se vuoto

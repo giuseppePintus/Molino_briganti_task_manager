@@ -1601,7 +1601,7 @@
                             ` : ''}
                             <div style="display: flex; gap: 8px; margin-top: 12px;">
                                 <button class="btn btn-primary btn-small" style="flex: 1; padding: 8px; font-size: 12px;" onclick="openEditTaskModal(${task.id})">✏️ Modifica</button>
-                                <button class="btn btn-danger btn-small" style="flex: 1; padding: 8px; font-size: 12px;" onclick="handleDeleteTask(${task.id})">🗑️ Rimuovi</button>
+                                <button class="btn btn-danger btn-small" style="flex: 1; padding: 8px; font-size: 12px;" onclick="handleDeleteTask(${task.id})">🗑️ Elimina</button>
                             </div>
                         </div>
                     `}).join('');
@@ -2528,5 +2528,6 @@
             }
         });
     </script>
+    <script src="js/ui-confirm.js"></script>
 </body>
 </html>

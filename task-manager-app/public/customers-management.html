@@ -83,8 +83,13 @@
 
         .customer-actions {
             display: flex;
+            flex-wrap: wrap;
             gap: 8px;
             margin-top: 10px;
+        }
+
+        .customer-actions .btn {
+            flex-shrink: 0;
         }
 
         .modal {
@@ -495,6 +500,37 @@
             margin-top: 0 !important;
             margin-bottom: 0 !important;
         }
+
+        /* === DESTINAZIONI === */
+        .dest-badge {
+            display: inline-block;
+            font-size: 10px;
+            background: #0891b2;
+            color: white;
+            border-radius: 10px;
+            padding: 1px 7px;
+            margin-left: 6px;
+            vertical-align: middle;
+        }
+        #destinationsModal .modal-content {
+            max-width: 680px;
+        }
+        .dest-list-item {
+            background: #3d3d3d;
+            border-left: 4px solid #0891b2;
+            padding: 12px 14px;
+            border-radius: 4px;
+            border: 1px solid #4d4d4d;
+            margin-bottom: 10px;
+        }
+        .dest-list-item h4 {
+            color: #e0e0e0;
+            font-size: 14px;
+            margin-bottom: 6px;
+        }
+        .dest-list-item .customer-info {
+            font-size: 12px;
+        }
     </style>
 </head>
 <body>
@@ -541,6 +577,10 @@
             <div class="dropdown-menu-admin">
                 <button class="btn btn-settings" data-icon="⚙️" onclick="toggleAdminMenu()"><span>Gestione</span></button>
                 <div id="adminMenuDropdown" class="admin-menu-dropdown">
+                    <button class="admin-menu-item" onclick="openCustomerModal(); toggleAdminMenu();">
+                        <span class="menu-icon">➕</span>
+                        <span>Nuovo Cliente</span>
+                    </button>
                     <button class="admin-menu-item" onclick="window.location.href='company-settings.html'; toggleAdminMenu();">
                         <span class="menu-icon">🏢</span>
                         <span>Impostazioni Azienda</span>
@@ -640,9 +680,97 @@
         </div>
     </div>
 
+    <!-- Destinations Modal -->
+    <div id="destinationsModal" class="modal">
+        <div class="modal-content" style="max-width:680px;">
+            <h2 id="destinationsModalTitle">📍 Destinazioni</h2>
+            <div id="destinationsList" style="margin-bottom:16px;"></div>
+            <div class="modal-actions" style="justify-content:space-between;">
+                <button class="btn btn-customers" onclick="openDestinationForm(null)">➕ Aggiungi destinazione</button>
+                <button class="btn btn-secondary" onclick="closeDestinationsModal()">✕ Chiudi</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Destination Form Modal -->
+    <div id="destinationFormModal" class="modal">
+        <div class="modal-content">
+            <h2 id="destFormTitle">📍 Nuova Destinazione</h2>
+            <form id="destinationForm" onsubmit="saveDestination(event)">
+                <div class="form-group">
+                    <label for="destLabel">Nome destinazione *</label>
+                    <input type="text" id="destLabel" required placeholder="Es. Sede principale, Magazzino nord">
+                </div>
+                <div class="form-group">
+                    <label for="destAddress">Indirizzo</label>
+                    <input type="text" id="destAddress" placeholder="Es. Via Roma 123">
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 80px 100px;gap:10px;">
+                    <div class="form-group">
+                        <label for="destCity">Città</label>
+                        <input type="text" id="destCity" placeholder="Es. Milano">
+                    </div>
+                    <div class="form-group">
+                        <label for="destProvince">Prov.</label>
+                        <input type="text" id="destProvince" placeholder="MI" maxlength="2">
+                    </div>
+                    <div class="form-group">
+                        <label for="destCap">CAP</label>
+                        <input type="text" id="destCap" placeholder="20100">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="destPhone">Telefono</label>
+                    <input type="tel" id="destPhone" placeholder="Es. 0123456789">
+                </div>
+                <div class="form-group">
+                    <label>Orario apertura mattina</label>
+                    <div class="time-input-group">
+                        <input type="time" id="destOpenMorningStart" class="flex-1">
+                        <span class="time-separator">alle</span>
+                        <input type="time" id="destOpenMorningEnd" class="flex-1">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Orario apertura pomeriggio (opzionale)</label>
+                    <div class="time-input-group">
+                        <input type="time" id="destOpenAfternoonStart" class="flex-1">
+                        <span class="time-separator">alle</span>
+                        <input type="time" id="destOpenAfternoonEnd" class="flex-1">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Finestra consegne mattina</label>
+                    <div class="time-input-group">
+                        <input type="time" id="destDeliveryMorningStart" class="flex-1">
+                        <span class="time-separator">alle</span>
+                        <input type="time" id="destDeliveryMorningEnd" class="flex-1">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Finestra consegne pomeriggio (opzionale)</label>
+                    <div class="time-input-group">
+                        <input type="time" id="destDeliveryAfternoonStart" class="flex-1">
+                        <span class="time-separator">alle</span>
+                        <input type="time" id="destDeliveryAfternoonEnd" class="flex-1">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="destNotes">Note</label>
+                    <textarea id="destNotes" rows="2" placeholder="Note aggiuntive..."></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary">💾 Salva</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeDestinationForm()">❌ Annulla</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="js/data-sync.js"></script>
     <script src="js/settings-utils.js"></script>
     <script src="js/pages-indice.js"></script>
+    <script src="js/alerts-badge.js" defer></script>
     <script>
         const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
 
@@ -758,10 +886,12 @@
                 if (customer.orario_consegna_inizio && customer.orario_consegna_fine) {
                     orariDisplay += `<p>🚚 Consegne: ${customer.orario_consegna_inizio} - ${customer.orario_consegna_fine}</p>`;
                 }
+                const destCount = (customer.destinations || []).length;
+                const destBadge = destCount > 0 ? `<span class="dest-badge">📍 ${destCount} dest.</span>` : '';
                 
                 return `
                 <div class="customer-card">
-                    <h3>${customer.nome}</h3>
+                    <h3>${customer.nome}${destBadge}</h3>
                     <div class="customer-info">
                         <p>📧 ${customer.email}</p>
                         <p>📞 ${customer.telefono}</p>
@@ -771,6 +901,7 @@
                     </div>
                     <div class="customer-actions">
                         <button class="btn btn-success" onclick="editCustomer(${customer.id})">✏️ Modifica</button>
+                        <button class="btn btn-customers" onclick="openDestinationsModal(${customer.id})">📍 Destinazioni</button>
                         <button class="btn btn-danger" onclick="deleteCustomer(${customer.id})">🗑️ Elimina</button>
                     </div>
                 </div>
@@ -886,9 +1017,13 @@
                     await DataSync.updateCustomer(editingCustomerId, customerData);
                     const index = customers.findIndex(c => c.id == editingCustomerId);
                     if (index >= 0) {
-                        customers[index] = customerData;
+                        customers[index] = { ...customers[index], ...customerData };
                     }
                 } catch (error) {
+                    if (error.status === 409) {
+                        alert('❌ ' + error.message);
+                        return;
+                    }
                     console.warn('⚠️ Errore aggiornamento API, salvo localmente:', error);
                     const index = customers.findIndex(c => c.id == editingCustomerId);
                     if (index >= 0) {
@@ -900,8 +1035,12 @@
                 try {
                     const savedCustomer = await DataSync.saveCustomer(customerData);
                     customerData.id = savedCustomer.id || customerData.id;
-                    customers.push(customerData);
+                    customers.push({ ...savedCustomer, nome: savedCustomer.nome || savedCustomer.name || customerData.nome, ...customerData });
                 } catch (error) {
+                    if (error.status === 409) {
+                        alert('❌ ' + error.message);
+                        return;
+                    }
                     console.warn('⚠️ Errore creazione API, salvo localmente:', error);
                     customers.push(customerData);
                 }
@@ -978,9 +1117,201 @@
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 const customerModal = document.getElementById('customerModal');
-                if (customerModal && customerModal.classList.contains('active')) { closeCustomerModal(); }
+                if (customerModal && customerModal.classList.contains('active')) { closeCustomerModal(); return; }
+                const destFormModal = document.getElementById('destinationFormModal');
+                if (destFormModal && destFormModal.classList.contains('active')) { closeDestinationForm(); return; }
+                const destModal = document.getElementById('destinationsModal');
+                if (destModal && destModal.classList.contains('active')) { closeDestinationsModal(); }
             }
         });
+
+        // ============================================================
+        // DESTINAZIONI MULTIPLE
+        // ============================================================
+        let currentDestinationsCustomerId = null;
+        let editingDestinationId = null;
+
+        function openDestinationsModal(customerId) {
+            currentDestinationsCustomerId = customerId;
+            const customer = customers.find(c => c.id == customerId);
+            document.getElementById('destinationsModalTitle').textContent =
+                `📍 Destinazioni — ${customer?.nome || customer?.name || ''}`;
+            renderDestinationsList(customer);
+            document.getElementById('destinationsModal').classList.add('active');
+        }
+
+        function closeDestinationsModal() {
+            document.getElementById('destinationsModal').classList.remove('active');
+            currentDestinationsCustomerId = null;
+        }
+
+        function buildDestHoursHtml(d) {
+            let h = '';
+            if (d.openMorningStart && d.openMorningEnd) {
+                h += `<p>⏰ Apertura: ${d.openMorningStart}-${d.openMorningEnd}`;
+                if (d.openAfternoonStart && d.openAfternoonEnd) h += `, ${d.openAfternoonStart}-${d.openAfternoonEnd}`;
+                h += '</p>';
+            }
+            if (d.deliveryMorningStart && d.deliveryMorningEnd) {
+                h += `<p>🚚 Consegne: ${d.deliveryMorningStart}-${d.deliveryMorningEnd}`;
+                if (d.deliveryAfternoonStart && d.deliveryAfternoonEnd) h += `, ${d.deliveryAfternoonStart}-${d.deliveryAfternoonEnd}`;
+                h += '</p>';
+            }
+            return h;
+        }
+
+        function renderDestinationsList(customer) {
+            const list = document.getElementById('destinationsList');
+            const destinations = customer?.destinations || [];
+
+            // Destinazione di default ricavata dai dati della ragione sociale
+            const defaultHours = buildDestHoursHtml({
+                openMorningStart: customer?.orario_apertura || null,
+                openMorningEnd: customer?.orario_chiusura || null,
+                deliveryMorningStart: customer?.orario_consegna_inizio || null,
+                deliveryMorningEnd: customer?.orario_consegna_fine || null
+            });
+            const defaultDestHtml = `
+                <div class="dest-list-item" style="border-left-color:#16a34a;opacity:0.9;">
+                    <h4 style="display:flex;align-items:center;gap:8px;">🏢 ${customer?.nome || customer?.name || 'Sede principale'} <span style="font-size:10px;background:#16a34a;color:white;border-radius:10px;padding:1px 7px;">default</span></h4>
+                    <div class="customer-info">
+                        ${customer?.indirizzo ? `<p>🏠 ${customer.indirizzo}${customer.città ? ', ' + customer.città : ''}</p>` : ''}
+                        ${customer?.telefono ? `<p>📞 ${customer.telefono}</p>` : ''}
+                        ${customer?.email ? `<p>📧 ${customer.email}</p>` : ''}
+                        ${defaultHours}
+                    </div>
+                    <div style="margin-top:6px;font-size:11px;color:#808080;">Modifica tramite ✏️ Modifica cliente</div>
+                </div>`;
+
+            if (destinations.length === 0) {
+                list.innerHTML = defaultDestHtml + '<div class="empty-state" style="margin-top:10px;">Nessuna destinazione aggiuntiva.</div>';
+                return;
+            }
+            list.innerHTML = defaultDestHtml + destinations.map(d => {
+                const hoursHtml = buildDestHoursHtml(d);
+                return `
+                <div class="dest-list-item">
+                    <h4>📍 ${d.label}</h4>
+                    <div class="customer-info">
+                        ${d.address ? `<p>🏠 ${d.address}${d.city ? ', ' + d.city : ''}${d.province ? ' (' + d.province + ')' : ''}${d.cap ? ' - ' + d.cap : ''}</p>` : ''}
+                        ${d.phone ? `<p>📞 ${d.phone}</p>` : ''}
+                        ${hoursHtml}
+                        ${d.notes ? `<p>📝 ${d.notes}</p>` : ''}
+                    </div>
+                    <div class="customer-actions" style="margin-top:8px;">
+                        <button class="btn btn-success" onclick="openDestinationForm(${d.id})">✏️ Modifica</button>
+                        <button class="btn btn-danger" onclick="removeDestination(${d.id})">🗑️ Elimina</button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function openDestinationForm(destId) {
+            editingDestinationId = destId;
+            const customer = customers.find(c => c.id == currentDestinationsCustomerId);
+            document.getElementById('destFormTitle').textContent = destId ? '✏️ Modifica Destinazione' : '📍 Nuova Destinazione';
+            document.getElementById('destinationForm').reset();
+            if (destId) {
+                const dest = (customer?.destinations || []).find(d => d.id == destId);
+                if (dest) {
+                    document.getElementById('destLabel').value = dest.label || '';
+                    document.getElementById('destAddress').value = dest.address || '';
+                    document.getElementById('destCity').value = dest.city || '';
+                    document.getElementById('destProvince').value = dest.province || '';
+                    document.getElementById('destCap').value = dest.cap || '';
+                    document.getElementById('destPhone').value = dest.phone || '';
+                    document.getElementById('destOpenMorningStart').value = dest.openMorningStart || '';
+                    document.getElementById('destOpenMorningEnd').value = dest.openMorningEnd || '';
+                    document.getElementById('destOpenAfternoonStart').value = dest.openAfternoonStart || '';
+                    document.getElementById('destOpenAfternoonEnd').value = dest.openAfternoonEnd || '';
+                    document.getElementById('destDeliveryMorningStart').value = dest.deliveryMorningStart || '';
+                    document.getElementById('destDeliveryMorningEnd').value = dest.deliveryMorningEnd || '';
+                    document.getElementById('destDeliveryAfternoonStart').value = dest.deliveryAfternoonStart || '';
+                    document.getElementById('destDeliveryAfternoonEnd').value = dest.deliveryAfternoonEnd || '';
+                    document.getElementById('destNotes').value = dest.notes || '';
+                }
+            }
+            document.getElementById('destinationFormModal').classList.add('active');
+        }
+
+        function closeDestinationForm() {
+            document.getElementById('destinationFormModal').classList.remove('active');
+            editingDestinationId = null;
+        }
+
+        async function saveDestination(event) {
+            event.preventDefault();
+            const customerId = currentDestinationsCustomerId;
+            const destData = {
+                label: document.getElementById('destLabel').value.trim(),
+                address: document.getElementById('destAddress').value.trim() || null,
+                city: document.getElementById('destCity').value.trim() || null,
+                province: document.getElementById('destProvince').value.trim() || null,
+                cap: document.getElementById('destCap').value.trim() || null,
+                phone: document.getElementById('destPhone').value.trim() || null,
+                openMorningStart: document.getElementById('destOpenMorningStart').value || null,
+                openMorningEnd: document.getElementById('destOpenMorningEnd').value || null,
+                openAfternoonStart: document.getElementById('destOpenAfternoonStart').value || null,
+                openAfternoonEnd: document.getElementById('destOpenAfternoonEnd').value || null,
+                deliveryMorningStart: document.getElementById('destDeliveryMorningStart').value || null,
+                deliveryMorningEnd: document.getElementById('destDeliveryMorningEnd').value || null,
+                deliveryAfternoonStart: document.getElementById('destDeliveryAfternoonStart').value || null,
+                deliveryAfternoonEnd: document.getElementById('destDeliveryAfternoonEnd').value || null,
+                notes: document.getElementById('destNotes').value.trim() || null
+            };
+            try {
+                const token = localStorage.getItem('token');
+                const headers = { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) };
+                let saved;
+                if (editingDestinationId) {
+                    const resp = await fetch(`/api/customers/${customerId}/destinations/${editingDestinationId}`, {
+                        method: 'PUT', headers, body: JSON.stringify(destData)
+                    });
+                    if (!resp.ok) throw new Error('Errore salvataggio');
+                    saved = await resp.json();
+                } else {
+                    const resp = await fetch(`/api/customers/${customerId}/destinations`, {
+                        method: 'POST', headers, body: JSON.stringify(destData)
+                    });
+                    if (!resp.ok) throw new Error('Errore salvataggio');
+                    saved = await resp.json();
+                }
+                // Aggiorna oggetto locale
+                const custIndex = customers.findIndex(c => c.id == customerId);
+                if (custIndex >= 0) {
+                    if (!customers[custIndex].destinations) customers[custIndex].destinations = [];
+                    if (editingDestinationId) {
+                        const di = customers[custIndex].destinations.findIndex(d => d.id == editingDestinationId);
+                        if (di >= 0) customers[custIndex].destinations[di] = saved;
+                    } else {
+                        customers[custIndex].destinations.push(saved);
+                    }
+                }
+                closeDestinationForm();
+                renderDestinationsList(customers.find(c => c.id == customerId));
+                renderCustomers();
+            } catch (error) {
+                alert('❌ Errore salvataggio destinazione: ' + error.message);
+            }
+        }
+
+        async function removeDestination(destId) {
+            if (!await customConfirm('Eliminare questa destinazione?')) return;
+            const customerId = currentDestinationsCustomerId;
+            try {
+                const token = localStorage.getItem('token');
+                await fetch(`/api/customers/${customerId}/destinations/${destId}`, {
+                    method: 'DELETE',
+                    headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                });
+            } catch (e) { /* ignora errori di rete */ }
+            const custIndex = customers.findIndex(c => c.id == customerId);
+            if (custIndex >= 0 && customers[custIndex].destinations) {
+                customers[custIndex].destinations = customers[custIndex].destinations.filter(d => d.id != destId);
+            }
+            renderDestinationsList(customers.find(c => c.id == customerId));
+            renderCustomers();
+        }
     </script>
     <script>
     (function() {
@@ -1001,5 +1332,6 @@
         }, { passive: true });
     })();
     </script>
+    <script src="js/ui-confirm.js"></script>
 </body>
 </html>

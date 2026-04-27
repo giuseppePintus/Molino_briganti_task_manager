@@ -12,6 +12,17 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+// Categorie predefinite allineate con il pannello web (warehouse-management.html)
+private val DEFAULT_CATEGORIES = listOf(
+    "FARINE",
+    "MIX FARINE",
+    "SEMOLE",
+    "CEREALI",
+    "CEREALI PERLATI",
+    "MANGIMI",
+    "ALTRO"
+)
+
 data class ArticleListState(
     val articles: List<Article> = emptyList(),
     val filteredArticles: List<Article> = emptyList(),
@@ -50,12 +61,23 @@ class ArticleViewModel @Inject constructor(
     fun loadArticles() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
+            // Carica categorie ordinate dal server (in parallelo)
+            val serverCategories: List<String> = repository.getCategories()
+                .getOrNull()
+                ?.map { it.name.trim().uppercase() }
+                ?.filter { it.isNotBlank() }
+                ?: emptyList()
             repository.getArticles()
                 .onSuccess { articles ->
-                    val categories = articles
-                        .mapNotNull { it.category }
+                    val articleCats = articles
+                        .mapNotNull { it.category?.trim()?.takeIf { c -> c.isNotBlank() }?.uppercase() }
                         .distinct()
-                        .sorted()
+                    val categories: List<String> = if (serverCategories.isNotEmpty()) {
+                        // Ordine del server, in coda eventuali extra trovati negli articoli
+                        serverCategories + articleCats.filter { it !in serverCategories }
+                    } else {
+                        (articleCats + DEFAULT_CATEGORIES).distinct().sorted()
+                    }
                     _uiState.update {
                         it.copy(
                             articles = articles,
@@ -122,11 +144,15 @@ class ArticleViewModel @Inject constructor(
         _uiState.update { it.copy(operationSuccess = null) }
     }
 
-    fun createArticle(code: String, name: String, description: String?, category: String?, unit: String, weightPerUnit: Float, barcode: String?) {
+    fun createArticle(code: String, name: String, description: String?, category: String?, unit: String, weightPerUnit: Float, barcode: String?, minimumStock: Int = 0, criticalStock: Int = 0) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             repository.createArticle(CreateArticleRequest(code, name, description, category, unit, weightPerUnit, barcode))
                 .onSuccess { newArticle ->
+                    // Salva soglie (anche se 0 per disattivarle)
+                    runCatching {
+                        repository.setMinimumStock(newArticle.id, minimumStock, criticalStock)
+                    }
                     val updated = _uiState.value.articles + newArticle
                     _uiState.update { it.copy(isLoading = false, articles = updated, filteredArticles = updated, operationSuccess = "Articolo creato") }
                     loadArticles() // refresh in background for consistency
@@ -137,11 +163,16 @@ class ArticleViewModel @Inject constructor(
         }
     }
 
-    fun updateArticle(id: Int, code: String, name: String, description: String?, category: String?, unit: String, weightPerUnit: Float, barcode: String?) {
+    fun updateArticle(id: Int, code: String, name: String, description: String?, category: String?, unit: String, weightPerUnit: Float, barcode: String?, minimumStock: Int? = null, criticalStock: Int? = null) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             repository.updateArticle(id, UpdateArticleRequest(code, name, description, category, unit, weightPerUnit, barcode))
                 .onSuccess { updatedArticle ->
+                    if (minimumStock != null || criticalStock != null) {
+                        runCatching {
+                            repository.setMinimumStock(id, minimumStock ?: 0, criticalStock)
+                        }
+                    }
                     val updated = _uiState.value.articles.map { if (it.id == id) updatedArticle else it }
                     _uiState.update { it.copy(isLoading = false, articles = updated, filteredArticles = updated, operationSuccess = "Articolo aggiornato") }
                     loadArticles() // refresh in background for consistency
@@ -175,7 +206,7 @@ class ArticleViewModel @Inject constructor(
                 (article.category?.contains(query, ignoreCase = true) == true)
 
             val matchesCategory = category == null ||
-                article.category == category
+                article.category?.trim()?.equals(category, ignoreCase = true) == true
 
             matchesQuery && matchesCategory
         }

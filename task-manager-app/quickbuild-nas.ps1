@@ -14,6 +14,35 @@ npx prisma generate --schema=server/prisma/schema.prisma
 Write-Host "[OK] Prisma client rigenerato" -ForegroundColor Green
 Write-Host ""
 
+# 0.5 Build APK Android (best-effort: non blocca il deploy se fallisce)
+Write-Host "[0b/5] Build APK Android (debug)..." -ForegroundColor Yellow
+$androidDir = Join-Path (Split-Path -Parent $PSScriptRoot) 'android-inventory-app'
+if (Test-Path (Join-Path $androidDir 'gradlew.bat')) {
+    try {
+        Push-Location $androidDir
+        & .\gradlew.bat --quiet assembleDebug 2>&1 | Select-Object -Last 5
+        $apkSrc = Join-Path $androidDir 'app\build\outputs\apk\debug\MolinoInventory-v1.2.0-debug.apk'
+        if (-not (Test-Path $apkSrc)) {
+            # fallback: cerca un qualsiasi APK debug
+            $apkSrc = Get-ChildItem -Path (Join-Path $androidDir 'app\build\outputs\apk\debug') -Filter '*.apk' -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+        }
+        if ($apkSrc -and (Test-Path $apkSrc)) {
+            Copy-Item $apkSrc -Destination (Join-Path $PSScriptRoot 'public\MolinoInventory.apk') -Force
+            $apkSize = [Math]::Round((Get-Item (Join-Path $PSScriptRoot 'public\MolinoInventory.apk')).Length / 1MB, 2)
+            Write-Host "[OK] APK copiato in public/MolinoInventory.apk ($apkSize MB)" -ForegroundColor Green
+        } else {
+            Write-Host "[WARN] APK non trovato, salto la copia" -ForegroundColor DarkYellow
+        }
+    } catch {
+        Write-Host "[WARN] Build APK fallita: $($_.Exception.Message)" -ForegroundColor DarkYellow
+    } finally {
+        Pop-Location
+    }
+} else {
+    Write-Host "[WARN] gradlew non trovato, salto build APK" -ForegroundColor DarkYellow
+}
+Write-Host ""
+
 # 1. Compila TypeScript
 Write-Host "[1/5] Compilazione TypeScript..." -ForegroundColor Yellow
 npm run build
@@ -57,44 +86,57 @@ scp task-manager-update.tar.gz admin@192.168.1.248:/share/Container/
 Write-Host "[OK] File caricato" -ForegroundColor Green
 Write-Host ""
 
-# 5. Extract e restart con utente admin
-Write-Host "[5/5] Extract e restart container..." -ForegroundColor Yellow
-ssh admin@192.168.1.248 'cd /share/Container && tar -xzf task-manager-update.tar.gz && /share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker restart molino-task-manager-nas'
-Write-Host "[OK] Container riavviato" -ForegroundColor Green
+# 5. Extract sul NAS (il restart avviene a fine sincronizzazione, evita race condition)
+Write-Host "[5/5] Estrazione archivio sul NAS..." -ForegroundColor Yellow
+ssh admin@192.168.1.248 'cd /share/Container && tar -xzf task-manager-update.tar.gz'
+Write-Host "[OK] Archivio estratto" -ForegroundColor Green
 Write-Host ""
 
-# 6. Sincronizza file critici DENTRO il container
-Write-Host "[6/7] Sincronizzazione file critici nel container..." -ForegroundColor Yellow
-Write-Host "      Copia index.html aggiornato..." -ForegroundColor Gray
-ssh admin@192.168.1.248 '/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker cp /share/Container/public/index.html molino-task-manager-nas:/app/public/index.html'
-Write-Host "      Copia HTML aggiornato (orders-planner.html)..." -ForegroundColor Gray
-ssh admin@192.168.1.248 '/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker cp /share/Container/public/orders-planner.html molino-task-manager-nas:/app/public/orders-planner.html'
-Write-Host "      Copia admin-dashboard.html aggiornato..." -ForegroundColor Gray
-ssh admin@192.168.1.248 '/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker cp /share/Container/public/admin-dashboard.html molino-task-manager-nas:/app/public/admin-dashboard.html'
-Write-Host "      Copia customers-management.html aggiornato..." -ForegroundColor Gray
-ssh admin@192.168.1.248 '/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker cp /share/Container/public/customers-management.html molino-task-manager-nas:/app/public/customers-management.html'
-Write-Host "      Copia warehouse-management.html aggiornato..." -ForegroundColor Gray
-ssh admin@192.168.1.248 '/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker cp /share/Container/public/warehouse-management.html molino-task-manager-nas:/app/public/warehouse-management.html'
-Write-Host "      Copia warehouse-management-lite.html aggiornato..." -ForegroundColor Gray
-ssh admin@192.168.1.248 '/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker cp /share/Container/public/warehouse-management-lite.html molino-task-manager-nas:/app/public/warehouse-management-lite.html'
-Write-Host "      Copia trips-management.html aggiornato..." -ForegroundColor Gray
-ssh admin@192.168.1.248 '/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker cp /share/Container/public/trips-management.html molino-task-manager-nas:/app/public/trips-management.html'
-Write-Host "      Copia operators.html aggiornato..." -ForegroundColor Gray
-ssh admin@192.168.1.248 '/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker cp /share/Container/public/operators.html molino-task-manager-nas:/app/public/operators.html'
-Write-Host "      Copia cartella js/ aggiornata..." -ForegroundColor Gray
-ssh admin@192.168.1.248 '/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker cp /share/Container/public/js/. molino-task-manager-nas:/app/public/js/'
-Write-Host "      Copia package.json aggiornato..." -ForegroundColor Gray
-ssh admin@192.168.1.248 '/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker cp /share/Container/package.json molino-task-manager-nas:/app/package.json'
-Write-Host "      Copia server/dist aggiornato..." -ForegroundColor Gray
-ssh admin@192.168.1.248 '/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker cp /share/Container/server/dist/. molino-task-manager-nas:/app/server/dist/'
-Write-Host "      Copia schema Prisma aggiornato..." -ForegroundColor Gray
-ssh admin@192.168.1.248 '/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker cp /share/Container/server/prisma/schema.prisma molino-task-manager-nas:/app/server/prisma/schema.prisma'
-Write-Host "      Rigenera Prisma client nel container..." -ForegroundColor Gray
-ssh admin@192.168.1.248 '/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker exec molino-task-manager-nas npx prisma@6.19.0 generate --schema /app/server/prisma/schema.prisma'
-Write-Host "      Sincronizza schema DB (db push)..." -ForegroundColor Gray
-ssh admin@192.168.1.248 '/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker exec molino-task-manager-nas npx prisma@6.19.0 db push --accept-data-loss --schema /app/server/prisma/schema.prisma'
-Write-Host "      Riavvia container..." -ForegroundColor Gray
-ssh admin@192.168.1.248 '/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker restart molino-task-manager-nas'
+# 6. Sincronizza file critici DENTRO il container (singola sessione SSH per evitare stalli)
+Write-Host "[6/7] Sincronizzazione file critici nel container (single SSH)..." -ForegroundColor Yellow
+$remoteScript = @'
+set -e
+DOCKER=/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker
+SRC=/share/Container
+CT=molino-task-manager-nas
+
+echo "  -> index.html";                    $DOCKER cp $SRC/public/index.html                    $CT:/app/public/index.html
+echo "  -> orders-planner.html";           $DOCKER cp $SRC/public/orders-planner.html           $CT:/app/public/orders-planner.html
+echo "  -> admin-dashboard.html";          $DOCKER cp $SRC/public/admin-dashboard.html          $CT:/app/public/admin-dashboard.html
+echo "  -> customers-management.html";     $DOCKER cp $SRC/public/customers-management.html     $CT:/app/public/customers-management.html
+echo "  -> warehouse-management.html";     $DOCKER cp $SRC/public/warehouse-management.html     $CT:/app/public/warehouse-management.html
+echo "  -> warehouse-management-lite.html"; $DOCKER cp $SRC/public/warehouse-management-lite.html $CT:/app/public/warehouse-management-lite.html
+echo "  -> trips-management.html";         $DOCKER cp $SRC/public/trips-management.html         $CT:/app/public/trips-management.html
+echo "  -> operators.html";                $DOCKER cp $SRC/public/operators.html                $CT:/app/public/operators.html
+echo "  -> backup-management.html";        $DOCKER cp $SRC/public/backup-management.html        $CT:/app/public/backup-management.html
+echo "  -> company-settings.html";         $DOCKER cp $SRC/public/company-settings.html         $CT:/app/public/company-settings.html
+echo "  -> operator-dashboard.html";       $DOCKER cp $SRC/public/operator-dashboard.html       $CT:/app/public/operator-dashboard.html
+echo "  -> operator-lite.html";            $DOCKER cp $SRC/public/operator-lite.html            $CT:/app/public/operator-lite.html
+if [ -f $SRC/public/favicon.svg ]; then echo "  -> favicon.svg"; $DOCKER cp $SRC/public/favicon.svg $CT:/app/public/favicon.svg; fi
+if [ -f $SRC/public/MolinoInventory.apk ]; then echo "  -> MolinoInventory.apk"; $DOCKER cp $SRC/public/MolinoInventory.apk $CT:/app/public/MolinoInventory.apk; fi
+echo "  -> js/";                            $DOCKER cp $SRC/public/js/.                          $CT:/app/public/js/
+if [ -d $SRC/public/css ]; then echo "  -> css/"; $DOCKER cp $SRC/public/css/. $CT:/app/public/css/; fi
+if [ -d $SRC/public/images ]; then echo "  -> images/"; $DOCKER cp $SRC/public/images/. $CT:/app/public/images/; fi
+echo "  -> package.json";                  $DOCKER cp $SRC/package.json                         $CT:/app/package.json
+echo "  -> server/dist";                   $DOCKER cp $SRC/server/dist/.                        $CT:/app/server/dist/
+echo "  -> schema.prisma";                 $DOCKER cp $SRC/server/prisma/schema.prisma          $CT:/app/server/prisma/schema.prisma
+
+echo "  -> prisma generate";               $DOCKER exec $CT npx prisma@6.19.0 generate --schema /app/server/prisma/schema.prisma
+echo "  -> prisma db push";                $DOCKER exec $CT npx prisma@6.19.0 db push --accept-data-loss --schema /app/server/prisma/schema.prisma
+echo "  -> restart (with retry)"
+for i in 1 2 3 4 5; do
+    if $DOCKER restart $CT 2>/dev/null; then
+        echo "     restart OK (attempt $i)"
+        break
+    fi
+    echo "     attempt $i failed, retrying in 3s..."
+    sleep 3
+done
+'@
+# ConnectTimeout + ServerAliveInterval per evitare stalli su rete
+# Convertire CRLF -> LF altrimenti bash interpreta \r come parte dei comandi
+$remoteScriptLF = $remoteScript -replace "`r`n", "`n"
+$remoteScriptLF | ssh -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4 admin@192.168.1.248 "bash -s"
 Write-Host "[OK] File sincronizzati" -ForegroundColor Green
 Write-Host ""
 
