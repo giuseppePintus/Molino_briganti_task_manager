@@ -22,7 +22,7 @@
     'use strict';
 
     // 32 characters fits comfortably on 72mm at 12pt monospace
-    const LINE_WIDTH = 32;
+    const LINE_WIDTH = 38;
 
     // Read a top-level identifier from the page (works with `let`/`const`
     // declarations that don't attach to `window`). Returns undefined on failure.
@@ -87,406 +87,121 @@
         return Array.isArray(raw) ? raw : [];
     }
 
-    // CSS per stampante termica 72mm (Xprinter XP-N160II)
-    // PRINCIPI: full-width, margini laterali = 0, niente backgrounds pieni,
-    // bordi sottili (max 0.6mm), wrap automatico testi lunghi.
+    // CSS thermal-safe per Xprinter XP-N160II (carta 80mm)
+    // IMPORTANTE: NON impostiamo @page size perche' il driver Xprinter ha
+    // un formato carta proprio configurato (es. "80(72.1) x 3276mm" o simili).
+    // Forzando una size diversa Chrome -> driver va in errore. Lasciamo che
+    // sia il driver a gestire le dimensioni della carta.
     const THERMAL_CSS = `
-        @page { size: 72mm auto; margin: 0; }
-        * { box-sizing: border-box; }
+        @page { margin: 0; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         html, body {
-            margin: 0; padding: 0;
-            width: 70mm;
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: 11pt;
-            line-height: 1.25;
+            width: 72mm;
+            font-family: Arial, 'Arial Narrow', Helvetica, sans-serif;
+            font-size: 9pt;
             color: #000;
             background: #fff;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
-            overflow-wrap: anywhere;
-            word-break: break-word;
         }
-        /* === HEADER === */
-        .rcpt-logo {
-            display: block;
-            max-width: 42mm;
-            max-height: 17.5mm;
-            width: auto;
-            height: auto;
-            margin: 1.5mm auto 0.5mm auto;
-            image-rendering: pixelated;
-            image-rendering: -moz-crisp-edges;
-            image-rendering: crisp-edges;
-        }
-        .rcpt-business {
-            font-size: 11pt;
-            font-weight: 800;
-            text-align: center;
-            padding: 0 1mm 1mm 1mm;
-            margin: 0;
-            line-height: 1.15;
-            letter-spacing: 0.5px;
-        }
-        .rcpt-title {
-            font-size: 24pt;
-            font-weight: 900;
-            text-align: center;
-            letter-spacing: 3px;
-            padding: 1.5mm 0 1mm 0;
-            margin: 0;
-            border-top: 0.6mm solid #000;
-            border-bottom: 0.6mm solid #000;
-        }
-        .rcpt-sub {
-            font-size: 14pt;
-            font-weight: 800;
-            text-align: center;
-            padding: 1.5mm 1mm;
-            margin: 0;
-            line-height: 1.15;
-            border-bottom: 0.3mm solid #000;
-            overflow-wrap: anywhere;
-        }
-        .rcpt-info {
-            font-size: 10pt;
-            padding: 1.5mm 1mm;
-            margin: 0;
-            border-bottom: 0.6mm solid #000;
-        }
-        .rcpt-info-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            line-height: 1.4;
-            gap: 2mm;
-        }
-        .rcpt-info-row .lbl {
-            font-weight: 800;
-            letter-spacing: 0.5px;
-            white-space: nowrap;
-            text-transform: uppercase;
-            font-size: 9pt;
-        }
-        .rcpt-info-row .val {
-            font-weight: 700;
-            text-align: right;
-            overflow-wrap: anywhere;
-            flex: 1;
-        }
-
-        /* === SEZIONE (es. CONSEGNE / PRODOTTI) === */
-        .rcpt-section {
-            font-size: 11pt;
-            font-weight: 900;
-            text-align: center;
-            letter-spacing: 2px;
-            padding: 1mm 1mm;
-            margin: 0;
-            border-bottom: 0.3mm solid #000;
-            text-transform: uppercase;
-        }
-
-        /* === DELIVERY (singola consegna in viaggio) === */
-        .rcpt-delivery {
-            padding: 1.5mm 1mm 1.5mm 1mm;
-            border-bottom: 0.6mm solid #000;
-        }
-        .rcpt-delivery:last-child { border-bottom: 0.6mm solid #000; }
-        .rcpt-delivery-head {
-            display: flex;
-            align-items: baseline;
-            gap: 2mm;
-            margin-bottom: 1mm;
-        }
-        .rcpt-num {
-            font-size: 14pt;
-            font-weight: 900;
-            border: 0.4mm solid #000;
-            padding: 0 1.2mm;
-            line-height: 1.1;
-            min-width: 7mm;
-            text-align: center;
-        }
-        .rcpt-cli {
-            font-size: 12pt;
-            font-weight: 800;
-            flex: 1;
-            overflow-wrap: anywhere;
-            line-height: 1.15;
-        }
-        .rcpt-time {
-            font-size: 10pt;
-            font-weight: 700;
-            white-space: nowrap;
-        }
-
-        /* === PRODOTTO === */
-        .rcpt-prod {
-            padding: 1mm 1mm;
-            border-top: 0.3mm dashed #000;
-        }
-        .rcpt-prod:first-child { border-top: none; }
-        /* riga 1: solo nome prodotto */
-        .rcpt-prod-name {
-            display: block;
-            font-size: 13pt;
-            font-weight: 900;
-            line-height: 1.2;
-            overflow-wrap: anywhere;
-            margin-bottom: 0.5mm;
-        }
-        /* riga 2: scaffale + colli + peso */
-        .rcpt-prod-row2 {
-            display: flex;
-            align-items: center;
-            gap: 1.5mm;
-            margin-bottom: 0.8mm;
-        }
-        .rcpt-prod-shelf {
-            font-size: 14pt;
-            font-weight: 900;
-            letter-spacing: 1px;
-            white-space: nowrap;
-            background: #000;
-            color: #fff;
-            padding: 0.5mm 2mm;
-            border-radius: 0.5mm;
-            line-height: 1.35;
-        }
-        .rcpt-prod-colli {
-            font-size: 14pt;
-            font-weight: 900;
-            white-space: nowrap;
-            border: 0.5mm solid #000;
-            padding: 0.5mm 1.5mm;
-            border-radius: 0.5mm;
-            line-height: 1.35;
-        }
-        .rcpt-prod-kg {
-            margin-left: auto;
-            font-size: 11pt;
-            font-weight: 800;
-            white-space: nowrap;
-        }
-        /* riga 3: lotto + scadenza */
-        .rcpt-prod-row3 {
-            display: flex;
-            gap: 1.5mm;
-            flex-wrap: wrap;
-            align-items: center;
-            font-size: 10pt;
-            font-weight: 700;
-        }
-        .rcpt-prod-row3 .r3-item {
-            white-space: nowrap;
-            border: 0.3mm solid #000;
-            padding: 0 1mm;
-            border-radius: 0.5mm;
-        }
-
-        /* === NOTE === */
-        .rcpt-notes {
-            padding: 1mm 1mm;
-            border-top: 0.3mm dashed #000;
-            font-size: 10pt;
-            font-weight: 700;
-            overflow-wrap: anywhere;
-            line-height: 1.3;
-        }
-        .rcpt-notes .lbl {
-            font-weight: 900;
-            letter-spacing: 1px;
-            font-size: 9pt;
-            text-transform: uppercase;
-            display: block;
-            margin-bottom: 0.5mm;
-        }
-
-        /* === TOTALI === */
-        .rcpt-totals-list {
-            padding: 0;
-            margin: 0;
-        }
-        .rcpt-total-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            padding: 0.8mm 1mm;
-            border-top: 0.3mm dashed #000;
-            font-size: 10pt;
-            font-weight: 700;
-            gap: 2mm;
-        }
-        .rcpt-total-row .name {
-            flex: 1;
-            overflow-wrap: anywhere;
-            line-height: 1.2;
-        }
-        .rcpt-total-row .qty {
-            white-space: nowrap;
-            font-weight: 800;
-        }
-        .rcpt-total {
-            margin: 0;
-            padding: 2mm 1mm;
-            border-top: 0.6mm solid #000;
-            border-bottom: 0.6mm solid #000;
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            gap: 2mm;
-        }
-        .rcpt-total .lbl {
-            font-size: 16pt;
-            font-weight: 900;
-            letter-spacing: 2px;
-        }
-        .rcpt-total .val {
-            font-size: 14pt;
-            font-weight: 900;
-            text-align: right;
-        }
-
-        /* === FOOTER === */
-        .rcpt-footer {
-            font-size: 8pt;
-            text-align: center;
-            padding: 1.5mm 1mm 8mm 1mm;
-            margin: 0;
-        }
-
-        /* === TOOLBAR (solo schermo) === */
-        .toolbar { padding: 8px; text-align: center; }
-        .toolbar button {
-            padding: 8px 14px; font-size: 13px; margin: 2px;
-            border: none; border-radius: 4px; cursor: pointer; color: #fff;
-        }
-        .toolbar .btn-print { background: #111; }
-        .toolbar .btn-close { background: #888; }
-        @media print { .no-print { display: none !important; } }
+        /* ---- HEADER (bordo spesso, niente sfondo pieno) ---- */
+        .rh { text-align:center; padding:2mm 2mm 1.5mm; border-bottom:1mm solid #000; }
+        .rh-title { font-size:16pt; font-weight:900; letter-spacing:2px; line-height:1.1; }
+        .rh-sub { font-size:9pt; margin-top:1mm; font-weight:700; letter-spacing:1px; }
+        /* ---- INFO BLOCK ---- */
+        .ri { padding:2mm 3mm; border-bottom:0.4mm solid #000; }
+        .ri-row { display:flex; justify-content:space-between; font-size:9pt; line-height:1.5; }
+        .ri-row b { min-width:18mm; font-weight:700; }
+        /* ---- SECTION BAND (solo bordi) ---- */
+        .rs { padding:1.5mm 3mm; font-size:10pt; font-weight:900; letter-spacing:1px; display:flex; justify-content:space-between; align-items:center; border-top:0.6mm solid #000; border-bottom:0.6mm solid #000; }
+        /* ---- DELIVERY ITEM ---- */
+        .ritem { border-bottom:0.4mm dashed #000; padding:2mm 3mm; }
+        .ritem-hd { display:flex; align-items:flex-start; gap:2mm; margin-bottom:1.5mm; }
+        /* badge cliente: piccolo riquadro inverted, ok perchè area limitata */
+        .rnum { background:#000; color:#fff; min-width:7mm; height:7mm; display:flex; align-items:center; justify-content:center; font-size:11pt; font-weight:900; flex-shrink:0; border-radius:1mm; }
+        .rclient { font-size:13pt; font-weight:900; flex:1; line-height:1.2; word-break:break-word; }
+        .rtime { font-size:9pt; font-weight:700; border:0.3mm solid #000; padding:0.5mm 1.5mm; white-space:nowrap; align-self:flex-start; margin-top:0.5mm; }
+        /* ---- PRODUCT BLOCK (bordo, niente sfondo pieno) ---- */
+        .rprod { border:0.4mm solid #000; border-left:1.2mm solid #000; padding:1.5mm 2mm; margin:1mm 0; }
+        .rprod-name { font-size:12pt; font-weight:900; line-height:1.2; word-break:break-word; }
+        .rprod-qty { display:flex; justify-content:space-between; align-items:center; margin-top:1.5mm; }
+        .rcolli { background:#000; color:#fff; padding:1mm 2.5mm; font-size:13pt; font-weight:900; white-space:nowrap; border-radius:1mm; }
+        .rkg { font-size:11pt; font-weight:700; }
+        /* ---- META (lotto / scaffale / scadenza) ---- */
+        .rmeta { display:flex; gap:1.5mm; margin-top:1.5mm; flex-wrap:wrap; align-items:center; }
+        .rbatch { font-size:8pt; border:0.3mm solid #000; padding:0.5mm 1.5mm; }
+        .rpos   { font-size:11pt; font-weight:900; background:#000; color:#fff; padding:0.8mm 2.5mm; letter-spacing:0.5px; border-radius:1mm; }
+        .rexp   { font-size:8pt; border:0.3mm solid #000; padding:0.5mm 1.5mm; font-weight:700; }
+        /* ---- NOTES ---- */
+        .rnotes { font-size:9pt; font-weight:700; margin-top:1.5mm; padding:1.5mm 2mm; border:0.5mm solid #000; }
+        /* ---- TOTALS ---- */
+        .rtot-section { padding:2mm 3mm; border-top:0.5mm solid #000; }
+        .rtot-row { display:flex; justify-content:space-between; font-size:9pt; line-height:1.6; }
+        .rtot-row b { flex:1; word-break:break-word; }
+        /* totale finale: bordo spesso invece di sfondo pieno */
+        .rtot-final { border:1mm solid #000; padding:2mm 3mm; display:flex; justify-content:space-between; align-items:center; margin:2mm 0; }
+        .rtot-final .lbl { font-size:13pt; font-weight:900; }
+        .rtot-final .val { font-size:14pt; font-weight:900; text-align:right; }
+        /* ---- FOOTER ---- */
+        .rfooter { text-align:center; padding:2mm 2mm 4mm; font-size:8pt; border-top:0.3mm dashed #000; }
+        /* ---- SPACER ---- */
+        .rsp { height:3mm; }
+        /* ---- TOOLBAR (solo schermo) ---- */
+        .toolbar { padding:8px; text-align:center; background:#f0f0f0; }
+        .toolbar button { padding:8px 16px; font-size:13px; margin:3px; border:none; border-radius:4px; cursor:pointer; color:#fff; font-weight:bold; }
+        .toolbar .btn-print { background:#111; }
+        .toolbar .btn-close { background:#888; }
+        @media print { .no-print { display:none !important; } body { width:80mm; } }
     `;
 
-    function openReceipt(title, contentHtml) {
-        const w = window.open('', '_blank', 'width=380,height=720');
+    function openReceipt(title, bodyHtml) {
+        const html = '<!doctype html><html><head>' +
+            '<meta charset="UTF-8">' +
+            '<title>' + escapeHtml(title) + '</title>' +
+            '<style>' + THERMAL_CSS + '</style>' +
+            '</head><body>' +
+            bodyHtml +
+            '<div class="toolbar no-print">' +
+            '<button class="btn-print" onclick="window.print()">\uD83D\uDDA8\uFE0F Stampa</button>' +
+            '<button class="btn-close" onclick="window.close()">&#10060; Chiudi</button>' +
+            '</div>' +
+            '<script>window.addEventListener("load",function(){setTimeout(function(){try{window.focus();window.print();}catch(e){}},300);});<\/script>' +
+            '</body></html>';
+        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+        const url  = URL.createObjectURL(blob);
+        const w    = window.open(url, '_blank', 'width=440,height=800');
         if (!w) {
             alert('Impossibile aprire la finestra di stampa. Disabilita il blocco popup.');
+            URL.revokeObjectURL(url);
             return;
         }
-        const html = `<!doctype html><html><head>
-            <meta charset="UTF-8">
-            <title>${escapeHtml(title)}</title>
-            <style>${THERMAL_CSS}</style>
-        </head><body>
-            ${contentHtml}
-            <div class="toolbar no-print">
-                <button class="btn-print" onclick="window.print()">Stampa</button>
-                <button class="btn-close" onclick="window.close()">Chiudi</button>
-            </div>
-            <script>
-                function convertImgTo1Bit(img, threshold) {
-                    return new Promise(function (resolve) {
-                        try {
-                            var sw = img.naturalWidth || img.width;
-                            var sh = img.naturalHeight || img.height;
-                            if (!sw || !sh) return resolve();
-                            // Target ~304 px di larghezza (riferimento Xprinter)
-                            var targetW = 304;
-                            var scale = targetW / sw;
-                            if (scale > 4) scale = 4;
-                            if (scale < 1) scale = 1;
-                            var w = Math.round(sw * scale);
-                            var h = Math.round(sh * scale);
-                            var canvas = document.createElement('canvas');
-                            canvas.width = w; canvas.height = h;
-                            var ctx = canvas.getContext('2d');
-                            ctx.fillStyle = '#fff';
-                            ctx.fillRect(0, 0, w, h);
-                            ctx.imageSmoothingEnabled = true;
-                            ctx.imageSmoothingQuality = 'high';
-                            ctx.drawImage(img, 0, 0, w, h);
-                            var imageData;
-                            try { imageData = ctx.getImageData(0, 0, w, h); }
-                            catch (e) { return resolve(); }
-                            var d = imageData.data;
-                            var thr = threshold || 150;
-                            for (var i = 0; i < d.length; i += 4) {
-                                var a = d[i + 3] / 255;
-                                var r = d[i] * a + 255 * (1 - a);
-                                var g = d[i + 1] * a + 255 * (1 - a);
-                                var b = d[i + 2] * a + 255 * (1 - a);
-                                var gray = 0.299 * r + 0.587 * g + 0.114 * b;
-                                var v = gray < thr ? 0 : 255;
-                                d[i] = d[i + 1] = d[i + 2] = v;
-                                d[i + 3] = 255;
-                            }
-                            ctx.putImageData(imageData, 0, 0);
-                            img.onload = function () { resolve(); };
-                            img.onerror = function () { resolve(); };
-                            img.src = canvas.toDataURL('image/png');
-                        } catch (e) { resolve(); }
-                    });
-                }
-                window.addEventListener('load', function () {
-                    var printed = false;
-                    function doPrint() {
-                        if (printed) return; printed = true;
-                        try { window.focus(); window.print(); } catch (e) {}
-                    }
-                    var imgs = Array.prototype.slice.call(document.images || []);
-                    if (!imgs.length) { setTimeout(doPrint, 250); return; }
-                    Promise.all(imgs.map(function (img) {
-                        return new Promise(function (res) {
-                            if (img.complete && img.naturalWidth) return res();
-                            img.addEventListener('load', function () { res(); });
-                            img.addEventListener('error', function () { res(); });
-                        });
-                    })).then(function () {
-                        return Promise.all(imgs.map(function (img) {
-                            if (!img.classList.contains('rcpt-logo')) return null;
-                            // Logo termico dedicato gia' pre-elaborato dall'utente:
-                            // niente conversione, stampa l'immagine cosi' com'e'
-                            if (img.getAttribute('data-thermal') === '1') return null;
-                            return convertImgTo1Bit(img, 150);
-                        }));
-                    }).then(function () {
-                        setTimeout(doPrint, 200);
-                    });
-                    setTimeout(doPrint, 4000);
-                });
-            <\/script>
-        </body></html>`;
-        w.document.open();
-        w.document.write(html);
-        w.document.close();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 30000);
     }
 
-    // Format a product line: name truncated, then "C kg KG"
-    function productLines(prods) {
-        const lines = [];
-        prods.forEach(p => {
-            const name = String(p.product || '').trim();
-            const qtyKg = Number(p.quantity) || 0;
-            const wpc = (typeof window.extractWeightPerCollo === 'function')
-                ? window.extractWeightPerCollo(name)
-                : 1;
-            const colli = wpc > 0 ? Math.round(qtyKg / wpc) : 0;
-            // Wrap product name to multiple lines if longer than width
-            const namePart = name.length > LINE_WIDTH ? wrap(name, LINE_WIDTH) : [name];
-            namePart.forEach(l => lines.push(l));
-            const right = `${colli} colli  ${qtyKg.toFixed(1)} kg`;
-            lines.push(' '.repeat(Math.max(0, LINE_WIDTH - right.length)) + right);
-            const batch = p.batch || (p.batchData && p.batchData.batch) || '';
-            const pos = p.shelfPosition || (p.batchData && p.batchData.shelfPosition) || '';
-            const exp = p.expiry || (p.batchData && p.batchData.expiry) || '';
-            const meta = [];
-            if (batch) meta.push('L:' + batch);
-            if (pos) meta.push('P:' + pos);
-            if (exp) meta.push('S:' + exp);
-            if (meta.length) lines.push(meta.join(' '));
-            lines.push('');
-        });
-        if (lines.length && lines[lines.length - 1] === '') lines.pop();
-        return lines;
+    // Restituisce HTML grafico per un singolo prodotto
+    function productBlock(p) {
+        const name  = String(p.product || '').trim();
+        const qtyKg = Number(p.quantity) || 0;
+        const wpc   = (typeof window.extractWeightPerCollo === 'function')
+            ? window.extractWeightPerCollo(name) : 1;
+        const colli = wpc > 0 ? Math.round(qtyKg / wpc) : 0;
+        const batch = p.batch || (p.batchData && p.batchData.batch) || '';
+        const pos   = p.shelfPosition || (p.batchData && p.batchData.shelfPosition) || '';
+        const exp   = p.expiry || (p.batchData && p.batchData.expiry) || '';
+        let meta = '';
+        if (batch || pos || exp) {
+            meta = '<div class="rmeta">';
+            if (batch) meta += '<span class="rbatch">L:' + escapeHtml(batch) + '</span>';
+            if (pos)   meta += '<span class="rpos">' + escapeHtml(pos) + '</span>';
+            if (exp)   meta += '<span class="rexp">Sc:' + escapeHtml(exp) + '</span>';
+            meta += '</div>';
+        }
+        return '<div class="rprod">' +
+            '<div class="rprod-name">' + escapeHtml(name) + '</div>' +
+            '<div class="rprod-qty">' +
+            '<span class="rcolli">' + escapeHtml(String(colli)) + ' colli</span>' +
+            '<span class="rkg">' + escapeHtml(qtyKg.toFixed(1)) + ' kg</span>' +
+            '</div>' + meta + '</div>';
     }
 
     function wrap(s, n) {
@@ -505,111 +220,6 @@
     }
 
     // ============================================================
-    // HELPERS HTML (grafica strutturata)
-    // ============================================================
-    function getCompanySettings() {
-        try {
-            const raw = localStorage.getItem('companySettings');
-            if (raw) return JSON.parse(raw) || {};
-        } catch (_) {}
-        return {};
-    }
-
-    function brandHeaderHtml() {
-        const s = getCompanySettings();
-        const businessName = s.businessName || '';
-        // Priorità: logo termico dedicato (già ottimizzato dall'utente)
-        // -> logo aziendale (verrà convertito 1-bit a runtime)
-        // -> default insegna
-        const thermalLogoUrl = (s.logoThermalUrl || '').trim();
-        const isThermalDedicated = thermalLogoUrl.length > 0;
-        const logoUrl = isThermalDedicated ? thermalLogoUrl : (s.logoUrl || 'images/logo INSEGNA.png');
-        // Path assoluto per la finestra di stampa (origin del documento padre)
-        let absLogo = logoUrl;
-        if (!/^(https?:|data:|\/\/)/i.test(absLogo)) {
-            absLogo = (absLogo.startsWith('/') ? '' : '/') + absLogo;
-            absLogo = window.location.origin + absLogo;
-        }
-        let html = '';
-        // Cache-busting leggero per logo aggiornato
-        // NON aggiungere query string ai data URL (data:image/... non supporta ?param)
-        let cacheSuffix = '';
-        if (!/^data:/i.test(absLogo)) {
-            const sep = absLogo.includes('?') ? '&' : '?';
-            cacheSuffix = sep + 't=' + Date.now();
-        }
-        // data-thermal="1" -> salta conversione 1-bit lato finestra di stampa
-        const thermalAttr = isThermalDedicated ? ' data-thermal="1"' : '';
-        html += '<img class="rcpt-logo"' + thermalAttr + ' src="' + escapeHtml(absLogo + cacheSuffix) + '" alt="" onerror="this.style.display=\'none\'">';
-        // businessName non mostrato: solo logo
-        return html;
-    }
-
-    function infoBoxHtml(rows) {
-        // rows: [['Data','01/05/2026'], ...]
-        const inner = rows
-            .filter(r => r && r[1] != null && r[1] !== '')
-            .map(r => '<div class="rcpt-info-row"><span class="lbl">' +
-                escapeHtml(r[0]) + '</span><span class="val">' +
-                escapeHtml(r[1]) + '</span></div>')
-            .join('');
-        return '<div class="rcpt-info">' + inner + '</div>';
-    }
-
-    function productHtml(p) {
-        const name = String(p.product || '').trim() || '-';
-        const qtyKg = Number(p.quantity) || 0;
-        const wpc = (typeof window.extractWeightPerCollo === 'function')
-            ? window.extractWeightPerCollo(name) : 1;
-        const colli = wpc > 0 ? Math.round(qtyKg / wpc) : 0;
-        const batch = p.batch || (p.batchData && p.batchData.batch) || '';
-        const pos = p.shelfPosition || (p.batchData && p.batchData.shelfPosition) || '';
-        const exp = p.expiry || (p.batchData && p.batchData.expiry) || '';
-        // Riga 1: solo nome prodotto (evidenziato)
-        const row1 = '<span class="rcpt-prod-name">' + escapeHtml(name) + '</span>';
-        // Riga 2: scaffale | colli | peso
-        const row2 = '<div class="rcpt-prod-row2">' +
-            (pos ? '<span class="rcpt-prod-shelf">' + escapeHtml(pos) + '</span>' : '') +
-            '<span class="rcpt-prod-colli">' + colli + '\u00A0Colli</span>' +
-            '<span class="rcpt-prod-kg">' + qtyKg.toFixed(1) + '\u00A0kg</span>' +
-        '</div>';
-        // Riga 3: L. lotto | Sc. scadenza
-        const r3items = [];
-        if (batch) r3items.push('<span class="r3-item">L.\u00A0' + escapeHtml(batch) + '</span>');
-        if (exp)   r3items.push('<span class="r3-item">Sc.\u00A0' + escapeHtml(exp) + '</span>');
-        const row3 = r3items.length ? '<div class="rcpt-prod-row3">' + r3items.join('') + '</div>' : '';
-        return '<div class="rcpt-prod">' + row1 + row2 + row3 + '</div>';
-    }
-
-    function totalsListHtml(totalsObj) {
-        // totalsObj: { 'Prodotto X': qtyKg, ... }
-        let html = '<div class="rcpt-totals-list">';
-        Object.entries(totalsObj).forEach(([prod, qty]) => {
-            const wpc = (typeof window.extractWeightPerCollo === 'function')
-                ? window.extractWeightPerCollo(prod) : 1;
-            const c = wpc > 0 ? Math.round(qty / wpc) : 0;
-            html += '<div class="rcpt-total-row">' +
-                '<span class="name">' + escapeHtml(prod) + '</span>' +
-                '<span class="qty">' + c + ' c &nbsp; ' + qty.toFixed(1) + ' kg</span>' +
-            '</div>';
-        });
-        html += '</div>';
-        return html;
-    }
-
-    function totalBoxHtml(totalColli, totalKg) {
-        return '<div class="rcpt-total">' +
-            '<span class="lbl">TOTALE</span>' +
-            '<span class="val">' + totalColli + ' colli<br>' + totalKg.toFixed(1) + ' kg</span>' +
-        '</div>';
-    }
-
-    function footerHtml() {
-        return '<div class="rcpt-footer">Stampato ' +
-            escapeHtml(new Date().toLocaleString('it-IT')) + '</div>';
-    }
-
-    // ============================================================
     // TRIP THERMAL RECEIPT
     // ============================================================
     function printTripThermal(tripId) {
@@ -621,69 +231,79 @@
             : getOrders().filter(o => String(o.tripId) === String(tripId));
 
         const totals = (typeof window.calculateTripTotals === 'function')
-            ? window.calculateTripTotals(tripId)
-            : {};
+            ? window.calculateTripTotals(tripId) : {};
 
         const operatorName = getOperatorName(trip.assignedOperatorId, trip.assignedOperator);
         const dt = trip.dateTime ? new Date(trip.dateTime) : new Date();
 
         let html = '';
-        html += brandHeaderHtml();
-        html += '<div class="rcpt-title">VIAGGIO</div>';
-        if (trip.name) html += '<div class="rcpt-sub">' + escapeHtml(trip.name) + '</div>';
-        html += infoBoxHtml([
-            ['Data', fmtDate(dt)],
-            ['Ora', fmtTime(dt)],
-            ['Operatore', operatorName],
-            ['Mezzo', trip.vehicle || '']
-        ]);
 
-        // Sezione consegne
-        html += '<div class="rcpt-section">CONSEGNE (' + tripOrders.length + ')</div>';
+        // Header
+        html += '<div class="rh">';
+        html +=   '<div class="rh-title">VIAGGIO</div>';
+        if (trip.name) html += '<div class="rh-sub">' + escapeHtml(trip.name) + '</div>';
+        html += '</div>';
+
+        // Info
+        html += '<div class="ri">';
+        html += '<div class="ri-row"><b>Data</b><span>' + escapeHtml(fmtDate(dt)) + '</span></div>';
+        html += '<div class="ri-row"><b>Ora</b><span>' + escapeHtml(fmtTime(dt)) + '</span></div>';
+        html += '<div class="ri-row"><b>Operatore</b><span>' + escapeHtml(operatorName) + '</span></div>';
+        if (trip.vehicle) html += '<div class="ri-row"><b>Mezzo</b><span>' + escapeHtml(trip.vehicle) + '</span></div>';
+        html += '</div>';
+
+        // Deliveries
+        html += '<div class="rs"><span>CONSEGNE</span><span>' + tripOrders.length + '</span></div>';
+
         tripOrders.forEach((o, idx) => {
             const cliente = (typeof window.getClientName === 'function')
-                ? window.getClientName(o)
-                : (o.client || o.clientName || '');
+                ? window.getClientName(o) : (o.client || o.clientName || '');
             const time = fmtTime(o.dateTime);
-            html += '<div class="rcpt-delivery">';
-            html += '<div class="rcpt-delivery-head">' +
-                '<span class="rcpt-num">' + (idx + 1) + '</span>' +
-                '<span class="rcpt-cli">' + escapeHtml(cliente || '-') + '</span>' +
-                (time ? '<span class="rcpt-time">' + escapeHtml(time) + '</span>' : '') +
-            '</div>';
+
+            html += '<div class="ritem">';
+            html += '<div class="ritem-hd">';
+            html += '<div class="rnum">' + (idx + 1) + '</div>';
+            html += '<div class="rclient">' + escapeHtml(cliente) + '</div>';
+            if (time) html += '<div class="rtime">' + escapeHtml(time) + '</div>';
+            html += '</div>';
 
             const prods = parseProducts(o.products);
             if (prods.length) {
-                prods.forEach(p => { html += productHtml(p); });
+                prods.forEach(p => { html += productBlock(p); });
             } else {
                 const name = (typeof window.getOrderProductName === 'function')
                     ? window.getOrderProductName(o) : (o.product || '');
-                const qty = (typeof window.getOrderTotalQuantity === 'function')
+                const qty  = (typeof window.getOrderTotalQuantity === 'function')
                     ? window.getOrderTotalQuantity(o) : (o.quantity || 0);
-                html += productHtml({ product: name, quantity: qty });
+                if (name || qty) {
+                    const wpc = (typeof window.extractWeightPerCollo === 'function') ? window.extractWeightPerCollo(name) : 1;
+                    const c   = wpc > 0 ? Math.round(Number(qty) / wpc) : 0;
+                    html += productBlock({ product: name, quantity: qty, batchData: null });
+                }
             }
-
-            if (o.notes) {
-                html += '<div class="rcpt-notes"><span class="lbl">Note</span>' +
-                    escapeHtml(o.notes) + '</div>';
-            }
-            html += '</div>';
+            if (o.notes) html += '<div class="rnotes">NOTE: ' + escapeHtml(o.notes) + '</div>';
+            html += '</div>'; // ritem
         });
 
-        // Totali per prodotto
+        // Totals
+        html += '<div class="rs">TOTALI PRODOTTI</div>';
         let totalKg = 0, totalColli = 0;
+        html += '<div class="rtot-section">';
         Object.entries(totals).forEach(([prod, qty]) => {
-            const wpc = (typeof window.extractWeightPerCollo === 'function')
-                ? window.extractWeightPerCollo(prod) : 1;
-            const c = wpc > 0 ? Math.round(qty / wpc) : 0;
-            totalKg += qty;
-            totalColli += c;
+            const wpc = (typeof window.extractWeightPerCollo === 'function') ? window.extractWeightPerCollo(prod) : 1;
+            const c   = wpc > 0 ? Math.round(qty / wpc) : 0;
+            totalKg += qty; totalColli += c;
+            html += '<div class="rtot-row"><b>' + escapeHtml(prod) + '</b>' +
+                '<span>' + escapeHtml(c + ' colli &bull; ' + qty.toFixed(1) + ' kg') + '</span></div>';
         });
+        html += '</div>';
+        html += '<div class="rtot-final">';
+        html +=   '<span class="lbl">TOTALE</span>';
+        html +=   '<span class="val">' + escapeHtml(totalColli + ' colli') + '<br>' + escapeHtml(totalKg.toFixed(1) + ' kg') + '</span>';
+        html += '</div>';
 
-        html += '<div class="rcpt-section">TOTALI PRODOTTI</div>';
-        html += totalsListHtml(totals);
-        html += totalBoxHtml(totalColli, totalKg);
-        html += footerHtml();
+        html += '<div class="rfooter">Stampato: ' + escapeHtml(new Date().toLocaleString('it-IT')) + '</div>';
+        html += '<div class="rsp"></div><div class="rsp"></div>';
 
         openReceipt('Viaggio ' + (trip.name || tripId), html);
     }
@@ -696,55 +316,60 @@
         if (!order) { alert('Ordine non trovato'); return; }
 
         const cliente = (typeof window.getClientName === 'function')
-            ? window.getClientName(order)
-            : (order.client || order.clientName || '');
+            ? window.getClientName(order) : (order.client || order.clientName || '');
         const dt = order.dateTime ? new Date(order.dateTime) : new Date();
         const operatorName = getOperatorName(order.assignedOperatorId, order.assignedOperator);
 
         let html = '';
-        html += brandHeaderHtml();
-        html += '<div class="rcpt-title">RITIRO</div>';
-        html += '<div class="rcpt-sub">' + escapeHtml(cliente || '-') + '</div>';
-        html += infoBoxHtml([
-            ['Data', fmtDate(dt)],
-            ['Ora', fmtTime(dt)],
-            ['Operatore', operatorName],
-            ['Tipo', 'Ritiro Cliente']
-        ]);
 
-        html += '<div class="rcpt-section">PRODOTTI</div>';
+        // Header
+        html += '<div class="rh">';
+        html +=   '<div class="rh-title">RITIRO</div>';
+        html +=   '<div class="rh-sub">' + escapeHtml(cliente || '-') + '</div>';
+        html += '</div>';
+
+        // Info
+        html += '<div class="ri">';
+        html += '<div class="ri-row"><b>Data</b><span>' + escapeHtml(fmtDate(dt)) + '</span></div>';
+        html += '<div class="ri-row"><b>Ora</b><span>' + escapeHtml(fmtTime(dt)) + '</span></div>';
+        html += '<div class="ri-row"><b>Operatore</b><span>' + escapeHtml(operatorName) + '</span></div>';
+        html += '<div class="ri-row"><b>Tipo</b><span>Ritiro Cliente</span></div>';
+        html += '</div>';
+
+        // Products
+        html += '<div class="rs">PRODOTTI</div>';
 
         const prods = parseProducts(order.products);
         let totalKg = 0, totalColli = 0;
         if (prods.length) {
             prods.forEach(p => {
-                const wpc = (typeof window.extractWeightPerCollo === 'function')
-                    ? window.extractWeightPerCollo(p.product || '') : 1;
+                const wpc   = (typeof window.extractWeightPerCollo === 'function') ? window.extractWeightPerCollo(p.product || '') : 1;
                 const qtyKg = Number(p.quantity) || 0;
-                const c = wpc > 0 ? Math.round(qtyKg / wpc) : 0;
-                totalKg += qtyKg;
-                totalColli += c;
-                html += productHtml(p);
+                const c     = wpc > 0 ? Math.round(qtyKg / wpc) : 0;
+                totalKg += qtyKg; totalColli += c;
+                html += productBlock(p);
             });
         } else {
-            const name = (typeof window.getOrderProductName === 'function')
-                ? window.getOrderProductName(order) : (order.product || '');
-            const qty = (typeof window.getOrderTotalQuantity === 'function')
-                ? window.getOrderTotalQuantity(order) : (order.quantity || 0);
-            const wpc = (typeof window.extractWeightPerCollo === 'function')
-                ? window.extractWeightPerCollo(name) : 1;
-            const c = wpc > 0 ? Math.round(qty / wpc) : 0;
-            totalKg = qty; totalColli = c;
-            html += productHtml({ product: name, quantity: qty });
+            const name = (typeof window.getOrderProductName === 'function') ? window.getOrderProductName(order) : (order.product || '');
+            const qty  = (typeof window.getOrderTotalQuantity === 'function') ? window.getOrderTotalQuantity(order) : (order.quantity || 0);
+            const wpc  = (typeof window.extractWeightPerCollo === 'function') ? window.extractWeightPerCollo(name) : 1;
+            const c    = wpc > 0 ? Math.round(Number(qty) / wpc) : 0;
+            totalKg = Number(qty); totalColli = c;
+            html += productBlock({ product: name, quantity: qty, batchData: null });
         }
 
         if (order.notes) {
-            html += '<div class="rcpt-notes"><span class="lbl">Note</span>' +
-                escapeHtml(order.notes) + '</div>';
+            html += '<div style="padding:0 3mm"><div class="rnotes">NOTE: ' + escapeHtml(order.notes) + '</div></div>';
         }
 
-        html += totalBoxHtml(totalColli, totalKg);
-        html += footerHtml();
+        // Total
+        html += '<div class="rtot-final" style="margin-top:2mm">';
+        html +=   '<span class="lbl">TOTALE</span>';
+        html +=   '<span class="val">' + escapeHtml(totalColli + ' colli') + '<br>' + escapeHtml(totalKg.toFixed(1) + ' kg') + '</span>';
+        html += '</div>';
+
+        html += '<div class="rfooter">Stampato: ' + escapeHtml(new Date().toLocaleString('it-IT')) + '</div>';
+        html += '<div class="rsp"></div><div class="rsp"></div>';
 
         openReceipt('Ritiro ' + (cliente || orderId), html);
     }

@@ -1,9 +1,11 @@
-import fs from 'fs';
-import path from 'path';
+import prisma from '../lib/prisma';
 
 /**
- * Gestisce la persistenza dei clienti su file JSON statico nel NAS
- * File: /app/data/customers.json (bind mount da NAS)
+ * Persistenza clienti su MariaDB tramite Prisma.
+ * Mantiene la stessa firma del precedente modulo "customersFile" (basato su JSON),
+ * ma tutte le funzioni sono ora async (DB).
+ *
+ * Le destinazioni multiple sono memorizzate nella tabella Destination (relazione 1:N).
  */
 
 export class DuplicateNameError extends Error {
@@ -55,192 +57,198 @@ export interface Customer {
   updatedAt?: Date;
 }
 
-const CUSTOMERS_FILE = '/app/data/customers.json';
-
-/**
- * Assicura che la directory /app/data esista
- */
-function ensureDataDir() {
-  const dir = path.dirname(CUSTOMERS_FILE);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-    console.log(`✅ Created data directory: ${dir}`);
-  }
+function mapDest(d: any): Destination {
+  return {
+    id: d.id,
+    label: d.label,
+    address: d.address,
+    city: d.city,
+    province: d.province,
+    cap: d.cap,
+    phone: d.phone,
+    notes: d.notes,
+    openMorningStart: d.openMorningStart,
+    openMorningEnd: d.openMorningEnd,
+    openAfternoonStart: d.openAfternoonStart,
+    openAfternoonEnd: d.openAfternoonEnd,
+    deliveryMorningStart: d.deliveryMorningStart,
+    deliveryMorningEnd: d.deliveryMorningEnd,
+    deliveryAfternoonStart: d.deliveryAfternoonStart,
+    deliveryAfternoonEnd: d.deliveryAfternoonEnd
+  };
 }
 
-/**
- * Carica tutti i clienti dal file JSON
- */
-export function loadCustomers(): Customer[] {
-  try {
-    ensureDataDir();
-    
-    if (!fs.existsSync(CUSTOMERS_FILE)) {
-      console.log(`ℹ️ Customers file not found at ${CUSTOMERS_FILE}, returning empty array`);
-      return [];
-    }
-    
-    const data = fs.readFileSync(CUSTOMERS_FILE, 'utf-8');
-    const customers = JSON.parse(data) as Customer[];
-    console.log(`✅ Loaded ${customers.length} customers from ${CUSTOMERS_FILE}`);
-    return customers;
-  } catch (error) {
-    console.error(`❌ Error loading customers from file:`, error);
-    return [];
-  }
+function mapCustomer(c: any): Customer {
+  return {
+    id: c.id,
+    code: c.code,
+    name: c.name,
+    address: c.address,
+    city: c.city,
+    province: c.province,
+    cap: c.cap,
+    phone: c.phone,
+    email: c.email,
+    piva: c.piva,
+    cf: c.cf,
+    notes: c.notes,
+    openingTime: c.openingTime,
+    closingTime: c.closingTime,
+    deliveryStartTime: c.deliveryStartTime,
+    deliveryEndTime: c.deliveryEndTime,
+    isActive: c.isActive,
+    createdAt: c.createdAt,
+    updatedAt: c.updatedAt,
+    destinations: Array.isArray(c.destinations) ? c.destinations.map(mapDest) : []
+  };
 }
 
-/**
- * Salva tutti i clienti nel file JSON
- */
-export function saveCustomers(customers: Customer[]): boolean {
-  try {
-    ensureDataDir();
-    
-    const data = JSON.stringify(customers, null, 2);
-    fs.writeFileSync(CUSTOMERS_FILE, data, 'utf-8');
-    console.log(`✅ Saved ${customers.length} customers to ${CUSTOMERS_FILE}`);
-    return true;
-  } catch (error) {
-    console.error(`❌ Error saving customers to file:`, error);
-    return false;
-  }
+export async function loadCustomers(): Promise<Customer[]> {
+  const rows = await prisma.customer.findMany({
+    include: { destinations: true },
+    orderBy: { name: 'asc' }
+  });
+  return rows.map(mapCustomer);
 }
 
-/**
- * Carica un singolo cliente per ID
- */
-export function getCustomerById(id: number): Customer | null {
-  const customers = loadCustomers();
-  return customers.find(c => c.id === id) || null;
+export async function getCustomerById(id: number): Promise<Customer | null> {
+  const c = await prisma.customer.findUnique({
+    where: { id },
+    include: { destinations: true }
+  });
+  return c ? mapCustomer(c) : null;
 }
 
-/**
- * Aggiungi un nuovo cliente
- */
-export function addCustomer(customer: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>): Customer | null {
-  try {
-    const customers = loadCustomers();
-    
-    // Controllo unicità ragione sociale (case-insensitive)
-    const duplicate = customers.find(c => c.name.trim().toLowerCase() === customer.name.trim().toLowerCase());
-    if (duplicate) {
-      throw new DuplicateNameError(customer.name);
-    }
-    
-    // Genera nuovo ID (max id + 1)
-    const maxId = customers.length > 0 ? Math.max(...customers.map(c => c.id)) : 0;
-    const newId = maxId + 1;
-    
-    const newCustomer: Customer = {
-      id: newId,
-      ...customer,
-      destinations: customer.destinations || [],
+async function findDuplicateByName(name: string, excludeId?: number): Promise<boolean> {
+  const target = name.trim().toLowerCase();
+  // Case-insensitive: usa filtro lato JS perché MariaDB già di default è case-insensitive
+  // su utf8mb4_unicode_ci, ma per sicurezza confrontiamo qui.
+  const candidates = await prisma.customer.findMany({
+    where: excludeId !== undefined ? { id: { not: excludeId } } : {},
+    select: { id: true, name: true }
+  });
+  return candidates.some(c => c.name.trim().toLowerCase() === target);
+}
+
+export async function addCustomer(
+  customer: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>
+): Promise<Customer | null> {
+  const dup = await findDuplicateByName(customer.name);
+  if (dup) throw new DuplicateNameError(customer.name);
+
+  const created = await prisma.customer.create({
+    data: {
+      code: customer.code ?? null,
+      name: customer.name,
+      address: customer.address ?? null,
+      city: customer.city ?? null,
+      province: customer.province ?? null,
+      cap: customer.cap ?? null,
+      phone: customer.phone ?? null,
+      email: customer.email ?? null,
+      piva: customer.piva ?? null,
+      cf: customer.cf ?? null,
+      notes: customer.notes ?? null,
+      openingTime: customer.openingTime ?? null,
+      closingTime: customer.closingTime ?? null,
+      deliveryStartTime: customer.deliveryStartTime ?? null,
+      deliveryEndTime: customer.deliveryEndTime ?? null,
       isActive: customer.isActive !== false,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    
-    customers.push(newCustomer);
-    saveCustomers(customers);
-    
-    return newCustomer;
-  } catch (error) {
-    if (error instanceof DuplicateNameError) throw error;
-    console.error('Error adding customer:', error);
-    return null;
-  }
+      destinations: customer.destinations && customer.destinations.length
+        ? {
+            create: customer.destinations.map(d => ({
+              label: d.label,
+              address: d.address ?? null,
+              city: d.city ?? null,
+              province: d.province ?? null,
+              cap: d.cap ?? null,
+              phone: d.phone ?? null,
+              notes: d.notes ?? null,
+              openMorningStart: d.openMorningStart ?? null,
+              openMorningEnd: d.openMorningEnd ?? null,
+              openAfternoonStart: d.openAfternoonStart ?? null,
+              openAfternoonEnd: d.openAfternoonEnd ?? null,
+              deliveryMorningStart: d.deliveryMorningStart ?? null,
+              deliveryMorningEnd: d.deliveryMorningEnd ?? null,
+              deliveryAfternoonStart: d.deliveryAfternoonStart ?? null,
+              deliveryAfternoonEnd: d.deliveryAfternoonEnd ?? null
+            }))
+          }
+        : undefined
+    },
+    include: { destinations: true }
+  });
+  return mapCustomer(created);
 }
 
-/**
- * Aggiorna un cliente
- */
-export function updateCustomer(id: number, updates: Partial<Customer>): Customer | null {
-  try {
-    const customers = loadCustomers();
-    const index = customers.findIndex(c => c.id === id);
-    
-    if (index === -1) {
-      return null;
-    }
-    
-    // Controllo unicità ragione sociale se si sta cambiando il nome
-    if (updates.name !== undefined) {
-      const duplicate = customers.find(c => c.id !== id && c.name.trim().toLowerCase() === updates.name!.trim().toLowerCase());
-      if (duplicate) {
-        throw new DuplicateNameError(updates.name);
-      }
-    }
-    
-    customers[index] = {
-      ...customers[index],
-      ...updates,
-      id, // Mantieni ID
-      createdAt: customers[index].createdAt, // Mantieni createdAt
-      updatedAt: new Date()
-    };
-    
-    saveCustomers(customers);
-    return customers[index];
-  } catch (error) {
-    if (error instanceof DuplicateNameError) throw error;
-    console.error('Error updating customer:', error);
-    return null;
+export async function updateCustomer(
+  id: number,
+  updates: Partial<Customer>
+): Promise<Customer | null> {
+  const existing = await prisma.customer.findUnique({ where: { id } });
+  if (!existing) return null;
+
+  if (updates.name !== undefined) {
+    const dup = await findDuplicateByName(updates.name, id);
+    if (dup) throw new DuplicateNameError(updates.name);
   }
+
+  const data: any = {};
+  const fields: (keyof Customer)[] = [
+    'code', 'name', 'address', 'city', 'province', 'cap', 'phone', 'email',
+    'piva', 'cf', 'notes', 'openingTime', 'closingTime',
+    'deliveryStartTime', 'deliveryEndTime', 'isActive'
+  ];
+  for (const f of fields) {
+    if (updates[f] !== undefined) data[f] = updates[f] as any;
+  }
+
+  const updated = await prisma.customer.update({
+    where: { id },
+    data,
+    include: { destinations: true }
+  });
+  return mapCustomer(updated);
 }
 
-/**
- * Elimina un cliente
- */
-export function deleteCustomer(id: number): boolean {
+export async function deleteCustomer(id: number): Promise<boolean> {
   try {
-    const customers = loadCustomers();
-    const filtered = customers.filter(c => c.id !== id);
-    
-    if (filtered.length === customers.length) {
-      // Customer non trovato
-      return false;
-    }
-    
-    saveCustomers(filtered);
+    await prisma.customer.delete({ where: { id } });
     return true;
-  } catch (error) {
-    console.error('Error deleting customer:', error);
+  } catch (e) {
     return false;
   }
 }
 
-/**
- * Ricerca clienti per name/code/city/email
- */
-export function searchCustomers(query: string, activeOnly: boolean = false): Customer[] {
-  const customers = loadCustomers();
-  const search = query.toLowerCase();
-  
-  return customers.filter(c => {
-    if (activeOnly && !c.isActive) return false;
-    
-    return (
-      (c.name && c.name.toLowerCase().includes(search)) ||
-      (c.code && c.code.toLowerCase().includes(search)) ||
-      (c.city && c.city.toLowerCase().includes(search)) ||
-      (c.email && c.email.toLowerCase().includes(search))
-    );
-  }).sort((a, b) => a.name.localeCompare(b.name));
+export async function searchCustomers(query: string, activeOnly: boolean = false): Promise<Customer[]> {
+  const search = query.trim();
+  const rows = await prisma.customer.findMany({
+    where: {
+      AND: [
+        activeOnly ? { isActive: true } : {},
+        {
+          OR: [
+            { name: { contains: search } },
+            { code: { contains: search } },
+            { city: { contains: search } },
+            { email: { contains: search } }
+          ]
+        }
+      ]
+    },
+    include: { destinations: true },
+    orderBy: { name: 'asc' }
+  });
+  return rows.map(mapCustomer);
 }
 
-/**
- * Esporta clienti come CSV
- */
-export function exportAsCSV(): string {
-  const customers = loadCustomers();
-  
+export async function exportAsCSV(): Promise<string> {
+  const customers = await loadCustomers();
   const headers = [
     'id', 'code', 'name', 'address', 'city', 'province', 'cap',
     'phone', 'email', 'piva', 'cf', 'notes', 'openingTime',
     'closingTime', 'deliveryStartTime', 'deliveryEndTime', 'isActive'
   ];
-  
   const rows = customers.map(c => [
     c.id,
     c.code || '',
@@ -260,117 +268,96 @@ export function exportAsCSV(): string {
     c.deliveryEndTime || '',
     c.isActive ? 'true' : 'false'
   ]);
-  
   return [headers.join(','), ...rows.map(r => r.map(v => `"${v}"`).join(','))].join('\n');
 }
 
-/**
- * Importa clienti da array (bulk)
- */
-export function importCustomers(newCustomers: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>[]): number {
-  try {
-    const customers = loadCustomers();
-    const maxId = customers.length > 0 ? Math.max(...customers.map(c => c.id)) : 0;
-    
-    let addedCount = 0;
-    newCustomers.forEach((c, index) => {
-      const customer: Customer = {
-        id: maxId + addedCount + 1,
-        ...c,
-        isActive: c.isActive !== false,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      customers.push(customer);
-      addedCount++;
-    });
-    
-    saveCustomers(customers);
-    return addedCount;
-  } catch (error) {
-    console.error('Error importing customers:', error);
-    return 0;
+export async function importCustomers(
+  newCustomers: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>[]
+): Promise<number> {
+  let added = 0;
+  for (const c of newCustomers) {
+    try {
+      const dup = await findDuplicateByName(c.name);
+      if (dup) continue;
+      await addCustomer(c);
+      added++;
+    } catch (_e) { /* skip */ }
   }
+  return added;
 }
 
 // ============================================================
-// DESTINAZIONI MULTIPLE
+// DESTINAZIONI
 // ============================================================
 
-/**
- * Restituisce le destinazioni di un cliente
- */
-export function getDestinations(customerId: number): Destination[] {
-  const customer = getCustomerById(customerId);
-  if (!customer) return [];
-  return customer.destinations || [];
+export async function getDestinations(customerId: number): Promise<Destination[]> {
+  const rows = await prisma.destination.findMany({
+    where: { customerId },
+    orderBy: { id: 'asc' }
+  });
+  return rows.map(mapDest);
 }
 
-/**
- * Aggiunge una destinazione a un cliente
- */
-export function addDestination(customerId: number, dest: Omit<Destination, 'id'>): Destination | null {
-  try {
-    const customers = loadCustomers();
-    const index = customers.findIndex(c => c.id === customerId);
-    if (index === -1) return null;
-
-    const destinations = customers[index].destinations || [];
-    const maxId = destinations.length > 0 ? Math.max(...destinations.map(d => d.id)) : 0;
-    const newDest: Destination = { id: maxId + 1, ...dest };
-
-    customers[index].destinations = [...destinations, newDest];
-    customers[index].updatedAt = new Date();
-    saveCustomers(customers);
-    return newDest;
-  } catch (error) {
-    console.error('Error adding destination:', error);
-    return null;
-  }
+export async function addDestination(
+  customerId: number,
+  dest: Omit<Destination, 'id'>
+): Promise<Destination | null> {
+  const cust = await prisma.customer.findUnique({ where: { id: customerId } });
+  if (!cust) return null;
+  const created = await prisma.destination.create({
+    data: {
+      customerId,
+      label: dest.label,
+      address: dest.address ?? null,
+      city: dest.city ?? null,
+      province: dest.province ?? null,
+      cap: dest.cap ?? null,
+      phone: dest.phone ?? null,
+      notes: dest.notes ?? null,
+      openMorningStart: dest.openMorningStart ?? null,
+      openMorningEnd: dest.openMorningEnd ?? null,
+      openAfternoonStart: dest.openAfternoonStart ?? null,
+      openAfternoonEnd: dest.openAfternoonEnd ?? null,
+      deliveryMorningStart: dest.deliveryMorningStart ?? null,
+      deliveryMorningEnd: dest.deliveryMorningEnd ?? null,
+      deliveryAfternoonStart: dest.deliveryAfternoonStart ?? null,
+      deliveryAfternoonEnd: dest.deliveryAfternoonEnd ?? null
+    }
+  });
+  return mapDest(created);
 }
 
-/**
- * Aggiorna una destinazione
- */
-export function updateDestination(customerId: number, destId: number, updates: Partial<Destination>): Destination | null {
-  try {
-    const customers = loadCustomers();
-    const custIndex = customers.findIndex(c => c.id === customerId);
-    if (custIndex === -1) return null;
+export async function updateDestination(
+  customerId: number,
+  destId: number,
+  updates: Partial<Destination>
+): Promise<Destination | null> {
+  const existing = await prisma.destination.findFirst({
+    where: { id: destId, customerId }
+  });
+  if (!existing) return null;
 
-    const destinations = customers[custIndex].destinations || [];
-    const destIndex = destinations.findIndex(d => d.id === destId);
-    if (destIndex === -1) return null;
-
-    destinations[destIndex] = { ...destinations[destIndex], ...updates, id: destId };
-    customers[custIndex].destinations = destinations;
-    customers[custIndex].updatedAt = new Date();
-    saveCustomers(customers);
-    return destinations[destIndex];
-  } catch (error) {
-    console.error('Error updating destination:', error);
-    return null;
+  const data: any = {};
+  const fields: (keyof Destination)[] = [
+    'label', 'address', 'city', 'province', 'cap', 'phone', 'notes',
+    'openMorningStart', 'openMorningEnd', 'openAfternoonStart', 'openAfternoonEnd',
+    'deliveryMorningStart', 'deliveryMorningEnd', 'deliveryAfternoonStart', 'deliveryAfternoonEnd'
+  ];
+  for (const f of fields) {
+    if (updates[f] !== undefined) data[f] = updates[f] as any;
   }
+  const updated = await prisma.destination.update({
+    where: { id: destId },
+    data
+  });
+  return mapDest(updated);
 }
 
-/**
- * Elimina una destinazione
- */
-export function deleteDestination(customerId: number, destId: number): boolean {
-  try {
-    const customers = loadCustomers();
-    const custIndex = customers.findIndex(c => c.id === customerId);
-    if (custIndex === -1) return false;
-
-    const before = (customers[custIndex].destinations || []).length;
-    customers[custIndex].destinations = (customers[custIndex].destinations || []).filter(d => d.id !== destId);
-    if ((customers[custIndex].destinations || []).length === before) return false;
-
-    customers[custIndex].updatedAt = new Date();
-    saveCustomers(customers);
-    return true;
-  } catch (error) {
-    console.error('Error deleting destination:', error);
-    return false;
-  }
+export async function deleteDestination(customerId: number, destId: number): Promise<boolean> {
+  const existing = await prisma.destination.findFirst({
+    where: { id: destId, customerId }
+  });
+  if (!existing) return false;
+  await prisma.destination.delete({ where: { id: destId } });
+  return true;
 }

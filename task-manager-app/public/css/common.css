@@ -39,7 +39,19 @@
 .btn-danger {
   background: var(--danger);
   color: #ffffff;
+  padding: 10px 16px;
+  min-height: 40px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
 }
+.btn-danger[data-icon]::before { content: attr(data-icon); font-size: 16px; }
+.btn-danger > span { font-size: 13px; line-height: 1.2; }
 .btn-danger:hover { background: #b91c1c; }
 
 .btn-warning {
@@ -52,6 +64,14 @@
 .btn-small {
   padding: 8px 14px;
   font-size: 15px;
+}
+
+/* Condivide il container su tutte le pagine: padding minimo, nessun margine automatico ai bordi */
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 10px;
+  box-sizing: border-box;
 }
 
 /* Shared header styles (align with admin dashboard) */
@@ -92,6 +112,59 @@
 .header h1 { font-size: 14px; color: #e0e0e0; margin: 0; line-height: 1.2; }
 .header-actions { display: flex; gap: 10px; align-items: center; flex-shrink: 0; }
 .user-info { font-size: 16px; font-weight: 700; color: #e0e0e0; letter-spacing: 0.3px; min-width: fit-content; }
+.user-info.user-info-with-avatar { display: inline-flex; align-items: center; gap: 8px; }
+.user-info-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #2a2a2a;
+    border: 2px solid #4d4d4d;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 27px;
+    line-height: 1;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+.user-info-avatar.user-info-avatar-fallback,
+.user-info-avatar.user-info-avatar-emoji { color: #cbd5e1; }
+.user-info-name { white-space: nowrap; }
+
+/* Layout header coerente su tutte le breakpoint:
+   - sinistra: logo + titolo (su una riga)
+   - destra:   avatar+nome + Logout
+   Il badge utente viene spostato dentro .header-actions via JS. */
+.header { align-items: center; }
+.header-left { align-items: center; }
+.header-title { flex-direction: row; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.header-actions { align-items: center; }
+.header-actions .user-info { font-size: 14px; color: #cbd5e1; }
+
+/* === HEADER UNIFORME TRA LE PAGINE (override dei *-custom.css) === */
+body .header {
+    padding: 10px 20px !important;
+    gap: 15px !important;
+    align-items: center !important;
+    margin-bottom: 20px !important;
+}
+body .header-logo { height: 45px !important; }
+body .header h1 {
+    font-size: 14px !important;
+    line-height: 1.2 !important;
+    margin: 0 !important;
+    color: #e0e0e0 !important;
+}
+body .header-actions { gap: 10px !important; align-items: center !important; }
+/* Il badge utente dentro l'header NON deve espandersi (alcuni custom mettono
+   min-width: -webkit-fill-available su .user-info, spingendo fuori i bottoni). */
+body .header-actions .user-info,
+body .header-actions .user-info-with-avatar {
+    min-width: 0 !important;
+    width: auto !important;
+    flex: 0 0 auto !important;
+}
 
 @media (max-width: 768px) {
   .header { padding: 8px 12px; gap: 10px; }
@@ -106,4 +179,57 @@
   .header h1 { font-size: 12px; }
   .header-actions { flex-direction: row; gap: 6px; width: auto; justify-content: flex-end; flex-shrink: 0; }
   .user-info { font-size: 12px; min-width: fit-content; }
+  .user-info.user-info-with-avatar { gap: 6px; }
+  .user-info-avatar { width: 39px; height: 39px; font-size: 21px; border-width: 1px; }
+  /* Su schermi molto stretti nascondiamo solo il nome, lasciando l'avatar */
+  .header-actions .user-info-name { display: none; }
+}
+
+/* === View Tabs (segmented control) ===
+   Schede orizzontali per filtrare la vista. Restano sempre su una sola riga. */
+.view-tabs {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0;
+    margin: 16px 0;
+    background: #2d2d2d;
+    border-radius: 10px;
+    padding: 4px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    overflow: hidden;
+}
+.view-tab {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 10px 12px;
+    background: transparent;
+    color: #cbd5e1;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: background-color .2s ease, color .2s ease, transform .15s ease;
+}
+.view-tab:hover { background: #3a3a3a; color: #e0e0e0; }
+.view-tab .view-tab-icon { font-size: 16px; line-height: 1; flex-shrink: 0; }
+.view-tab .view-tab-label { overflow: hidden; text-overflow: ellipsis; }
+.view-tab.active {
+    background: linear-gradient(135deg, #38bdf8 0%, #1e40af 100%);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(56, 189, 248, 0.45), inset 0 1px 0 rgba(255,255,255,0.2);
+}
+.view-tab:focus-visible { outline: 2px solid #38bdf8; outline-offset: 2px; }
+
+@media (max-width: 480px) {
+    .view-tabs { margin: 12px 0; padding: 3px; }
+    .view-tab { padding: 9px 6px; font-size: 12px; gap: 4px; }
+    .view-tab .view-tab-icon { font-size: 14px; }
 }

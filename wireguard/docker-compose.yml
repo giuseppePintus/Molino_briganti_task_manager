@@ -1,0 +1,71 @@
+# WireGuard VPN per accesso WAN sicuro al NAS Molino Briganti
+#
+# Container indipendente: NON tocca molino-task-manager-nas (prod :5000)
+# ne' molino-task-manager-nas-shadow (test :5001).
+#
+# Una volta connessi via VPN, i client raggiungono direttamente:
+#   - http://192.168.1.248:5001  (test/shadow durante validazione)
+#   - http://192.168.1.248:5000  (produzione, dopo OK)
+#
+# Deploy:
+#   ssh admin@192.168.1.248
+#   cd /share/Container/wireguard
+#   /share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker compose up -d
+#
+# Gestione peer:
+#   - QR code:  /share/Container/wireguard/config/peer_<nome>/peer_<nome>.png
+#   - File:     /share/Container/wireguard/config/peer_<nome>/peer_<nome>.conf
+#
+# Per AGGIUNGERE peer in futuro: modifica PEERS=, poi `docker compose up -d`
+# (i peer esistenti sono preservati, vengono creati solo quelli nuovi)
+#
+# Per RIMUOVERE un peer: cancella la sua cartella in config/, poi restart.
+
+services:
+  wireguard:
+    image: lscr.io/linuxserver/wireguard:latest
+    container_name: wireguard
+    restart: unless-stopped
+    # network_mode: host serve su QNAP perche' iptables MASQUERADE
+    # nel bridge Docker fallisce (nf_tables non raggiungibile dal container).
+    # Con host mode il container vede direttamente lo stack network del NAS.
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Rome
+      # NOTA QNAP: il kernel non espone nf_tables. Le regole iptables PostUp/PostDown
+      # in wg0.conf falliscono. Per noi non servono (ALLOWEDIPS=192.168.1.248/32,
+      # niente full tunnel internet) quindi le rimuoviamo dopo il primo avvio:
+      #   sed -i '/^PostUp/d; /^PostDown/d' /share/Container/wireguard/config/wg_confs/wg0.conf
+      #   docker restart wireguard
+      # Se in futuro aggiungi peer e linuxserver rigenera wg0.conf, ripetere il sed.
+      # IP pubblico statico del molino (da bolletta provider)
+      - SERVERURL=185.94.80.35
+      - SERVERPORT=51820
+      # Lista peer (SOLO alfanumerici, niente trattini/underscore!)
+      # Per aggiungere peer in futuro: append qui + `docker compose up -d`
+      - PEERS=manuel,barbara
+      # DNS interno per i client VPN (Cloudflare, neutro)
+      - PEERDNS=1.1.1.1
+      # Subnet virtuale dei client VPN. NAS sara' 10.6.0.1, primo peer 10.6.0.2, etc.
+      - INTERNAL_SUBNET=10.6.0.0/24
+      # Cosa i client VPN possono raggiungere DENTRO la LAN del molino.
+      # 192.168.1.248/32 = SOLO il NAS (no altri device LAN). Restringi se serve.
+      - ALLOWEDIPS=192.168.1.248/32
+      # MTU sicura per evitare frammentazione su 4G
+      - PEERS_MTU=1280
+      # Logging (true per debug iniziale, poi puoi mettere false)
+      - LOG_CONFS=true
+    volumes:
+      - /share/Container/wireguard/config:/config
+      - /lib/modules:/lib/modules
+      # Sidecar reload: monitora /config/.reload-trigger e fa wg syncconf
+      # quando il task-manager aggiunge/rimuove peer via UI web.
+      - /share/Container/wireguard/custom-cont-init.d:/custom-cont-init.d:ro
+    # Nota: con network_mode: host i sysctls non possono essere impostati dal container.
+    # Verifica sul NAS: `cat /proc/sys/net/ipv4/ip_forward` deve dare 1.
+    # Su QNAP e' attivo di default. Per attivarlo manualmente se serve:
+    #   echo 1 > /proc/sys/net/ipv4/ip_forward

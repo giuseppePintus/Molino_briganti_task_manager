@@ -14,7 +14,7 @@ router.get('/', async (req: Request, res: Response) => {
     const { search, active } = req.query;
     
     // Carica clienti dal file statico
-    let customers = CustomersFile.loadCustomers();
+    let customers = await CustomersFile.loadCustomers();
     
     // Filtra per stato attivo
     if (active !== undefined) {
@@ -66,7 +66,7 @@ router.get('/:id', async (req: Request, res: Response) => {
     const customerId = parseInt(id);
     
     // Carica dal file statico
-    const customer = CustomersFile.getCustomerById(customerId);
+    const customer = await CustomersFile.getCustomerById(customerId);
     
     if (!customer) {
       return res.status(404).json({ error: 'Customer not found' });
@@ -127,7 +127,7 @@ router.post('/', async (req: Request, res: Response) => {
     // Salva nel file statico
     let customer;
     try {
-      customer = CustomersFile.addCustomer({
+      customer = await CustomersFile.addCustomer({
         code: code || null,
         name,
         address: address || null,
@@ -221,7 +221,7 @@ router.put('/:id', async (req: Request, res: Response) => {
     // Aggiorna nel file statico
     let customer;
     try {
-      customer = CustomersFile.updateCustomer(parseInt(id), updateData);
+      customer = await CustomersFile.updateCustomer(parseInt(id), updateData);
     } catch (err: any) {
       if (err instanceof DuplicateNameError) {
         return res.status(409).json({ error: err.message, code: 'DUPLICATE_NAME' });
@@ -264,13 +264,13 @@ router.delete('/:id', async (req: Request, res: Response) => {
     
     if (hard === 'true') {
       // Hard delete - rimuovi completamente
-      const deleted = CustomersFile.deleteCustomer(parseInt(id));
+      const deleted = await CustomersFile.deleteCustomer(parseInt(id));
       if (!deleted) {
         return res.status(404).json({ error: 'Customer not found' });
       }
     } else {
       // Soft delete - imposta isActive = false
-      const customer = CustomersFile.updateCustomer(parseInt(id), { isActive: false });
+      const customer = await CustomersFile.updateCustomer(parseInt(id), { isActive: false });
       if (!customer) {
         return res.status(404).json({ error: 'Customer not found' });
       }
@@ -299,7 +299,7 @@ router.post('/bulk', async (req: Request, res: Response) => {
     let updated = 0;
     let errors = 0;
     
-    const existingCustomers = CustomersFile.loadCustomers();
+    const existingCustomers = await CustomersFile.loadCustomers();
     
     for (const c of customers) {
       try {
@@ -310,7 +310,7 @@ router.post('/bulk', async (req: Request, res: Response) => {
         
         if (existing) {
           // Aggiorna
-          CustomersFile.updateCustomer(existing.id, {
+          await CustomersFile.updateCustomer(existing.id, {
             name: c.name || existing.name,
             address: c.address || c.indirizzo || existing.address,
             city: c.city || c.citta || existing.city,
@@ -325,7 +325,7 @@ router.post('/bulk', async (req: Request, res: Response) => {
           updated++;
         } else {
           // Crea nuovo
-          CustomersFile.addCustomer({
+          await CustomersFile.addCustomer({
             code: c.code || null,
             name: c.name || c.ragioneSociale || 'Cliente senza nome',
             address: c.address || c.indirizzo || null,
@@ -468,7 +468,7 @@ router.post('/import-csv', async (req: Request, res: Response) => {
 router.get('/:id/destinations', async (req: Request, res: Response) => {
   try {
     const customerId = parseInt(req.params.id);
-    const customer = CustomersFile.getCustomerById(customerId);
+    const customer = await CustomersFile.getCustomerById(customerId);
     if (!customer) return res.status(404).json({ error: 'Cliente non trovato' });
     res.json(customer.destinations || []);
   } catch (error: any) {
@@ -482,7 +482,7 @@ router.get('/:id/destinations', async (req: Request, res: Response) => {
 router.post('/:id/destinations', async (req: Request, res: Response) => {
   try {
     const customerId = parseInt(req.params.id);
-    const customer = CustomersFile.getCustomerById(customerId);
+    const customer = await CustomersFile.getCustomerById(customerId);
     if (!customer) return res.status(404).json({ error: 'Cliente non trovato' });
 
     const { label } = req.body;
@@ -490,7 +490,7 @@ router.post('/:id/destinations', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Nome destinazione obbligatorio' });
     }
 
-    const dest = CustomersFile.addDestination(customerId, req.body);
+    const dest = await CustomersFile.addDestination(customerId, req.body);
     if (!dest) return res.status(500).json({ error: 'Errore nel salvataggio destinazione' });
     res.status(201).json(dest);
   } catch (error: any) {
@@ -505,7 +505,7 @@ router.put('/:id/destinations/:destId', async (req: Request, res: Response) => {
   try {
     const customerId = parseInt(req.params.id);
     const destId = parseInt(req.params.destId);
-    const dest = CustomersFile.updateDestination(customerId, destId, req.body);
+    const dest = await CustomersFile.updateDestination(customerId, destId, req.body);
     if (!dest) return res.status(404).json({ error: 'Destinazione non trovata' });
     res.json(dest);
   } catch (error: any) {
@@ -520,7 +520,7 @@ router.delete('/:id/destinations/:destId', async (req: Request, res: Response) =
   try {
     const customerId = parseInt(req.params.id);
     const destId = parseInt(req.params.destId);
-    const ok = CustomersFile.deleteDestination(customerId, destId);
+    const ok = await CustomersFile.deleteDestination(customerId, destId);
     if (!ok) return res.status(404).json({ error: 'Destinazione non trovata' });
     res.json({ success: true });
   } catch (error: any) {

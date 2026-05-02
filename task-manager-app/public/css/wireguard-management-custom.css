@@ -1,0 +1,255 @@
+/* WireGuard management - tema dark */
+
+/* Override globale per questa pagina */
+body {
+    background: #0d1117;
+    color: #e6edf3;
+}
+.container { max-width: 900px; }
+
+/* Card / header comuni (override common.css) */
+.card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 20px;
+}
+.card h2 {
+    color: #e6edf3;
+    margin-top: 0;
+}
+.header {
+    background: #161b22;
+    border-bottom: 1px solid #30363d;
+}
+.header h1 { color: #e6edf3; }
+
+/* Alert */
+.alert { display: none; }
+.alert.visible { display: block; }
+
+/* Form row */
+.form-row {
+    display: flex;
+    gap: 12px;
+    align-items: stretch;
+    flex-wrap: wrap;
+}
+.form-row input[type="text"] {
+    flex: 1;
+    min-width: 220px;
+    padding: 12px 14px;
+    font-size: 16px;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    background: #0d1117;
+    color: #e6edf3;
+}
+.form-row input[type="text"]::placeholder { color: #6e7681; }
+.form-row input[type="text"]:focus {
+    outline: none;
+    border-color: #388bfd;
+    box-shadow: 0 0 0 3px rgba(56, 139, 253, .2);
+}
+
+/* Hint */
+.hint {
+    color: #8b949e;
+    font-size: 13px;
+    margin-top: 10px;
+}
+.hint code {
+    background: #21262d;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #79c0ff;
+}
+
+/* Empty state */
+.empty {
+    color: #8b949e;
+    font-style: italic;
+    padding: 16px 0;
+}
+
+/* Peer row */
+.peer-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 16px;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    background: #0d1117;
+    flex-wrap: wrap;
+    transition: border-color .15s;
+}
+.peer-row:hover { border-color: #388bfd; }
+.peer-main {
+    flex: 1;
+    min-width: 240px;
+}
+.peer-name {
+    font-weight: 600;
+    font-size: 16px;
+    margin-bottom: 4px;
+    color: #e6edf3;
+}
+.peer-meta {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    color: #8b949e;
+    font-size: 13px;
+}
+.peer-ip {
+    font-family: 'Courier New', monospace;
+    background: #21262d;
+    padding: 1px 8px;
+    border-radius: 4px;
+    color: #79c0ff;
+}
+.peer-key {
+    font-family: 'Courier New', monospace;
+    color: #6e7681;
+}
+.peer-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 13px;
+}
+
+/* Bottoni (override common) */
+.btn-danger {
+    background: #b91c1c;
+    color: #fff;
+    border: none;
+}
+.btn-danger:hover { background: #991b1b; }
+.btn-secondary {
+    background: #21262d;
+    color: #c9d1d9;
+    border: 1px solid #30363d;
+}
+.btn-secondary:hover { background: #30363d; }
+
+/* Modale */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, .72);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 16px;
+}
+.modal-content {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 10px;
+    max-width: 560px;
+    width: 100%;
+    max-height: 92vh;
+    overflow: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, .7);
+}
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid #30363d;
+}
+.modal-header h2 {
+    margin: 0;
+    font-size: 18px;
+    color: #e6edf3;
+}
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 28px;
+    cursor: pointer;
+    color: #8b949e;
+    line-height: 1;
+}
+.modal-close:hover { color: #f85149; }
+.modal-body {
+    padding: 18px 20px 22px;
+}
+.modal-instructions {
+    color: #c9d1d9;
+    font-size: 14px;
+    margin: 0 0 14px;
+}
+
+/* QR: sfondo bianco per garantire leggibilità del codice */
+.qr-wrap {
+    display: flex;
+    justify-content: center;
+    background: #fff;
+    padding: 12px;
+    margin-bottom: 16px;
+    border-radius: 8px;
+}
+.qr-wrap img {
+    max-width: 100%;
+    height: auto;
+    image-rendering: pixelated;
+}
+
+.actions-row {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+}
+
+/* Dettagli conf */
+.conf-details {
+    margin-top: 10px;
+}
+.conf-details summary {
+    cursor: pointer;
+    color: #388bfd;
+    font-size: 14px;
+    user-select: none;
+}
+.conf-details pre {
+    background: #0d1117;
+    border: 1px solid #30363d;
+    color: #c9d1d9;
+    padding: 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    overflow-x: auto;
+    margin-top: 8px;
+}
+
+/* Avviso sicurezza */
+.warn {
+    color: #ffa657;
+    background: #1a1008;
+    border: 1px solid #7d4e00;
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 13px;
+    margin-top: 12px;
+}
+
+/* Loading */
+.loading {
+    color: #8b949e;
+    padding: 16px;
+    text-align: center;
+}

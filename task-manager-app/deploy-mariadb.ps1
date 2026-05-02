@@ -41,7 +41,7 @@ $runCmd = "docker run -d --name $CONTAINER_NAME --restart unless-stopped -p 5000
   "-e DATABASE_URL=`"mysql://$($DB_USER):$($DB_PASSWORD)@$($NAS_IP):$($DB_PORT)/$($DB_NAME)`" " +
   "-e JWT_SECRET=`"$JWT_SECRET`" " +
   "-e PORT=5000 -e NODE_ENV=production -e DEFAULT_MASTER_USER=`"master`" -e DEFAULT_MASTER_PASS=`"masterpass`" " +
-  "-v /share/Public/molino-data/uploads:/app/uploads -v /share/Public/molino-data/backups:/app/backups " +
+  "-v /share/Public/molino-data/uploads:/app/uploads -v /share/Public/molino-data/backups:/app/backups -v /share/Public/molino-data/data:/app/data " +
   "$IMAGE_NAME"
 
 echo $NAS_PASSWORD | ssh $NAS_USER@$NAS_IP $runCmd

@@ -1,4 +1,0 @@
-Posizione,Codice,Nome,Lotto,Scadenza,Quantita,Ultimo_Movimento,Data_Movimento,Stato
-"A1.1","F-0-5","FARINA 0 da 5kg","41024","31/08/2024",60,"IN IMPORTAZIONE","2025-12-22","OK"
-"A3.1","F-00-5","FARINA 00 da 5kg","30924","31/08/2024",3,"OUT PRELIEVO ORD123","2025-12-23","ALLARME"
-"A3.3","","","","",0,"NESSUNO","","VUOTO"

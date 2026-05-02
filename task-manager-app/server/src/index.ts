@@ -68,18 +68,19 @@ import settingsRoutes from './routes/settings';
 import inventoryRoutes from './routes/inventory';
 import categoriesRoutes from './routes/categories';
 import alertsRoutes from './routes/alerts';
-import codificheRoutes from './routes/codifiche';
 import uploadRoutes, { UPLOAD_DIR } from './routes/upload';
 import ordersRoutes from './routes/orders';
 import tripsRoutes from './routes/trips';
 import customersRoutes from './routes/customers';
+import wireguardRoutes from './routes/wireguard';
 import debugRoutes from './routes/debug';
 import setupBackupMiddleware from './middleware/backupMiddleware';
 import BackupService from './services/backupService';
 import prisma from './lib/prisma';
 import { initializeDatabaseIfEmpty } from './services/databaseInit';
+import { migrateJsonToDb } from './services/jsonToDbMigration';
 import { socketService } from './services/socketService';
-// WarehouseService imported lazily in endpoints to avoid sqlite3 dependency issue
+// WarehouseService rimosso: gestione PDF dismessa, dati gestiti via Prisma/MariaDB
 
 const execAsync = promisify(exec);
 const app = express();
@@ -125,11 +126,11 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/categories', categoriesRoutes);
 app.use('/api/alerts', alertsRoutes);
-app.use('/api/codifiche', codificheRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/orders', ordersRoutes);
 app.use('/api/trips', tripsRoutes);
 app.use('/api/customers', customersRoutes);
+app.use('/api/wireguard', wireguardRoutes);
 app.use('/api/debug', debugRoutes);
 
 // Inline endpoint - List all HTML pages in public dir (for Indice feature)
@@ -152,41 +153,7 @@ app.get('/api/pages', (req, res) => {
   }
 });
 
-// Inline endpoint - Import warehouse from PDF
-app.post('/api/warehouse/import-from-pdf', async (req, res) => {
-  try {
-    console.log('📄 [INLINE] Warehouse PDF import requested');
-    const result = await (require('./services/warehouseService').WarehouseService).importFromPdf();
-    res.json({
-      success: true,
-      message: 'Warehouse imported successfully',
-      data: result
-    });
-  } catch (error: any) {
-    console.error('❌ [INLINE] Warehouse import error:', error.message);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-// Inline endpoint - Get warehouse articles
-app.get('/api/warehouse/articles', async (req, res) => {
-  try {
-    const articles = await (require('./services/warehouseService').WarehouseService).getAllArticles();
-    res.json({
-      success: true,
-      data: articles
-    });
-  } catch (error: any) {
-    console.error('❌ [INLINE] Get warehouse articles error:', error.message);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
+// Inline endpoints warehouse PDF rimossi (gestione PDF dismessa)
 
 // Force reload of modules (emergency restart without killing process)
 app.post('/api/admin/reload-modules', (req, res) => {
@@ -346,6 +313,9 @@ httpServer.listen(PORT, undefined, async () => {
 
     // Inizializza database con utenti di default se vuoto
     await initializeDatabaseIfEmpty(prisma);
+
+    // Migrazione one-shot da JSON a DB (categorie + clienti)
+    await migrateJsonToDb();
 
     // Setup backup middleware
     setupBackupMiddleware(prisma);

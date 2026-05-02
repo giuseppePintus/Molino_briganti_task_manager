@@ -144,15 +144,24 @@ export class BackupService {
   }
 
   /**
-   * Esegui backup del database + uploads (logo e file)
+   * Risolve la directory dati persistente (file JSON come customers.json)
+   */
+  private getDataDir(): string {
+    return process.env.DATA_DIR || '/app/data';
+  }
+
+  /**
+   * Esegui backup del database + uploads (logo e file) + data (customers.json, ecc.)
    */
   async backupDatabase(): Promise<string> {
     try {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const backupName = `db-backup-${timestamp}.sql`;
       const uploadsBackupName = `uploads-backup-${timestamp}.tar.gz`;
+      const dataBackupName = `data-backup-${timestamp}.tar.gz`;
       const backupPath = path.join(this.backupDir, backupName);
       const uploadsBackupPath = path.join(this.backupDir, uploadsBackupName);
+      const dataBackupPath = path.join(this.backupDir, dataBackupName);
 
       // Leggi DATABASE_URL e determina se è MariaDB/MySQL o SQLite
       const databaseUrl = process.env.DATABASE_URL || 'file:./prisma/data/tasks.db';
@@ -178,7 +187,7 @@ export class BackupService {
       // Backup della cartella uploads (dove sono i logo e gli altri file)
       const uploadsDir = process.env.UPLOAD_DIR || (
         process.env.NODE_ENV === 'production' 
-          ? '/data/molino/uploads'
+          ? '/app/uploads'
           : path.join(process.cwd(), 'uploads')
       );
       
@@ -188,13 +197,33 @@ export class BackupService {
       } else {
         console.log(`ℹ️ Uploads directory not found at ${uploadsDir} - skipping uploads backup`);
       }
-      
-      // Carica su NAS
-      if (fs.existsSync(backupPath)) {
-        await this.uploadToNas(backupPath, backupName);
+
+      // Backup della cartella data (file JSON: customers.json, ecc.)
+      const dataDir = this.getDataDir();
+      if (fs.existsSync(dataDir) && fs.readdirSync(dataDir).length > 0) {
+        try {
+          await this.backupDirAsTar(dataDir, dataBackupPath, 'data');
+          console.log(`✅ Data dir backed up: ${dataBackupPath}`);
+        } catch (e) {
+          console.warn(`⚠️ Data dir backup failed: ${e}`);
+        }
+      } else {
+        console.log(`ℹ️ Data directory ${dataDir} non presente o vuota - skip data backup`);
       }
-      if (fs.existsSync(uploadsBackupPath)) {
-        await this.uploadToNas(uploadsBackupPath, uploadsBackupName);
+
+      // Carica su NAS via API REST (opt-in: per default i backup sono gia'
+      // scritti in /app/backups che e' un bind mount su NAS, quindi e' ridondante).
+      // Abilitare con BACKUP_UPLOAD_TO_NAS_API=true se backupDir non e' su NAS.
+      if (process.env.BACKUP_UPLOAD_TO_NAS_API === 'true') {
+        if (fs.existsSync(backupPath)) {
+          await this.uploadToNas(backupPath, backupName);
+        }
+        if (fs.existsSync(uploadsBackupPath)) {
+          await this.uploadToNas(uploadsBackupPath, uploadsBackupName);
+        }
+        if (fs.existsSync(dataBackupPath)) {
+          await this.uploadToNas(dataBackupPath, dataBackupName);
+        }
       }
       
       // Mantieni solo ultimi N backup locali
@@ -252,26 +281,30 @@ export class BackupService {
    * Backup della cartella uploads (comprime come tar.gz)
    */
   private async backupUploads(uploadsDir: string, outputPath: string): Promise<void> {
+    return this.backupDirAsTar(uploadsDir, outputPath, 'uploads');
+  }
+
+  /**
+   * Backup generico di una directory come tar.gz, con etichetta personalizzata per i log.
+   */
+  private async backupDirAsTar(sourceDir: string, outputPath: string, label: string): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
-        // Usa tar per comprimere la cartella
         const tarCmd = process.platform === 'win32'
-          ? `powershell -Command "tar -czf '${outputPath}' -C '${path.dirname(uploadsDir)}' '${path.basename(uploadsDir)}'"`
-          : `tar -czf '${outputPath}' -C '${path.dirname(uploadsDir)}' '${path.basename(uploadsDir)}'`;
-        
-        exec(tarCmd, (error, stdout, stderr) => {
+          ? `powershell -Command "tar -czf '${outputPath}' -C '${path.dirname(sourceDir)}' '${path.basename(sourceDir)}'"`
+          : `tar -czf '${outputPath}' -C '${path.dirname(sourceDir)}' '${path.basename(sourceDir)}'`;
+
+        exec(tarCmd, (error) => {
           if (error) {
-            // Fallback: se tar non disponibile, comprimi manualmente con gzip
-            console.warn(`⚠️ tar command failed: ${error.message}, using manual compression`);
-            this.backupUploadsManual(uploadsDir, outputPath).then(resolve).catch(reject);
+            console.warn(`⚠️ tar command failed for ${label}: ${error.message}, using manual compression`);
+            this.backupUploadsManual(sourceDir, outputPath).then(resolve).catch(reject);
           } else {
-            console.log(`✅ Uploads compressed with tar: ${outputPath}`);
+            console.log(`✅ ${label} compressed with tar: ${outputPath}`);
             resolve();
           }
         });
       } catch (error) {
-        // Fallback: compressione manuale
-        this.backupUploadsManual(uploadsDir, outputPath).then(resolve).catch(reject);
+        this.backupUploadsManual(sourceDir, outputPath).then(resolve).catch(reject);
       }
     });
   }
@@ -458,9 +491,28 @@ export class BackupService {
   }
 
   /**
-   * Ripristina database + uploads da backup
+   * Ripristina database + uploads + data da backup.
+   * Se uploadsBackupPath/dataBackupPath non sono passati, vengono cercati
+   * automaticamente nella stessa cartella per timestamp.
    */
-  async restoreDatabase(backupPath: string, uploadsBackupPath?: string): Promise<void> {
+  async restoreDatabase(backupPath: string, uploadsBackupPath?: string, dataBackupPath?: string): Promise<void> {
+    // Auto-discovery dei tar correlati (uploads/data) per timestamp del SQL backup
+    if (!uploadsBackupPath || !dataBackupPath) {
+      const baseName = path.basename(backupPath);
+      const m = baseName.match(/^db-backup-(.+)\.sql$/);
+      if (m) {
+        const ts = m[1];
+        const dir = path.dirname(backupPath);
+        if (!uploadsBackupPath) {
+          const candidate = path.join(dir, `uploads-backup-${ts}.tar.gz`);
+          if (fs.existsSync(candidate)) uploadsBackupPath = candidate;
+        }
+        if (!dataBackupPath) {
+          const candidate = path.join(dir, `data-backup-${ts}.tar.gz`);
+          if (fs.existsSync(candidate)) dataBackupPath = candidate;
+        }
+      }
+    }
     try {
       console.log(`🔌 Inizio ripristino database da: ${backupPath}`);
 
@@ -515,6 +567,17 @@ export class BackupService {
           console.log(`✅ Uploads ripristinati`);
         } catch (uploadError) {
           console.warn(`⚠️ Errore ripristino uploads: ${uploadError}`);
+        }
+      }
+
+      // Ripristina la cartella /app/data (customers.json, ecc.)
+      if (dataBackupPath && fs.existsSync(dataBackupPath)) {
+        try {
+          console.log(`📦 Ripristino data dir da: ${dataBackupPath}`);
+          await this.restoreDataDir(dataBackupPath);
+          console.log(`✅ Data dir ripristinata`);
+        } catch (dataError) {
+          console.warn(`⚠️ Errore ripristino data dir: ${dataError}`);
         }
       }
 
@@ -584,7 +647,7 @@ export class BackupService {
       try {
         const uploadsDir = process.env.UPLOAD_DIR || (
           process.env.NODE_ENV === 'production' 
-            ? '/data/molino/uploads'
+            ? '/app/uploads'
             : path.join(process.cwd(), 'uploads')
         );
 
@@ -611,6 +674,39 @@ export class BackupService {
         } else {
           // Se è una directory di backup manuale
           this.restoreUploadsManual(backupPath, uploadsDir).then(resolve).catch(reject);
+        }
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
+  /**
+   * Ripristina la cartella /app/data da un tar.gz.
+   * Stesso meccanismo di restoreUploads ma su DATA_DIR.
+   */
+  private async restoreDataDir(backupPath: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      try {
+        const dataDir = this.getDataDir();
+        if (!fs.existsSync(dataDir)) {
+          fs.mkdirSync(dataDir, { recursive: true });
+        }
+        if (backupPath.endsWith('.tar.gz')) {
+          const tarCmd = process.platform === 'win32'
+            ? `powershell -Command "tar -xzf '${backupPath}' -C '${path.dirname(dataDir)}'"`
+            : `tar -xzf '${backupPath}' -C '${path.dirname(dataDir)}'`;
+          exec(tarCmd, (error) => {
+            if (error) {
+              console.warn(`⚠️ tar extraction failed for data dir: ${error.message}`);
+              reject(error);
+            } else {
+              console.log('✅ Data dir extracted from tar.gz');
+              resolve();
+            }
+          });
+        } else {
+          reject(new Error('Unknown data backup format (expected .tar.gz)'));
         }
       } catch (error) {
         reject(error);
@@ -663,18 +759,22 @@ export class BackupService {
       const files = fs.readdirSync(this.backupDir);
       const backupFiles = files.filter(f => f.startsWith('db-backup-') && f.endsWith('.sql'));
       const uploadsBackupFiles = files.filter(f => f.startsWith('uploads-backup-'));
+      const dataBackupFiles = files.filter(f => f.startsWith('data-backup-'));
       
       for (const filename of backupFiles) {
         const filePath = path.join(this.backupDir, filename);
         const stats = fs.statSync(filePath);
         const timestamp = filename.replace('db-backup-', '').replace('.sql', '');
         const uploadsFile = uploadsBackupFiles.find(f => f.includes(timestamp));
+        const dataFile = dataBackupFiles.find(f => f.includes(timestamp));
         
         allBackups.push({
           filename: filename,
           uploadsFilename: uploadsFile || null,
+          dataFilename: dataFile || null,
           size: stats.size,
           uploadsSize: uploadsFile ? fs.statSync(path.join(this.backupDir, uploadsFile)).size : 0,
+          dataSize: dataFile ? fs.statSync(path.join(this.backupDir, dataFile)).size : 0,
           createdAt: stats.mtime.toISOString(),
           type: 'sqlite'
         });
@@ -732,6 +832,15 @@ export class BackupService {
             if (fs.existsSync(uploadsPath)) {
               fs.unlinkSync(uploadsPath);
               console.log(`🗑️ Old uploads backup deleted: ${backup.uploadsFilename}`);
+            }
+          }
+
+          // Cancella il corrispondente data backup
+          if (backup.dataFilename) {
+            const dataPath = path.join(this.backupDir, backup.dataFilename);
+            if (fs.existsSync(dataPath)) {
+              fs.unlinkSync(dataPath);
+              console.log(`🗑️ Old data backup deleted: ${backup.dataFilename}`);
             }
           }
         }

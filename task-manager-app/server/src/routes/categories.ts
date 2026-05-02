@@ -1,13 +1,11 @@
 import { Router, Request, Response } from 'express';
-import * as fs from 'fs';
-import * as path from 'path';
 import prisma from '../lib/prisma';
 import { authMiddleware } from '../middleware/auth';
 
 const router = Router();
 
 // Categorie predefinite (allineate al frontend warehouse-management.html)
-const DEFAULT_CATEGORIES = [
+export const DEFAULT_CATEGORIES = [
   { name: 'FARINE',          icon: '🌾', color: '#f59e0b' },
   { name: 'MIX FARINE',      icon: '🥣', color: '#d97706' },
   { name: 'SEMOLE',          icon: '🌽', color: '#84cc16' },
@@ -17,68 +15,45 @@ const DEFAULT_CATEGORIES = [
   { name: 'ALTRO',           icon: '📦', color: '#6b7280' }
 ];
 
-// Percorso file persistente
-const STORAGE_PATHS = [
-  process.env.CATEGORIES_JSON_PATH,
-  '/data/molino/categories.json',
-  '/share/Container/data/molino/categories.json',
-  path.join(process.cwd(), 'data', 'categories.json')
-].filter(Boolean) as string[];
-
-function getStoragePath(): string {
-  // Restituisce il primo path la cui dir esiste (o usabile)
-  for (const p of STORAGE_PATHS) {
-    try {
-      const dir = path.dirname(p);
-      if (fs.existsSync(dir)) return p;
-    } catch (_) { /* ignore */ }
-  }
-  // Fallback: crea local
-  const fallback = path.join(process.cwd(), 'data', 'categories.json');
-  try { fs.mkdirSync(path.dirname(fallback), { recursive: true }); } catch (_) {}
-  return fallback;
-}
-
 interface CategoryItem {
   name: string;
-  icon?: string;
-  color?: string;
+  icon?: string | null;
+  color?: string | null;
 }
 
-function loadCategories(): CategoryItem[] {
-  const file = getStoragePath();
-  try {
-    if (fs.existsSync(file)) {
-      const raw = fs.readFileSync(file, 'utf-8');
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed as CategoryItem[];
+async function loadCategoriesDb(): Promise<CategoryItem[]> {
+  const rows = await prisma.productCategory.findMany({
+    orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }]
+  });
+  return rows.map(r => ({ name: r.name, icon: r.icon, color: r.color }));
+}
+
+async function saveCategoriesDb(items: CategoryItem[]): Promise<void> {
+  // Sostituisce intera lista preservando l'ordine: usa una transazione
+  await prisma.$transaction(async (tx) => {
+    await tx.productCategory.deleteMany({});
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      await tx.productCategory.create({
+        data: {
+          name: it.name,
+          icon: it.icon ?? null,
+          color: it.color ?? null,
+          sortOrder: i
+        }
+      });
     }
-  } catch (e) {
-    console.error('[categories] errore lettura', e);
-  }
-  return DEFAULT_CATEGORIES.map(c => ({ ...c }));
-}
-
-function saveCategories(items: CategoryItem[]): void {
-  const file = getStoragePath();
-  try {
-    fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(file, JSON.stringify(items, null, 2), 'utf-8');
-  } catch (e) {
-    console.error('[categories] errore scrittura', e);
-    throw e;
-  }
+  });
 }
 
 // GET pubblico - lista ordinata
 router.get('/', async (_req: Request, res: Response) => {
-  const file = getStoragePath();
-  // Se l'utente ha già personalizzato (file esiste) → restituisci la sua lista così com'è
-  if (fs.existsSync(file)) {
-    return res.json(loadCategories());
-  }
-  // Altrimenti deriva dalle categorie realmente presenti sugli articoli + default
   try {
+    const cats = await loadCategoriesDb();
+    if (cats.length > 0) {
+      return res.json(cats);
+    }
+    // DB vuoto → deriva dalle categorie realmente presenti sugli articoli + default
     const rows = await prisma.article.findMany({
       select: { category: true },
       where: { category: { not: null } }
@@ -92,78 +67,99 @@ router.get('/', async (_req: Request, res: Response) => {
     const merged: CategoryItem[] = realCats.map(name =>
       defMap.get(name) ? { ...defMap.get(name)! } : { name }
     );
-    // Aggiungi default mancanti (in coda) per non perdere icone/colori delle categorie standard
     for (const d of DEFAULT_CATEGORIES) {
       if (!merged.some(m => m.name === d.name)) merged.push({ ...d });
     }
     return res.json(merged);
-  } catch (e) {
-    console.error('[categories] GET fallback error', e);
-    return res.json(loadCategories());
+  } catch (e: any) {
+    console.error('[categories] GET error', e);
+    return res.status(500).json({ error: e.message });
   }
 });
 
 // PUT - sostituisce intera lista (riordino, icone, colori)
 router.put('/', authMiddleware, async (req: Request, res: Response) => {
-  const items = req.body;
-  if (!Array.isArray(items)) {
-    return res.status(400).json({ error: 'Body deve essere un array di categorie' });
+  try {
+    const items = req.body;
+    if (!Array.isArray(items)) {
+      return res.status(400).json({ error: 'Body deve essere un array di categorie' });
+    }
+    const sanitized: CategoryItem[] = items
+      .filter(it => it && typeof it.name === 'string' && it.name.trim())
+      .map(it => ({
+        name: String(it.name).trim().toUpperCase(),
+        icon: typeof it.icon === 'string' ? it.icon : null,
+        color: typeof it.color === 'string' ? it.color : null
+      }));
+    await saveCategoriesDb(sanitized);
+    res.json({ ok: true, count: sanitized.length });
+  } catch (e: any) {
+    console.error('[categories] PUT error', e);
+    res.status(500).json({ error: e.message });
   }
-  const sanitized: CategoryItem[] = items
-    .filter(it => it && typeof it.name === 'string' && it.name.trim())
-    .map(it => ({
-      name: String(it.name).trim().toUpperCase(),
-      icon: typeof it.icon === 'string' ? it.icon : undefined,
-      color: typeof it.color === 'string' ? it.color : undefined
-    }));
-  saveCategories(sanitized);
-  res.json({ ok: true, count: sanitized.length });
 });
 
 // POST /rename - rinomina e propaga su tutti gli articoli
 router.post('/rename', authMiddleware, async (req: Request, res: Response) => {
-  const { from, to } = req.body || {};
-  if (!from || !to || typeof from !== 'string' || typeof to !== 'string') {
-    return res.status(400).json({ error: 'Parametri "from" e "to" obbligatori' });
-  }
-  const oldName = from.trim().toUpperCase();
-  const newName = to.trim().toUpperCase();
-  if (!oldName || !newName) return res.status(400).json({ error: 'Nomi non validi' });
-
-  // Aggiorna articoli sul DB (case-insensitive su MariaDB)
-  let updated = 0;
   try {
-    const result = await prisma.article.updateMany({
-      where: { category: oldName },
-      data: { category: newName }
-    });
-    updated = result.count;
-  } catch (e) {
-    console.error('[categories/rename] updateMany error', e);
-  }
+    const { from, to } = req.body || {};
+    if (!from || !to || typeof from !== 'string' || typeof to !== 'string') {
+      return res.status(400).json({ error: 'Parametri "from" e "to" obbligatori' });
+    }
+    const oldName = from.trim().toUpperCase();
+    const newName = to.trim().toUpperCase();
+    if (!oldName || !newName) return res.status(400).json({ error: 'Nomi non validi' });
 
-  // Aggiorna lista
-  const items = loadCategories();
-  const idx = items.findIndex(c => c.name.toUpperCase() === oldName);
-  if (idx >= 0) {
-    items[idx] = { ...items[idx], name: newName };
-    saveCategories(items);
-  }
+    // Aggiorna articoli sul DB
+    let updated = 0;
+    try {
+      const result = await prisma.article.updateMany({
+        where: { category: oldName },
+        data: { category: newName }
+      });
+      updated = result.count;
+    } catch (e) {
+      console.error('[categories/rename] updateMany error', e);
+    }
 
-  res.json({ ok: true, articlesUpdated: updated });
+    // Aggiorna categoria in DB (se esiste)
+    try {
+      await prisma.productCategory.update({
+        where: { name: oldName },
+        data: { name: newName }
+      });
+    } catch (e) {
+      // Se non esiste, la creiamo
+      try {
+        const last = await prisma.productCategory.findFirst({ orderBy: { sortOrder: 'desc' } });
+        await prisma.productCategory.create({
+          data: { name: newName, sortOrder: (last?.sortOrder ?? -1) + 1 }
+        });
+      } catch (_) { /* ignore */ }
+    }
+
+    res.json({ ok: true, articlesUpdated: updated });
+  } catch (e: any) {
+    console.error('[categories] rename error', e);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // DELETE /:name - rimuove categoria (se non in uso)
 router.delete('/:name', authMiddleware, async (req: Request, res: Response) => {
-  const name = String(req.params.name || '').trim().toUpperCase();
-  if (!name) return res.status(400).json({ error: 'Nome obbligatorio' });
-  const inUse = await prisma.article.count({ where: { category: name } });
-  if (inUse > 0) {
-    return res.status(409).json({ error: `Categoria usata da ${inUse} articoli` });
+  try {
+    const name = String(req.params.name || '').trim().toUpperCase();
+    if (!name) return res.status(400).json({ error: 'Nome obbligatorio' });
+    const inUse = await prisma.article.count({ where: { category: name } });
+    if (inUse > 0) {
+      return res.status(409).json({ error: `Categoria usata da ${inUse} articoli` });
+    }
+    await prisma.productCategory.deleteMany({ where: { name } });
+    res.json({ ok: true });
+  } catch (e: any) {
+    console.error('[categories] delete error', e);
+    res.status(500).json({ error: e.message });
   }
-  const items = loadCategories().filter(c => c.name.toUpperCase() !== name);
-  saveCategories(items);
-  res.json({ ok: true });
 });
 
 export default router;

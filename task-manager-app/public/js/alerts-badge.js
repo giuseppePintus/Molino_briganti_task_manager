@@ -1,67 +1,98 @@
 /**
  * alerts-badge.js
- * Inietta automaticamente un bottone "campanella avvisi giacenza" nella sticky-top-bar
- * di tutte le pagine. Cliccandolo apre /alerts.html
  *
- * Polling: ogni 60s + listener WebSocket `inventory_updated` se disponibile.
+ * Sostituisce l'icona del pulsante "Gestione Magazzino" (.btn-warehouse) con una
+ * campanella colorata in base allo stato avvisi giacenza:
+ *   - verde   = nessun avviso
+ *   - arancio = ci sono avvisi (non critici)
+ *   - rossa   = ci sono avvisi CRITICI
+ * Le dimensioni del pulsante restano invariate (sostituiamo solo il glifo
+ * mostrato dal CSS ::before tramite una mask SVG).
+ *
+ * Polling: ogni 15s + listener WebSocket `inventory_updated` se disponibile.
  */
 (function () {
   if (window.__ALERTS_BADGE_INITED) return;
   window.__ALERTS_BADGE_INITED = true;
 
   const STYLE_ID = 'alerts-badge-style';
-  const BTN_ID = 'globalAlertsBadgeBtn';
-  const POLL_MS = 15_000;
+  const POLL_MS = 15000;
+
+  // SVG bell come data URI per usarla come mask (colorabile via background-color)
+  const BELL_SVG = "url(\"data:image/svg+xml;utf8,"
+    + "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>"
+    + "<path fill='black' d='M12 2a6 6 0 0 0-6 6v3.586l-1.707 1.707"
+    + "A1 1 0 0 0 5 15h14a1 1 0 0 0 .707-1.707L18 11.586V8a6 6 0 0 0-6-6z"
+    + "m0 20a3 3 0 0 0 3-3H9a3 3 0 0 0 3 3z'/></svg>\")";
+
+  // SVG triangolo "warning" come mask, per il feature-card "Avvisi"
+  const WARN_SVG = "url(\"data:image/svg+xml;utf8,"
+    + "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>"
+    + "<path fill='black' d='M12 2 1 21h22L12 2zm0 6 7.5 13h-15L12 8z"
+    + "m-1 5h2v4h-2v-4zm0 5h2v2h-2v-2z'/></svg>\")";
 
   function injectStyle() {
     if (document.getElementById(STYLE_ID)) return;
     const css = `
-      .alerts-badge-btn {
-        position: relative;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 4px;
-        padding: 6px 10px;
-        border-radius: 8px;
-        background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);
-        color: #fff;
-        font-weight: 600;
-        font-size: 14px;
-        border: none;
-        cursor: pointer;
-        box-shadow: 0 2px 6px rgba(234,88,12,0.35);
-        text-decoration: none;
-        line-height: 1;
-        transition: transform .15s ease, box-shadow .15s ease, opacity .2s ease;
+      /* Quando il pulsante ha la classe .alerts-bell sostituiamo il glifo
+         emoji originale con una campanella SVG colorabile via background-color. */
+      .btn-warehouse.alerts-bell::before {
+        content: '' !important;
+        display: inline-block;
+        width: 18px;
+        height: 18px;
+        vertical-align: middle;
+        -webkit-mask: ${BELL_SVG} no-repeat center / contain;
+                mask: ${BELL_SVG} no-repeat center / contain;
+        background-color: #16a34a; /* verde di default (nessun avviso) */
+        transition: background-color .25s ease;
       }
-      .alerts-badge-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(234,88,12,0.5); }
-      .alerts-badge-btn.is-zero { background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); box-shadow: 0 2px 6px rgba(22,163,74,0.35); }
-      .alerts-badge-btn.is-snoozed { background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%); box-shadow: 0 2px 6px rgba(234,88,12,0.35); }
-      .alerts-badge-btn.is-critical {
-        background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
-        animation: alertsBadgePulse 1.6s ease-in-out infinite;
+      .btn-warehouse.alerts-bell.alerts-state-warn::before     { background-color: #f59e0b; }
+      .btn-warehouse.alerts-bell.alerts-state-critical::before { background-color: #ef4444; }
+
+      /* Pulsazione discreta solo quando ci sono avvisi */
+      .btn-warehouse.alerts-bell.alerts-state-warn {
+        animation: warehouseAlertPulse 1.6s ease-in-out infinite;
       }
-      .alerts-badge-btn .ab-count {
-        background: rgba(255,255,255,0.25);
-        border-radius: 999px;
-        padding: 2px 7px;
-        font-size: 12px;
-        min-width: 20px;
-        text-align: center;
+      .btn-warehouse.alerts-bell.alerts-state-critical {
+        animation: warehouseAlertPulseCritical 1.2s ease-in-out infinite;
       }
-      .alerts-badge-btn.is-zero .ab-count { display: none; }
-      @keyframes alertsBadgePulse {
-        0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.6); }
-        50%     { box-shadow: 0 0 0 8px rgba(239,68,68,0); }
+      @keyframes warehouseAlertPulse {
+        0%,100% { box-shadow: 0 0 0 0 rgba(245,158,11,0.55); }
+        50%     { box-shadow: 0 0 0 8px rgba(245,158,11,0); }
       }
-      /* Wrapper centrato nella top bar (se presente) */
-      .alerts-badge-center {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex: 0 0 auto;
-        margin: 0 auto;
+      @keyframes warehouseAlertPulseCritical {
+        0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.65); }
+        50%     { box-shadow: 0 0 0 10px rgba(239,68,68,0); }
+      }
+
+      /* Feature card "Avvisi" dentro Panoramica Magazzino: ricolora l'icona ⚠️
+         con un triangolo SVG mascherato, così possiamo usare background-color. */
+      .alerts-feature-card .alerts-feature-icon {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        font-size: 0;            /* nasconde l'emoji originale */
+        line-height: 0;
+        -webkit-mask: ${WARN_SVG} no-repeat center / contain;
+                mask: ${WARN_SVG} no-repeat center / contain;
+        background-color: #16a34a; /* verde di default */
+        transition: background-color .25s ease;
+      }
+      .alerts-feature-card.alerts-state-warn     .alerts-feature-icon { background-color: #f59e0b; }
+      .alerts-feature-card.alerts-state-critical .alerts-feature-icon { background-color: #ef4444; }
+      .alerts-feature-card.alerts-state-warn,
+      .alerts-feature-card.alerts-state-critical {
+        outline: 2px solid transparent;
+      }
+      .alerts-feature-card.alerts-state-warn     { outline-color: rgba(245,158,11,0.45); }
+      .alerts-feature-card.alerts-state-critical { outline-color: rgba(239,68,68,0.55); }
+      /* Stesso effetto pulsante (alone box-shadow) usato sul btn "Gestione Magazzino" */
+      .alerts-feature-card.alerts-state-warn {
+        animation: warehouseAlertPulse 1.6s ease-in-out infinite;
+      }
+      .alerts-feature-card.alerts-state-critical {
+        animation: warehouseAlertPulseCritical 1.2s ease-in-out infinite;
       }
     `;
     const tag = document.createElement('style');
@@ -70,77 +101,49 @@
     document.head.appendChild(tag);
   }
 
-  function buildButton() {
-    if (document.getElementById(BTN_ID)) return document.getElementById(BTN_ID);
-    const a = document.createElement('a');
-    a.id = BTN_ID;
-    a.href = '/warehouse-management.html?section=avvisi';
-    a.className = 'alerts-badge-btn is-zero';
-    a.title = 'Avvisi di giacenza';
-    a.innerHTML = '<span style="font-size:18px;">🔔</span><span class="ab-count">0</span>';
-    return a;
+  function getWarehouseButtons() {
+    return document.querySelectorAll('.btn-warehouse');
   }
 
-  function placeButton(btn) {
-    // Non duplicare se già nel DOM
-    if (btn.parentNode) return;
-    // Preferenza 1: dentro il .header centrato (tra header-left e header-actions).
-    // Preferenza 2: sticky-top-bar (legacy).
-    // Preferenza 3: body.
-    const header = document.querySelector('.sticky-top-bar .header')
-                 || document.querySelector('.header');
-    if (header) {
-      let center = header.querySelector(':scope > .alerts-badge-center');
-      if (!center) {
-        center = document.createElement('div');
-        center.className = 'alerts-badge-center';
-        // Stili per centrare nell'header flex (header-left a sx, header-actions a dx)
-        center.style.flex = '1 1 auto';
-        center.style.display = 'flex';
-        center.style.justifyContent = 'center';
-        center.style.alignItems = 'center';
-        const actions = header.querySelector(':scope > .header-actions');
-        if (actions) header.insertBefore(center, actions);
-        else header.appendChild(center);
-      }
-      center.appendChild(btn);
-      return;
-    }
-    const top = document.querySelector('.sticky-top-bar') || document.body;
-    let center = top.querySelector('.alerts-badge-center');
-    if (!center) {
-      center = document.createElement('div');
-      center.className = 'alerts-badge-center';
-      const firstActions = top.querySelector('.quick-actions') || top.firstElementChild;
-      if (firstActions && firstActions.parentNode === top) {
-        top.insertBefore(center, firstActions);
-      } else {
-        top.appendChild(center);
-      }
-    }
-    center.appendChild(btn);
+  function getAlertsCards() {
+    return document.querySelectorAll('.alerts-feature-card');
   }
 
-  function updateButton(btn, payload) {
+  function applyState(payload) {
     const count = (payload && payload.count) || 0;
     const total = (payload && payload.total) || 0;
-    const hasCritical = !!(payload && Array.isArray(payload.alerts) && payload.alerts.some(a => a.level === 'CRITICAL'));
-    const snoozedOnly = count === 0 && total > 0;
-    const display = count > 0 ? count : total;
-    btn.querySelector('.ab-count').textContent = String(display);
-    btn.classList.toggle('is-zero', count === 0 && total === 0);
-    btn.classList.toggle('is-snoozed', snoozedOnly);
-    btn.classList.toggle('is-critical', hasCritical && count > 0);
-    // Mostra il numero anche per snoozed; nasconde solo quando tutto è 0
-    const cnt = btn.querySelector('.ab-count');
-    if (cnt) cnt.style.display = (count === 0 && total === 0) ? 'none' : '';
-    if (count === 0 && total === 0) {
-      btn.title = 'Nessun avviso di giacenza';
-    } else if (snoozedOnly) {
-      btn.title = `${total} avvisi sospesi (ordine in corso)`;
+    const hasCritical = !!(payload && Array.isArray(payload.alerts)
+      && payload.alerts.some(a => a.level === 'CRITICAL'));
+    const hasAlerts = (count > 0) || (total > 0);
+
+    let state, title;
+    if (hasCritical && count > 0) {
+      state = 'critical';
+      title = 'Gestione Magazzino — ' + count + ' avvisi attivi (CRITICI)';
+    } else if (hasAlerts) {
+      state = 'warn';
+      title = (count > 0)
+        ? ('Gestione Magazzino — ' + count + ' avvisi attivi')
+        : ('Gestione Magazzino — ' + total + ' avvisi sospesi');
     } else {
-      btn.title = `${count} avvisi attivi${hasCritical ? ' (di cui CRITICI)' : ''}`;
+      state = 'ok';
+      title = 'Gestione Magazzino — nessun avviso';
     }
+
+    getWarehouseButtons().forEach(function (btn) {
+      btn.classList.add('alerts-bell');
+      btn.classList.toggle('alerts-state-ok', state === 'ok');
+      btn.classList.toggle('alerts-state-warn', state === 'warn');
+      btn.classList.toggle('alerts-state-critical', state === 'critical');
+      btn.title = title;
+    });
+
+    getAlertsCards().forEach(function (card) {
+      card.classList.toggle('alerts-state-ok', state === 'ok');
+      card.classList.toggle('alerts-state-warn', state === 'warn');
+      card.classList.toggle('alerts-state-critical', state === 'critical');
+      card.title = title;
+    });
   }
 
   async function fetchAlerts() {
@@ -152,16 +155,16 @@
   }
 
   async function refresh() {
-    const btn = document.getElementById(BTN_ID);
-    if (!btn) return;
+    if (!getWarehouseButtons().length && !getAlertsCards().length) return;
     const data = await fetchAlerts();
-    if (data) updateButton(btn, data);
+    if (data) applyState(data);
+    else applyState({ count: 0, total: 0, alerts: [] });
   }
 
   function init() {
     injectStyle();
-    const btn = buildButton();
-    placeButton(btn);
+    // Stato iniziale verde finché non arriva la prima risposta
+    applyState({ count: 0, total: 0, alerts: [] });
     refresh();
     setInterval(refresh, POLL_MS);
     // Hook WebSocket se presente
@@ -169,7 +172,7 @@
       if (window.io && !window.__ALERTS_BADGE_SOCK) {
         const sock = window.io({ transports: ['websocket', 'polling'] });
         window.__ALERTS_BADGE_SOCK = sock;
-        sock.on('inventory_updated', () => refresh());
+        sock.on('inventory_updated', function () { refresh(); });
       }
     } catch (_) {}
   }

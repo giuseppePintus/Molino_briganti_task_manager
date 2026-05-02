@@ -8,11 +8,13 @@ import prisma from '../lib/prisma';
 const router = Router();
 
 // Directory per upload persistente (nel bind mount)
-// In produzione: /data/molino/uploads
+// In produzione: /app/uploads (bind mount /share/Public/molino-data/uploads sul NAS)
 // In sviluppo: ./uploads
-const UPLOAD_DIR = process.env.NODE_ENV === 'production' 
-  ? '/data/molino/uploads'
-  : path.join(process.cwd(), 'uploads');
+const UPLOAD_DIR = process.env.UPLOAD_DIR || (
+  process.env.NODE_ENV === 'production'
+    ? '/app/uploads'
+    : path.join(process.cwd(), 'uploads')
+);
 
 // Configura multer per upload file
 const storage = multer.diskStorage({

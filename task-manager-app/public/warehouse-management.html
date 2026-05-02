@@ -5,1241 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestione Magazzino - Molino Briganti</title>
     <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/common-styles.css">
     <link rel="stylesheet" href="css/warehouse-management-custom.css">
     <script src="js/settings-utils.js"></script>
     <script src="js/pages-indice.js"></script>
     <script src="js/alerts-badge.js" defer></script>
     <script src="/socket.io/socket.io.js"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        :root {
-            --primary: #2563eb;
-            --success: #16a34a;
-            --danger: #dc2626;
-            --warning: #ea580c;
-            --dark: #1f2937;
-            --light: #f3f4f6;
-            --border: #e5e7eb;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #1a1a1a;
-            color: #e0e0e0;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        .header {
-            background: #2d2d2d;
-            padding: 10px 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 15px;
-        }
-
-        .header-left {
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
-            flex: 1;
-            min-width: 0;
-        }
-
-        .header-logo {
-            height: 45px;
-            display: flex;
-            align-items: center;
-            flex-shrink: 0;
-        }
-
-        .header-logo img {
-            height: 100%;
-            width: auto;
-            object-fit: contain;
-        }
-
-        .header-title {
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
-        }
-
-        .header h1 {
-            font-size: 14px;
-            color: #e0e0e0;
-            margin: 0;
-            line-height: 1.2;
-        }
-
-        .header-actions {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            flex-shrink: 0;
-        }
-
-        .btn {
-            padding: 10px 16px;
-            min-height: 40px;
-            font-size: 13px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            font-weight: 600;
-        }
-
-        .btn-home {
-            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
-            color: white;
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
-        }
-
-        .btn-home:hover {
-            background: linear-gradient(135deg, #1d4ed8 0%, #1e3a8a 100%);
-            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
-            transform: translateY(-2px);
-        }
-
-        .card {
-            background: #2d2d2d;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-            margin-bottom: 20px;
-            border-left: 4px solid var(--primary);
-        }
-
-        .card h2 {
-            font-size: 20px;
-            margin-bottom: 15px;
-            color: #e0e0e0;
-        }
-
-        .content-section {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-
-        .feature-card {
-            background: #3d3d3d;
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid #4d4d4d;
-            text-align: center;
-            cursor: pointer;
-            transition: background 0.18s, border-color 0.18s, transform 0.12s;
-        }
-
-        .feature-card:hover {
-            background: #4a4a4a;
-            border-color: #2563eb;
-            transform: translateY(-2px);
-        }
-
-        .feature-card .icon {
-            font-size: 24px;
-            margin-bottom: 6px;
-        }
-
-        .feature-card h3 {
-            font-size: 14px;
-            color: #e0e0e0;
-            margin-bottom: 4px;
-        }
-
-        .feature-card p {
-            font-size: 12px;
-            color: #a0a0a0;
-        }
-
-        .feature-card-sub {
-            display: flex;
-            margin-top: 12px;
-            gap: 8px;
-            flex-direction: column;
-        }
-
-        .feature-card-sub button {
-            background: #2563eb;
-            color: #fff;
-            border: none;
-            border-radius: 6px;
-            padding: 8px 12px;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.15s;
-        }
-
-        .feature-card-sub button:hover {
-            background: #1d4ed8;
-        }
-
-        /* ===== Avvisi (sezione embedded) ===== */
-        .av-filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
-        .av-filters input, .av-filters select {
-            background: #1f2937; color: #e5e7eb; border: 1px solid #374151;
-            padding: 8px 10px; border-radius: 6px; font-size: 14px;
-        }
-        .av-filters input { flex: 1; min-width: 180px; }
-        #avvisiCard table { width: 100%; border-collapse: collapse; }
-        #avvisiCard thead th {
-            text-align: left; padding: 10px 12px; font-size: 12px; text-transform: uppercase;
-            color: #9ca3af; border-bottom: 1px solid #374151; letter-spacing: 0.4px;
-        }
-        #avvisiCard tbody td { padding: 12px; border-bottom: 1px solid #1f2937; vertical-align: middle; font-size: 14px; }
-        #avvisiCard tbody tr:hover { background: #232b36; }
-        .av-level-badge {
-            display: inline-flex; align-items: center; gap: 4px;
-            padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; text-transform: uppercase;
-        }
-        .av-level-badge.critical { background: rgba(239,68,68,0.15); color: #fca5a5; border: 1px solid #ef4444; }
-        .av-level-badge.low      { background: rgba(245,158,11,0.15); color: #fcd34d; border: 1px solid #f59e0b; }
-        .av-stock-now { font-weight: 700; }
-        .av-stock-now.zero { color: #ef4444; }
-        .av-empty { text-align: center; padding: 40px; color: #9ca3af; }
-        .av-empty .big-icon { font-size: 48px; margin-bottom: 12px; }
-        #avvisiCard .av-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 14px; }
-        #avvisiCard .av-stat-card {
-            background: #1f2937; border: 1px solid #374151; border-radius: 8px;
-            padding: 10px 12px; text-align: center;
-        }
-        #avvisiCard .av-stat-card.critical { border-color: #ef4444; }
-        #avvisiCard .av-stat-card.low { border-color: #f59e0b; }
-        #avvisiCard .av-stat-card .label { font-size: 11px; text-transform: uppercase; color: #9ca3af; letter-spacing: 0.4px; }
-        #avvisiCard .av-stat-card .value { font-size: 22px; font-weight: 700; color: #e0e0e0; }
-        .av-modal-overlay {
-            position: fixed; inset: 0; background: rgba(0,0,0,0.65); display: none;
-            align-items: center; justify-content: center; z-index: 1000;
-        }
-        .av-modal-overlay.open { display: flex; }
-        .av-modal {
-            background: #2d2d2d; border-radius: 12px; padding: 22px; width: min(560px, 92vw);
-            box-shadow: 0 20px 60px rgba(0,0,0,0.6); max-height: 90vh; overflow-y: auto;
-        }
-        .av-modal h2 { margin-bottom: 6px; font-size: 18px; }
-        .av-modal p.sub { color: #9ca3af; font-size: 13px; margin-bottom: 14px; }
-        .av-modal .field { margin-bottom: 12px; display: flex; flex-direction: column; gap: 4px; }
-        .av-modal .field label { font-size: 12px; color: #d1d5db; text-transform: uppercase; letter-spacing: 0.4px; }
-        .av-modal .field input, .av-modal .field select, .av-modal .field textarea {
-            background: #1f2937; color: #e5e7eb; border: 1px solid #374151;
-            padding: 9px 10px; border-radius: 6px; font-size: 14px;
-        }
-        .av-modal .field-row { display: flex; gap: 10px; }
-        .av-modal .field-row .field { flex: 1; }
-        .av-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
-        @media (max-width: 700px) {
-            #avvisiCard thead { display: none; }
-            #avvisiCard tbody tr { display: block; padding: 12px; border-bottom: 1px solid #374151; }
-            #avvisiCard tbody td { display: flex; justify-content: space-between; padding: 6px 0; border: none; }
-            #avvisiCard tbody td::before { content: attr(data-label); font-weight: 600; color: #9ca3af; margin-right: 12px; }
-        }
-
-        .gestione-tab-bar {
-            display: flex;
-            gap: 4px;
-            background: #111827;
-            border-radius: 10px;
-            padding: 6px;
-            margin-bottom: 8px;
-        }
-        .gestione-tab {
-            flex: 1;
-            padding: 10px 16px;
-            background: transparent;
-            border: none;
-            border-radius: 6px;
-            color: #9ca3af;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.15s, color 0.15s;
-        }
-        .gestione-tab.active {
-            background: #1e40af;
-            color: #fff;
-        }
-        .gestione-tab:hover:not(.active) {
-            background: #1f2937;
-            color: #e0e0e0;
-        }
-
-        /* Category filter bar (stato magazzino) */
-        .category-bar {
-            display: flex;
-            gap: 6px;
-            flex-wrap: wrap;
-            margin-bottom: 10px;
-        }
-        .cat-btn {
-            padding: 9px 16px;
-            border-radius: 10px;
-            border: 2px solid #374151;
-            background: #1f2937;
-            color: #9ca3af;
-            font-size: 13px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.15s;
-            white-space: nowrap;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .cat-btn .cat-icon { font-size: 16px; }
-        .cat-btn .cat-count {
-            background: rgba(255,255,255,0.1);
-            padding: 1px 7px;
-            border-radius: 10px;
-            font-size: 11px;
-            font-weight: 800;
-        }
-        .cat-btn:hover { border-color: #3b82f6; background: #2a2a4a; color: #fff; }
-        .cat-btn.active {
-            border-color: #38bdf8;
-            background: linear-gradient(135deg, #1e3a5f 0%, #1e40af 100%);
-            color: #fff;
-            box-shadow: 0 2px 10px rgba(56,189,248,0.25);
-        }
-        .cat-btn.active .cat-count {
-            background: rgba(56,189,248,0.3);
-            color: #7dd3fc;
-        }
-
-        .table-container {
-            overflow-x: auto;
-            overflow-y: auto;
-            max-height: 60vh;
-            margin-top: 15px;
-        }
-
-        .table-container.hidden-content {
-            display: none;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background: #3d3d3d;
-            border-radius: 6px;
-        }
-
-        table thead {
-            position: sticky;
-            top: 0;
-            z-index: 10;
-            background: #2d2d2d;
-        }
-
-        table th {
-            padding: 12px;
-            text-align: left;
-            font-weight: 600;
-            color: #e0e0e0;
-            border-bottom: 2px solid #4d4d4d;
-            background: #2d2d2d;
-        }
-
-        table td {
-            padding: 12px;
-            border-bottom: 1px solid #4d4d4d;
-            color: #d0d0d0;
-        }
-
-        table tbody tr:hover {
-            background: #4d4d4d;
-        }
-
-        .editable-cell {
-            cursor: pointer;
-            position: relative;
-            min-width: 60px;
-        }
-
-        .editable-cell input {
-            width: 100%;
-            background: #2d2d2d;
-            border: 2px solid #2563eb;
-            color: #e0e0e0;
-            padding: 6px 8px;
-            border-radius: 4px;
-            font-size: 13px;
-        }
-
-        .editable-cell input:focus {
-            outline: none;
-            box-shadow: 0 0 8px rgba(37, 99, 235, 0.5);
-        }
-
-        .editable-cell.modified {
-            background: #3d5a3d;
-        }
-
-        .btn-small {
-            padding: 6px 10px;
-            font-size: 12px;
-            height: auto;
-        }
-
-        .btn-save {
-            background: #16a34a;
-            color: white;
-        }
-
-        .btn-save:hover {
-            background: #15803d;
-        }
-
-        .btn-cancel {
-            background: #6b7280;
-            color: white;
-        }
-
-        .btn-cancel:hover {
-            background: #4b5563;
-        }
-
-        .btn-edit {
-            background: #2563eb;
-            color: white;
-        }
-
-        .btn-edit:hover {
-            background: #1d4ed8;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 40px 20px;
-            color: #808080;
-            font-style: italic;
-        }
-
-        .alert {
-            padding: 15px;
-            border-radius: 6px;
-            margin-bottom: 20px;
-            display: none;
-        }
-
-        .alert.show {
-            display: block;
-        }
-
-        .alert-info {
-            background: #1e3a52;
-            color: #93c5fd;
-            border-left: 4px solid #2563eb;
-        }
-
-        .action-bar {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-
-        .btn-import {
-            background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
-            color: white;
-            box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
-        }
-
-        .btn-import:hover {
-            background: linear-gradient(135deg, #15803d 0%, #166534 100%);
-            box-shadow: 0 6px 20px rgba(22, 163, 74, 0.5);
-            transform: translateY(-2px);
-        }
-
-        .btn-import:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .btn-codifiche {
-            background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
-            color: white;
-            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
-        }
-
-        .btn-codifiche:hover {
-            background: linear-gradient(135deg, #6d28d9 0%, #5b21b6 100%);
-            box-shadow: 0 6px 20px rgba(124, 58, 237, 0.5);
-            transform: translateY(-2px);
-        }
-
-        .loading-spinner {
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            border: 2px solid rgba(255,255,255,0.3);
-            border-radius: 50%;
-            border-top-color: white;
-            animation: spin 0.8s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .stats-bar {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
-            gap: 8px;
-            margin-bottom: 20px;
-        }
-
-        .stat-item {
-            background: #2d2d2d;
-            padding: 3px 4px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-            border-left: 4px solid var(--primary);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            min-height: 20px;
-        }
-
-        .stat-item .label {
-            font-size: 8px;
-            color: #a0a0a0;
-        }
-
-        .stat-item .value {
-            font-size: 12px;
-            font-weight: bold;
-            color: #e0e0e0;
-            margin-bottom: 0px;
-        }
-
-        @media (max-width: 768px) {
-            .header {
-                padding: 8px 12px;
-                gap: 10px;
-            }
-
-            .header-logo {
-                height: 40px;
-            }
-
-            .header h1 {
-                font-size: 12px;
-            }
-
-            .header-actions {
-                flex-shrink: 0;
-            }
-
-            .container {
-                padding: 15px;
-            }
-
-            .card {
-                padding: 15px;
-            }
-
-            table {
-                font-size: 13px;
-            }
-
-            table th, table td {
-                padding: 8px;
-            }
-        }
-
-        /* ===== PRINT INVENTORY MODAL ===== */
-        #printInventoryOverlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.7);
-            z-index: 3000;
-            align-items: center;
-            justify-content: center;
-        }
-        #printInventoryOverlay.open { display: flex; }
-        #printInventoryModal {
-            background: #2a2a2a;
-            border: 1px solid #4d4d4d;
-            border-radius: 10px;
-            padding: 28px 24px 20px;
-            width: min(500px, 95vw);
-            max-height: 90vh;
-            overflow-y: auto;
-            color: #e0e0e0;
-        }
-        #printInventoryModal h3 {
-            margin: 0 0 20px;
-            font-size: 18px;
-            color: #60a5fa;
-        }
-        .print-opt-group { margin-bottom: 16px; }
-        .print-opt-group label { display: block; font-size: 13px; color: #9ca3af; margin-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
-        .print-opt-group select, .print-opt-group input[type=text] {
-            width: 100%; background: #1a1a1a; border: 1px solid #4d4d4d;
-            color: #e0e0e0; border-radius: 6px; padding: 9px 12px; font-size: 14px;
-        }
-        .print-opt-row { display: flex; gap: 10px; }
-        .print-opt-row .print-opt-group { flex: 1; }
-        .print-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
-
-        /* ===== A4 PRINT STYLES ===== */
-        @media print {
-            body > *:not(#printPageContainer) { display: none !important; }
-            #printPageContainer { display: block !important; }
-        }
-        #printPageContainer { display: none; }
-        #printPageContainer.visible { display: block; }
-
-        /* Quick Actions Navigation */
-        /* Quick Actions Navigation */
-        .quick-actions {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-
-        .quick-actions > * {
-            min-width: 0;
-        }
-
-        .quick-actions .btn {
-            width: 100%;
-            padding: 10px 8px;
-            min-height: 44px;
-            font-size: 13px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-        }
-
-        .quick-actions .btn::before {
-            font-size: 16px;
-        }
-
-        .quick-actions .btn span {
-            font-size: 12px;
-            line-height: 1.2;
-            text-align: center;
-        }
-
-        .quick-actions .btn.active {
-            outline: 2px solid rgba(255, 255, 255, 0.85);
-            outline-offset: 2px;
-            filter: brightness(1.25);
-            transform: translateY(-1px);
-        }
-
-        .quick-actions .btn.active:hover {
-            transform: translateY(-3px);
-        }
-
-        .dropdown-menu-admin {
-            position: relative;
-            display: block;
-        }
-
-        .dropdown-menu-admin .btn-settings {
-            width: 100%;
-        }
-
-        .admin-menu-dropdown {
-            display: none;
-            position: absolute;
-            top: 100%;
-            left: 0;
-            background: #2d2d2d;
-            border: 1px solid #4d4d4d;
-            border-radius: 6px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-            min-width: 220px;
-            z-index: 1000;
-            margin-top: 5px;
-        }
-
-        .admin-menu-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            width: 100%;
-            padding: 12px 15px;
-            border: none;
-            background: transparent;
-            color: #e0e0e0;
-            cursor: pointer;
-            text-align: left;
-            font-size: 14px;
-            transition: background 0.2s;
-            border-bottom: 1px solid #3d3d3d;
-        }
-
-        .admin-menu-item:last-child {
-            border-bottom: none;
-        }
-
-        .admin-menu-item:hover {
-            background: #3d3d3d;
-            border-left: 3px solid #38bdf8;
-            padding-left: 12px;
-        }
-
-        .admin-menu-item .menu-icon {
-            font-size: 16px;
-        }
-
-        .btn-settings {
-            background: linear-gradient(135deg, #38bdf8 0%, #1e40af 100%);
-            color: white;
-            border: none;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-            position: relative;
-            overflow: hidden;
-        }
-        .btn-settings::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-            transition: left 0.5s;
-        }
-        .btn-settings:hover {
-            background: linear-gradient(135deg, #1d4ed8 0%, #1e3a8a 100%);
-            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
-            transform: translateY(-2px);
-        }
-        .btn-settings:hover::after {
-            left: 100%;
-        }
-
-        .btn-tasks {
-            background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
-            color: white;
-            border: none;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-            position: relative;
-            overflow: hidden;
-        }
-        .btn-tasks::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-            transition: left 0.5s;
-        }
-        .btn-tasks:hover {
-            background: linear-gradient(135deg, #15803d 0%, #166534 100%);
-            box-shadow: 0 6px 20px rgba(22, 163, 74, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
-            transform: translateY(-2px);
-        }
-        .btn-tasks:hover::after {
-            left: 100%;
-        }
-
-        .btn-customers {
-            background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);
-            color: white;
-            border: none;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 4px 12px rgba(8, 145, 178, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-            position: relative;
-            overflow: hidden;
-        }
-        .btn-customers::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-            transition: left 0.5s;
-        }
-        .btn-customers:hover {
-            background: linear-gradient(135deg, #0e7490 0%, #155e75 100%);
-            box-shadow: 0 6px 20px rgba(8, 145, 178, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
-            transform: translateY(-2px);
-        }
-        .btn-customers:hover::after {
-            left: 100%;
-        }
-
-        .btn-planner {
-            background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
-            color: white;
-            border: 1px solid rgba(124, 58, 237, 0.5);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-            position: relative;
-            overflow: hidden;
-        }
-        .btn-planner::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-            transition: left 0.5s;
-        }
-        .btn-planner:hover {
-            background: linear-gradient(135deg, #6d28d9 0%, #5b21b6 100%);
-            border-color: rgba(124, 58, 237, 1);
-            box-shadow: 0 6px 20px rgba(124, 58, 237, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
-            transform: translateY(-2px);
-        }
-        .btn-planner:hover::after {
-            left: 100%;
-        }
-
-        .btn-warehouse {
-            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-            color: white;
-            border: 1px solid rgba(220, 38, 38, 0.5);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-            position: relative;
-            overflow: hidden;
-        }
-        .btn-warehouse::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-            transition: left 0.5s;
-        }
-        .btn-warehouse:hover {
-            background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
-            border-color: rgba(220, 38, 38, 1);
-            box-shadow: 0 6px 20px rgba(220, 38, 38, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
-            transform: translateY(-2px);
-        }
-        .btn-warehouse:hover::after {
-            left: 100%;
-        }
-
-        @media (max-width: 600px) {
-            .quick-actions {
-                grid-template-columns: repeat(3, 1fr);
-            }
-        }
-        @media (max-width: 380px) {
-            .quick-actions {
-                grid-template-columns: 1fr 1fr;
-            }
-        }
-        .sticky-top-bar {
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            background: #1a1a1a;
-            padding-bottom: 10px;
-        }
-        .sticky-top-bar .quick-actions {
-            margin-bottom: 0 !important;
-        }
-        .sticky-top-bar .stats,
-        .sticky-top-bar .stats-overview,
-        .sticky-top-bar .stats-bar {
-            max-height: 120px;
-            opacity: 1;
-            overflow: hidden;
-            transition: max-height 0.3s ease, opacity 0.2s ease, margin 0.3s ease;
-        }
-        .sticky-top-bar.scrolled .stats,
-        .sticky-top-bar.scrolled .stats-overview,
-        .sticky-top-bar.scrolled .stats-bar {
-            max-height: 0;
-            opacity: 0;
-            margin-top: 0 !important;
-            margin-bottom: 0 !important;
-        }
-
-        /* ===== VIEW TOGGLE ===== */
-        .view-toggle {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 14px;
-        }
-        .btn-view {
-            padding: 7px 18px;
-            font-size: 13px;
-            border-radius: 6px;
-            border: 2px solid #4d4d4d;
-            background: #2d2d2d;
-            color: #a0a0a0;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.2s;
-        }
-        .btn-view.active {
-            border-color: #2563eb;
-            background: #1e3a8a;
-            color: #fff;
-        }
-
-        /* ===== SHELF MAP ===== */
-        .shelf-map {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            margin-top: 4px;
-        }
-        .shelf-sector-card {
-            background: #262626;
-            border-radius: 8px;
-            overflow: hidden;
-            border: 1px solid #3d3d3d;
-        }
-        .shelf-sector-header {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 12px 16px;
-            background: linear-gradient(135deg, #1a2e5a 0%, #1e40af 100%);
-            cursor: pointer;
-            -webkit-user-select: none;
-            user-select: none;
-        }
-        .shelf-sector-header .sector-icon { font-size: 16px; }
-        .shelf-sector-header .sector-name {
-            font-size: 15px;
-            font-weight: 700;
-            color: #fff;
-            flex: 1;
-        }
-        .shelf-sector-header .sector-count {
-            font-size: 12px;
-            color: #bfdbfe;
-            background: rgba(0,0,0,0.25);
-            padding: 2px 10px;
-            border-radius: 20px;
-        }
-        .sector-chevron {
-            font-size: 13px;
-            color: #bfdbfe;
-            transition: transform 0.2s;
-        }
-        .shelf-sector-header.collapsed .sector-chevron {
-            transform: rotate(-90deg);
-        }
-        .shelf-positions-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-            gap: 8px;
-            padding: 12px;
-        }
-        .shelf-pos-card {
-            background: #3d3d3d;
-            border-radius: 6px;
-            padding: 10px 12px;
-            border: 1px solid #4d4d4d;
-            cursor: pointer;
-            transition: all 0.15s;
-            position: relative;
-        }
-        .shelf-pos-card:hover {
-            border-color: #2563eb;
-            background: #2a2a4a;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(37,99,235,0.2);
-        }
-        .shelf-pos-card.occupied { border-left: 3px solid #16a34a; }
-        .shelf-pos-card.empty {
-            border-left: 3px solid #555;
-            opacity: 0.65;
-        }
-        .shelf-pos-card.low-stock { border-left: 3px solid #ea580c; }
-        .pos-badge {
-            font-size: 11px;
-            font-weight: 700;
-            color: #93c5fd;
-            background: rgba(37,99,235,0.15);
-            padding: 2px 7px;
-            border-radius: 4px;
-            display: inline-block;
-            margin-bottom: 6px;
-            font-family: monospace;
-            letter-spacing: 0.5px;
-        }
-        .pos-article-name {
-            font-size: 13px;
-            font-weight: 600;
-            color: #e0e0e0;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            margin-bottom: 3px;
-        }
-        .pos-article-code {
-            font-size: 11px;
-            color: #888;
-            margin-bottom: 6px;
-        }
-        .pos-quantity {
-            font-size: 14px;
-            font-weight: 700;
-            color: #4ade80;
-        }
-        .pos-quantity.zero { color: #6b7280; }
-        .pos-lotto {
-            font-size: 11px;
-            color: #93c5fd;
-            margin-top: 2px;
-        }
-        .pos-empty-label {
-            font-size: 12px;
-            color: #5d5d5d;
-            font-style: italic;
-            text-align: center;
-            padding: 8px 0;
-        }
-        .pos-action-row {
-            display: flex;
-            gap: 5px;
-            margin-top: 9px;
-        }
-        .pos-btn {
-            flex: 1;
-            padding: 5px 0;
-            font-size: 13px;
-            font-weight: 700;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: filter 0.15s;
-        }
-        .pos-btn-carico { background: #16a34a; color: #fff; }
-        .pos-btn-carico:hover { filter: brightness(1.2); }
-        .pos-btn-scarico { background: #dc2626; color: #fff; }
-        .pos-btn-scarico:hover { filter: brightness(1.2); }
-        .pos-entries-list {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-        .pos-entry-item {
-            background: rgba(37,99,235,0.1);
-            border: 1px solid rgba(37,99,235,0.2);
-            border-radius: 5px;
-            padding: 6px 8px;
-            font-size: 12px;
-            cursor: grab;
-        }
-        .pos-entry-item:active { cursor: grabbing; }
-        .pos-entry-item.dragging {
-            opacity: 0.4;
-            border: 1px dashed #60a5fa;
-        }
-        .shelf-pos-card.drag-over {
-            outline: 2px dashed #4ade80;
-            outline-offset: -2px;
-            background: rgba(74,222,128,0.08) !important;
-        }
-        .shelf-pos-card.drag-over .pos-badge {
-            color: #4ade80;
-        }
-        .pos-entry-qty-badge {
-            background: rgba(74,222,128,0.2);
-            color: #4ade80;
-            font-weight: 700;
-            font-size: 11px;
-            padding: 1px 6px;
-            border-radius: 4px;
-            white-space: nowrap;
-        }
-
-        /* ===== CARICO/SCARICO MODAL ===== */
-        .cargo-modal-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.72);
-            z-index: 2000;
-            align-items: center;
-            justify-content: center;
-        }
-        .cargo-modal-overlay.open { display: flex; }
-        .cargo-modal {
-            background: #2d2d2d;
-            border-radius: 12px;
-            padding: 24px;
-            width: 460px;
-            max-width: 96vw;
-            max-height: 90vh;
-            overflow-y: auto;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.55);
-            border: 1px solid #4d4d4d;
-        }
-        .cargo-modal h3 {
-            font-size: 18px;
-            margin-bottom: 18px;
-            color: #e0e0e0;
-        }
-        .cargo-type-switch {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            margin-bottom: 18px;
-        }
-        .cargo-type-btn {
-            padding: 11px;
-            border: 2px solid #4d4d4d;
-            border-radius: 8px;
-            background: #3d3d3d;
-            color: #a0a0a0;
-            font-size: 14px;
-            font-weight: 700;
-            cursor: pointer;
-            text-align: center;
-            transition: all 0.2s;
-        }
-        .cargo-type-btn.selected-carico {
-            border-color: #16a34a;
-            background: #14532d;
-            color: #4ade80;
-        }
-        .cargo-type-btn.selected-scarico {
-            border-color: #dc2626;
-            background: #7f1d1d;
-            color: #fca5a5;
-        }
-        .cargo-field { margin-bottom: 15px; }
-        .cargo-field label {
-            display: block;
-            font-size: 12px;
-            color: #a0a0a0;
-            margin-bottom: 5px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.4px;
-        }
-        .cargo-field input,
-        .cargo-field select {
-            width: 100%;
-            background: #3a3a3a;
-            border: 1px solid #555;
-            color: #e0e0e0;
-            padding: 10px 12px;
-            border-radius: 6px;
-            font-size: 14px;
-        }
-        .cargo-field input:focus,
-        .cargo-field select:focus {
-            outline: none;
-            border-color: #2563eb;
-            box-shadow: 0 0 0 2px rgba(37,99,235,0.2);
-        }
-        .cargo-field select option { background: #3a3a3a; }
-        .qty-control {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .qty-control input {
-            flex: 1;
-            text-align: center;
-            font-size: 20px;
-            font-weight: 700;
-        }
-        .qty-btn {
-            width: 42px;
-            height: 42px;
-            border: none;
-            border-radius: 6px;
-            font-size: 22px;
-            font-weight: 700;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #484848;
-            color: #e0e0e0;
-            transition: background 0.15s;
-            flex-shrink: 0;
-        }
-        .qty-btn:hover { background: #5d5d5d; }
-        .cargo-current-stock {
-            background: rgba(37,99,235,0.1);
-            border: 1px solid rgba(37,99,235,0.25);
-            border-radius: 6px;
-            padding: 8px 12px;
-            margin-bottom: 15px;
-            font-size: 13px;
-            color: #93c5fd;
-        }
-        .cargo-modal-actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-        }
-        .cargo-modal-actions .btn { flex: 1; }
-        .btn-carico-confirm {
-            background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
-            color: white;
-        }
-        .btn-scarico-confirm {
-            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-            color: white;
-        }
-        .btn-gray { background: #484848; color: #e0e0e0; }
-        .btn-gray:hover { background: #5a5a5a; }
-        .btn-carico-main {
-            background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
-            color: white;
-            box-shadow: 0 4px 12px rgba(22,163,74,0.3);
-        }
-        .btn-carico-main:hover {
-            filter: brightness(1.1);
-            transform: translateY(-2px);
-        }
-        .btn-scarico-main {
-            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-            color: white;
-            box-shadow: 0 4px 12px rgba(220,38,38,0.3);
-        }
-        .btn-scarico-main:hover {
-            filter: brightness(1.1);
-            transform: translateY(-2px);
-        }
-    </style>
 </head>
 <body>
     <div class="container">
@@ -1321,29 +92,24 @@
             
             <div class="content-section">
                 <div class="feature-card" id="fcGestione" onclick="showGestione()">
+                    <div class="fc-tooltip">Gestisci codifiche prodotti e posizioni scaffali</div>
                     <div class="icon">📦</div>
-                    <h3>Gestione</h3>
-                    <p>Gestisci prodotti e posizioni scaffali</p>
+                    <h3>Gestione codifiche</h3>
                 </div>
-                <div class="feature-card" onclick="scrollToWarehouseStatus()">
+                <div class="feature-card" id="fcStatoMagazzino" onclick="scrollToWarehouseStatus()">
+                    <div class="fc-tooltip">Monitora e aggiorna le quantità disponibili di ogni articolo</div>
                     <div class="icon">📊</div>
-                    <h3>Stato Magazzino</h3>
-                    <p>Monitora le quantità disponibili di ogni articolo</p>
+                    <h3>Gestione Magazzino</h3>
                 </div>
-                <div class="feature-card">
-                    <div class="icon">📝</div>
-                    <h3>Movimenti</h3>
-                    <p>Traccia gli ingressi e le uscite dal magazzino</p>
-                </div>
-                <div class="feature-card" onclick="showAvvisi()" style="cursor:pointer;">
-                    <div class="icon">⚠️</div>
-                    <h3>Avvisi</h3>
-                    <p>Ricevi notifiche per articoli in esaurimento</p>
+                <div class="feature-card alerts-feature-card" id="fcAvvisi" data-alerts-card onclick="showAvvisi()" style="cursor:pointer;">
+                    <div class="fc-tooltip">Notifiche e riordini per articoli in esaurimento</div>
+                    <div class="icon alerts-feature-icon">⚠️</div>
+                    <h3>Avvisi giacenze</h3>
                 </div>
                 <div class="feature-card" onclick="window.location.href='warehouse-management-lite.html'" style="cursor:pointer; border-left:4px solid #16a34a;">
+                    <div class="fc-tooltip">Operazioni rapide di carico e scarico magazzino</div>
                     <div class="icon">⚡</div>
                     <h3>Carico/Scarico Lite</h3>
-                    <p>Operazioni rapide di carico e scarico magazzino</p>
                 </div>
             </div>
         </div>
@@ -1351,14 +117,13 @@
         <!-- Warehouse Status Card -->
         <div class="card" id="statoMagazzinoCard" style="display:none;">
             <div class="warehouse-header-section">
-                <h2>📊 Stato Magazzino</h2>
+                <h2>📊 Gestione Magazzino</h2>
             </div>
-            <p class="overview-description">Visualizza e modifica le giacenze in tempo reale</p>
 
-            <!-- View toggle -->
-            <div class="view-toggle" id="viewToggleBar" style="display:none;">
-                <button class="btn-view active" id="btnViewTabella" onclick="switchView('tabella')">📋 Prodotti</button>
-                <button class="btn-view" id="btnViewScaffali" onclick="switchView('scaffali')">🏗️ Scaffali</button>
+            <!-- Tab schede Prodotti / Scaffali (sempre visibili quando la card è aperta) -->
+            <div class="view-tabs" id="viewToggleBar" style="margin-bottom:12px;">
+                <button class="view-tab active" id="btnViewTabella" onclick="switchView('tabella')">📋 Prodotti</button>
+                <button class="view-tab" id="btnViewScaffali" onclick="switchView('scaffali')">🏗️ Scaffali</button>
             </div>
             
             <div id="categoryBarWarehouse" class="category-bar" style="display:none;"></div>
@@ -2224,6 +989,13 @@
             return 'ALTRO';
         }
 
+        function _setActiveCard(id) {
+            ['fcGestione','fcStatoMagazzino','fcAvvisi'].forEach(cid => {
+                const el = document.getElementById(cid);
+                if (el) el.classList.toggle('fc-active', cid === id);
+            });
+        }
+
         function selectWarehouseCategory(cat) {
             selectedWarehouseCategory = (cat === selectedWarehouseCategory) ? null : cat;
             renderWarehouseStatus(allArticles);
@@ -2235,11 +1007,8 @@
                 window.location.href = '/index.html';
                 return;
             }
-            // Popola userInfo
-            const userInfoEl = document.getElementById('userInfo');
-            if (userInfoEl && currentUser.username) {
-                userInfoEl.textContent = `👤 ${currentUser.username}`;
-            }
+            // Popola userInfo (avatar + nome)
+            renderUserInfoBadge('userInfo', currentUser);
             // Load branding
             if (window.SettingsUtils && window.SettingsUtils.loadAndApplyBranding) {
                 await window.SettingsUtils.loadAndApplyBranding();
@@ -2247,7 +1016,7 @@
             // Carica categorie ordinate dal server (sincronizzate con app Android)
             await loadCategoriesFromServer();
             loadInventoryData();
-            loadMasterCsvInfo(); // Carica info file master CSV selezionato
+            showAvvisi();
 
             // ── Real-time sync via Socket.IO ──────────────────────────────
             if (typeof io !== 'undefined') {
@@ -2613,7 +1382,16 @@
                 catCounts[cat] = (catCounts[cat] || 0) + 1;
             });
             const catOrder = ['FARINE', 'MIX FARINE', 'SEMOLE', 'CEREALI', 'CEREALI PERLATI', 'MANGIMI', 'ALTRO'];
-            const activeCats = catOrder.filter(c => catCounts[c]);
+            // Usa l'ordine definito in "Gestione Categorie Prodotti" (productCategories),
+            // poi accoda eventuali categorie presenti sui prodotti ma non in lista (in ordine alfabetico).
+            const baseOrder = (Array.isArray(productCategories) && productCategories.length)
+                ? productCategories
+                : catOrder;
+            const orderedKnown = baseOrder.filter(c => catCounts[c]);
+            const extras = Object.keys(catCounts)
+                .filter(c => !baseOrder.includes(c))
+                .sort((a, b) => a.localeCompare(b, 'it'));
+            const activeCats = [...orderedKnown, ...extras];
             if (catBar) {
                 catBar.style.display = 'flex';
                 catBar.innerHTML = `<button class="cat-btn ${selectedWarehouseCategory === null ? 'active' : ''}" onclick="selectWarehouseCategory(null)">
@@ -2917,6 +1695,7 @@
                 const el = document.getElementById(sid);
                 if (el) el.style.display = 'none';
             });
+            _setActiveCard('fcGestione');
             document.getElementById('gestioneTabBar').style.display = 'block';
             switchGestioneTab('prodotti');
         }
@@ -2945,6 +1724,7 @@
         }
 
         function scrollToWarehouseStatus() {
+            _setActiveCard('fcStatoMagazzino');
             showOnlySection('statoMagazzinoCard');
             // Apri la tabella automaticamente
             const table = document.getElementById('warehouseTable');
@@ -2970,7 +1750,6 @@
             const table = document.getElementById('warehouseTable');
             const scaffali = document.getElementById('scaffaliView');
             const searchContainer = document.querySelector('.warehouse-search-container');
-            const viewToggleBar = document.getElementById('viewToggleBar');
             const catBar = document.getElementById('categoryBarWarehouse');
 
             if (!table || !scaffali) return;
@@ -2980,7 +1759,6 @@
 
             if (!isOpen) {
                 // Open
-                if (viewToggleBar) viewToggleBar.style.display = 'flex';
                 if (currentView === 'scaffali') {
                     table.style.display = 'none';
                     scaffali.style.display = 'block';
@@ -3000,7 +1778,6 @@
                 scaffali.style.display = 'none';
                 if (searchContainer) searchContainer.style.display = 'none';
                 if (catBar) catBar.style.display = 'none';
-                if (viewToggleBar) viewToggleBar.style.display = 'none';
                 if (btn) btn.innerHTML = '<span>▶ Apri</span>';
             }
         }
@@ -3034,135 +1811,6 @@
             });
             
             renderWarehouseStatus(sorted);
-        }
-
-        // Carica il file master CSV selezionato dal backend
-        async function loadMasterCsvInfo() {
-            try {
-                const response = await fetch(`${API_URL}/inventory/get-master-csv`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-
-                if (!response.ok) {
-                    console.warn('Nessun file master CSV selezionato');
-                    return;
-                }
-
-                const result = await response.json();
-                const masterCsvPath = document.getElementById('masterCsvPath');
-                if (masterCsvPath && result.filePath) {
-                    // Mostra il percorso completo invece del solo nome file
-                    masterCsvPath.textContent = result.filePath;
-                }
-            } catch (error) {
-                console.error('Errore caricamento info master CSV:', error);
-            }
-        }
-
-        // Importa dal master CSV nel NAS
-        async function importFromMasterCsvNas() {
-            try {
-                const importBtn = document.getElementById('importMasterNasBtn');
-                if (importBtn) {
-                    importBtn.disabled = true;
-                    importBtn.innerHTML = '<span class="loading-spinner"></span><span>Importazione in corso...</span>';
-                }
-
-                console.log('📥 Importazione dal file master CSV nel NAS...');
-                
-                const response = await fetch(`${API_URL}/inventory/import/master-csv`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({})
-                });
-
-                if (!response.ok) {
-                    throw new Error(`Errore: ${response.status}`);
-                }
-
-                const result = await response.json();
-                
-                if (result.success) {
-                    showAlert(`✅ ${result.message} - ${result.data?.count || 0} articoli importati`, 'success');
-                    // Ricarica i dati
-                    await refreshInventoryData();
-                } else {
-                    throw new Error(result.error || 'Errore nell\'importazione');
-                }
-            } catch (error) {
-                console.error('❌ Errore importazione master CSV:', error);
-                showAlert(`❌ Errore: ${error.message}`, 'error');
-            } finally {
-                const importBtn = document.getElementById('importMasterNasBtn');
-                if (importBtn) {
-                    importBtn.disabled = false;
-                    importBtn.innerHTML = '<span data-icon="📥"></span><span>Importa da Master CSV (NAS)</span>';
-                }
-            }
-        }
-
-        // Importa dal PDF e ricrea completamente il master CSV
-        async function importFromPdfNas() {
-            try {
-                const importBtn = document.getElementById('importPdfBtn');
-                if (importBtn) {
-                    importBtn.disabled = true;
-                    importBtn.innerHTML = '<span class="loading-spinner"></span><span>Importazione da PDF in corso...</span>';
-                }
-
-                console.log('📄 Importazione dal PDF nel NAS...');
-                
-                // Conferma prima di azzerare i dati
-                if (!await customConfirm('⚠️ ATTENZIONE!\nQuesto azzererà il master-Inventory.csv e lo ricreerà dal PDF NAS.\nContinuare?')) {
-                    return;
-                }
-
-                const response = await fetch(`${API_URL}/inventory/import/pdf`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({})
-                });
-
-                if (!response.ok) {
-                    throw new Error(`Errore: ${response.status}`);
-                }
-
-                const result = await response.json();
-                
-                if (result.success) {
-                    showAlert(`✅ ${result.message}\n📊 ${result.data?.count || 0} articoli importati dal PDF`, 'success');
-                    // Ricarica i dati
-                    await refreshInventoryData();
-                } else {
-                    throw new Error(result.error || 'Errore nell\'importazione');
-                }
-            } catch (error) {
-                console.error('❌ Errore importazione PDF:', error);
-                showAlert(`❌ Errore: ${error.message}`, 'error');
-            } finally {
-                const importBtn = document.getElementById('importPdfBtn');
-                if (importBtn) {
-                    importBtn.disabled = false;
-                    importBtn.innerHTML = '<span>⚡ Importa da PDF (ricrea CSV)</span>';
-                }
-            }
-        }
-
-        // Funzione per mostrare info file master CSV (ora fisso)
-        async function selectMasterCsvFile() {
-            try {
-                showAlert(`ℹ️ Master CSV è impostato al percorso fisso:\n\\nas71f89c\\Container\\data\\molino\\master-Inventory.csv`, 'info');
-                console.log('✅ Master CSV percorso fisso: /share/Container/data/molino/master-Inventory.csv');
-            } catch (error) {
-                console.error('Errore:', error);
-                showAlert(`❌ Errore: ${error.message}`, 'error');
-            }
         }
 
         // ===== VIEW TOGGLE =====
@@ -4433,50 +3081,7 @@
         }
 
         // Funzione per importare magazzino dal PDF
-        async function importWarehouseFromPdf() {
-            try {
-                const importBtn = document.getElementById('importWarehousePdfBtn');
-                if (importBtn) {
-                    importBtn.disabled = true;
-                    importBtn.innerHTML = '<span class="loading-spinner"></span><span>Aggiornamento magazzino...</span>';
-                }
-
-                console.log('📄 Importazione magazzino dal PDF...');
-                
-                const response = await fetch(`/api/warehouse/import-from-pdf`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-
-                if (!response.ok) {
-                    throw new Error(`Errore HTTP: ${response.status}`);
-                }
-
-                const result = await response.json();
-
-                if (result.success) {
-                    showAlert(`✅ Magazzino aggiornato!\n\n📦 Articoli importati: ${result.data.count}`, 'success');
-                    console.log('✅ Magazzino importato:', result.data);
-                    // Refresh della lista
-                    setTimeout(() => {
-                        refreshInventoryData();
-                    }, 1500);
-                } else {
-                    throw new Error(result.error || 'Errore nell\'importazione magazzino');
-                }
-            } catch (error) {
-                console.error('❌ Errore importazione magazzino:', error);
-                showAlert(`❌ Errore: ${error.message}`, 'error');
-            } finally {
-                const importBtn = document.getElementById('importWarehousePdfBtn');
-                if (importBtn) {
-                    importBtn.disabled = false;
-                    importBtn.innerHTML = '<span>⚡ Aggiorna Magazzino da PDF</span>';
-                }
-            }
-        }
+        // RIMOSSA: gestione PDF dismessa, dati gestiti via DB
 
         // ============================================================
         // ===== AVVISI GIACENZA (sezione integrata) ==================
@@ -4702,6 +3307,7 @@
         window.avSubmitOrderTask = avSubmitOrderTask;
 
         async function showAvvisi() {
+            _setActiveCard('fcAvvisi');
             showOnlySection('avvisiCard');
             if (!avLoaded) {
                 avLoaded = true;
@@ -4961,17 +3567,7 @@
         </tr>`).join('');
 
         const html = `<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8"><title>${mainTitle}</title>
-        <style>
-            @page{size:A4 landscape;margin:12mm}
-            body{font-family:Arial,sans-serif;font-size:11px;color:#111;margin:0}
-            h1{font-size:15px;margin:0 0 3px}
-            .sub{font-size:9px;color:#555;margin-bottom:10px}
-            table{width:100%;border-collapse:collapse}
-            th{background:#1e3a5f;color:#fff;padding:5px 7px;text-align:left;font-size:9px;text-transform:uppercase}
-            td{padding:4px 7px;border-bottom:1px solid #ddd;vertical-align:top}
-            tr:nth-child(even) td{background:#f5f7fa}
-            .foot{margin-top:6px;font-size:9px;color:#888;text-align:right}
-        </style></head><body>
+</head><body>
         <h1>🏭 ${mainTitle}</h1>
         <div class="sub">Data: ${today} &nbsp;|&nbsp; Filtro: ${filterLabels[filter]} &nbsp;|&nbsp; Ordine: ${sortLabels[sort]} &nbsp;|&nbsp; Formato: ${format === 'per_position' ? 'per posizione' : 'per articolo'} &nbsp;|&nbsp; ${rows.length} righe</div>
         <table><thead><tr>
@@ -4990,6 +3586,8 @@
     }
     </script>
 
+    <script src="js/user-info-badge.js"></script>
+    <script src="js/header-overflow-menu.js"></script>
     <script src="js/ui-confirm.js"></script>
     </body>
 </html>

@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestione VPN WireGuard - Molino Briganti</title>
+    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/common-styles.css">
+    <link rel="stylesheet" href="css/wireguard-management-custom.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔐 Gestione VPN WireGuard</h1>
+            <div class="header-actions">
+                <div class="user-info" id="userInfo"></div>
+                <button class="btn btn-settings" onclick="window.location.href='admin-dashboard.html'">🏠 Home</button>
+            </div>
+        </div>
+
+        <div id="alert" class="alert"></div>
+
+        <div class="card" id="unavailableCard" style="display:none;">
+            <h2>⚠️ VPN non configurata</h2>
+            <p id="unavailableReason"></p>
+            <p class="hint">
+                Verificare che il container task-manager abbia il volume
+                <code>/share/Container/wireguard/config:/wireguard:rw</code> e che
+                il container <code>wireguard</code> sia attivo.
+            </p>
+        </div>
+
+        <div class="card" id="addCard">
+            <h2>➕ Aggiungi nuovo dispositivo</h2>
+            <div class="form-row">
+                <input type="text" id="newPeerName" placeholder="es. tabletbarbara"
+                       maxlength="24" autocomplete="off"
+                       oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9]/g,'')">
+                <button class="btn btn-primary" id="addBtn" onclick="addPeer()">
+                    <span>🔑</span><span>Crea peer</span>
+                </button>
+            </div>
+            <p class="hint">
+                Solo lettere minuscole e numeri (2-24 caratteri). Niente trattini, spazi, accenti.
+                Ogni dispositivo va creato come peer separato (smartphone, tablet, PC).
+            </p>
+        </div>
+
+        <div class="card">
+            <h2>📋 Dispositivi configurati</h2>
+            <div id="peersList">
+                <div class="loading">Caricamento…</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale dettaglio peer (QR + conf) -->
+    <div id="peerModal" class="modal-overlay" style="display:none;" onclick="if(event.target===this)closeModal()">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Peer</h2>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-instructions">
+                    Sul dispositivo: installa l'app <strong>WireGuard</strong>, premi <strong>+</strong>,
+                    scegli <em>Scansiona da codice QR</em> e inquadra il codice qui sotto.
+                </p>
+                <div class="qr-wrap">
+                    <img id="modalQr" alt="QR code">
+                </div>
+                <div class="actions-row">
+                    <a id="downloadQr" class="btn btn-secondary" download>📥 Scarica QR (.png)</a>
+                    <a id="downloadConf" class="btn btn-secondary" download>📄 Scarica .conf</a>
+                </div>
+                <details class="conf-details">
+                    <summary>Mostra configurazione testuale</summary>
+                    <pre id="modalConf"></pre>
+                </details>
+                <p class="warn">
+                    ⚠️ Il QR contiene la chiave privata. Non condividerlo, non fotografarlo per altri device.
+                    Un QR = un dispositivo.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('token');
+        const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+
+        if (!token) {
+            window.location.href = 'index.html';
+        }
+        if (currentUser.role !== 'master') {
+            alert('Accesso riservato all\'utente master.');
+            window.location.href = 'admin-dashboard.html';
+        }
+
+        document.getElementById('userInfo').textContent = currentUser.username || '';
+
+        function showAlert(msg, type) {
+            const a = document.getElementById('alert');
+            a.textContent = msg;
+            a.className = 'alert alert-' + (type || 'info') + ' visible';
+            setTimeout(() => { a.className = 'alert'; }, 5000);
+        }
+
+        async function api(path, options) {
+            options = options || {};
+            options.headers = Object.assign({
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            }, options.headers || {});
+            const res = await fetch('/api/wireguard' + path, options);
+            const ct = res.headers.get('content-type') || '';
+            const data = ct.includes('application/json') ? await res.json() : await res.text();
+            if (!res.ok) {
+                const msg = (data && data.error) || ('HTTP ' + res.status);
+                throw new Error(msg);
+            }
+            return data;
+        }
+
+        async function loadPeers() {
+            try {
+                const health = await api('/health');
+                if (!health.available) {
+                    document.getElementById('unavailableCard').style.display = 'block';
+                    document.getElementById('unavailableReason').textContent =
+                        'Errore: ' + (health.error || 'volume WireGuard non accessibile');
+                    document.getElementById('addCard').style.display = 'none';
+                    document.getElementById('peersList').innerHTML = '';
+                    return;
+                }
+                const data = await api('/peers');
+                renderPeers(data.peers || []);
+            } catch (err) {
+                showAlert('Errore caricamento: ' + err.message, 'error');
+            }
+        }
+
+        function renderPeers(peers) {
+            const list = document.getElementById('peersList');
+            if (!peers.length) {
+                list.innerHTML = '<p class="empty">Nessun peer configurato.</p>';
+                return;
+            }
+            list.innerHTML = peers.map(p => `
+                <div class="peer-row">
+                    <div class="peer-main">
+                        <div class="peer-name">📱 ${escapeHtml(p.name)}</div>
+                        <div class="peer-meta">
+                            <span class="peer-ip">${escapeHtml(p.address || '?')}</span>
+                            <span class="peer-key" title="${escapeHtml(p.publicKey)}">${escapeHtml((p.publicKey || '').substring(0, 16))}…</span>
+                            ${p.createdAt ? `<span class="peer-date">${new Date(p.createdAt).toLocaleString('it-IT')}</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="peer-actions">
+                        <button class="btn btn-secondary btn-sm" onclick="openPeer('${encodeURIComponent(p.name)}')">📲 QR / conf</button>
+                        <button class="btn btn-danger btn-sm" onclick="deletePeer('${encodeURIComponent(p.name)}')">🗑️ Rimuovi</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function escapeHtml(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
+        async function addPeer() {
+            const input = document.getElementById('newPeerName');
+            const name = (input.value || '').trim();
+            if (!/^[a-z0-9]{2,24}$/.test(name)) {
+                showAlert('Nome non valido (a-z, 0-9, 2-24 caratteri)', 'error');
+                return;
+            }
+            const btn = document.getElementById('addBtn');
+            btn.disabled = true;
+            try {
+                const data = await api('/peers', {
+                    method: 'POST',
+                    body: JSON.stringify({ name })
+                });
+                input.value = '';
+                showAlert('Peer "' + name + '" creato (' + data.peer.address + ')', 'success');
+                await loadPeers();
+                showPeerDetail(data.peer);
+            } catch (err) {
+                showAlert('Errore: ' + err.message, 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function openPeer(encName) {
+            try {
+                const data = await api('/peers/' + encName);
+                showPeerDetail(data.peer);
+            } catch (err) {
+                showAlert('Errore: ' + err.message, 'error');
+            }
+        }
+
+        function showPeerDetail(peer) {
+            document.getElementById('modalTitle').textContent = '🔑 ' + peer.name + '  —  ' + peer.address;
+            document.getElementById('modalQr').src = peer.qrPng;
+            document.getElementById('modalConf').textContent = peer.conf;
+            document.getElementById('downloadQr').href = '/api/wireguard/peers/' + encodeURIComponent(peer.name) + '/qr';
+            document.getElementById('downloadConf').href = '/api/wireguard/peers/' + encodeURIComponent(peer.name) + '/conf';
+            // I link download non passano automaticamente l'header Authorization,
+            // quindi facciamo download programmatico via fetch+blob.
+            ['downloadQr', 'downloadConf'].forEach(id => {
+                const el = document.getElementById(id);
+                el.onclick = (ev) => {
+                    ev.preventDefault();
+                    downloadAuth(el.href, el.getAttribute('download') || ('peer_' + peer.name));
+                };
+            });
+            document.getElementById('downloadQr').setAttribute('download', 'peer_' + peer.name + '.png');
+            document.getElementById('downloadConf').setAttribute('download', 'peer_' + peer.name + '.conf');
+            document.getElementById('peerModal').style.display = 'flex';
+        }
+
+        async function downloadAuth(url, filename) {
+            try {
+                const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const blob = await res.blob();
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+            } catch (err) {
+                showAlert('Download fallito: ' + err.message, 'error');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('peerModal').style.display = 'none';
+        }
+
+        async function deletePeer(encName) {
+            const name = decodeURIComponent(encName);
+            if (!confirm('Rimuovere il peer "' + name + '"?\n\nIl dispositivo non potra\' piu\' connettersi.\nL\'azione e\' immediata e non reversibile.')) return;
+            try {
+                await api('/peers/' + encName, { method: 'DELETE' });
+                showAlert('Peer "' + name + '" rimosso', 'success');
+                await loadPeers();
+            } catch (err) {
+                showAlert('Errore: ' + err.message, 'error');
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeModal();
+        });
+
+        loadPeers();
+    </script>
+</body>
+</html>

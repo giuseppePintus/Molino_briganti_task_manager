@@ -57,3 +57,510 @@
     margin-bottom: 10px;
     color: #16a34a;
 }
+
+/* === Spostato da <style> inline di trips-management.html (28-04-2026) === */
+* {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2563eb;
+            --success: #16a34a;
+            --danger: #dc2626;
+            --warning: #ea580c;
+            --dark: #1f2937;
+            --light: #f3f4f6;
+            --border: #e5e7eb;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a1a;
+            color: #e0e0e0;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 10px;
+        }
+
+        /* Header styles unified via css/common.css */
+
+        .alert {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .alert-success {
+            background: #1e3a2a;
+            color: #86efac;
+            border-left: 4px solid #10b981;
+        }
+
+        .alert-error {
+            background: #3a1e1e;
+            color: #fca5a5;
+            border-left: 4px solid #dc2626;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: #2d2d2d;
+            padding: 3px 4px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            border-left: 4px solid var(--primary);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 20px;
+        }
+
+        .stat-card .number {
+            font-size: 12px;
+            font-weight: bold;
+            color: #e0e0e0;
+            margin-bottom: 0px;
+        }
+
+        .stat-card .label {
+            font-size: 8px;
+            color: #a0a0a0;
+        }
+
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+            align-items: stretch;
+        }
+
+        .quick-actions .btn {
+            padding: 10px 12px;
+            min-height: 36px;
+            font-size: 14px;
+            width: 100%;
+        }
+
+        .card {
+            background: #2d2d2d;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+        }
+
+        .card h2 {
+            font-size: 20px;
+            margin-bottom: 15px;
+            color: #e0e0e0;
+        }
+
+        /* Calendar header: 2-row grid layout for all screen sizes */
+        .calendar-header {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto auto;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        /* Row 1: Visualizza Tutti + Settimana */
+        .calendar-btn-dummy {
+            grid-column: 1;
+            grid-row: 1;
+            padding: 10px 14px;
+            font-size: 14px;
+        }
+
+        .calendar-btn-toggle {
+            grid-column: 2;
+            grid-row: 1;
+            padding: 10px 14px;
+            font-size: 14px;
+        }
+
+        /* Row 2: navigation prev + title + next */
+        .calendar-btn-prev, .calendar-btn-next {
+            grid-column: 1 / -1;
+            grid-row: 2;
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            font-size: 18px;
+            min-width: 40px;
+            max-width: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .calendar-btn-prev {
+            justify-self: start;
+        }
+
+        .calendar-btn-next {
+            justify-self: end;
+        }
+
+        .calendar-title {
+            grid-column: 1 / -1;
+            grid-row: 2;
+            margin: 0 50px;
+            color: #e0e0e0;
+            font-size: 16px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .calendar-container {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px;
+        }
+        .calendar-day {
+            border: 1px solid #4d4d4d;
+            padding: 6px;
+            min-height: 85px;
+            border-radius: 4px;
+            background: #3d3d3d;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 18px;
+            color: #b0b0b0;
+            position: relative;
+            overflow: hidden;
+        }
+        .calendar-day:hover {
+            background: #4d4d4d;
+        }
+
+        .calendar-day.is-today {
+            border: 2px solid #16a34a;
+            font-weight: bold;
+        }
+
+        .calendar-day.is-selected {
+            border: 2px solid #06b6d4;
+            background: #164e63;
+        }
+
+        .calendar-day.has-trips {
+            position: relative;
+        }
+        .calendar-day.has-trips::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 0;
+            height: 0;
+            border-style: solid;
+            border-width: 0 18px 18px 0;
+            border-color: transparent #2563eb transparent transparent;
+            border-radius: 0 4px 0 0;
+            z-index: 10;
+        }
+        @media (max-width: 768px) {
+            .calendar-day {
+                min-height: 40px;
+                padding: 6px;
+                font-size: 16px;
+            }
+        }
+        @media (max-width: 480px) {
+            .calendar-day {
+                min-height: 35px;
+                padding: 3px;
+                font-size: 9px;
+            }
+        }
+
+        .trips-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .trip-card {
+            background: #3d3d3d;
+            border-left: 4px solid #16a34a;
+            padding: 15px;
+            border-radius: 6px;
+            border: 2px solid #4d4d4d;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .trip-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 12px rgba(0, 0, 0, 0.5);
+            border-color: #16a34a;
+        }
+
+        .trip-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 10px;
+        }
+
+        .trip-title {
+            font-weight: 600;
+            color: #e0e0e0;
+            font-size: 20px;
+        }
+
+        .trip-status {
+            font-size: 15px;
+            padding: 6px 10px;
+            border-radius: 4px;
+            background: #1e3a2a;
+            color: #86efac;
+        }
+
+        .trip-details {
+            font-size: 16px;
+            color: #a0a0a0;
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+
+        .trip-details p {
+            margin: 5px 0;
+        }
+
+        .trip-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        /* Uniforma i pulsanti delle card come in admin */
+        .trip-actions .btn {
+            padding: 10px 12px;
+            font-size: 14px;
+            min-height: 36px;
+        }
+
+        .product-totals {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .product-badge {
+            background: #1e3a2a;
+            color: #86efac;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #2d2d2d;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 800px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 5px 50px rgba(0,0,0,0.5);
+        }
+
+        .modal-content h2 {
+            margin-bottom: 20px;
+            color: #e0e0e0;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            font-size: 14px;
+            color: #e0e0e0;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #4d4d4d;
+            border-radius: 6px;
+            font-size: 14px;
+            background: #3d3d3d;
+            color: #e0e0e0;
+            font-family: inherit;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: flex-end;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #808080;
+            font-size: 14px;
+        }
+
+        .orders-list {
+            max-height: 200px;
+            overflow-y: auto;
+            background: #3d3d3d;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+
+        .order-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            background: #2d2d2d;
+            margin-bottom: 6px;
+            border-radius: 4px;
+        }
+
+        .order-item-info {
+            font-size: 12px;
+            flex: 1;
+        }
+
+        .trip-orders-sequence {
+            margin-top: 15px;
+        }
+
+        .sequence-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background: #3d3d3d;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            border-left: 4px solid #16a34a;
+        }
+
+        .sequence-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-right: 10px;
+        }
+
+        .sequence-controls button {
+            padding: 2px 6px;
+            font-size: 10px;
+        }
+
+        .sequence-info {
+            flex: 1;
+        }
+
+        .sequence-number {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 4px;
+            color: #16a34a;
+        }
+
+        .sequence-details {
+            font-size: 12px;
+            color: #a0a0a0;
+        }
+
+        @media (max-width: 768px) {
+            .stats {
+                grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+            }
+
+            /* Mantieni 2 colonne come in admin (mobile header) */
+            .quick-actions {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+
+            .trip-actions {
+                flex-direction: column;
+            }
+
+            .trip-actions .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .trip-title {
+                font-size: 16px;
+            }
+
+            .trip-details {
+                font-size: 14px;
+            }
+
+            /* Pulsanti coerenti con admin su mobile */
+            .quick-actions .btn {
+                padding: 10px 12px;
+                font-size: 13px;
+            }
+        }

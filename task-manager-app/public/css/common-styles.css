@@ -147,15 +147,6 @@
 }
 
 /* === CALENDAR STYLES === */
-.calendar-info-box {
-    padding: 10px;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 6px;
-    margin-bottom: 12px;
-    font-size: 13px;
-    color: #9ca3af;
-    border-left: 3px solid #3b82f6;
-}
 
 /* === TRIP OPTIONS === */
 .trip-option {

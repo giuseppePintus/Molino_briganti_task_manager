@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="it">
 <head>
     <meta charset="UTF-8">
@@ -10,884 +10,6 @@
     <script src="js/settings-utils.js"></script>
     <script src="js/pages-indice.js"></script>
     <script src="js/alerts-badge.js" defer></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        :root {
-            --primary: #2563eb;
-            --success: #16a34a;
-            --danger: #dc2626;
-            --warning: #ea580c;
-            --dark: #1f2937;
-            --light: #f3f4f6;
-            --border: #e5e7eb;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #1a1a1a;
-            color: #e0e0e0;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        /* Header styles unified via css/common.css */
-
-        /* Base button styles moved to css/common.css. Page keeps only contextual overrides. */
-
-        .card {
-            background: #2d2d2d;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-            margin-bottom: 20px;
-        }
-
-        @media (max-width: 768px) {
-            .card {
-                padding: 15px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .card {
-                padding: 12px;
-                border-radius: 6px;
-            }
-        }
-
-        .card h2 {
-            font-size: 18px;
-            margin-bottom: 15px;
-            color: #e0e0e0;
-        }
-
-        @media (max-width: 768px) {
-            .card h2 {
-                font-size: 16px;
-                margin-bottom: 12px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .card h2 {
-                font-size: 14px;
-                margin-bottom: 10px;
-            }
-        }
-
-        .orders-grid {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .order-card {
-            background: #3d3d3d;
-            border-left: 4px solid var(--primary);
-            padding: 15px;
-            border-radius: 6px;
-            border: 2px solid #4d4d4d;
-            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
-            margin-bottom: 15px;
-            transition: transform 0.2s, box-shadow 0.2s;
-            cursor: move;
-        }
-
-        .order-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 12px rgba(0, 0, 0, 0.5);
-            border-color: #5d5d5d;
-        }
-
-        .order-card.dragging {
-            opacity: 0.5;
-            background: #2d2d2d;
-        }
-
-        .order-card.drag-over {
-            background: #4d5d3d;
-            border: 2px dashed #10b981;
-        }
-
-        @media (max-width: 768px) {
-            .order-card {
-                padding: 12px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .order-card {
-                padding: 10px;
-            }
-        }
-
-        .order-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: start;
-            margin-bottom: 10px;
-        }
-
-        .order-title {
-            font-weight: 600;
-            color: #e0e0e0;
-              font-size: 20px;
-        }
-
-        @media (max-width: 768px) {
-            .order-title {
-                 font-size: 18px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .order-title {
-                 font-size: 16px;
-            }
-        }
-
-        .order-status {
-            font-size: 15px;
-            padding: 6px 10px;
-            border-radius: 4px;
-            background: #1e3a4d;
-            color: #7dd3fc;
-        }
-
-        .order-status.pending {
-            background: #4a3a1e;
-            color: #fcd34d;
-        }
-
-        .order-status.completed {
-            background: #1e3a2a;
-            color: #86efac;
-        }
-
-        .order-details {
-            font-size: 16px;
-            color: #a0a0a0;
-            margin-bottom: 10px;
-            line-height: 1.5;
-        }
-
-        @media (max-width: 768px) {
-            .order-details {
-                 font-size: 15px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .order-details {
-                 font-size: 15px;
-            }
-        }
-
-        .order-details p {
-            margin: 5px 0;
-        }
-
-        .order-actions {
-            display: flex;
-            gap: 8px;
-            margin-top: 10px;
-        }
-
-        .order-actions .btn {
-            padding: 10px 12px;
-            font-size: 14px;
-            min-height: 36px;
-        }
-
-        @media (max-width: 768px) {
-            .order-actions {
-                gap: 6px;
-            }
-
-            .order-actions .btn {
-                padding: 10px 12px;
-                font-size: 14px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .order-actions {
-                flex-direction: column;
-                gap: 6px;
-            }
-
-            .order-actions .btn {
-                padding: 10px 12px;
-                font-size: 14px;
-                width: 100%;
-                justify-content: center;
-            }
-        }
-
-        .form-group {
-            margin-bottom: 15px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 600;
-            font-size: 14px;
-            color: #e0e0e0;
-        }
-
-        .form-group input,
-        .form-group textarea,
-        .form-group select {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #4d4d4d;
-            border-radius: 6px;
-            font-size: 14px;
-            background: #3d3d3d;
-            color: #e0e0e0;
-            font-family: inherit;
-        }
-
-        .form-group input:focus,
-        .form-group textarea:focus,
-        .form-group select:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal.active {
-            display: flex;
-        }
-
-        .modal-content {
-            background: #2d2d2d;
-            padding: 30px;
-            border-radius: 10px;
-            max-width: 500px;
-            width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
-            box-shadow: 0 5px 50px rgba(0,0,0,0.5);
-        }
-
-        .modal-content h2 {
-            margin-bottom: 20px;
-            color: #e0e0e0;
-        }
-
-        .modal-actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-            justify-content: flex-end;
-        }
-
-        .modal-actions .btn {
-            padding: 10px 12px;
-            min-height: 36px;
-            font-size: 14px;
-            flex: 0 1 auto;
-        }
-
-        .stats-overview {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .stat-card {
-            background: #2d2d2d;
-            padding: 3px 4px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-            border-left: 4px solid var(--primary);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            min-height: 20px;
-        }
-
-        .stat-number {
-            font-size: 12px;
-            font-weight: bold;
-            color: #e0e0e0;
-            margin-bottom: 0px;
-        }
-
-        .stat-label {
-            font-size: 8px;
-            color: #a0a0a0;
-        }
-
-        /* Planner Actions (below stats) - aligned to Trips Management */
-        .planner-actions {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-        
-        .planner-actions .btn {
-            padding: 10px 12px;
-            min-height: 36px;
-            font-size: 14px;
-            width: 100%;
-        }
-        
-        @media (max-width: 768px) {
-            .planner-actions {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 8px;
-            }
-            .planner-actions .btn {
-                padding: 10px 12px;
-                font-size: 13px;
-            }
-        }
-        
-        @media (max-width: 480px) {
-            .planner-actions {
-                grid-template-columns: 1fr;
-            }
-        }
-        @media (max-width: 768px) {
-            .stats-overview {
-                grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
-                gap: 12px;
-            }
-
-            .stat-card {
-                min-height: 18px;
-                padding: 2px 3px;
-            }
-
-            .stat-number {
-                font-size: 13px;
-            }
-
-            .stat-label {
-                font-size: 7px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .stats-overview {
-                grid-template-columns: repeat(auto-fit, minmax(50px, 1fr));
-                gap: 10px;
-            }
-
-            .stat-card {
-                min-height: 16px;
-                padding: 2px 3px;
-            }
-
-            .stat-number {
-                font-size: 13px;
-            }
-
-            .stat-label {
-                font-size: 6px;
-            }
-        }
-
-        .calendar-container {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 4px;
-            padding: 10px 0;
-        }
-
-        .calendar-header-day {
-            font-weight: 700;
-            text-align: center;
-            padding: 6px;
-            background: #3d3d3d;
-            border: 1px solid #4d4d4d;
-            border-radius: 4px;
-            font-size: 12px; /* match admin dashboard */
-            color: #b0b0b0;
-        }
-
-        .calendar-day {
-            border: 1px solid #4d4d4d;
-            padding: 6px;
-            min-height: 85px;
-            border-radius: 4px;
-            background: #3d3d3d;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-size: 18px;
-            color: #b0b0b0;
-            position: relative;
-            overflow: visible;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding-top: 6px;
-        }
-        
-        .calendar-day strong {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 24px;
-            min-height: 24px;
-        }
-
-        .calendar-day:hover {
-            background: #4d4d4d;
-        }
-
-        .calendar-day.is-today {
-            border: 2px solid #16a34a;
-            font-weight: bold;
-        }
-
-        .calendar-day.is-selected {
-            border: 2px solid #06b6d4;
-            background: #164e63;
-        }
-
-        .calendar-day.has-orders {
-            background: #1e2a1e;
-            border-color: #16a34a;
-            position: relative;
-        }
-
-        .calendar-day.has-unassigned-orders {
-            position: relative;
-        }
-
-        /* Rimosso ::after - il triangolino verde per ritiri viene generato via JS */
-
-        .calendar-day.has-trips {
-            position: relative;
-        }
-
-        .calendar-day.has-trips::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            right: 0;
-            width: 0;
-            height: 0;
-            border-style: solid;
-            border-width: 0 18px 18px 0;
-            border-color: transparent #2563eb transparent transparent;
-            border-radius: 0 4px 0 0;
-            z-index: 10;
-        }
-
-        .calendar-day.has-orders::before {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            right: 0;
-            width: 0;
-            height: 0;
-            border-style: solid;
-            border-width: 0 0 18px 18px;
-            border-color: transparent transparent #16a34a transparent;
-            border-radius: 0 0 4px 0;
-        }
-
-        
-
-        @media (max-width: 768px) {
-            .calendar-day {
-                min-height: 40px;
-                padding: 6px;
-                font-size: 16px;
-            }
-            
-        }
-
-        @media (max-width: 480px) {
-            .calendar-day {
-                min-height: 35px;
-                padding: 3px;
-                font-size: 13px;
-            }
-            
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 20px;
-            color: #808080;
-            font-size: 12px;
-        }
-
-        /* Desktop calendar header */
-        /* Calendar header: 2-row grid layout for all screen sizes */
-        .calendar-header {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            grid-template-rows: auto auto;
-            gap: 8px;
-            margin-bottom: 15px;
-        }
-
-        /* Row 1: Visualizza Tutti + Settimana */
-        .calendar-btn-dummy {
-            grid-column: 1;
-            grid-row: 1;
-            padding: 10px 14px;
-            font-size: 14px;
-        }
-
-        .calendar-btn-toggle {
-            grid-column: 2;
-            grid-row: 1;
-            padding: 10px 14px;
-            font-size: 14px;
-        }
-
-        /* Row 2: navigation prev + title + next */
-        .calendar-btn-prev, .calendar-btn-next {
-            grid-column: 1 / -1;
-            grid-row: 2;
-            width: 40px;
-            height: 40px;
-            padding: 0;
-            font-size: 18px;
-            min-width: 40px;
-            max-width: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .calendar-btn-prev {
-            justify-self: start;
-        }
-
-        .calendar-btn-next {
-            justify-self: end;
-        }
-
-        .calendar-title {
-            grid-column: 1 / -1;
-            grid-row: 2;
-            margin: 0 50px;
-            color: #e0e0e0;
-            font-size: 16px;
-            text-align: center;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .btn-planner {
-            background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%) !important;
-            color: white !important;
-            border: 1px solid rgba(124, 58, 237, 0.5) !important;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3),
-                        0 0 20px rgba(124, 58, 237, 0.2),
-                        inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
-            position: relative;
-            overflow: hidden;
-        }
-        .btn-planner::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-            transition: left 0.5s;
-        }
-        .btn-planner:hover {
-            background: linear-gradient(135deg, #6d28d9 0%, #5b21b6 100%) !important;
-            border-color: rgba(124, 58, 237, 1) !important;
-            box-shadow: 0 6px 20px rgba(124, 58, 237, 0.5),
-                        0 0 30px rgba(124, 58, 237, 0.4),
-                        inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
-            transform: translateY(-2px) !important;
-        }
-        .btn-planner:hover::after {
-            left: 100%;
-        }
-
-        /* Quick Actions Navigation */
-        .quick-actions {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-
-        .quick-actions > * {
-            min-width: 0;
-        }
-
-        .quick-actions .btn {
-            width: 100%;
-            padding: 10px 8px;
-            min-height: 44px;
-            font-size: 13px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-        }
-
-        .quick-actions .btn::before {
-            font-size: 16px;
-        }
-
-        .quick-actions .btn span {
-            font-size: 12px;
-            line-height: 1.2;
-            text-align: center;
-        }
-
-        .quick-actions .btn.active {
-            outline: 2px solid rgba(255, 255, 255, 0.85);
-            outline-offset: 2px;
-            filter: brightness(1.25);
-            transform: translateY(-1px);
-        }
-
-        .quick-actions .btn.active:hover {
-            transform: translateY(-3px);
-        }
-
-        .dropdown-menu-admin {
-            position: relative;
-            display: block;
-        }
-
-        .dropdown-menu-admin .btn-settings {
-            width: 100%;
-        }
-
-        .admin-menu-dropdown {
-            display: none;
-            position: absolute;
-            top: 100%;
-            left: 0;
-            background: #2d2d2d;
-            border: 1px solid #4d4d4d;
-            border-radius: 6px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-            min-width: 220px;
-            z-index: 1000;
-            margin-top: 5px;
-        }
-
-        .admin-menu-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            width: 100%;
-            padding: 12px 15px;
-            border: none;
-            background: transparent;
-            color: #e0e0e0;
-            cursor: pointer;
-            text-align: left;
-            font-size: 14px;
-            transition: background 0.2s;
-            border-bottom: 1px solid #3d3d3d;
-        }
-
-        .admin-menu-item:last-child {
-            border-bottom: none;
-        }
-
-        .admin-menu-item:hover {
-            background: #3d3d3d;
-            border-left: 3px solid #38bdf8;
-            padding-left: 12px;
-        }
-
-        .admin-menu-item .menu-icon {
-            font-size: 16px;
-        }
-
-        .btn-settings {
-            background: linear-gradient(135deg, #38bdf8 0%, #1e40af 100%);
-            color: white;
-            border: none;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-            position: relative;
-            overflow: hidden;
-        }
-        .btn-settings::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-            transition: left 0.5s;
-        }
-        .btn-settings:hover {
-            background: linear-gradient(135deg, #1d4ed8 0%, #1e3a8a 100%);
-            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
-            transform: translateY(-2px);
-        }
-        .btn-settings:hover::after {
-            left: 100%;
-        }
-
-        .btn-tasks {
-            background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
-            color: white;
-            border: none;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-            position: relative;
-            overflow: hidden;
-        }
-        .btn-tasks::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-            transition: left 0.5s;
-        }
-        .btn-tasks:hover {
-            background: linear-gradient(135deg, #15803d 0%, #166534 100%);
-            box-shadow: 0 6px 20px rgba(22, 163, 74, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
-            transform: translateY(-2px);
-        }
-        .btn-tasks:hover::after {
-            left: 100%;
-        }
-
-        .btn-customers {
-            background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);
-            color: white;
-            border: none;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 4px 12px rgba(8, 145, 178, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-            position: relative;
-            overflow: hidden;
-        }
-        .btn-customers::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-            transition: left 0.5s;
-        }
-        .btn-customers:hover {
-            background: linear-gradient(135deg, #0e7490 0%, #155e75 100%);
-            box-shadow: 0 6px 20px rgba(8, 145, 178, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
-            transform: translateY(-2px);
-        }
-        .btn-customers:hover::after {
-            left: 100%;
-        }
-
-        .btn-warehouse {
-            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-            color: white;
-            border: 1px solid rgba(220, 38, 38, 0.5);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-            position: relative;
-            overflow: hidden;
-        }
-        .btn-warehouse::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-            transition: left 0.5s;
-        }
-        .btn-warehouse:hover {
-            background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
-            border-color: rgba(220, 38, 38, 1);
-            box-shadow: 0 6px 20px rgba(220, 38, 38, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
-            transform: translateY(-2px);
-        }
-        .btn-warehouse:hover::after {
-            left: 100%;
-        }
-
-        @media (max-width: 600px) {
-            .quick-actions {
-                grid-template-columns: repeat(3, 1fr);
-            }
-        }
-        @media (max-width: 380px) {
-            .quick-actions {
-                grid-template-columns: 1fr 1fr;
-            }
-        }
-        .sticky-top-bar {
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            background: #1a1a1a;
-            padding-bottom: 10px;
-        }
-        .sticky-top-bar .quick-actions {
-            margin-bottom: 0 !important;
-        }
-        .sticky-top-bar .stats,
-        .sticky-top-bar .stats-overview,
-        .sticky-top-bar .stats-bar {
-            max-height: 120px;
-            opacity: 1;
-            overflow: hidden;
-            transition: max-height 0.3s ease, opacity 0.2s ease, margin 0.3s ease;
-        }
-        .sticky-top-bar.scrolled .stats,
-        .sticky-top-bar.scrolled .stats-overview,
-        .sticky-top-bar.scrolled .stats-bar {
-            max-height: 0;
-            opacity: 0;
-            margin-top: 0 !important;
-            margin-bottom: 0 !important;
-        }
-    </style>
 </head>
 <body>
     <div class="container">
@@ -957,18 +79,48 @@
         <!-- Calendar -->
         <div class="card card-padded">
             <div class="calendar-header">
-                <button class="btn btn-secondary calendar-btn-dummy" onclick="toggleShowAllOrders()" id="toggleShowAllBtn2">👁️ Visualizza Tutti</button>
-                <button class="btn btn-primary calendar-btn-prev" onclick="previousPeriod()">◀</button>
-                <h4 id="calendarMonthYear" class="calendar-title"></h4>
-                <button class="btn btn-primary calendar-btn-next" onclick="nextPeriod()">▶</button>
-                <button class="btn btn-secondary calendar-btn-toggle" onclick="toggleCalendarView()" id="toggleCalendarBtn">🗓️ Settimana</button>
+                <div class="calendar-header-nav">
+                    <h4 id="calendarMonthYear" class="calendar-title calendar-title-clickable" onclick="toggleCalendarView()"></h4>
+                </div>
             </div>
-            <div class="calendar-info-box">
-                Clicca su un giorno per visualizzare/gestire gli ordini • Doppio clic per creare un nuovo ordine
+            <!-- Wrapper relativo per ancorare il flyover -->
+            <div style="position: relative;"
+                 onmouseenter="showCalendarFlyover()" onmouseleave="hideCalendarFlyover()">
+                <div id="calendarFlyover" class="calendar-flyover">
+                    <div class="calendar-flyover-row">
+                        <span class="calendar-flyover-icon">☝️</span>
+                        <span>Clic singolo — visualizza/gestisce gli ordini del giorno</span>
+                    </div>
+                    <div class="calendar-flyover-row">
+                        <span class="calendar-flyover-icon">✌️</span>
+                        <span>Doppio clic — crea un nuovo ordine</span>
+                    </div>
+                    <div class="calendar-flyover-row">
+                        <span class="calendar-flyover-icon">↔️</span>
+                        <span>Trascina dx / sx — naviga avanti o indietro</span>
+                    </div>
+                    <div class="calendar-flyover-row">
+                        <span class="calendar-flyover-icon">🗓️</span>
+                        <span>Clic sul titolo — passa a vista mese/settimana</span>
+                    </div>
+                </div>
+                <!-- overflow:hidden clippa lo slide senza tagliare il flyover -->
+                <div id="calendarSlideClip" style="overflow: hidden;">
+                    <div id="calendarContainer" class="calendar-container">
+                        <!-- Calendar will be generated here -->
+                    </div>
+                </div>
             </div>
-            <div id="calendarContainer" class="calendar-container">
-                <!-- Calendar will be generated here -->
-            </div>
+        </div>
+
+        <!-- View Tabs: filtro Viaggi/Consegne oggi vs Tutti -->
+        <div class="view-tabs" role="tablist" aria-label="Filtro ordini e viaggi">
+            <button type="button" class="view-tab active" role="tab" aria-selected="true" id="ordersTodayTabBtn" onclick="setOrdersView(false)">
+                <span class="view-tab-icon">🚐</span><span class="view-tab-label">Viaggi/Consegne Oggi</span>
+            </button>
+            <button type="button" class="view-tab" role="tab" aria-selected="false" id="ordersAllTabBtn" onclick="setOrdersView(true)">
+                <span class="view-tab-icon">👁️</span><span class="view-tab-label">Visualizza Tutti</span>
+            </button>
         </div>
 
         <!-- Unified Orders Section -->
@@ -1306,11 +458,21 @@
         }
         let orderInventoryReservations = loadInventoryReservations(); // {orderId: {productCode, quantity}}
 
-        // Calcola colli disponibili (stock totale - prenotati) per un articolo
+        // Calcola colli disponibili (stock totale - prenotati) per un articolo.
+        // Lo stock reale è la somma delle quantità sulle shelf-entries (stessa logica di warehouse-management).
+        // Fallback su art.currentStock se le shelf-entries non sono ancora caricate.
         function getAvailableColli(art) {
             const weightPerUnit = art.weightPerUnit || 1;
             const reservedColli = Math.ceil((art.reservedKg || 0) / weightPerUnit);
-            return (art.currentStock || 0) - reservedColli;
+            let stockColli = 0;
+            if (Array.isArray(allShelfEntries) && allShelfEntries.length > 0 && art.id != null) {
+                stockColli = allShelfEntries
+                    .filter(e => e.articleId === art.id)
+                    .reduce((s, e) => s + (e.quantity || 0), 0);
+            } else {
+                stockColli = art.currentStock || 0;
+            }
+            return stockColli - reservedColli;
         }
         
         // Helper per ottenere il nome cliente in modo sicuro (compatibile con server API)
@@ -2078,21 +1240,24 @@
             }).join('');
         }
         
-        function toggleShowAllOrders() {
-            showAllOrders = !showAllOrders;
+        function setOrdersView(showAll) {
+            showAllOrders = !!showAll;
             selectedDate = null; // Reset data selezionata
-            const btn = document.getElementById('toggleShowAllBtn2');
-            if (showAllOrders) {
-                btn.textContent = '📅 Solo Oggi';
-                btn.classList.remove('btn-primary');
-                btn.classList.add('btn-secondary');
-            } else {
-                btn.textContent = '👁️ Visualizza Tutti';
-                btn.classList.remove('btn-secondary');
-                btn.classList.add('btn-primary');
+            const todayBtn = document.getElementById('ordersTodayTabBtn');
+            const allBtn = document.getElementById('ordersAllTabBtn');
+            if (todayBtn && allBtn) {
+                todayBtn.classList.toggle('active', !showAllOrders);
+                todayBtn.setAttribute('aria-selected', String(!showAllOrders));
+                allBtn.classList.toggle('active', showAllOrders);
+                allBtn.setAttribute('aria-selected', String(showAllOrders));
             }
             renderOrderTasks();
             renderTrips(); // Aggiorna anche i viaggi
+        }
+
+        // Compat: alias verso setOrdersView per eventuali chiamate residue
+        function toggleShowAllOrders() {
+            setOrdersView(!showAllOrders);
         }
 
         function openAssignTaskModal(taskId) {
@@ -2808,18 +1973,6 @@
             });
         }
 
-        // Parsifica il file codifica articoli.csv (formato: codice,descrizione senza header)
-        function parseArticoliCSV(text) {
-            const lines = text.trim().split('\n');
-            return lines.map(line => {
-                const [codice, descrizione] = line.split(',').map(v => v.trim());
-                return {
-                    codice: codice || '',
-                    descrizione: descrizione || ''
-                };
-            }).filter(item => item.codice && item.descrizione); // Filtra righe vuote
-        }
-
         // Carica dati da localStorage e file CSV
         async function loadCSVData() {
             try {
@@ -3211,18 +2364,16 @@
             }
             const optionsHTML = articoli
                 .filter(a => !(a.codice || a.nome || '').startsWith('EMPTY-'))
+                // Nascondi articoli senza giacenza disponibile
+                .filter(a => getAvailableColli(a) > 0)
                 .map(a => {
                     const cod = a.codice || a.nome || '???';
                     const desc = a.descrizione || '';
                     const displayText = (desc && desc !== cod) ? `${cod} - ${desc}` : cod;
                     const availColli = getAvailableColli(a);
                     const kg = (availColli * (a.weightPerUnit || 1)).toFixed(0);
-                    const isOut = availColli <= 0;
-                    const stockInfo = isOut
-                        ? ' [ESAURITO]'
-                        : ` [${availColli} colli · ${kg} kg disponibili]`;
-                    const disabled = isOut ? ' disabled style="color:#888;"' : '';
-                    return `<option value="${cod}"${disabled}>${displayText}${stockInfo}</option>`;
+                    const stockInfo = ` [${availColli} colli · ${kg} kg disponibili]`;
+                    return `<option value="${cod}">${displayText}${stockInfo}</option>`;
                 }).join('');
             productSelect.innerHTML = '<option value="">-- Seleziona Articolo --</option>' + optionsHTML;
 
@@ -3342,6 +2493,11 @@
             productSelect.innerHTML = '<option value="">-- Seleziona Articolo --</option>' +
                 articoli
                     .filter(a => !(a.codice || a.nome || '').startsWith('EMPTY-'))
+                    // Mostra solo articoli con disponibilità > 0 oppure già presenti in questo ordine
+                    .filter(a => {
+                        const cod = a.codice || a.nome;
+                        return getAvailableColli(a) > 0 || thisOrderProductCodes.has(cod);
+                    })
                     .map(a => {
                         const cod = a.codice || a.nome;
                         const desc = a.descrizione || '';
@@ -3349,13 +2505,10 @@
                         const availColli = getAvailableColli(a);
                         const kg = (availColli * (a.weightPerUnit || 1)).toFixed(0);
                         const isInThisOrder = thisOrderProductCodes.has(cod);
-                        const isOut = availColli <= 0 && !isInThisOrder;
                         let stockInfo;
                         if (isInThisOrder && availColli <= 0) stockInfo = ' [prenotato in questo ordine]';
-                        else if (isOut) stockInfo = ' [ESAURITO]';
                         else stockInfo = ` [${availColli} colli · ${kg} kg disponibili]`;
-                        const disabled = isOut ? ' disabled style="color:#888;"' : '';
-                        return `<option value="${cod}"${disabled}>${displayText}${stockInfo}</option>`;
+                        return `<option value="${cod}">${displayText}${stockInfo}</option>`;
                     }).join('');
 
             // Carica prodotti dell'ordine
@@ -5303,30 +4456,15 @@
                             .detail-value { font-size: 16px; margin-top: 5px; }
                             .orders-section { margin: 20px 0; }
                             .orders-section h2 { color: #38bdf8; border-bottom: 2px solid #38bdf8; padding-bottom: 10px; }
-                            .order-item { 
-                                padding: 12px; 
-                                margin: 8px 0; 
-                                background: #f9f9f9; 
-                                border-left: 4px solid #38bdf8;
-                                border-radius: 4px;
-                            }
+                            .order-item { padding: 12px; margin: 8px 0; background: #f9f9f9; border-left: 4px solid #38bdf8; border-radius: 4px; }
                             .order-item strong { color: #333; }
                             .order-item p { margin: 5px 0; color: #666; font-size: 14px; }
-                            .totals { 
-                                margin-top: 20px; 
-                                padding: 15px; 
-                                background: #e8f4f8; 
-                                border-radius: 6px;
-                                border: 2px solid #38bdf8;
-                            }
+                            .totals { margin-top: 20px; padding: 15px; background: #e8f4f8; border-radius: 6px; border: 2px solid #38bdf8; }
                             .totals h3 { color: #38bdf8; margin-top: 0; }
                             .total-row { display: flex; justify-content: space-between; padding: 5px 0; }
-                            @media print {
-                                body { margin: 0; }
-                                .no-print { display: none; }
-                            }
+                            @media print { body { margin: 0; } .no-print { display: none; } }
                         </style>
-                    </head>
+</head>
                     <body>
                         <div class="header">
                             <h1>🚚 ${trip.name}</h1>
@@ -5513,7 +4651,7 @@
                             .total-row { display: flex; justify-content: space-between; padding: 5px 0; }
                             @media print { body { margin: 0; } .no-print { display: none; } }
                         </style>
-                    </head>
+</head>
                     <body>
                         <div class="header">
                             <h1>📥 Ritiro - ${clientName}</h1>
@@ -6255,13 +5393,21 @@
 
         // Funzioni per gestire singolo e doppio click nel calendario
         function handleCalendarDayClick(dateStr) {
+            // Se il drag carosello ha appena navigato, ignora il click
+            if (window._calendarDragNavigated) {
+                window._calendarDragNavigated = false;
+                return;
+            }
             selectedDate = dateStr;
             showAllOrders = false; // Attiva il filtro per la data selezionata
-            const btn = document.getElementById('toggleShowAllBtn2');
-            if (btn) {
-                btn.textContent = '👁️ Visualizza Tutti';
-                btn.classList.remove('btn-secondary');
-                btn.classList.add('btn-primary');
+            // Sincronizza i tab di filtro con lo stato corrente
+            const todayBtn = document.getElementById('ordersTodayTabBtn');
+            const allBtn = document.getElementById('ordersAllTabBtn');
+            if (todayBtn && allBtn) {
+                todayBtn.classList.add('active');
+                todayBtn.setAttribute('aria-selected', 'true');
+                allBtn.classList.remove('active');
+                allBtn.setAttribute('aria-selected', 'false');
             }
             if (calendarClickTimer) {
                 clearTimeout(calendarClickTimer);
@@ -6514,10 +5660,10 @@
             const btn = document.getElementById('toggleCalendarBtn');
             if (calendarViewMode === 'week') {
                 calendarViewMode = 'month';
-                btn.textContent = '📅 Mese';
+                if (btn) btn.textContent = '📅 Mese';
             } else {
                 calendarViewMode = 'week';
-                btn.textContent = '🗓️ Settimana';
+                if (btn) btn.textContent = '🗓️ Settimana';
                 // Torna alla settimana corrente quando si torna a vista settimana
                 const today = new Date();
                 weekStartDate = new Date(today);
@@ -6528,17 +5674,133 @@
             renderOrderTasks();
         }
 
+        // ── Flyover multi-riga del calendario ─────────────────────────────────
+        function showCalendarFlyover() {
+            const el = document.getElementById('calendarFlyover');
+            if (el) el.classList.add('visible');
+        }
+        function hideCalendarFlyover() {
+            const el = document.getElementById('calendarFlyover');
+            if (el) el.classList.remove('visible');
+        }
+
+        // ── Carosello drag sul calendario con animazione slide visuale ─────────
+        (function initCalendarDrag() {
+            const DRAG_THRESHOLD = 50;
+            const RESISTANCE     = 0.45;
+            let dragStartX  = null;
+            let isDragging  = false;
+            let currentDelta = 0;
+
+            function getContainer() { return document.getElementById('calendarContainer'); }
+            function getClip()      { return document.getElementById('calendarSlideClip'); }
+
+            function insideCalendar(target) {
+                const clip = getClip();
+                return clip && clip.contains(target);
+            }
+
+            function setTranslate(c, x, animated) {
+                if (!c) return;
+                c.style.transition = animated ? 'transform 0.28s ease' : 'none';
+                c.style.transform  = x === 0 ? '' : `translateX(${x}px)`;
+            }
+
+            function onDragStart(x) {
+                dragStartX   = x;
+                isDragging   = false;
+                currentDelta = 0;
+                const c = getContainer();
+                if (c) { c.style.transition = 'none'; c.style.willChange = 'transform'; }
+            }
+
+            function onDragMove(x) {
+                if (dragStartX === null) return;
+                const rawDelta = x - dragStartX;
+                if (Math.abs(rawDelta) > 8) {
+                    isDragging   = true;
+                    currentDelta = rawDelta * RESISTANCE;
+                    const c = getContainer();
+                    if (c) {
+                        c.classList.add('dragging');
+                        c.style.transition = 'none';
+                        c.style.transform  = `translateX(${currentDelta}px)`;
+                    }
+                }
+            }
+
+            function onDragEnd(x) {
+                const c = getContainer();
+                if (c) { c.classList.remove('dragging'); c.style.willChange = ''; }
+                if (dragStartX === null) return;
+                const rawDelta = x - dragStartX;
+                dragStartX = null;
+
+                if (!isDragging || Math.abs(rawDelta) < DRAG_THRESHOLD) {
+                    setTranslate(c, 0, true);
+                    setTimeout(() => { if (c) c.style.transform = ''; }, 300);
+                    return;
+                }
+
+                window._calendarDragNavigated = true;
+
+                const width     = c ? c.offsetWidth : 400;
+                const direction = rawDelta < 0 ? -1 : 1;
+                const navigate  = rawDelta < 0 ? nextPeriod : previousPeriod;
+
+                if (c) {
+                    c.style.transition = 'transform 0.18s ease-in';
+                    c.style.transform  = `translateX(${direction * width * 1.1}px)`;
+                }
+
+                setTimeout(() => {
+                    if (c) { c.style.transition = 'none'; c.style.transform = `translateX(${-direction * width * 1.1}px)`; }
+                    navigate();
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                            if (c) {
+                                c.style.transition = 'transform 0.22s ease-out';
+                                c.style.transform  = '';
+                            }
+                        });
+                    });
+                }, 185);
+            }
+
+            // Mouse
+            document.addEventListener('mousedown', function (e) {
+                if (insideCalendar(e.target)) onDragStart(e.clientX);
+            });
+            window.addEventListener('mousemove', function (e) { onDragMove(e.clientX); });
+            window.addEventListener('mouseup',   function (e) { onDragEnd(e.clientX); });
+
+            // Touch
+            document.addEventListener('touchstart', function (e) {
+                if (insideCalendar(e.target)) onDragStart(e.touches[0].clientX);
+            }, { passive: true });
+            document.addEventListener('touchmove', function (e) {
+                if (dragStartX !== null) onDragMove(e.touches[0].clientX);
+            }, { passive: true });
+            document.addEventListener('touchend', function (e) {
+                onDragEnd(e.changedTouches[0].clientX);
+            });
+        })();
+
         // Mostra ordini del giorno (filtra per data selezionata)
         function showDayOrdersModal(dateStr) {
             // Imposta la data selezionata
             selectedDate = dateStr;
             showAllOrders = false;
             
-            // Aggiorna pulsante
-            const btn = document.getElementById('toggleShowAllBtn2');
-            btn.textContent = '👁️ Visualizza Tutti';
-            btn.classList.remove('btn-secondary');
-            btn.classList.add('btn-primary');
+            // Aggiorna i tab di filtro per riflettere lo stato corrente
+            const todayBtn = document.getElementById('ordersTodayTabBtn');
+            const allBtn = document.getElementById('ordersAllTabBtn');
+            if (todayBtn && allBtn) {
+                todayBtn.classList.add('active');
+                todayBtn.setAttribute('aria-selected', 'true');
+                allBtn.classList.remove('active');
+                allBtn.setAttribute('aria-selected', 'false');
+            }
             
             // Re-render ordini con la nuova data
             renderOrderTasks();
@@ -6881,13 +6143,10 @@
                 const token = localStorage.getItem('token');
                 if (token) {
                     try {
-                        const payload = JSON.parse(atob(token.split('.')[1]));
-                        const userInfo = document.getElementById('userInfo');
-                        if (userInfo && payload.username) {
-                            userInfo.textContent = `👤 ${payload.username}`;
-                        }
+                        // Usa currentUser (contiene anche image) e fallback al payload del JWT
+                        renderUserInfoBadge('userInfo', currentUser);
                     } catch (e) {
-                        console.error('Error parsing token:', e);
+                        console.error('Error rendering user badge:', e);
                     }
                 }
             
@@ -7180,6 +6439,8 @@
     })();
     </script>
 
+    <script src="js/user-info-badge.js"></script>
+    <script src="js/header-overflow-menu.js"></script>
     <script src="js/ui-confirm.js"></script>
 </body>
 </html>

@@ -1,22 +1,8 @@
 import { Router } from 'express';
 import { InventoryController } from '../controllers/inventoryController';
 import { authMiddleware } from '../middleware/auth';
-import * as path from 'path';
 
 const router = Router();
-
-// Route pubblica - Import da Master CSV (non richiede autenticazione)
-router.post('/import/master-csv', InventoryController.importFromMasterCSV);
-
-// Route pubblica - Leggi Master CSV direttamente (senza Prisma)
-router.get('/master-csv/data', InventoryController.readMasterCsvDirect);
-
-// Route pubblica - Import da PDF (non richiede autenticazione)
-router.post('/import/pdf', InventoryController.importFromPdf);
-
-// Master CSV management
-router.get('/get-master-csv', InventoryController.getMasterCsvFile);
-router.post('/sync-to-csv', InventoryController.syncToMasterCsv);
 
 // Lettura articoli
 router.get('/articles', InventoryController.getAllArticles);
@@ -52,7 +38,6 @@ router.put('/shelf-entries/:id', InventoryController.updateShelfEntry);
 router.delete('/shelf-entries/:id', InventoryController.deleteShelfEntry);
 
 // Gestione prenotazioni (per ordini)
-router.get('/batches', InventoryController.getBatches);
 router.post('/reserve', InventoryController.reserveInventory);
 router.post('/release', InventoryController.releaseReservation);
 router.post('/consume', InventoryController.consumeReservedInventory);

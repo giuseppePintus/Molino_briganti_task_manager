@@ -62,6 +62,12 @@ secrets/
 backup-logs.txt
 .git-history-replacements.txt
 
+# === WireGuard: peer conf/QR contengono chiavi private ===
+wireguard/peer_*
+wireguard/*.conf
+wireguard/*.png
+wireguard/config/
+
 # Artefatti di build/deploy
 *.tar.gz
 task-manager-update.tar.gz
@@ -162,3 +168,7 @@ task-manager-app/backups/
 *.db-wal
 # File temporanei vari
 android-inventory-app/cat-resp.txt
+# Container inspect: contiene JWT_SECRET e variabili d'ambiente sensibili
+task-manager-app/container-inspect.json
+# APK compilata: file binario pesante (>40MB), non versionare in git
+task-manager-app/public/MolinoInventory.apk

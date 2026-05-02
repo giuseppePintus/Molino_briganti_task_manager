@@ -64,7 +64,7 @@ class AuthController {
                 res.json({
                     message: 'Login successful',
                     token,
-                    user: { id: user.id, username: user.username, role: user.role },
+                    user: { id: user.id, username: user.username, role: user.role, image: user.image },
                 });
             }
             catch (err) {
@@ -98,8 +98,10 @@ class AuthController {
                 if (!req.user || req.user.role !== 'master') {
                     return res.status(403).json({ message: 'Only master can list admins' });
                 }
+                // Includiamo anche l'admin loggato così può modificare i propri dati
+                // (la cancellazione di sé è comunque bloccata in deleteOperator)
                 const admins = yield prisma_1.default.user.findMany({
-                    where: { role: 'master', id: { not: req.user.id } },
+                    where: { role: 'master' },
                     select: { id: true, username: true, role: true, createdAt: true, image: true },
                     orderBy: { username: 'asc' },
                 });

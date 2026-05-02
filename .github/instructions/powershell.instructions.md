@@ -19,7 +19,7 @@ description: "Convenzioni per gli script PowerShell di deploy, backup e sync ver
 - Per operazioni distruttive aggiungi `[CmdletBinding(SupportsShouldProcess)]` e usa `if ($PSCmdlet.ShouldProcess(...))`.
 
 ## Script chiave del repo (non rompere il loro contratto)
-- `quickbuild-nas.ps1` → build + deploy rapido al NAS.
+- `nas-deploy.ps1` → deploy unificato shadow→prod (sostituisce i vecchi `quickbuild-nas.ps1` + `rebuild-nas-safe.ps1`). Default: lavora sullo shadow su :5001. `-Promote` per swap a :5000. `-Full` rebuild immagine, `-Quick` solo `docker cp`, `-OnlyFrontend` solo public/, `-RemoveShadow` cleanup.
 - `deploy-mariadb.ps1` → deploy del container MariaDB.
 - `auto-backup-mariadb.ps1` → backup schedulato del DB.
 - `setup-backup-schedule.ps1` → registra le scheduled task di Windows.

@@ -9,6 +9,7 @@ const router = Router();
 const defaultSettings = {
   businessName: 'Molino Briganti',
   logoUrl: 'images/logo INSEGNA.png',
+  logoThermalUrl: '',
   openingDays: [1,2,3,4,5,6],
   openMorningStart: '08:00',
   openMorningEnd: '13:00',
@@ -80,7 +81,7 @@ router.put('/company', authMiddleware, async (req: Request, res: Response) => {
     }
     
     const { 
-      businessName, logoUrl,
+      businessName, logoUrl, logoThermalUrl,
       openingDays, openMorningStart, openMorningEnd, openAfternoonStart, openAfternoonEnd,
       openSatMorningStart, openSatMorningEnd, openSatAfternoonStart, openSatAfternoonEnd,
       deliveryDays, deliveryMorningStart, deliveryMorningEnd, deliveryAfternoonStart, deliveryAfternoonEnd,
@@ -92,6 +93,7 @@ router.put('/company', authMiddleware, async (req: Request, res: Response) => {
     const settingsToSave: { key: string, value: string }[] = [
       { key: 'businessName', value: JSON.stringify(businessName) },
       { key: 'logoUrl', value: JSON.stringify(logoUrl) },
+      { key: 'logoThermalUrl', value: JSON.stringify(logoThermalUrl) },
       { key: 'openingDays', value: JSON.stringify(openingDays) },
       { key: 'openMorningStart', value: JSON.stringify(openMorningStart) },
       { key: 'openMorningEnd', value: JSON.stringify(openMorningEnd) },
@@ -226,7 +228,7 @@ router.put('/', authMiddleware, async (req: Request, res: Response) => {
     }
     
     const { 
-      businessName, logoUrl,
+      businessName, logoUrl, logoThermalUrl,
       openingDays, openMorningStart, openMorningEnd, openAfternoonStart, openAfternoonEnd,
       openSatMorningStart, openSatMorningEnd, openSatAfternoonStart, openSatAfternoonEnd,
       deliveryDays, deliveryMorningStart, deliveryMorningEnd, deliveryAfternoonStart, deliveryAfternoonEnd,
@@ -239,6 +241,7 @@ router.put('/', authMiddleware, async (req: Request, res: Response) => {
     
     if (businessName !== undefined) settingsToSave.push({ key: 'businessName', value: JSON.stringify(businessName) });
     if (logoUrl !== undefined) settingsToSave.push({ key: 'logoUrl', value: JSON.stringify(logoUrl) });
+    if (logoThermalUrl !== undefined) settingsToSave.push({ key: 'logoThermalUrl', value: JSON.stringify(logoThermalUrl) });
     if (openingDays !== undefined) settingsToSave.push({ key: 'openingDays', value: JSON.stringify(openingDays) });
     if (openMorningStart !== undefined) settingsToSave.push({ key: 'openMorningStart', value: JSON.stringify(openMorningStart) });
     if (openMorningEnd !== undefined) settingsToSave.push({ key: 'openMorningEnd', value: JSON.stringify(openMorningEnd) });

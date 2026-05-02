@@ -107,18 +107,19 @@ const settings_1 = __importDefault(require("./routes/settings"));
 const inventory_1 = __importDefault(require("./routes/inventory"));
 const categories_1 = __importDefault(require("./routes/categories"));
 const alerts_1 = __importDefault(require("./routes/alerts"));
-const codifiche_1 = __importDefault(require("./routes/codifiche"));
 const upload_1 = __importStar(require("./routes/upload"));
 const orders_1 = __importDefault(require("./routes/orders"));
 const trips_1 = __importDefault(require("./routes/trips"));
 const customers_1 = __importDefault(require("./routes/customers"));
+const wireguard_1 = __importDefault(require("./routes/wireguard"));
 const debug_1 = __importDefault(require("./routes/debug"));
 const backupMiddleware_1 = __importDefault(require("./middleware/backupMiddleware"));
 const backupService_1 = __importDefault(require("./services/backupService"));
 const prisma_1 = __importDefault(require("./lib/prisma"));
 const databaseInit_1 = require("./services/databaseInit");
+const jsonToDbMigration_1 = require("./services/jsonToDbMigration");
 const socketService_1 = require("./services/socketService");
-// WarehouseService imported lazily in endpoints to avoid sqlite3 dependency issue
+// WarehouseService rimosso: gestione PDF dismessa, dati gestiti via Prisma/MariaDB
 const execAsync = (0, util_1.promisify)(child_process_1.exec);
 const app = (0, express_1.default)();
 const httpServer = http_1.default.createServer(app);
@@ -156,11 +157,11 @@ app.use('/api/settings', settings_1.default);
 app.use('/api/inventory', inventory_1.default);
 app.use('/api/categories', categories_1.default);
 app.use('/api/alerts', alerts_1.default);
-app.use('/api/codifiche', codifiche_1.default);
 app.use('/api/upload', upload_1.default);
 app.use('/api/orders', orders_1.default);
 app.use('/api/trips', trips_1.default);
 app.use('/api/customers', customers_1.default);
+app.use('/api/wireguard', wireguard_1.default);
 app.use('/api/debug', debug_1.default);
 // Inline endpoint - List all HTML pages in public dir (for Indice feature)
 app.get('/api/pages', (req, res) => {
@@ -184,42 +185,7 @@ app.get('/api/pages', (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
-// Inline endpoint - Import warehouse from PDF
-app.post('/api/warehouse/import-from-pdf', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        console.log('📄 [INLINE] Warehouse PDF import requested');
-        const result = yield (require('./services/warehouseService').WarehouseService).importFromPdf();
-        res.json({
-            success: true,
-            message: 'Warehouse imported successfully',
-            data: result
-        });
-    }
-    catch (error) {
-        console.error('❌ [INLINE] Warehouse import error:', error.message);
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
-    }
-}));
-// Inline endpoint - Get warehouse articles
-app.get('/api/warehouse/articles', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        const articles = yield (require('./services/warehouseService').WarehouseService).getAllArticles();
-        res.json({
-            success: true,
-            data: articles
-        });
-    }
-    catch (error) {
-        console.error('❌ [INLINE] Get warehouse articles error:', error.message);
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
-    }
-}));
+// Inline endpoints warehouse PDF rimossi (gestione PDF dismessa)
 // Force reload of modules (emergency restart without killing process)
 app.post('/api/admin/reload-modules', (req, res) => {
     try {
@@ -366,6 +332,8 @@ httpServer.listen(PORT, undefined, () => __awaiter(void 0, void 0, void 0, funct
         }
         // Inizializza database con utenti di default se vuoto
         yield (0, databaseInit_1.initializeDatabaseIfEmpty)(prisma_1.default);
+        // Migrazione one-shot da JSON a DB (categorie + clienti)
+        yield (0, jsonToDbMigration_1.migrateJsonToDb)();
         // Setup backup middleware
         (0, backupMiddleware_1.default)(prisma_1.default);
         // Attiva backup automatico ogni ora
