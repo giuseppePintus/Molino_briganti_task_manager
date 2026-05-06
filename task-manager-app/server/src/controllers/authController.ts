@@ -265,7 +265,7 @@ export class AuthController {
     async getPublicOperators(req: Request, res: Response) {
         try {
             const operators = await prisma.user.findMany({
-                where: { role: 'slave' },
+                where: { role: { in: ['slave', 'admin', 'master'] } },
                 select: { 
                     id: true, 
                     username: true,

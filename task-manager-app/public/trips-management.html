@@ -8,6 +8,8 @@
     <link rel="stylesheet" href="css/common-styles.css">
     <link rel="stylesheet" href="css/trips-management-custom.css">
     <script src="js/settings-utils.js"></script>
+    <script src="js/auth-guard.js"></script>
+    <script src="js/scroll-preserve.js"></script>
 </head>
 <body>
     <div class="container">
@@ -223,14 +225,16 @@
                     }
                 }
                 
+                // /auth/operators/public ritorna GIÀ slave + admin + master.
+                // Non combinare con /auth/admins/public per evitare duplicati.
                 const operatorsResponse = await fetch(`${API_URL}/auth/operators/public`);
-                const adminsResponse = await fetch(`${API_URL}/auth/admins/public`);
 
-                if (operatorsResponse.ok && adminsResponse.ok) {
-                    const operators = await operatorsResponse.json();
-                    const admins = await adminsResponse.json();
-                    const sortedAdmins = admins.sort((a, b) => a.username.localeCompare(b.username));
-                    const sortedOperators = operators.sort((a, b) => a.username.localeCompare(b.username));
+                if (operatorsResponse.ok) {
+                    const all = await operatorsResponse.json();
+                    const uniqueById = Array.from(new Map(all.map(u => [u.id, u])).values());
+                    const isAdmin = (u) => u.role === 'master' || u.role === 'admin';
+                    const sortedAdmins = uniqueById.filter(isAdmin).sort((a, b) => a.username.localeCompare(b.username));
+                    const sortedOperators = uniqueById.filter(u => !isAdmin(u)).sort((a, b) => a.username.localeCompare(b.username));
                     allOperators = [...sortedAdmins, ...sortedOperators];
                     localStorage.setItem('cachedOperators', JSON.stringify(allOperators));
                 }

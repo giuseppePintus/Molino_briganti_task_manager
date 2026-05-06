@@ -625,7 +625,7 @@
             : {};
 
         const operatorName = getOperatorName(trip.assignedOperatorId, trip.assignedOperator);
-        const dt = trip.dateTime ? new Date(trip.dateTime) : new Date();
+        const dt = new Date(trip.dateTime || trip.date || Date.now());
 
         let html = '';
         html += brandHeaderHtml();
@@ -635,7 +635,7 @@
             ['Data', fmtDate(dt)],
             ['Ora', fmtTime(dt)],
             ['Operatore', operatorName],
-            ['Mezzo', trip.vehicle || '']
+            ['Mezzo', trip.vehicleName || trip.vehicle || '']
         ]);
 
         // Sezione consegne
@@ -751,6 +751,17 @@
 
     window.printTripThermal = printTripThermal;
     window.printPickupOrderThermal = printPickupOrderThermal;
+
+    // API generica per costruire scontrini da altre pagine (es. instant-orders)
+    window.thermalPrintAPI = {
+        openReceipt: openReceipt,
+        brandHeaderHtml: brandHeaderHtml,
+        infoBoxHtml: infoBoxHtml,
+        productHtml: productHtml,
+        totalBoxHtml: totalBoxHtml,
+        footerHtml: footerHtml,
+        escapeHtml: escapeHtml,
+    };
 
     // ============================================================
     // INTERNAL ORDER (TASK "Ordine interno") — THERMAL & FULL PRINT
@@ -869,44 +880,30 @@
         }
 
         const o = parseInternalOrder(task);
-        const out = [];
-        out.push(center('=== ORDINE INTERNO ==='));
-        out.push(center('Molino Briganti'));
-        out.push('');
-        out.push(hr('='));
-        // Nome articolo (wrap)
-        wrap(String(o.name), LINE_WIDTH).forEach(l => out.push(l));
-        if (o.code) out.push('Cod: ' + o.code);
-        if (o.category) out.push('Cat: ' + o.category);
-        out.push(hr('-'));
-        // Quantità grande
-        out.push('');
-        const qtyLine = 'QTA: ' + o.qty + ' ' + o.unit;
-        out.push(center(qtyLine));
-        out.push('');
-        out.push(hr('-'));
-        if (o.totalKg > 0) {
-            out.push('Peso: ' + o.qty + ' x ' + o.weightPerCollo + ' kg = ' + o.totalKg + ' kg');
-        }
-        if (o.scheduledAt) {
-            out.push('Per il: ' + fmtDate(o.scheduledAt) + ' ' + fmtTime(o.scheduledAt));
-        }
         const opName = getOperatorName(o.assignedOperatorId);
-        out.push('Op: ' + opName);
-        if (o.priority) out.push('Priorità: ' + o.priority);
-        if (o.notes) {
-            out.push('');
-            out.push('Note:');
-            wrap(o.notes, LINE_WIDTH).forEach(l => out.push(l));
+        let html = '';
+        html += brandHeaderHtml();
+        html += '<div class="rcpt-title">ORDINE INT.</div>';
+        html += '<div class="rcpt-sub">' + escapeHtml(o.name) + '</div>';
+        const infoRows = [];
+        if (o.code) infoRows.push(['Codice', o.code]);
+        if (o.category) infoRows.push(['Categoria', o.category]);
+        if (o.scheduledAt) infoRows.push(['Data', fmtDate(new Date(o.scheduledAt)) + ' ' + fmtTime(new Date(o.scheduledAt))]);
+        infoRows.push(['Operatore', opName]);
+        if (o.priority) infoRows.push(['Priorità', o.priority]);
+        html += infoBoxHtml(infoRows);
+        html += '<div class="rcpt-section">QUANTITÀ DA RIORDINARE</div>';
+        html += '<div class="rcpt-total">';
+        html += '<span class="lbl">' + o.qty + ' colli</span>';
+        if (o.totalKg > 0) {
+            html += '<span class="val">' + o.qty + '&nbsp;×&nbsp;' + o.weightPerCollo + '&nbsp;kg<br><strong>' + o.totalKg + '&nbsp;kg</strong></span>';
         }
-        out.push('');
-        out.push(hr('='));
-        out.push(center('Stampato ' + new Date().toLocaleString('it-IT')));
-        out.push('');
-        out.push('');
-        out.push('');
-
-        openReceipt('Ordine interno ' + o.id, escapeHtml(out.join('\n')));
+        html += '</div>';
+        if (o.notes) {
+            html += '<div class="rcpt-notes"><span class="lbl">Note</span>' + escapeHtml(o.notes) + '</div>';
+        }
+        html += footerHtml();
+        openReceipt('Ordine interno ' + o.id, html);
     }
 
     function printInternalOrderFull(taskId) {
@@ -921,43 +918,65 @@
             const opName = getOperatorName(o.assignedOperatorId);
             const w = window.open('', '_blank', 'width=900,height=1100');
             if (!w) { alert('Abilita i popup per stampare.'); return; }
+            const scheduledStr = o.scheduledAt
+                ? new Date(o.scheduledAt).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+                : '';
             const html = `<!doctype html><html><head><meta charset="UTF-8">
                 <title>Ordine interno #${task.id} - ${escapeHtml(o.name)}</title>
                 <style>
                     @page { size: A4; margin: 18mm; }
                     * { box-sizing: border-box; }
-                    body { font-family: Arial, sans-serif; color:#111; margin:0; padding:24px; }
-                    h1 { font-size: 22pt; margin: 0 0 4px; }
-                    .sub { color:#555; margin-bottom: 18px; }
-                    table { width:100%; border-collapse: collapse; margin-top: 12px; }
-                    th, td { border:1px solid #ccc; padding: 8px 10px; text-align:left; vertical-align: top; }
-                    th { background:#f3f4f6; font-weight:700; }
-                    .qty { font-size: 32pt; font-weight: 900; color:#b91c1c; }
-                    .footer { margin-top:24px; color:#666; font-size: 10pt; }
-                    .toolbar { padding:12px; text-align:center; }
-                    .toolbar button { padding:8px 14px; font-size:13px; margin:2px; border:none; border-radius:4px; cursor:pointer; color:#fff; }
-                    .toolbar .btn-print { background:#111; }
-                    .toolbar .btn-close { background:#888; }
-                    @media print { .no-print { display:none !important; } body { padding:0; } }
+                    body { font-family: Arial, sans-serif; margin: 20px; color: #333; }
+                    .header { border-bottom: 3px solid #f97316; padding-bottom: 15px; margin-bottom: 20px; }
+                    .header h1 { margin: 0; color: #f97316; font-size: 24px; }
+                    .header p { margin: 5px 0; color: #666; }
+                    .details { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+                    .detail-box { padding: 10px; background: #f5f5f5; border-radius: 4px; }
+                    .detail-label { font-weight: bold; color: #f97316; font-size: 12px; text-transform: uppercase; }
+                    .detail-value { font-size: 16px; margin-top: 5px; }
+                    .qty-box { margin: 20px 0; padding: 20px; background: #fff9f0; border: 2px solid #f97316; border-radius: 6px; text-align: center; }
+                    .qty-label { font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 1px; }
+                    .qty-value { font-size: 48px; font-weight: 900; color: #f97316; margin: 8px 0; }
+                    .qty-kg { font-size: 18px; font-weight: 700; color: #555; }
+                    .notes-section { margin: 20px 0; padding: 15px; background: #f9f9f9; border-left: 4px solid #f97316; border-radius: 4px; }
+                    .notes-section h2 { color: #f97316; margin: 0 0 8px 0; font-size: 14px; text-transform: uppercase; }
+                    .signature { margin-top: 40px; border-top: 1px solid #ccc; padding-top: 10px; font-size: 12px; color: #666; }
+                    .toolbar { padding: 12px; text-align: center; }
+                    .toolbar button { padding: 10px 20px; font-size: 14px; margin: 2px; border: none; border-radius: 4px; cursor: pointer; color: #fff; }
+                    .btn-print { background: #f97316; }
+                    .btn-close { background: #999; }
+                    @media print { .no-print { display: none !important; } body { margin: 0; } }
                 </style>
             </head><body>
-                <h1>🛒 Ordine interno #${task.id}</h1>
-                <div class="sub">Molino Briganti · Generato il ${new Date().toLocaleString('it-IT')}</div>
-                <table>
-                    <tr><th style="width:30%">Articolo</th><td><strong>${escapeHtml(o.name)}</strong></td></tr>
-                    ${o.code ? `<tr><th>Codice</th><td>${escapeHtml(o.code)}</td></tr>` : ''}
-                    ${o.category ? `<tr><th>Categoria</th><td>${escapeHtml(o.category)}</td></tr>` : ''}
-                    <tr><th>Quantità da riordinare</th><td class="qty">${o.qty} ${escapeHtml(o.unit)}</td></tr>
-                    ${o.totalKg > 0 ? `<tr><th>Peso totale</th><td><strong>${o.qty} × ${o.weightPerCollo} kg = ${o.totalKg} kg</strong></td></tr>` : ''}
-                    ${o.scheduledAt ? `<tr><th>Data prevista</th><td>${fmtDate(o.scheduledAt)} ${fmtTime(o.scheduledAt)}</td></tr>` : ''}
-                    <tr><th>Operatore</th><td>${escapeHtml(opName)}</td></tr>
-                    ${o.priority ? `<tr><th>Priorità</th><td>${escapeHtml(o.priority)}</td></tr>` : ''}
-                    ${o.notes ? `<tr><th>Note</th><td>${escapeHtml(o.notes)}</td></tr>` : ''}
-                    ${task.internalOrderPrintedAt ? `<tr><th>Già stampato</th><td>${new Date(task.internalOrderPrintedAt).toLocaleString('it-IT')}</td></tr>` : ''}
-                </table>
-                <div class="footer">Firma operatore: ____________________________</div>
-                <div class="toolbar no-print">
-                    <button class="btn-print" onclick="window.print()">🖨️ Stampa</button>
+                <div class="header">
+                    <h1>🛒 Ordine Interno #${task.id}</h1>
+                    <p>Stampa Ordine Interno • ${new Date().toLocaleString('it-IT')}</p>
+                </div>
+                <div class="details">
+                    <div class="detail-box">
+                        <div class="detail-label">📦 ARTICOLO</div>
+                        <div class="detail-value"><strong>${escapeHtml(o.name)}</strong></div>
+                    </div>
+                    ${o.code ? `<div class="detail-box"><div class="detail-label">🏷️ CODICE</div><div class="detail-value">${escapeHtml(o.code)}</div></div>` : ''}
+                    ${o.category ? `<div class="detail-box"><div class="detail-label">📂 CATEGORIA</div><div class="detail-value">${escapeHtml(o.category)}</div></div>` : ''}
+                    <div class="detail-box">
+                        <div class="detail-label">👤 OPERATORE</div>
+                        <div class="detail-value">${escapeHtml(opName)}</div>
+                    </div>
+                    ${o.priority ? `<div class="detail-box"><div class="detail-label">⚡ PRIORITÀ</div><div class="detail-value">${escapeHtml(o.priority)}</div></div>` : ''}
+                    ${o.scheduledAt ? `<div class="detail-box"><div class="detail-label">📅 DATA PREVISTA</div><div class="detail-value">${scheduledStr}</div></div>` : ''}
+                </div>
+                <div class="qty-box">
+                    <div class="qty-label">Quantità da riordinare</div>
+                    <div class="qty-value">${o.qty} colli</div>
+                    ${o.totalKg > 0 ? `<div class="qty-kg">${o.qty} × ${o.weightPerCollo} kg = <strong>${o.totalKg} kg</strong></div>` : ''}
+                </div>
+                ${o.notes ? `<div class="notes-section"><h2>📝 Note</h2><p>${escapeHtml(o.notes)}</p></div>` : ''}
+                ${task.internalOrderPrintedAt ? `<p style="color:#888;font-size:12px;">⚠️ Già stampato il ${new Date(task.internalOrderPrintedAt).toLocaleString('it-IT')}</p>` : ''}
+                <div class="signature">Firma operatore: ____________________________</div>
+                <div class="no-print toolbar">
+                    <p style="color:#999;font-size:12px;margin-bottom:8px;">Generato il ${new Date().toLocaleString('it-IT')}</p>
+                    <button class="btn-print" onclick="window.print()">🖨️ Stampa A4</button>
                     <button class="btn-close" onclick="window.close()">❌ Chiudi</button>
                 </div>
                 <script>window.addEventListener('load', function(){ setTimeout(function(){ try{window.focus();window.print();}catch(e){} }, 300); });<\/script>
@@ -990,8 +1009,8 @@
                 ? `<span style="font-size:11px;color:#9ca3af;margin-left:4px;" title="Gi\u00e0 stampato il ${new Date(printed).toLocaleString('it-IT')}">\u2713 stampato</span>`
                 : '';
             return `
-                <button class="btn btn-secondary btn-small" onclick="printInternalOrderThermal(${task.id})" style="background:#475569;" title="Stampa scontrino su termica 72mm">\ud83e\uddfe Termica</button>
-                <button class="btn btn-secondary btn-small" onclick="printInternalOrderFull(${task.id})" style="background:#8b5cf6;" title="Stampa documento completo A4">\ud83d\udda8\ufe0f Completa</button>
+                <button class="btn btn-secondary btn-small" onclick="printInternalOrderThermal(${task.id})" style="background:#475569;" title="Stampa scontrino su termica 80mm">\ud83e\uddfe Stampa 80mm</button>
+                <button class="btn btn-secondary btn-small" onclick="printInternalOrderFull(${task.id})" style="background:#8b5cf6;" title="Stampa documento completo A4">\ud83d\udda8\ufe0f Stampa A4</button>
                 ${note}
             `;
         }
@@ -999,7 +1018,7 @@
         if (printed) {
             return `<button class="btn btn-secondary btn-small" disabled style="background:#374151;color:#9ca3af;cursor:not-allowed;" title="Gi\u00e0 stampato il ${new Date(printed).toLocaleString('it-IT')}">\ud83e\uddfe Stampato</button>`;
         }
-        return `<button class="btn btn-secondary btn-small" onclick="printInternalOrderThermal(${task.id})" style="background:#475569;" title="Stampa scontrino (una sola volta)">\ud83e\uddfe Termica</button>`;
+        return `<button class="btn btn-secondary btn-small" onclick="printInternalOrderThermal(${task.id})" style="background:#475569;" title="Stampa scontrino (una sola volta)">\ud83e\uddfe Stampa 80mm</button>`;
     }
 
     /**
@@ -1024,8 +1043,122 @@
         return `${prefix}${name} × ${qty} colli${totalPart}`;
     }
 
+    // ============================================================
+    // GENERIC TASK — STAMPA TERMICA 80mm
+    // Per task "ritiro -": usa il formato identico a printPickupOrderThermal.
+    // Per altri task: formato generico compito.
+    // ============================================================
+    async function printTaskThermal(taskId) {
+        const task = await fetchTask(taskId);
+        if (!task) { alert('Task non trovato'); return; }
+        const isAdmin = isAdminUser();
+        const already = task.internalOrderPrintedAt;
+        if (already) {
+            const when = new Date(already).toLocaleString('it-IT');
+            if (isAdmin) {
+                const ok = confirm('\u26a0\ufe0f Questo compito \u00e8 gi\u00e0 stato stampato il '
+                    + when + '.\n\nVuoi ristamparlo comunque?');
+                if (!ok) return;
+            } else {
+                alert('\u26a0\ufe0f Questo compito \u00e8 gi\u00e0 stato stampato il '
+                    + when
+                    + '.\nGli operatori possono stamparlo una sola volta.');
+                return;
+            }
+        }
+
+        const mark = await markTaskPrinted(taskId);
+        if (!mark.ok && !isAdmin) {
+            alert('Impossibile stampare: ' + (mark.body && mark.body.error || mark.status));
+            return;
+        }
+
+        const titleRaw = String(task.title || '').trim();
+        const isRitiro = titleRaw.toLowerCase().startsWith('ritiro -');
+
+        if (isRitiro) {
+            // === Formato identico a printPickupOrderThermal ===
+            const cliente = titleRaw.slice('ritiro - '.length).toUpperCase();
+            const desc = task.description || '';
+
+            // Estrae "Prodotti: F-00-25 (250 kg), ..." dalla descrizione
+            const prodMatch = desc.match(/Prodotti:\s*([^\n]+)/i);
+            const prodStr = prodMatch ? prodMatch[1].trim() : '';
+            const notesMatch = desc.match(/Note:\s*([^\n]*)/i);
+            const notes = notesMatch ? notesMatch[1].trim() : '';
+
+            // Parsa ogni "CODE (QTY kg)" o "CODE (QTY)"
+            const prodItems = [];
+            const prodRegex = /([A-Z0-9\-\/]+)\s*\((\d+(?:[.,]\d+)?)\s*(?:kg)?\)/gi;
+            let m;
+            while ((m = prodRegex.exec(prodStr)) !== null) {
+                prodItems.push({ product: m[1].toUpperCase(), quantity: parseFloat(m[2].replace(',', '.')) });
+            }
+            if (!prodItems.length && prodStr) {
+                prodItems.push({ product: prodStr, quantity: 0 });
+            }
+
+            const dt = task.scheduledAt ? new Date(task.scheduledAt) : new Date();
+            const opName = getOperatorName(
+                task.assignedOperator ? task.assignedOperator.id : null,
+                task.assignedOperator || null
+            );
+
+            let html = '';
+            html += brandHeaderHtml();
+            html += '<div class="rcpt-title">RITIRO</div>';
+            html += '<div class="rcpt-sub">' + escapeHtml(cliente) + '</div>';
+            html += infoBoxHtml([
+                ['Data', fmtDate(dt)],
+                ['Ora', fmtTime(dt)],
+                ['Operatore', opName],
+                ['Tipo', 'Ritiro Cliente']
+            ]);
+            html += '<div class="rcpt-section">PRODOTTI</div>';
+            let totalKg = 0, totalColli = 0;
+            prodItems.forEach(function (p) {
+                const wpc = (typeof window.extractWeightPerCollo === 'function')
+                    ? window.extractWeightPerCollo(p.product) : 1;
+                const c = wpc > 0 ? Math.round(p.quantity / wpc) : 0;
+                totalKg += p.quantity;
+                totalColli += c;
+                html += productHtml(p);
+            });
+            if (notes) {
+                html += '<div class="rcpt-notes"><span class="lbl">Note</span>' + escapeHtml(notes) + '</div>';
+            }
+            html += totalBoxHtml(totalColli, totalKg);
+            html += footerHtml();
+            openReceipt('Ritiro ' + cliente, html);
+
+        } else {
+            // === Formato generico per altri task ===
+            const opName = getOperatorName(
+                task.assignedOperator ? task.assignedOperator.id : null,
+                task.assignedOperator || null
+            );
+            const infoRows = [];
+            if (task.scheduledAt) infoRows.push(['Data', fmtDate(new Date(task.scheduledAt)) + ' ' + fmtTime(new Date(task.scheduledAt))]);
+            infoRows.push(['Operatore', opName]);
+            if (task.priority) infoRows.push(['Priorit\u00e0', task.priority]);
+            if (task.estimatedMinutes) infoRows.push(['Durata', task.estimatedMinutes + ' min']);
+
+            let html = '';
+            html += brandHeaderHtml();
+            html += '<div class="rcpt-title">COMPITO</div>';
+            html += '<div class="rcpt-sub">' + escapeHtml(titleRaw) + '</div>';
+            html += infoBoxHtml(infoRows);
+            if (task.description) {
+                html += '<div class="rcpt-notes"><span class="lbl">Note</span>' + escapeHtml(task.description) + '</div>';
+            }
+            html += footerHtml();
+            openReceipt('Compito ' + task.id, html);
+        }
+    }
+
     window.printInternalOrderThermal = printInternalOrderThermal;
     window.printInternalOrderFull = printInternalOrderFull;
+    window.printTaskThermal = printTaskThermal;
     window.isInternalOrderTask = isInternalOrderTask;
     window.taskOrdineInternoButtons = taskOrdineInternoButtons;
     window.formatInternalOrderTitle = formatInternalOrderTitle;

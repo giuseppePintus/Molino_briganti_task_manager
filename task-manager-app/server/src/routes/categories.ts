@@ -31,16 +31,16 @@ async function loadCategoriesDb(): Promise<CategoryItem[]> {
 async function saveCategoriesDb(items: CategoryItem[]): Promise<void> {
   // Sostituisce intera lista preservando l'ordine: usa una transazione
   await prisma.$transaction(async (tx) => {
-    await tx.productCategory.deleteMany({});
+    const newNames = items.map(it => it.name);
+    // Elimina solo le categorie rimosse dalla lista (la cascade sulle sub è voluta per le cat eliminate)
+    await tx.productCategory.deleteMany({ where: { name: { notIn: newNames } } });
+    // Upsert: mantiene l'id esistente → le sotto-categorie collegate non vengono perse
     for (let i = 0; i < items.length; i++) {
       const it = items[i];
-      await tx.productCategory.create({
-        data: {
-          name: it.name,
-          icon: it.icon ?? null,
-          color: it.color ?? null,
-          sortOrder: i
-        }
+      await tx.productCategory.upsert({
+        where: { name: it.name },
+        update: { icon: it.icon ?? null, color: it.color ?? null, sortOrder: i },
+        create: { name: it.name, icon: it.icon ?? null, color: it.color ?? null, sortOrder: i }
       });
     }
   });
@@ -74,6 +74,122 @@ router.get('/', async (_req: Request, res: Response) => {
   } catch (e: any) {
     console.error('[categories] GET error', e);
     return res.status(500).json({ error: e.message });
+  }
+});
+
+// GET pubblico - sottocategorie di una categoria (definite in Gestione Categorie)
+router.get('/:name/subcategories', async (req: Request, res: Response) => {
+  try {
+    const name = String(req.params.name || '').trim().toUpperCase();
+    if (!name) return res.json([]);
+    const cat = await prisma.productCategory.findUnique({ where: { name } });
+    if (!cat) return res.json([]);
+    const rows = await prisma.productSubcategory.findMany({
+      where: { categoryId: cat.id },
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+      select: { name: true },
+    });
+    return res.json(rows.map(r => r.name));
+  } catch (e: any) {
+    console.error('[categories] GET subcategories error', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// Helper: assicura che la categoria esista in DB e ne ritorna l'id
+async function ensureCategoryId(name: string): Promise<number> {
+  const existing = await prisma.productCategory.findUnique({ where: { name } });
+  if (existing) return existing.id;
+  const last = await prisma.productCategory.findFirst({ orderBy: { sortOrder: 'desc' } });
+  const created = await prisma.productCategory.create({
+    data: { name, sortOrder: (last?.sortOrder ?? -1) + 1 }
+  });
+  return created.id;
+}
+
+// POST - aggiunge una sotto-categoria a una categoria
+router.post('/:name/subcategories', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const name = String(req.params.name || '').trim().toUpperCase();
+    const subRaw = (req.body?.name ?? '').toString().trim();
+    if (!name) return res.status(400).json({ error: 'Categoria obbligatoria' });
+    if (!subRaw) return res.status(400).json({ error: 'Nome sotto-categoria obbligatorio' });
+    if (/["'`]/.test(subRaw)) return res.status(400).json({ error: 'Il nome non può contenere virgolette (", \', `)' });
+    const sub = subRaw.toUpperCase();
+    const categoryId = await ensureCategoryId(name);
+    const last = await prisma.productSubcategory.findFirst({
+      where: { categoryId },
+      orderBy: { sortOrder: 'desc' }
+    });
+    try {
+      const created = await prisma.productSubcategory.create({
+        data: { categoryId, name: sub, sortOrder: (last?.sortOrder ?? -1) + 1 }
+      });
+      return res.json({ ok: true, id: created.id, name: created.name });
+    } catch (e: any) {
+      if (e?.code === 'P2002') {
+        return res.status(409).json({ error: `Sotto-categoria "${sub}" già esistente` });
+      }
+      throw e;
+    }
+  } catch (e: any) {
+    console.error('[categories] POST subcategory error', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// DELETE - rimuove una sotto-categoria
+router.delete('/:name/subcategories/:sub', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const name = String(req.params.name || '').trim().toUpperCase();
+    const sub = String(req.params.sub || '').trim().toUpperCase();
+    if (!name || !sub) return res.status(400).json({ error: 'Parametri mancanti' });
+    const cat = await prisma.productCategory.findUnique({ where: { name } });
+    if (!cat) return res.json({ ok: true, deleted: 0 });
+    // Conta articoli che usano questa sub
+    const inUse = await prisma.article.count({ where: { category: name, subcategory: sub } });
+    if (inUse > 0 && req.query.force !== '1') {
+      return res.status(409).json({ error: `Sotto-categoria usata da ${inUse} articoli`, inUse });
+    }
+    await prisma.productSubcategory.deleteMany({ where: { categoryId: cat.id, name: sub } });
+    if (req.query.force === '1' && inUse > 0) {
+      // svuota subcategory degli articoli interessati
+      await prisma.article.updateMany({
+        where: { category: name, subcategory: sub },
+        data: { subcategory: null }
+      });
+    }
+    return res.json({ ok: true, clearedArticles: req.query.force === '1' ? inUse : 0 });
+  } catch (e: any) {
+    console.error('[categories] DELETE subcategory error', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// PUT - sostituisce intera lista sotto-categorie di una categoria (riordino/rinomina batch)
+router.put('/:name/subcategories', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const name = String(req.params.name || '').trim().toUpperCase();
+    const items = req.body;
+    if (!name) return res.status(400).json({ error: 'Categoria obbligatoria' });
+    if (!Array.isArray(items)) return res.status(400).json({ error: 'Body deve essere un array' });
+    const sanitized = items
+      .map(it => (typeof it === 'string' ? it : it?.name))
+      .map(s => (s || '').toString().trim().toUpperCase())
+      .filter(s => s.length > 0);
+    const categoryId = await ensureCategoryId(name);
+    await prisma.$transaction(async (tx) => {
+      await tx.productSubcategory.deleteMany({ where: { categoryId } });
+      for (let i = 0; i < sanitized.length; i++) {
+        await tx.productSubcategory.create({
+          data: { categoryId, name: sanitized[i], sortOrder: i }
+        });
+      }
+    });
+    return res.json({ ok: true, count: sanitized.length });
+  } catch (e: any) {
+    console.error('[categories] PUT subcategories error', e);
+    res.status(500).json({ error: e.message });
   }
 });
 

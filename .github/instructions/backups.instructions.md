@@ -14,7 +14,7 @@ description: "Sistema di backup MariaDB: dump, rotazione, sync verso NAS. Modifi
 - **Sync verso NAS**: `sync-backups-nas.ps1` (root).
 - **Rotazione**: `cleanup-backups.ps1` (root). **Verifica la retention prima di modificarlo.**
 - **Diagnostica**: `diagnose-backup-system.ps1` — deve restare **read-only**, niente effetti collaterali.
-- **UI**: `task-manager-app/public/backup-management.html` (rigenerata da `update-backup-page.ps1`).
+- **UI**: `task-manager-app/public/backup-management.html`.
 
 ## Cartelle dump
 - `task-manager-app/backups/db-backup-*.sql`

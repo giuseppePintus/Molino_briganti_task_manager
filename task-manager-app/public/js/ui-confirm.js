@@ -152,4 +152,48 @@
 
     // Always override
     window.customConfirm = customConfirm;
+
+    // ─── Global ESC handler ───────────────────────────────────────────────
+    // Chiude qualsiasi popup/overlay aperto premendo ESC.
+    // Viene aggiunto una sola volta sul documento.
+    if (!window.__globalEscBound) {
+        window.__globalEscBound = true;
+        document.addEventListener('keydown', function (ev) {
+            if (ev.key !== 'Escape') return;
+
+            // Se customConfirm è aperto, pensa già lui (handler cattura in fase capture).
+            if (document.querySelector('.__cc_overlay')) return;
+
+            // Priorità 1 – overlay con classe 'open' (warehouse pattern).
+            // Prende l'ultimo (= quello in cima visivamente).
+            const openEls = Array.from(
+                document.querySelectorAll('[id$="Overlay"].open, [id$="Modal"].open, .cargo-modal-overlay.open, .av-modal-overlay.open')
+            );
+            if (openEls.length) {
+                openEls[openEls.length - 1].classList.remove('open');
+                ev.preventDefault();
+                return;
+            }
+
+            // Priorità 2 – .modal.active (pattern comune admin/trips/customers/orders…)
+            const activeEls = Array.from(document.querySelectorAll('.modal.active'));
+            if (activeEls.length) {
+                activeEls[activeEls.length - 1].classList.remove('active');
+                ev.preventDefault();
+                return;
+            }
+
+            // Priorità 3 – overlay con style.display flex/block (tripAssignmentModal, peerModal, …)
+            const knownFlexIds = ['tripAssignmentModal', 'batchModalOverlay', 'peerModal'];
+            for (const id of knownFlexIds) {
+                const el = document.getElementById(id);
+                if (el && el.style.display && el.style.display !== 'none') {
+                    el.style.display = 'none';
+                    ev.preventDefault();
+                    return;
+                }
+            }
+        }, true); // capture = true, intercetta prima dei listener inline
+    }
+    // ─────────────────────────────────────────────────────────────────────
 })();

@@ -12,6 +12,8 @@
     <script src="js/socket-client.js"></script>
     <script src="js/settings-utils.js"></script>
     <script src="js/thermal-print.js"></script>
+    <script src="js/auth-guard.js"></script>
+    <script src="js/scroll-preserve.js"></script>
 </head>
 <body>
     <div class="container">
@@ -336,6 +338,7 @@
                             <button class="btn btn-warning btn-small" onclick="handlePauseTask(${currentTask.id})">⏸️ Metti in Pausa</button>
                             <button class="btn btn-success btn-small" onclick="openCompleteModal(${currentTask.id})">✅ Completa</button>
                             <button class="btn btn-secondary btn-small" onclick="openTaskModal(${currentTask.id})">📋 Dettagli</button>
+                            <button class="btn btn-primary btn-small" onclick="printTaskThermal(${currentTask.id})" style="background: #475569;" ${currentTask.internalOrderPrintedAt ? 'disabled title="Già stampato il ' + new Date(currentTask.internalOrderPrintedAt).toLocaleString('it-IT') + '"' : ''}>🧾 Stampa 80mm</button>
                             ${window.taskOrdineInternoButtons ? window.taskOrdineInternoButtons(currentTask) : ''}
                         </div>
                     </div>
@@ -944,7 +947,8 @@
                         buttons += `<button class="btn btn-success btn-small" style="margin-right: 8px;" onclick="handleAcceptTrip(${trip.id})">👍 Accetta</button>`;
                     }
                     if (!trip.printed) {
-                        buttons += `<button class="btn btn-primary btn-small" onclick="handlePrintTrip(${trip.id})">🖨️ Stampa</button>`;
+                        buttons += `<button class="btn btn-primary btn-small" onclick="printTrip(${trip.id})">🖨️ Stampa A4</button>`;
+                    buttons += `<button class="btn btn-primary btn-small" onclick="handlePrintTrip(${trip.id})" style="background: #475569;">🧾 Stampa 80mm</button>`;
                     }
                 }
                 
@@ -1188,7 +1192,7 @@
 
                         <div class="no-print">
                             <p>Stampato il ${new Date().toLocaleString('it-IT')}</p>
-                            <button onclick="window.print()">🖨️ Stampa</button>
+                            <button onclick="window.print()">🖨️ Stampa A4</button>
                             <button onclick="window.close()">❌ Chiudi</button>
                         </div>
                     </body>
@@ -1200,6 +1204,38 @@
             printWindow.document.write(printHTML);
             printWindow.document.close();
         }
+
+        // --- Shims per thermal-print.js ---
+        Object.defineProperty(window, 'trips', { get: function() { return allTrips; }, configurable: true });
+        window.getTripOrders = function(tripId) {
+            const t = allTrips.find(t => String(t.id) === String(tripId));
+            return t ? (t.orders || []) : [];
+        };
+        (function() {
+            const _orig = calculateTripTotals;
+            window.calculateTripTotals = function(tripIdOrOrders) {
+                if (Array.isArray(tripIdOrOrders)) return _orig(tripIdOrOrders);
+                return _orig(window.getTripOrders(tripIdOrOrders));
+            };
+        })();
+        window.getClientName = function(order) {
+            return (order.customer && order.customer.name) || order.clientName || order.client || '-';
+        };
+        window.getOrderProductName = function(order) {
+            try {
+                const prods = typeof order.products === 'string' ? JSON.parse(order.products) : order.products;
+                if (Array.isArray(prods) && prods.length) return prods.map(p => p.product || '').join(', ');
+            } catch (e) {}
+            return order.product || '';
+        };
+        window.getOrderTotalQuantity = function(order) {
+            try {
+                const prods = typeof order.products === 'string' ? JSON.parse(order.products) : order.products;
+                if (Array.isArray(prods) && prods.length) return prods.reduce((s, p) => s + (parseFloat(p.quantity) || 0), 0);
+            } catch (e) {}
+            return parseFloat(order.quantity) || 0;
+        };
+        // -----------------------------------------------------------
 
         async function handlePrintTrip(tripId) {
             try {
@@ -1215,8 +1251,8 @@
                 if (!response.ok) throw new Error('Errore stampa viaggio');
 
                 showAlert('🖨️ Viaggio stampato e accettato!', 'success');
-                // Apri documento di stampa
-                printTrip(tripId);
+                // Stampa con formato termico 72mm (come orders-planner)
+                printTripThermal(tripId);
                 await loadTrips();
             } catch (error) {
                 showAlert('❌ Errore: ' + error.message, 'error');

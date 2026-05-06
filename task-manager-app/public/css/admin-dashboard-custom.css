@@ -1078,6 +1078,15 @@
             color: #38bdf8;
         }
 
+        /* View tabs: niente outline/border indesiderati su container o tab non-keyboard */
+        .view-tabs,
+        .view-tabs:focus,
+        .view-tabs:focus-within {
+            outline: none !important;
+            border: none !important;
+        }
+        .view-tab:focus { outline: none; }
+
         /* Tooltip flyover multi-riga per il calendario */
         .calendar-flyover {
             position: absolute;

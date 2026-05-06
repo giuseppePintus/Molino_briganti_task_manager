@@ -12,6 +12,7 @@
     'customers-management':   { icon: '👨‍💼', label: 'Gestione Clienti' },
     'warehouse-management':   { icon: '🏭', label: 'Gestione Magazzino' },
     'warehouse-management-lite': { icon: '📦', label: 'Magazzino Lite' },
+    'instant-orders':         { icon: '⚡', label: 'Ordini Istantanei' },
     'trips-management':       { icon: '🚚', label: 'Gestione Viaggi' },
     'operator-dashboard':     { icon: '🖥️', label: 'Dashboard Operatore' },
     'operator-lite':          { icon: '📱', label: 'Operatore Lite' },

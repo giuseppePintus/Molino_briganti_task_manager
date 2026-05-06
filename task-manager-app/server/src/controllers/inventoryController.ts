@@ -291,11 +291,11 @@ export class InventoryController {
    */
   static async createArticle(req: Request, res: Response) {
     try {
-      const { code, name, description, category, unit, weightPerUnit, barcode } = req.body;
+      const { code, name, description, category, subcategory, unit, weightPerUnit, barcode } = req.body;
       if (!code || !name) {
         return res.status(400).json({ success: false, error: 'Codice e nome sono obbligatori' });
       }
-      const article = await InventoryService.createArticle({ code, name, description, category, unit, weightPerUnit: weightPerUnit ? parseFloat(weightPerUnit) : undefined, barcode });
+      const article = await InventoryService.createArticle({ code, name, description, category, subcategory, unit, weightPerUnit: weightPerUnit ? parseFloat(weightPerUnit) : undefined, barcode });
       res.json({ success: true, data: article });
     } catch (error: any) {
       console.error('❌ Create article error:', error);
@@ -309,8 +309,8 @@ export class InventoryController {
   static async updateArticle(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const { code, name, description, category, unit, weightPerUnit, barcode } = req.body;
-      const article = await InventoryService.updateArticle(parseInt(id), { code, name, description, category, unit, weightPerUnit: weightPerUnit !== undefined ? parseFloat(weightPerUnit) : undefined, barcode });
+      const { code, name, description, category, subcategory, unit, weightPerUnit, barcode } = req.body;
+      const article = await InventoryService.updateArticle(parseInt(id), { code, name, description, category, subcategory, unit, weightPerUnit: weightPerUnit !== undefined ? parseFloat(weightPerUnit) : undefined, barcode });
       res.json({ success: true, data: article });
     } catch (error: any) {
       console.error('❌ Update article error:', error);

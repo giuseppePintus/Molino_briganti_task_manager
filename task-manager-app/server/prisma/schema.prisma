@@ -90,6 +90,7 @@ model Article {
   name              String    // es. FARINA 0 SP35 da 5 kg
   description       String?
   category          String?   // Categoria (es. FARINE, SEMOLE, MANGIMI, ecc.)
+  subcategory       String?   // Sottocategoria libera (es. TIPO 0, TIPO 00, INTEGRALE) - derivata dinamicamente
   unit              String    @default("kg")  // Unità di misura
   weightPerUnit     Float     @default(1)     // Peso singolo collo in kg (es. 10 per sacco da 10kg)
   barcode           String?   // Codice a barre EAN/QR
@@ -249,13 +250,27 @@ model Destination {
 }
 
 model ProductCategory {
-  id        Int      @id @default(autoincrement())
-  name      String   @unique
-  icon      String?
-  color     String?
-  sortOrder Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            Int                    @id @default(autoincrement())
+  name          String                 @unique
+  icon          String?
+  color         String?
+  sortOrder     Int                    @default(0)
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  subcategories ProductSubcategory[]
+}
+
+model ProductSubcategory {
+  id         Int             @id @default(autoincrement())
+  category   ProductCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  categoryId Int
+  name       String
+  sortOrder  Int             @default(0)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  @@unique([categoryId, name])
+  @@index([categoryId])
 }
 
 model Order {

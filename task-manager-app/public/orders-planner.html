@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="it">
 <head>
     <meta charset="UTF-8">
@@ -10,6 +10,8 @@
     <script src="js/settings-utils.js"></script>
     <script src="js/pages-indice.js"></script>
     <script src="js/alerts-badge.js" defer></script>
+    <script src="js/auth-guard.js"></script>
+    <script src="js/scroll-preserve.js"></script>
 </head>
 <body>
     <div class="container">
@@ -63,16 +65,20 @@
                         <span class="menu-icon">💾</span>
                         <span>Gestione Backup</span>
                     </button>
+                    <button class="admin-menu-item" onclick="window.location.href='customers-management.html'; toggleAdminMenu();">
+                        <span class="menu-icon">👨‍💼</span>
+                        <span>Gestione Clienti</span>
+                    </button>
                     <button class="admin-menu-item" onclick="openIndiceModal(); toggleAdminMenu();">
                         <span class="menu-icon">🗂️</span>
                         <span>Indice</span>
                     </button>
                 </div>
             </div>
-            <button class="btn btn-customers" data-icon="👨‍💼" onclick="window.location.href='customers-management.html'"><span>Gestione Clienti</span></button>
             <button class="btn btn-tasks" data-icon="✅" onclick="window.location.href='admin-dashboard.html'"><span>Planner Task</span></button>
             <button class="btn btn-planner active" data-icon="📦" onclick="window.location.href='orders-planner.html'"><span>Planner Ordini</span></button>
             <button class="btn btn-warehouse" data-icon="🏭" onclick="window.location.href='warehouse-management.html'"><span>Gestione Magazzino</span></button>
+            <button class="btn btn-warning" data-icon="⚡" onclick="window.location.href='instant-orders.html'"><span>Ordini Istantanei</span></button>
         </div>
         </div><!-- /.sticky-top-bar -->
 
@@ -85,7 +91,7 @@
             </div>
             <!-- Wrapper relativo per ancorare il flyover -->
             <div style="position: relative;"
-                 onmouseenter="showCalendarFlyover()" onmouseleave="hideCalendarFlyover()">
+                 onmousemove="scheduleCalendarFlyover()" onmouseleave="hideCalendarFlyover()">
                 <div id="calendarFlyover" class="calendar-flyover">
                     <div class="calendar-flyover-row">
                         <span class="calendar-flyover-icon">☝️</span>
@@ -126,7 +132,8 @@
         <!-- Unified Orders Section -->
         <div class="card card-hidden card-blue-border" id="orderTasksCard">
             <div class="card-header-flex">
-                <h2 class="card-title-flex">📋 Ordini da Assegnare <span id="tasksCount" class="card-count-badge"></span></h2>
+                <h2 class="card-title-flex">&#x1F4E5; Ordini Ritiro Cliente <span id="tasksCount" class="card-count-badge"></span></h2>
+                <button id="repairAssignmentsBtn" type="button" onclick="repairAssignments()" style="display:none;font-size:11px;padding:4px 10px;background:#f59e0b;color:#000;border:none;border-radius:4px;cursor:pointer;font-weight:600;" title="Forza ri-sincronizzazione assegnazioni operatori nel DB">🔧 Ripara assegnazioni</button>
             </div>
             <div class="orders-grid" id="orderTasksGrid">
                 <!-- Orders will appear here -->
@@ -665,35 +672,30 @@
             try {
                 console.log('🔄 Caricamento operatori e admin dall\'API pubblica...');
                 
-                // Usa gli endpoint pubblici che NON richiedono autenticazione
+                // /auth/operators/public ritorna GIÀ slave + admin + master con role.
+                // NON combinare con /auth/admins/public: duplicherebbe i master.
                 const operatorsResponse = await fetch(`${API_URL}/auth/operators/public`, {
                     method: 'GET',
                     headers: { 'Content-Type': 'application/json' }
                 });
-                const adminsResponse = await fetch(`${API_URL}/auth/admins/public`, {
-                    method: 'GET',
-                    headers: { 'Content-Type': 'application/json' }
-                });
 
-                console.log('📡 Risposta API - Operators:', operatorsResponse.status, 'Admins:', adminsResponse.status);
+                console.log('📡 Risposta API - Operators:', operatorsResponse.status);
 
-                if (operatorsResponse.ok && adminsResponse.ok) {
-                    const operators = await operatorsResponse.json();
-                    const admins = await adminsResponse.json();
-                    console.log('📋 Operatori ricevuti (', operators.length, '):', operators);
-                    console.log('📋 Admin ricevuti (', admins.length, '):', admins);
-                    // Ordina admin alfabeticamente
-                    const sortedAdmins = admins.sort((a, b) => a.username.localeCompare(b.username));
-                    // Ordina operatori alfabeticamente
-                    const sortedOperators = operators.sort((a, b) => a.username.localeCompare(b.username));
+                if (operatorsResponse.ok) {
+                    const all = await operatorsResponse.json();
+                    // Dedup per id
+                    const uniqueById = Array.from(new Map(all.map(u => [u.id, u])).values());
+                    const isAdmin = (u) => u.role === 'master' || u.role === 'admin';
+                    const sortedAdmins = uniqueById.filter(isAdmin).sort((a, b) => a.username.localeCompare(b.username));
+                    const sortedOperators = uniqueById.filter(u => !isAdmin(u)).sort((a, b) => a.username.localeCompare(b.username));
                     // Combina: admin prima, poi operatori
                     allOperators = [...sortedAdmins, ...sortedOperators];
                     // Salva in cache per offline
                     localStorage.setItem('cachedOperators', JSON.stringify(allOperators));
                     console.log('✅ Operatori e Admin caricati dall\'API pubblica. Totale:', allOperators.length);
                 } else {
-                    console.warn('⚠️ Errore API (' + operatorsResponse.status + ', ' + adminsResponse.status + ') - usa cache');
-                    throw new Error(`API Error: ${operatorsResponse.status}, ${adminsResponse.status}`);
+                    console.warn('⚠️ Errore API (' + operatorsResponse.status + ') - usa cache');
+                    throw new Error(`API Error: ${operatorsResponse.status}`);
                 }
             } catch (error) {
                 console.error('❌ Errore caricamento operatori dall\'API:', error);
@@ -861,13 +863,9 @@
             
             orderTasks.push(newTask);
             saveOrderTasks();
-            
-            // Salva nel DB solo per ritiri (non assegnato - l'admin lo assegnerà)
-            if (currentUser?.id && currentUser?.role === 'master') {
-                saveTaskToDatabase(newTask, []);
-            } else {
-                console.warn('⚠️ Non loggato come admin - task solo locale');
-            }
+            // Il task rimane solo locale: non viene salvato nel DB globale finché
+            // non viene assegnato a un operatore (lo fa upsertRitiroTasksForOperators).
+            // Questo evita che compaia in admin-dashboard tra i task normali.
         }
 
         async function saveTaskToDatabase(task, assignedOperators) {
@@ -905,8 +903,21 @@
                 if (response.ok) {
                     const savedTask = await response.json();
                     console.log('✅ Task salvato nel database:', savedTask);
-                    // Aggiorna l'id locale con quello del database
+                    // Race condition: se nel frattempo l'operatore è già stato assegnato,
+                    // questo placeholder no-op è superfluo → eliminalo immediatamente
+                    if ((task.dbIdsByOperator && Object.keys(task.dbIdsByOperator).length > 0) ||
+                        task.dbIdUnassigned) {
+                        try {
+                            await fetch(`${API_URL}/tasks/${savedTask.id}`, {
+                                method: 'DELETE',
+                                headers: { 'Authorization': `Bearer ${currentToken}` }
+                            });
+                        } catch(_) {}
+                        console.log('✅ Placeholder no-op eliminato (race condition), operatore già assegnato');
+                        return; // non impostare task.dbId
+                    }
                     task.dbId = savedTask.id;
+                    saveOrderTasks();
                 } else {
                     console.warn('⚠️ Errore salvataggio task nel DB:', response.status);
                 }
@@ -924,8 +935,8 @@
         async function updateDbTaskAssignedOperator(taskDbId, operatorId) {
             try {
                 const currentToken = localStorage.getItem('token') || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-                if (!currentToken || !taskDbId || !operatorId) return;
-                await fetch(`${API_URL}/tasks/${taskDbId}`, {
+                if (!currentToken || !taskDbId || !operatorId) return false;
+                const resp = await fetch(`${API_URL}/tasks/${taskDbId}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
@@ -933,8 +944,10 @@
                     },
                     body: JSON.stringify({ assignedOperatorId: operatorId })
                 });
+                return resp.ok;
             } catch (e) {
                 console.warn('Errore aggiornamento assegnazione task DB:', e);
+                return false;
             }
         }
 
@@ -1024,7 +1037,24 @@
                 const selected = Array.isArray(selectedUsernames) ? Array.from(new Set(selectedUsernames)) : [];
                 const existingUsernames = Object.keys(task.dbIdsByOperator);
 
-                const toId = (username) => getOperatorIdByUsername(username);
+                // Risolve username → DB id; se non trovato in allOperators, ricarica dal server
+                const toId = async (username) => {
+                    let id = getOperatorIdByUsername(username);
+                    if (!id) {
+                        console.warn(`[upsert] operatore "${username}" non trovato in allOperators (${allOperators.length}), ricarico...`);
+                        try {
+                            const resp = await fetch(`${API_URL}/auth/operators/public`);
+                            if (resp.ok) {
+                                const ops = await resp.json();
+                                allOperators = ops; // aggiorna cache
+                                const found = ops.find(o => o.username === username);
+                                id = found?.id || null;
+                                console.log(`[upsert] dopo ricarica: id per "${username}" = ${id}`);
+                            }
+                        } catch(_) {}
+                    }
+                    return id;
+                };
 
                 if (selected.length === 0) {
                     // Nessun operatore selezionato: elimina task per-operator e crea/garantisci placeholder non assegnato
@@ -1040,9 +1070,12 @@
                         delete task.dbId;
                     }
 
-                    if (!task.dbIdUnassigned) {
-                        const created = await createDbTaskForOperator(task, null);
-                        if (created?.id) task.dbIdUnassigned = created.id;
+                    // NON creare placeholder non assegnato: evita che compaia in admin-dashboard.
+                    // Il task esiste solo localmente finché non viene assegnato a un operatore.
+                    if (task.dbIdUnassigned) {
+                        // Se esiste un placeholder dal passato, eliminalo
+                        await deleteDbTask(task.dbIdUnassigned);
+                        task.dbIdUnassigned = null;
                     }
                     saveOrderTasks();
                     return;
@@ -1050,28 +1083,72 @@
 
                 // Almeno un operatore selezionato
                 const firstUsername = selected[0];
-                const firstOpId = toId(firstUsername);
+                const firstOpId = await toId(firstUsername);
+                console.log(`[upsert] firstUsername="${firstUsername}" firstOpId=${firstOpId} — dbIdsByOperator:`, JSON.stringify(task.dbIdsByOperator), '— dbIdUnassigned:', task.dbIdUnassigned);
+
+                // GUARDIA: se non riusciamo a risolvere l'ID operatore, non creare task spazzatura
+                if (!firstOpId) {
+                    console.error(`[upsert] impossibile risolvere ID per operatore "${firstUsername}" - skip`);
+                    saveOrderTasks();
+                    return;
+                }
 
                 if (!task.dbIdsByOperator[firstUsername]) {
                     if (task.dbIdUnassigned) {
-                        await updateDbTaskAssignedOperator(task.dbIdUnassigned, firstOpId);
-                        task.dbIdsByOperator[firstUsername] = task.dbIdUnassigned;
-                        task.dbIdUnassigned = null;
+                        const ok = await updateDbTaskAssignedOperator(task.dbIdUnassigned, firstOpId);
+                        console.log(`[upsert] update dbIdUnassigned=${task.dbIdUnassigned} → operatorId=${firstOpId}: ${ok}`);
+                        if (ok) {
+                            task.dbIdsByOperator[firstUsername] = task.dbIdUnassigned;
+                            task.dbIdUnassigned = null;
+                        } else {
+                            // Task DB non esiste più (eliminato dall'admin): crea da zero
+                            task.dbIdUnassigned = null;
+                            const created = await createDbTaskForOperator(task, firstOpId);
+                            console.log(`[upsert] create new task per ${firstUsername}: id=${created?.id}`);
+                            if (created?.id) task.dbIdsByOperator[firstUsername] = created.id;
+                        }
                     } else if (task.dbId) {
-                        await updateDbTaskAssignedOperator(task.dbId, firstOpId);
-                        task.dbIdsByOperator[firstUsername] = task.dbId;
-                        delete task.dbId;
+                        const ok = await updateDbTaskAssignedOperator(task.dbId, firstOpId);
+                        console.log(`[upsert] update dbId=${task.dbId} → operatorId=${firstOpId}: ${ok}`);
+                        if (ok) {
+                            task.dbIdsByOperator[firstUsername] = task.dbId;
+                            delete task.dbId;
+                        } else {
+                            delete task.dbId;
+                            const created = await createDbTaskForOperator(task, firstOpId);
+                            console.log(`[upsert] create new task per ${firstUsername}: id=${created?.id}`);
+                            if (created?.id) task.dbIdsByOperator[firstUsername] = created.id;
+                        }
                     } else {
+                        // Nessun DB task ancora: crea per l'operatore
                         const created = await createDbTaskForOperator(task, firstOpId);
+                        console.log(`[upsert] create new task (no dbId) per ${firstUsername}: id=${created?.id}`);
                         if (created?.id) task.dbIdsByOperator[firstUsername] = created.id;
                     }
+                } else {
+                    // Verifica che il task DB referenziato esista ancora; se no, ricrea
+                    const existingDbId = task.dbIdsByOperator[firstUsername];
+                    const ok = await updateDbTaskAssignedOperator(existingDbId, firstOpId);
+                    console.log(`[upsert] update existing dbIdsByOperator[${firstUsername}]=${existingDbId} → operatorId=${firstOpId}: ${ok}`);
+                    if (!ok) {
+                        delete task.dbIdsByOperator[firstUsername];
+                        const created = await createDbTaskForOperator(task, firstOpId);
+                        console.log(`[upsert] recreate task per ${firstUsername}: id=${created?.id}`);
+                        if (created?.id) task.dbIdsByOperator[firstUsername] = created.id;
+                    }
+                }
+
+                // Elimina il placeholder non assegnato creato da saveTaskToDatabase (se ancora presente)
+                if (task.dbId) {
+                    await deleteDbTask(task.dbId);
+                    delete task.dbId;
                 }
 
                 // Garantisci task per gli altri operatori
                 for (let i = 1; i < selected.length; i++) {
                     const u = selected[i];
                     if (task.dbIdsByOperator[u]) continue;
-                    const opId = toId(u);
+                    const opId = await toId(u);
                     if (!opId) continue;
                     const created = await createDbTaskForOperator(task, opId);
                     if (created?.id) task.dbIdsByOperator[u] = created.id;
@@ -1105,6 +1182,51 @@
                 const currentToken = localStorage.getItem('token') || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
                 if (!currentToken) return;
 
+                console.log('[syncRitiro] START — allOperators:', allOperators.map(o => `${o.username}(id:${o.id})`).join(', '));
+                console.log('[syncRitiro] orderTasks ritiro locali:', orderTasks.filter(t => orders.find(o => o.id === t.orderId && o.type === 'ritira')).map(t => ({id:t.id, assignedTo:t.assignedTo, dbIdsByOperator:t.dbIdsByOperator, dbIdUnassigned:t.dbIdUnassigned})));
+
+                // Deduplicazione: rimuovi task locali duplicati per stesso orderId.
+                // Mantieni quello con piu' info DB, elimina gli altri dal DB e dall'array.
+                const seenOrderIds = new Map();
+                const toRemove = [];
+                for (const t of orderTasks) {
+                    if (!t.orderId) continue;
+                    if (seenOrderIds.has(t.orderId)) {
+                        const kept = seenOrderIds.get(t.orderId);
+                        const tHasDb = t.dbIdUnassigned || t.dbId ||
+                            (t.dbIdsByOperator && Object.keys(t.dbIdsByOperator).length > 0);
+                        const keptHasDb = kept.dbIdUnassigned || kept.dbId ||
+                            (kept.dbIdsByOperator && Object.keys(kept.dbIdsByOperator).length > 0);
+                        let winner, loser;
+                        if (tHasDb && !keptHasDb) {
+                            winner = t; loser = kept;
+                            toRemove.push(kept);
+                            seenOrderIds.set(t.orderId, t);
+                        } else {
+                            winner = kept; loser = t;
+                            toRemove.push(t);
+                        }
+                        // Salva assignedTo dal loser se il winner non ce l'ha
+                        if ((!winner.assignedTo || winner.assignedTo.length === 0) &&
+                            loser.assignedTo && loser.assignedTo.length > 0) {
+                            winner.assignedTo = loser.assignedTo;
+                            winner.status = loser.status || 'assigned';
+                            console.log(`[syncRitiro] dedup: merged assignedTo=${JSON.stringify(winner.assignedTo)} nel task winner`);
+                        }
+                    } else {
+                        seenOrderIds.set(t.orderId, t);
+                    }
+                }
+                if (toRemove.length > 0) {
+                    for (const t of toRemove) {
+                        await deleteBackendEntriesForTask(t);
+                        const idx = orderTasks.indexOf(t);
+                        if (idx >= 0) orderTasks.splice(idx, 1);
+                    }
+                    saveOrderTasks();
+                    console.log(`[syncRitiro] Rimossi ${toRemove.length} task duplicati`);
+                }
+
                 // Assicura task locali per tutti gli ordini "ritira"
                 orders.filter(o => o.type === 'ritira').forEach(o => {
                     const existing = orderTasks.find(t => t.orderId === o.id);
@@ -1118,12 +1240,80 @@
                     const ord = orders.find(o => o.id === t.orderId);
                     if (!ord) continue;
                     if (ord.type === 'ritira') {
+                        console.log('[syncRitiro] upsert task', t.id, '— assignedTo:', t.assignedTo, '— dbIdsByOperator:', JSON.stringify(t.dbIdsByOperator), '— dbIdUnassigned:', t.dbIdUnassigned);
                         await upsertRitiroTasksForOperators(t, Array.isArray(t.assignedTo) ? t.assignedTo : []);
                     }
                 }
+                console.log('[syncRitiro] END');
             } catch (e) {
                 console.warn('Errore syncRitiroOrdersToDb:', e);
             }
+        }
+
+        async function repairAssignments() {
+            const btn = document.getElementById('repairAssignmentsBtn');
+            if (btn) { btn.disabled = true; btn.textContent = '⏳ Riparazione...'; }
+            try {
+                console.log('[repair] Forzo ri-sincronizzazione assegnazioni...');
+                await syncRitiroOrdersToDb();
+                console.log('[repair] Completata.');
+                if (btn) { btn.textContent = '✅ Riparazione completata'; btn.style.background = '#10b981'; }
+            } catch (e) {
+                console.error('[repair] Errore:', e);
+                if (btn) { btn.textContent = '❌ Errore - vedi console'; btn.style.background = '#ef4444'; }
+            } finally {
+                setTimeout(() => {
+                    if (btn) { btn.disabled = false; btn.textContent = '🔧 Ripara assegnazioni'; btn.style.background = '#f59e0b'; }
+                }, 4000);
+            }
+        }
+
+        // Modal rapido per assegnare operatore direttamente dalla card ritiro
+        function openAssignOperatorModal(orderId) {
+            const order = orders.find(o => o.id === orderId);
+            if (!order) return;
+            const task = orderTasks.find(t => t.orderId === orderId);
+            const currentOpName = task?.assignedTo?.[0] || '';
+            const opOptions = allOperators.map(op => {
+                const sel = currentOpName === op.username ? ' selected' : '';
+                return `<option value="${op.username}"${sel}>${op.role === 'master' ? '👨‍💼' : '👷'} ${op.username}</option>`;
+            }).join('');
+            const html = `
+                <div id="assignOpOverlay" onclick="if(event.target===this)closeAssignOpModal()" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;">
+                    <div style="background:#2d2d2d;border-radius:8px;padding:20px;min-width:280px;box-shadow:0 8px 32px rgba(0,0,0,.5);">
+                        <h3 style="margin:0 0 14px;color:#e0e0e0;font-size:15px;">👤 Assegna operatore</h3>
+                        <p style="color:#a0a0a0;font-size:13px;margin:0 0 12px;">Ordine ritiro: <strong style="color:#fbbf24;">${order.clientName || order.client || ''}</strong></p>
+                        <select id="assignOpSelect" class="form-input-full" style="margin-bottom:14px;font-size:14px;padding:8px;">
+                            <option value="">-- Non assegnato --</option>
+                            ${opOptions}
+                        </select>
+                        <div style="display:flex;gap:8px;justify-content:flex-end;">
+                            <button onclick="closeAssignOpModal()" style="padding:8px 16px;background:#4b5563;color:white;border:none;border-radius:4px;cursor:pointer;">Annulla</button>
+                            <button onclick="confirmAssignOperator(${orderId})" style="padding:8px 16px;background:#2563eb;color:white;border:none;border-radius:4px;cursor:pointer;font-weight:600;">✅ Salva</button>
+                        </div>
+                    </div>
+                </div>`;
+            document.body.insertAdjacentHTML('beforeend', html);
+        }
+        function closeAssignOpModal() {
+            document.getElementById('assignOpOverlay')?.remove();
+        }
+        async function confirmAssignOperator(orderId) {
+            const sel = document.getElementById('assignOpSelect');
+            const selectedUsername = sel ? sel.value : '';
+            closeAssignOpModal();
+            const task = orderTasks.find(t => t.orderId === orderId);
+            if (!task) { alert('Task locale non trovato. Ricarica la pagina.'); return; }
+            const prevAssigned = [...(task.assignedTo || [])];
+            task.assignedTo = selectedUsername ? [selectedUsername] : [];
+            task.status = selectedUsername ? 'assigned' : 'unassigned';
+            // Aggiorna anche assignedOperatorId per coerenza locale
+            const op = allOperators.find(o => o.username === selectedUsername);
+            task.assignedOperatorId = op?.id || null;
+            saveOrderTasks();
+            renderOrderTasks();
+            await upsertRitiroTasksForOperators(task, task.assignedTo);
+            console.log(`[assignOp] orderId=${orderId} → operatore="${selectedUsername}" (id=${task.assignedOperatorId})`);
         }
 
         function renderOrderTasks() {
@@ -1199,6 +1389,46 @@
                 const lottoStr = order.lotto ? `<p><strong>Lotto:</strong> ${order.lotto}</p>` : '';
                 const posizioneStr = order.posizione ? `<p><strong>Scaffale:</strong> ${order.posizione}</p>` : '';
                 const clientName = getClientName(order);
+                // Operatore assegnato (dall'order o dal task collegato)
+                const operatorObj = fullInfo?.operator;
+                const operatorLabel = operatorObj
+                    ? (operatorObj.name || operatorObj.username || 'Assegnato')
+                    : null;
+                const operatorStr = operatorLabel
+                    ? `<p><strong>👤 Operatore:</strong> <span style="color:#10b981;">${operatorLabel}</span></p>`
+                    : `<p><strong>👤 Operatore:</strong> <span style="color:#f59e0b;">Non assegnato</span></p>`;
+                // Data / orario programmato
+                let dateTimeStr = '';
+                if (order.dateTime) {
+                    const dt = new Date(order.dateTime);
+                    const dataFmt = dt.toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: '2-digit' });
+                    const oraFmt = dt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+                    dateTimeStr = `<p><strong>📅 Data:</strong> ${dataFmt} <span style="color:#93c5fd;">⏰ ${oraFmt}</span></p>`;
+                }
+                // Note
+                const notesStr = order.notes
+                    ? `<p><strong>📝 Note:</strong> <span style="color:#cbd5e1;">${order.notes}</span></p>`
+                    : '';
+                // Stato accettato/completato per ordini Ritiro (acceptedAt/completedAt arrivano dal backend)
+                const isPickup = order.type !== 'consegnato';
+                const isCompleted = order.status === 'completed' || !!order.completedAt;
+                const isAccepted = !!order.acceptedAt || order.status === 'in_progress';
+                let statusBadge = '';
+                if (isPickup) {
+                    if (isCompleted) {
+                        statusBadge = `<div style="margin-top: 6px; padding: 6px 8px; border-left: 3px solid #10b981; border-radius: 4px; background: rgba(16,185,129,0.08); font-size: 12px; color: #86efac;"><span>✅</span> <strong>Completato</strong>${order.completedAt ? ` <span style="color:#cbd5e1;font-size:11px;">${new Date(order.completedAt).toLocaleString('it-IT').split(' ')[0]}</span>` : ''}</div>`;
+                    } else if (isAccepted) {
+                        statusBadge = `<div style="margin-top: 6px; padding: 6px 8px; border-left: 3px solid #f59e0b; border-radius: 4px; background: rgba(245,158,11,0.08); font-size: 12px; color: #fbbf24;"><span>👍</span> <strong>Accettato</strong>${order.acceptedAt ? ` <span style="color:#cbd5e1;font-size:11px;">${new Date(order.acceptedAt).toLocaleString('it-IT').split(' ')[0]}</span>` : ''}</div>`;
+                    } else {
+                        statusBadge = `<div style="margin-top: 6px; padding: 6px 8px; border-left: 3px solid #94a3b8; border-radius: 4px; background: rgba(148,163,184,0.08); font-size: 12px; color: #fca5a5;"><span>⏳</span> <strong>Attesa di accettazione</strong></div>`;
+                    }
+                }
+                const acceptBtn = (isPickup && !isAccepted && !isCompleted)
+                    ? `<button class="btn btn-success btn-small" onclick="acceptPickupOrder(${order.id})" style="background:#22c55e;color:white;border:none;border-radius:3px;flex:1;min-width:80px;padding:6px 8px;cursor:pointer;">✅ Accetta</button>`
+                    : '';
+                const completeBtn = (isPickup && isAccepted && !isCompleted)
+                    ? `<button class="btn btn-warning btn-small" onclick="completePickupOrder(${order.id})" style="background:#16a34a;color:white;border:none;border-radius:3px;flex:1;min-width:80px;padding:6px 8px;cursor:pointer;">🏁 Completato</button>`
+                    : '';
                 return `
                     <div class="order-card" 
                          draggable="true"
@@ -1226,18 +1456,95 @@
                                 return `${qty} kg${colliInfo}`;
                             })()}</p>
                             <p><strong>Tipo:</strong> ${typeLabel}</p>
+                            ${dateTimeStr}
+                            ${operatorStr}
+                            ${notesStr}
                             ${lottoStr}
                             ${posizioneStr}
+                            ${statusBadge}
                         </div>
                         <div class="order-actions" style="display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap;">
+                            ${acceptBtn}
+                            ${completeBtn}
+                            ${currentUser?.role === 'master' ? `<button class="btn btn-secondary btn-small" onclick="openAssignOperatorModal(${order.id})" style="flex:1;min-width:80px;padding:6px 8px;background:#2563eb;color:white;border:none;border-radius:3px;cursor:pointer;">👤 Assegna</button>` : ''}
                             <button class="btn btn-secondary btn-small" onclick="openEditOrderModal(${order.id})" style="flex: 1; min-width: 80px; padding: 6px 8px;">✏️ Modifica</button>
-                            <button class="btn btn-secondary btn-small" onclick="printPickupOrder(${order.id})" style="flex: 1; min-width: 80px; padding: 6px 8px; background: #8b5cf6; color: white; border: none; border-radius: 3px; cursor: pointer;">🖨️ Stampa</button>
-                            <button class="btn btn-secondary btn-small" onclick="printPickupOrderThermal(${order.id})" style="flex: 1; min-width: 80px; padding: 6px 8px; background: #475569; color: white; border: none; border-radius: 3px; cursor: pointer;" title="Stampante termica 72mm">🧾 Termica</button>
+                            <button class="btn btn-secondary btn-small" onclick="printPickupOrder(${order.id})" style="flex: 1; min-width: 80px; padding: 6px 8px; background: #8b5cf6; color: white; border: none; border-radius: 3px; cursor: pointer;">🖨️ Stampa A4</button>
+                            <button class="btn btn-secondary btn-small" onclick="printPickupOrderThermal(${order.id})" style="flex: 1; min-width: 80px; padding: 6px 8px; background: #475569; color: white; border: none; border-radius: 3px; cursor: pointer;" title="Stampante termica 80mm">🧾 Stampa 80mm</button>
                             <button class="btn btn-danger btn-small" onclick="deleteOrder(${order.id})" style="flex: 1; min-width: 80px; padding: 6px 8px;">🗑️ Elimina</button>
                         </div>
                     </div>
                 `;
             }).join('');
+        }
+
+        // === Accetta / Completa ordine Ritiro (singolo, non in viaggio) ===
+        async function acceptPickupOrder(orderId) {
+            try {
+                const order = orders.find(o => o.id === orderId);
+                if (!order) return;
+                const updated = await DataSync.updateOrder(orderId, { status: 'in_progress' });
+                if (updated) {
+                    order.status = updated.status || 'in_progress';
+                    order.acceptedAt = updated.acceptedAt || new Date().toISOString();
+                } else {
+                    order.status = 'in_progress';
+                    order.acceptedAt = new Date().toISOString();
+                }
+                renderOrderTasks();
+                renderTrips();
+            } catch (e) {
+                alert('Errore nell\'accettazione: ' + (e?.message || e));
+            }
+        }
+
+        async function completePickupOrder(orderId) {
+            try {
+                const order = orders.find(o => o.id === orderId);
+                if (!order) return;
+                if (!confirm('Completare l\'ordine? La merce verrà scaricata dal magazzino.')) return;
+
+                // Scarico magazzino: stessa logica di completeTrip
+                const fullInfo = getOrderFullInfo(orderId);
+                let consumeOk = 0, consumeErr = 0;
+                if (fullInfo && Array.isArray(fullInfo.products) && fullInfo.products.length > 0) {
+                    for (const product of fullInfo.products) {
+                        const code = product.product || product.code;
+                        if (!code || !product.quantity) continue;
+                        try {
+                            const response = await fetch(`${API_URL}/inventory/consume`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                                body: JSON.stringify({ code, quantity: product.quantity })
+                            });
+                            if (!response.ok) {
+                                console.error(`❌ [completePickupOrder] consume ${code} fallito:`, await response.text());
+                                consumeErr++;
+                            } else {
+                                consumeOk++;
+                            }
+                        } catch (err) {
+                            console.error(`❌ [completePickupOrder] consume ${code} errore:`, err);
+                            consumeErr++;
+                        }
+                    }
+                }
+
+                const updated = await DataSync.updateOrder(orderId, { status: 'completed' });
+                order.status = 'completed';
+                order.completedAt = (updated && updated.completedAt) || new Date().toISOString();
+
+                if (consumeErr > 0) {
+                    alert(`✅ Ordine completato.\n⚠️ ${consumeErr} prodotto/i con errori di scarico (vedi console F12).`);
+                } else if (consumeOk > 0) {
+                    alert(`✅ Ordine completato! ${consumeOk} prodotto/i scaricati dall'inventario.`);
+                } else {
+                    alert('✅ Ordine completato.');
+                }
+                renderOrderTasks();
+                renderTrips();
+            } catch (e) {
+                alert('Errore nel completamento: ' + (e?.message || e));
+            }
         }
         
         function setOrdersView(showAll) {
@@ -1276,7 +1583,7 @@
         function closeAssignTaskModal() {
             document.getElementById('assignTaskModal').classList.remove('active');
         }
-        function assignTaskToOperators(e) {
+        async function assignTaskToOperators(e) {
             e.preventDefault();
             const taskId = document.getElementById('assignTaskId').value;
             const checkboxes = Array.from(document.querySelectorAll('#operatorsChecklist input[type=checkbox]'));
@@ -1287,8 +1594,8 @@
                 task.status = selected.length > 0 ? 'assigned' : 'unassigned';
                 saveOrderTasks();
                 renderOrderTasks();
-                // Se ritiro, sincronizza nel DB i task assegnati agli operatori
-                upsertRitiroTasksForOperators(task, selected);
+                // Se ritiro, sincronizza nel DB i task assegnati agli operatori (await: garantisce che dbIdsByOperator sia salvato prima di qualsiasi ricarica)
+                await upsertRitiroTasksForOperators(task, selected);
             }
             closeAssignTaskModal();
         }
@@ -1514,8 +1821,8 @@
                             </div>
                             <div class="order-actions" style="display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap;">
                                 <button class="btn btn-secondary btn-small" onclick="openEditOrderModal(${order.id})" style="flex: 1; min-width: 80px; padding: 6px 8px; background: #3b82f6; color: white; border: none; border-radius: 3px; cursor: pointer;">✏️ Modifica</button>
-                                <button class="btn btn-secondary btn-small" onclick="printPickupOrder(${order.id})" style="flex: 1; min-width: 80px; padding: 6px 8px; background: #8b5cf6; color: white; border: none; border-radius: 3px; cursor: pointer;">🖨️ Stampa</button>
-                                <button class="btn btn-secondary btn-small" onclick="printPickupOrderThermal(${order.id})" style="flex: 1; min-width: 80px; padding: 6px 8px; background: #475569; color: white; border: none; border-radius: 3px; cursor: pointer;" title="Stampante termica 72mm">🧾 Termica</button>
+                                <button class="btn btn-secondary btn-small" onclick="printPickupOrder(${order.id})" style="flex: 1; min-width: 80px; padding: 6px 8px; background: #8b5cf6; color: white; border: none; border-radius: 3px; cursor: pointer;">🖨️ Stampa A4</button>
+                                <button class="btn btn-secondary btn-small" onclick="printPickupOrderThermal(${order.id})" style="flex: 1; min-width: 80px; padding: 6px 8px; background: #475569; color: white; border: none; border-radius: 3px; cursor: pointer;" title="Stampante termica 80mm">🧾 Stampa 80mm</button>
                                 <button class="btn btn-danger btn-small" onclick="deleteOrder(${order.id})" style="flex: 1; min-width: 80px; padding: 6px 8px;">🗑️ Elimina</button>
                             </div>
                         </div>
@@ -1597,8 +1904,8 @@
                             ${!trip.acceptedAt ? `<button class="btn btn-success btn-small" onclick="acceptTrip(${trip.id})" style="background: #22c55e; flex: 1; min-width: 80px;">✅ Accetta</button>` : ''}
                             ${trip.acceptedAt && !trip.completed ? `<button class="btn btn-warning btn-small" onclick="completeTrip(${trip.id})" style="background: #16a34a; flex: 1; min-width: 80px;">🏁 Completato</button>` : ''}
                             <button class="btn btn-primary btn-small" onclick="openEditTripModal(${trip.id})" style="flex: 1; min-width: 100px;">✏️ Modifica</button>
-                            <button class="btn btn-secondary btn-small" onclick="printTrip(${trip.id})" style="flex: 1; min-width: 100px;">🖨️ Stampa</button>
-                            <button class="btn btn-secondary btn-small" onclick="printTripThermal(${trip.id})" style="flex: 1; min-width: 100px; background: #475569; color: white;" title="Stampante termica 72mm">🧾 Termica</button>
+                            <button class="btn btn-secondary btn-small" onclick="printTrip(${trip.id})" style="flex: 1; min-width: 100px;">🖨️ Stampa A4</button>
+                            <button class="btn btn-secondary btn-small" onclick="printTripThermal(${trip.id})" style="flex: 1; min-width: 100px; background: #475569; color: white;" title="Stampante termica 80mm">🧾 Stampa 80mm</button>
                             <button class="btn btn-danger btn-small" onclick="deleteTrip(${trip.id})" style="flex: 1; min-width: 100px;">🗑️ Elimina</button>
                         </div>
                     </div>
@@ -4008,6 +4315,17 @@
                         task.dateTime = orderData.dateTime;
                         task.notes = orderData.notes;
                         task.assignedOperatorId = orderData.assignedOperatorId;
+                        // Aggiorna assignedTo (array username) in base all'operatore scelto nel form
+                        if (orderData.type === 'ritira') {
+                            if (orderData.assignedOperatorId) {
+                                const op = allOperators.find(o => o.id === orderData.assignedOperatorId);
+                                task.assignedTo = op ? [op.username] : task.assignedTo;
+                                task.status = 'assigned';
+                            } else {
+                                task.assignedTo = [];
+                                task.status = 'unassigned';
+                            }
+                        }
                         const cliente = clienti.find(c => c.nome === orderData.client);
                         if (cliente) {
                             task.clienteOrari = {
@@ -4018,6 +4336,10 @@
                             };
                         }
                         saveOrderTasks();
+                        // Sincronizza task DB con il nuovo operatore
+                        if (orderData.type === 'ritira') {
+                            await upsertRitiroTasksForOperators(task, task.assignedTo);
+                        }
                     }
                     console.log(`✏️ [saveOrder] Order modified and saved: ${order.client} (tripId=${order.tripId})`);
                 }
@@ -4152,6 +4474,19 @@
                     // Genera task per ordini di ritiro
                     if (savedOrder.type === 'ritira') {
                         generateTaskForOrder(savedOrder, []);
+                        // Se l'admin ha già selezionato un operatore nel form, assegnalo subito
+                        if (orderData.assignedOperatorId) {
+                            const op = allOperators.find(o => o.id === orderData.assignedOperatorId);
+                            if (op) {
+                                const newTask = orderTasks.find(t => t.orderId === savedOrder.id);
+                                if (newTask) {
+                                    newTask.assignedTo = [op.username];
+                                    newTask.status = 'assigned';
+                                    saveOrderTasks();
+                                    await upsertRitiroTasksForOperators(newTask, [op.username]);
+                                }
+                            }
+                        }
                     }
                     console.log('📝 Nuovo ordine creato e salvato:', savedOrder.client, '(', orderData.products.length, 'prodotti)');
                 } else {
@@ -4561,7 +4896,7 @@
 
                         <div style="margin-top: 40px; text-align: center; color: #999; font-size: 12px; no-print" class="no-print">
                             <p>Stampato il ${new Date().toLocaleString('it-IT')}</p>
-                            <button onclick="window.print()" style="padding: 10px 20px; background: #38bdf8; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">🖨️ Stampa</button>
+                            <button onclick="window.print()" style="padding: 10px 20px; background: #38bdf8; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">🖨️ Stampa A4</button>
                             <button onclick="window.close()" style="padding: 10px 20px; background: #999; color: white; border: none; border-radius: 4px; cursor: pointer; margin-left: 10px; font-size: 14px;">❌ Chiudi</button>
                         </div>
                     </body>
@@ -4711,7 +5046,7 @@
 
                         <div style="margin-top: 40px; text-align: center; color: #999; font-size: 12px;" class="no-print">
                             <p>Stampato il ${new Date().toLocaleString('it-IT')}</p>
-                            <button onclick="window.print()" style="padding: 10px 20px; background: #16a34a; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">🖨️ Stampa</button>
+                            <button onclick="window.print()" style="padding: 10px 20px; background: #16a34a; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">🖨️ Stampa A4</button>
                             <button onclick="window.close()" style="padding: 10px 20px; background: #999; color: white; border: none; border-radius: 4px; cursor: pointer; margin-left: 10px; font-size: 14px;">❌ Chiudi</button>
                         </div>
                     </body>
@@ -5675,11 +6010,19 @@
         }
 
         // ── Flyover multi-riga del calendario ─────────────────────────────────
+        // Mostra il flyover solo quando il mouse rimane fermo per HOVER_DELAY ms.
+        let calendarFlyoverTimer = null;
+        const CALENDAR_FLYOVER_DELAY = 600;
+        function scheduleCalendarFlyover() {
+            hideCalendarFlyover();
+            calendarFlyoverTimer = setTimeout(showCalendarFlyover, CALENDAR_FLYOVER_DELAY);
+        }
         function showCalendarFlyover() {
             const el = document.getElementById('calendarFlyover');
             if (el) el.classList.add('visible');
         }
         function hideCalendarFlyover() {
+            if (calendarFlyoverTimer) { clearTimeout(calendarFlyoverTimer); calendarFlyoverTimer = null; }
             const el = document.getElementById('calendarFlyover');
             if (el) el.classList.remove('visible');
         }
@@ -6163,6 +6506,11 @@
             await forceRefreshTrips();  // Carica i viaggi dal backend automaticamente
             renderOrderTasks();
             renderCalendar();
+            // Mostra pulsante ripara assegnazioni solo agli admin
+            if (currentUser?.role === 'master') {
+                const repairBtn = document.getElementById('repairAssignmentsBtn');
+                if (repairBtn) repairBtn.style.display = 'inline-block';
+            }
             // Admin: assicura che gli ordini 'ritira' siano sincronizzati nel DB e visibili
             await syncRitiroOrdersToDb();
 

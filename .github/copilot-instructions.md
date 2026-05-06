@@ -45,4 +45,4 @@ Repository multi-progetto che gestisce l'operatività del Molino Briganti.
 ## Dove cercare cosa
 - Documentazione operativa: `README.md` (root) e `task-manager-app/README.md`.
 - Stato del sistema di backup: `task-manager-app/BACKUP_SYSTEM_STATUS.md`.
-- Note sul deploy rapido al NAS: `task-manager-app/QUICKBUILD_DEPLOY.md`.
+- Deploy al NAS: `task-manager-app/nas-deploy.ps1` (unico script supportato, shadow→prod su :5001/:5000).

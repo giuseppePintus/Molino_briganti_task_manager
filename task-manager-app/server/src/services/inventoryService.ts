@@ -500,14 +500,16 @@ export class InventoryService {
     }
   }
 
-  static async createArticle(data: { code: string; name: string; description?: string; category?: string; unit?: string; weightPerUnit?: number; barcode?: string }) {
+  static async createArticle(data: { code: string; name: string; description?: string; category?: string; subcategory?: string; unit?: string; weightPerUnit?: number; barcode?: string }) {
     try {
+      const subRaw = (data.subcategory || '').trim();
       const article = await prisma.article.create({
         data: {
           code: data.code,
           name: data.name,
           description: data.description || null,
           category: data.category || null,
+          subcategory: subRaw ? subRaw.toUpperCase() : null,
           unit: data.unit || 'kg',
           weightPerUnit: data.weightPerUnit || 1,
           barcode: data.barcode || null,
@@ -522,8 +524,13 @@ export class InventoryService {
     }
   }
 
-  static async updateArticle(articleId: number, data: { code?: string; name?: string; description?: string; category?: string; unit?: string; weightPerUnit?: number; barcode?: string }) {
+  static async updateArticle(articleId: number, data: { code?: string; name?: string; description?: string; category?: string; subcategory?: string | null; unit?: string; weightPerUnit?: number; barcode?: string }) {
     try {
+      const subNormalized = data.subcategory === undefined
+        ? undefined
+        : (data.subcategory && String(data.subcategory).trim()
+            ? String(data.subcategory).trim().toUpperCase()
+            : null);
       const article = await prisma.article.update({
         where: { id: articleId },
         data: {
@@ -531,6 +538,7 @@ export class InventoryService {
           ...(data.name !== undefined && { name: data.name }),
           ...(data.description !== undefined && { description: data.description || null }),
           ...(data.category !== undefined && { category: data.category || null }),
+          ...(subNormalized !== undefined && { subcategory: subNormalized }),
           ...(data.unit !== undefined && { unit: data.unit }),
           ...(data.weightPerUnit !== undefined && { weightPerUnit: data.weightPerUnit }),
           ...(data.barcode !== undefined && { barcode: data.barcode || null }),

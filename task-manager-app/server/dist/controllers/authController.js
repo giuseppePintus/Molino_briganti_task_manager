@@ -255,7 +255,7 @@ class AuthController {
         return __awaiter(this, void 0, void 0, function* () {
             try {
                 const operators = yield prisma_1.default.user.findMany({
-                    where: { role: 'slave' },
+                    where: { role: { in: ['slave', 'admin', 'master'] } },
                     select: {
                         id: true,
                         username: true,

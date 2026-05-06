@@ -11,6 +11,8 @@
     <script src="/socket.io/socket.io.js"></script>
     <script src="js/socket-client.js"></script>
     <script src="js/thermal-print.js"></script>
+    <script src="js/auth-guard.js"></script>
+    <script src="js/scroll-preserve.js"></script>
 </head>
 <body>
     
@@ -1143,7 +1145,8 @@
                     console.log('❌ NOT rendering button for trip ' + trip.id + ' because accepted=' + trip.accepted);
                 }
                 if (!trip.printed) {
-                    buttons += '<button class="btn btn-primary btn-small" onclick="handlePrintTrip(' + trip.id + ')">🖨️ Stampa</button>';
+                    buttons += '<button class="btn btn-primary btn-small" onclick="printTrip(' + trip.id + ')">🖨️ Stampa A4</button>';
+                    buttons += '<button class="btn btn-primary btn-small" onclick="handlePrintTrip(' + trip.id + ')" style="background: #475569;">🧾 Stampa 80mm</button>';
                 }
             }
             
@@ -1264,7 +1267,38 @@
             xhr.send(JSON.stringify(payload));
         }
         
-        // Print trip with formatted document
+        // --- Shims per thermal-print.js ---
+        window.getTripOrders = function(tripId) {
+            var t = trips.find(function(t) { return String(t.id) === String(tripId); });
+            return t ? (t.orders || []) : [];
+        };
+        (function() {
+            var _orig = calculateTripTotals;
+            window.calculateTripTotals = function(tripIdOrOrders) {
+                if (Array.isArray(tripIdOrOrders)) return _orig(tripIdOrOrders);
+                return _orig(window.getTripOrders(tripIdOrOrders));
+            };
+        })();
+        window.getClientName = function(order) {
+            return (order.customer && order.customer.name) || order.clientName || order.client || '-';
+        };
+        window.getOrderProductName = function(order) {
+            try {
+                var prods = typeof order.products === 'string' ? JSON.parse(order.products) : order.products;
+                if (Array.isArray(prods) && prods.length) return prods.map(function(p) { return p.product || ''; }).join(', ');
+            } catch (e) {}
+            return order.product || '';
+        };
+        window.getOrderTotalQuantity = function(order) {
+            try {
+                var prods = typeof order.products === 'string' ? JSON.parse(order.products) : order.products;
+                if (Array.isArray(prods) && prods.length) return prods.reduce(function(s, p) { return s + (parseFloat(p.quantity) || 0); }, 0);
+            } catch (e) {}
+            return parseFloat(order.quantity) || 0;
+        };
+        // -----------------------------------------------------------
+
+        // Print trip with formatted document (legacy A4 - non usato dal bottone principale)
         function printTrip(tripId) {
             var trip = null;
             for (var i = 0; i < trips.length; i++) {
@@ -1379,7 +1413,7 @@
             printHTML += '</div>';
             
             // Print footer
-            printHTML += '<div class=\"no-print\"><p>Stampato il ' + new Date().toLocaleString('it-IT') + '</p><button onclick=\"window.print()\">🖨️ Stampa</button><button onclick=\"window.close()\">❌ Chiudi</button></div>';
+            printHTML += '<div class=\"no-print\"><p>Stampato il ' + new Date().toLocaleString('it-IT') + '</p><button onclick=\"window.print()\">🖨️ Stampa A4</button><button onclick=\"window.close()\">❌ Chiudi</button></div>';
             printHTML += '</body></html>';
             
             // Open print window
@@ -1402,8 +1436,8 @@
                 if (xhr.readyState === 4) {
                     if (xhr.status === 200) {
                         showAlert('🖨️ Viaggio stampato e accettato!', 'success');
-                        // Apri documento di stampa
-                        printTrip(tripId);
+                        // Stampa con formato termico 72mm (come orders-planner)
+                        printTripThermal(tripId);
                         // Ricarica viaggi
                         loadTrips();
                     } else if (xhr.status === 401) {

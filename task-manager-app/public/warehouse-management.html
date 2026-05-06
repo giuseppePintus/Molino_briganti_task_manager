@@ -11,6 +11,8 @@
     <script src="js/pages-indice.js"></script>
     <script src="js/alerts-badge.js" defer></script>
     <script src="/socket.io/socket.io.js"></script>
+    <script src="js/auth-guard.js"></script>
+    <script src="js/scroll-preserve.js"></script>
 </head>
 <body>
     <div class="container">
@@ -78,10 +80,10 @@
                     </button>
                 </div>
             </div>
-            <button class="btn btn-customers" data-icon="👨‍💼" onclick="window.location.href='customers-management.html'"><span>Gestione Clienti</span></button>
             <button class="btn btn-tasks" data-icon="✅" onclick="window.location.href='admin-dashboard.html'"><span>Planner Task</span></button>
             <button class="btn btn-planner" data-icon="📦" onclick="window.location.href='orders-planner.html'"><span>Planner Ordini</span></button>
             <button class="btn btn-warehouse active" data-icon="🏭" onclick="window.location.href='warehouse-management.html'"><span>Gestione Magazzino</span></button>
+            <button class="btn btn-warning" data-icon="⚡" onclick="window.location.href='instant-orders.html'"><span>Ordini Istantanei</span></button>
         </div>
         </div><!-- /.sticky-top-bar -->
 
@@ -136,7 +138,7 @@
                     <span>📥 Esporta CSV</span>
                 </button>
                 <button class="btn btn-secondary warehouse-export-btn" onclick="openPrintInventory()" style="background:#374151;border:1px solid #4d4d4d;">
-                    <span>🖨️ Stampa</span>
+                    <span>🖨️ Stampa A4</span>
                 </button>
             </div>
             
@@ -450,9 +452,16 @@
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                 <div class="cargo-field">
                     <label>Categoria</label>
-                    <select id="artCategory">
+                    <select id="artCategory" onchange="onArtCategoryChange()">
                         <option value="">-- Seleziona categoria --</option>
                     </select>
+                </div>
+                <div class="cargo-field">
+                    <label>Sottocategoria</label>
+                    <select id="artSubcategory">
+                        <option value="">— nessuna —</option>
+                    </select>
+                    <small id="artSubcategoryHint" style="display:block;margin-top:4px;font-size:11px;color:#9ca3af;">Le sotto-categorie si gestiscono in <a href="#" onclick="event.preventDefault();openCategoryManager();" style="color:#60a5fa;">🏷️ Categorie</a></small>
                 </div>
                 <div class="cargo-field">
                     <label>Unità di misura</label>
@@ -699,19 +708,112 @@
                 const safeCat = cat.replace(/'/g, "\\'");
                 const isFirst = idx === 0;
                 const isLast = idx === productCategories.length - 1;
-                return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#1f2937;border-radius:8px;margin-bottom:6px;border:1px solid #374151;">
-                    <div style="display:flex;flex-direction:column;gap:2px;">
-                        <button title="Sposta su" onclick="moveCategoryUp('${safeCat}')" ${isFirst ? 'disabled' : ''} style="background:#111827;border:1px solid #374151;border-radius:4px;width:24px;height:18px;cursor:${isFirst?'not-allowed':'pointer'};font-size:10px;color:${isFirst?'#4b5563':'#e5e7eb'};padding:0;line-height:1;">▲</button>
-                        <button title="Sposta giù" onclick="moveCategoryDown('${safeCat}')" ${isLast ? 'disabled' : ''} style="background:#111827;border:1px solid #374151;border-radius:4px;width:24px;height:18px;cursor:${isLast?'not-allowed':'pointer'};font-size:10px;color:${isLast?'#4b5563':'#e5e7eb'};padding:0;line-height:1;">▼</button>
+                return `<div style="background:#1f2937;border-radius:8px;margin-bottom:6px;border:1px solid #374151;">
+                    <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;">
+                        <div style="display:flex;flex-direction:column;gap:2px;">
+                            <button title="Sposta su" onclick="moveCategoryUp('${safeCat}')" ${isFirst ? 'disabled' : ''} style="background:#111827;border:1px solid #374151;border-radius:4px;width:24px;height:18px;cursor:${isFirst?'not-allowed':'pointer'};font-size:10px;color:${isFirst?'#4b5563':'#e5e7eb'};padding:0;line-height:1;">▲</button>
+                            <button title="Sposta giù" onclick="moveCategoryDown('${safeCat}')" ${isLast ? 'disabled' : ''} style="background:#111827;border:1px solid #374151;border-radius:4px;width:24px;height:18px;cursor:${isLast?'not-allowed':'pointer'};font-size:10px;color:${isLast?'#4b5563':'#e5e7eb'};padding:0;line-height:1;">▼</button>
+                        </div>
+                        <button title="Cambia icona" onclick="openIconPicker('${safeCat}')" style="background:#111827;border:1px solid #374151;border-radius:6px;width:36px;height:36px;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;">${iconHtml(meta.icon)}</button>
+                        <span style="flex:1;font-weight:700;color:#e0e0e0;">${cat}</span>
+                        <span style="font-size:12px;color:#9ca3af;">${usedCount} prodott${usedCount === 1 ? 'o' : 'i'}</span>
+                        <button title="Rinomina" onclick="renameCategoryItem('${safeCat}')" style="background:#1e3a8a;color:#bfdbfe;border:none;border-radius:4px;padding:6px 8px;cursor:pointer;font-size:12px;">✏️</button>
+                        <button title="Elimina" onclick="deleteCategoryItem('${safeCat}')" style="background:#7f1d1d;color:#fca5a5;border:none;border-radius:4px;padding:6px 8px;cursor:pointer;font-size:12px;">🗑️</button>
+                        ${isDefault ? '<span title="categoria predefinita" style="font-size:11px;color:#4b5563;">★</span>' : ''}
                     </div>
-                    <button title="Cambia icona" onclick="openIconPicker('${safeCat}')" style="background:#111827;border:1px solid #374151;border-radius:6px;width:36px;height:36px;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;">${iconHtml(meta.icon)}</button>
-                    <span style="flex:1;font-weight:700;color:#e0e0e0;">${cat}</span>
-                    <span style="font-size:12px;color:#9ca3af;">${usedCount} prodott${usedCount === 1 ? 'o' : 'i'}</span>
-                    <button title="Rinomina" onclick="renameCategoryItem('${safeCat}')" style="background:#1e3a8a;color:#bfdbfe;border:none;border-radius:4px;padding:6px 8px;cursor:pointer;font-size:12px;">✏️</button>
-                    <button title="Elimina" onclick="deleteCategoryItem('${safeCat}')" style="background:#7f1d1d;color:#fca5a5;border:none;border-radius:4px;padding:6px 8px;cursor:pointer;font-size:12px;">🗑️</button>
-                    ${isDefault ? '<span title="categoria predefinita" style="font-size:11px;color:#4b5563;">★</span>' : ''}
+                    <div id="subPanel-${cssEscape(cat)}" style="padding:0 10px 10px 10px;">
+                        <div style="font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Sotto-categorie</div>
+                        <div id="subList-${cssEscape(cat)}" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;min-height:24px;">
+                            <span style="font-size:12px;color:#6b7280;">Caricamento…</span>
+                        </div>
+                        <div style="display:flex;gap:6px;">
+                            <input type="text" id="newSub-${cssEscape(cat)}" placeholder="es. TIPO 0" style="flex:1;background:#111827;border:1px solid #374151;border-radius:6px;color:#e0e0e0;padding:6px 8px;font-size:12px;text-transform:uppercase;" onkeydown="if(event.key==='Enter'){event.preventDefault();addSubcategoryFromInput('${safeCat}');}" oninput="this.value=this.value.replace(/[\x22\x27\x60]/g,'')">                            <button class="btn btn-small" style="background:#0f766e;color:#fff;padding:0 12px;font-size:12px;" onclick="addSubcategoryFromInput('${safeCat}')">➕</button>
+                        </div>
+                    </div>
                 </div>`;
             }).join('');
+            // carica le sub di tutte le categorie in parallelo (cache hit dopo la prima)
+            for (const cat of productCategories) renderSubsForCategory(cat);
+        }
+
+        // Genera un id CSS-safe a partire dal nome categoria (lascia solo [A-Z0-9_-])
+        function cssEscape(s) {
+            return String(s || '').replace(/[^A-Za-z0-9_-]/g, '_');
+        }
+
+        async function renderSubsForCategory(cat) {
+            const container = document.getElementById('subList-' + cssEscape(cat));
+            if (!container) return;
+            const subs = await fetchSubcategories(cat);
+            if (!subs.length) {
+                container.innerHTML = '<span style="font-size:12px;color:#6b7280;font-style:italic;">Nessuna sotto-categoria</span>';
+                return;
+            }
+            container.innerHTML = subs.map((s, i) => {
+                const idx = `rsub-${cssEscape(cat)}-${i}`;
+                const esc = t => t.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+                return `<span style="display:inline-flex;align-items:center;gap:4px;background:#111827;border:1px solid #374151;border-radius:999px;padding:3px 4px 3px 10px;font-size:12px;color:#e0e0e0;">
+                    ${esc(s)}
+                    <button title="Rimuovi" data-cat="${esc(cat)}" data-sub="${esc(s)}" class="sub-remove-btn" style="background:#7f1d1d;color:#fca5a5;border:none;border-radius:50%;width:18px;height:18px;cursor:pointer;font-size:11px;line-height:1;padding:0;">✕</button>
+                </span>`;
+            }).join('');
+            container.querySelectorAll('.sub-remove-btn').forEach(btn => {
+                btn.addEventListener('click', () => removeSubcategory(btn.dataset.cat, btn.dataset.sub));
+            });
+        }
+
+        async function addSubcategoryFromInput(cat) {
+            const input = document.getElementById('newSub-' + cssEscape(cat));
+            if (!input) return;
+            const raw = (input.value || '').trim();
+            if (!raw) return;
+            if (/["'`]/.test(raw)) { showAlert('❌ Il nome non può contenere virgolette (", \', `)', 'error'); return; }
+            try {
+                const r = await fetch(`${API_URL}/categories/${encodeURIComponent(cat)}/subcategories`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ name: raw })
+                });
+                if (!r.ok) {
+                    const e = await r.json().catch(()=>({}));
+                    throw new Error(e.error || `HTTP ${r.status}`);
+                }
+                input.value = '';
+                invalidateSubcategoriesCache(cat);
+                await renderSubsForCategory(cat);
+            } catch (e) {
+                showAlert(`❌ ${e.message}`, 'error');
+            }
+        }
+
+        async function removeSubcategory(cat, sub) {
+            const inUse = allArticles.filter(a =>
+                (a.category || '').toUpperCase() === cat.toUpperCase() &&
+                (a.subcategory || '').toUpperCase() === sub.toUpperCase()
+            ).length;
+            let force = false;
+            if (inUse > 0) {
+                if (!confirm(`La sotto-categoria "${sub}" è usata da ${inUse} articoli.\nVuoi rimuoverla comunque (gli articoli resteranno senza sotto-categoria)?`)) return;
+                force = true;
+            } else {
+                if (!confirm(`Rimuovere la sotto-categoria "${sub}"?`)) return;
+            }
+            try {
+                const url = `${API_URL}/categories/${encodeURIComponent(cat)}/subcategories/${encodeURIComponent(sub)}${force ? '?force=1' : ''}`;
+                const r = await fetch(url, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!r.ok) {
+                    const e = await r.json().catch(()=>({}));
+                    throw new Error(e.error || `HTTP ${r.status}`);
+                }
+                invalidateSubcategoriesCache(cat);
+                await renderSubsForCategory(cat);
+                if (force) { await loadWarehouseStatus(); renderProdottiList(); }
+            } catch (e) {
+                showAlert(`❌ ${e.message}`, 'error');
+            }
         }
 
         function deleteCategoryItem(cat) {
@@ -2688,6 +2790,7 @@
                         <th style="text-align:left;padding:6px 8px;">Nome</th>
                         <th style="text-align:center;padding:6px 8px;">kg/collo</th>
                         <th style="text-align:left;padding:6px 8px;">Categoria</th>
+                        <th style="text-align:left;padding:6px 8px;">Sotto-cat.</th>
                         <th style="text-align:center;padding:6px 8px;color:#fb923c;" title="Soglia avviso (in colli): scatta lo stato 'In esaurimento'">⚠️ Avviso</th>
                         <th style="text-align:center;padding:6px 8px;color:#ef4444;" title="Soglia critica (in colli): scatta lo stato 'Critico'">🚨 Critica</th>
                         <th style="text-align:right;padding:6px 8px;">Azioni</th>
@@ -2700,16 +2803,56 @@
                         <td style="padding:4px 8px;"><input id="pin-code-${a.id}" value="${(a.code||'').replace(/"/g,'&quot;')}" style="background:#1f2937;border:1px solid #374151;border-radius:5px;color:#60a5fa;padding:4px 8px;width:100%;font-size:13px;font-weight:700;" onkeydown="if(event.key==='Enter')saveInlineArticle(${a.id});else if(event.key==='Escape')renderProdottiList();"></td>
                         <td style="padding:4px 8px;"><input id="pin-name-${a.id}" value="${(a.name||'').replace(/"/g,'&quot;')}" style="background:#1f2937;border:1px solid #374151;border-radius:5px;color:#e0e0e0;padding:4px 8px;width:100%;font-size:13px;" onkeydown="if(event.key==='Enter')saveInlineArticle(${a.id});else if(event.key==='Escape')renderProdottiList();"></td>
                         <td style="padding:4px 8px;text-align:center;"><input id="pin-wpu-${a.id}" type="number" value="${getWeightPerUnit(a)}" min="0.01" step="0.01" style="background:#1f2937;border:1px solid #374151;border-radius:5px;color:#4ade80;padding:4px 6px;width:64px;font-size:13px;text-align:center;" onkeydown="if(event.key==='Enter')saveInlineArticle(${a.id});else if(event.key==='Escape')renderProdottiList();"></td>
-                        <td style="padding:4px 8px;"><select id="pin-cat-${a.id}" style="background:#1f2937;border:1px solid #374151;border-radius:5px;color:#9ca3af;padding:4px 8px;width:100%;font-size:13px;">${getCategorySelectHtml(a.category)}</select></td>
+                        <td style="padding:4px 8px;"><select id="pin-cat-${a.id}" onchange="onInlineCatChange(${a.id})" style="background:#1f2937;border:1px solid #374151;border-radius:5px;color:#9ca3af;padding:4px 8px;width:100%;font-size:13px;">${getCategorySelectHtml(a.category)}</select></td>
+                        <td style="padding:4px 8px;"><select id="pin-sub-${a.id}" style="background:#1f2937;border:1px solid #374151;border-radius:5px;color:#9ca3af;padding:4px 6px;width:100%;font-size:12px;"><option value="">— nessuna —</option>${a.subcategory ? `<option value="${(a.subcategory||'').replace(/"/g,'&quot;')}" selected>${a.subcategory}</option>` : ''}</select></td>
                         <td style="padding:4px 8px;text-align:center;"><input id="pin-min-${a.id}" type="number" value="${minS}" min="0" step="1" placeholder="0" style="background:#1f2937;border:1px solid #fb923c33;border-radius:5px;color:#fb923c;padding:4px 6px;width:64px;font-size:13px;text-align:center;font-weight:700;" onkeydown="if(event.key==='Enter')saveInlineArticle(${a.id});else if(event.key==='Escape')renderProdottiList();"></td>
                         <td style="padding:4px 8px;text-align:center;"><input id="pin-crit-${a.id}" type="number" value="${critS}" min="0" step="1" placeholder="0" style="background:#1f2937;border:1px solid #ef444433;border-radius:5px;color:#ef4444;padding:4px 6px;width:64px;font-size:13px;text-align:center;font-weight:700;" onkeydown="if(event.key==='Enter')saveInlineArticle(${a.id});else if(event.key==='Escape')renderProdottiList();"></td>
                         <td style="padding:4px 8px;text-align:right;white-space:nowrap;">
                             <button class="btn btn-small" style="background:#16a34a;color:#fff;margin-right:4px;font-size:12px;" onclick="saveInlineArticle(${a.id})">✓ Salva</button>
+                            <button class="btn btn-small" style="background:#1e3a8a;color:#bfdbfe;margin-right:4px;font-size:12px;" title="Modifica completa" onclick="openArticleModal(${a.id})">✏️</button>
                             <button class="btn btn-small" style="background:#7f1d1d;color:#fca5a5;" onclick="deleteArticleConfirm(${a.id},'${(a.name||'').replace(/'/g,"\\'")}')">🗑️</button>
                         </td>
                     </tr>`;
                     }).join('')}</tbody>
                 </table>`;
+            populateInlineSubSelects(valid);
+        }
+
+        async function onInlineCatChange(id) {
+            const catSel = document.getElementById(`pin-cat-${id}`);
+            const subSel = document.getElementById(`pin-sub-${id}`);
+            if (!catSel || !subSel) return;
+            subSel.innerHTML = '<option value="">— nessuna —</option>';
+            const cat = catSel.value.trim();
+            if (cat) {
+                const subs = await fetchSubcategories(cat);
+                for (const s of subs) {
+                    const opt = document.createElement('option');
+                    opt.value = s; opt.textContent = s;
+                    subSel.appendChild(opt);
+                }
+            }
+        }
+
+        async function populateInlineSubSelects(articles) {
+            const cats = [...new Set(articles.map(a => (a.category||'').trim().toUpperCase()).filter(c => c))];
+            await Promise.all(cats.map(c => fetchSubcategories(c)));
+            for (const a of articles) {
+                const subSel = document.getElementById(`pin-sub-${a.id}`);
+                if (!subSel) continue;
+                const cat = (a.category||'').trim().toUpperCase();
+                const subs = _subcategoriesCache.get(cat) || [];
+                const cur = (a.subcategory||'').trim().toUpperCase();
+                const opts = ['<option value="">— nessuna —</option>'];
+                for (const s of subs) {
+                    const v = s.replace(/"/g, '&quot;');
+                    opts.push(`<option value="${v}"${cur && cur === s.toUpperCase() ? ' selected' : ''}>${v}</option>`);
+                }
+                if (cur && !subs.some(s => s.toUpperCase() === cur)) {
+                    opts.push(`<option value="${cur.replace(/"/g,'&quot;')}" selected>${cur} (legacy)</option>`);
+                }
+                subSel.innerHTML = opts.join('');
+            }
         }
 
         async function saveInlineArticle(id) {
@@ -2719,6 +2862,7 @@
             const name = document.getElementById(`pin-name-${id}`)?.value.trim();
             const wpu  = parseFloat(document.getElementById(`pin-wpu-${id}`)?.value) || 1;
             const cat  = document.getElementById(`pin-cat-${id}`)?.value.trim();
+            const sub  = document.getElementById(`pin-sub-${id}`)?.value.trim() || null;
             const minS = parseInt(document.getElementById(`pin-min-${id}`)?.value) || 0;
             const critS = parseInt(document.getElementById(`pin-crit-${id}`)?.value) || 0;
             if (!code) { showAlert('❌ Il codice è obbligatorio', 'error'); return; }
@@ -2730,7 +2874,7 @@
                 const resp = await fetch(`${API_URL}/inventory/articles/${id}`, {
                     method: 'PUT',
                     headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ code, name, category: cat || null, unit: a.unit || 'kg', weightPerUnit: wpu, barcode: a.barcode || null, description: a.description || null })
+                    body: JSON.stringify({ code, name, category: cat || null, subcategory: sub, unit: a.unit || 'kg', weightPerUnit: wpu, barcode: a.barcode || null, description: a.description || null })
                 });
                 if (!resp.ok) { const e = await resp.json().catch(()=>{}); throw new Error(e?.error || `HTTP ${resp.status}`); }
                 // Aggiorna soglie (sempre, anche se 0 per disattivare)
@@ -2765,6 +2909,7 @@
                 document.getElementById('artCode').value = '';
                 document.getElementById('artName').value = '';
                 catSel.value = '';
+                document.getElementById('artSubcategory').innerHTML = '<option value="">— nessuna —</option>';
                 document.getElementById('artUnit').value = 'kg';
                 document.getElementById('artWeightPerUnit').value = '1';
                 document.getElementById('artBarcode').value = '';
@@ -2777,6 +2922,10 @@
                 document.getElementById('artCode').value = a.code || '';
                 document.getElementById('artName').value = a.name || '';
                 catSel.value = (a.category || '').toUpperCase();
+                // popola subito le opzioni con il valore corrente, poi loadSubcategoriesForArt allinea
+                document.getElementById('artSubcategory').innerHTML =
+                    '<option value="">— nessuna —</option>' +
+                    (a.subcategory ? `<option value="${(a.subcategory||'').replace(/"/g,'&quot;')}" selected>${a.subcategory}</option>` : '');
                 document.getElementById('artUnit').value = a.unit || 'kg';
                 document.getElementById('artWeightPerUnit').value = getWeightPerUnit(a);
                 document.getElementById('artBarcode').value = a.barcode || '';
@@ -2784,7 +2933,54 @@
                 document.getElementById('artMinimumStock').value = (a.inventory && a.inventory.minimumStock) || 0;
                 document.getElementById('artCriticalStock').value = (a.inventory && a.inventory.criticalStock) || 0;
             }
+            // popola select sottocategorie per la categoria scelta (preserva sub corrente se in lista)
+            const currentSub = (allArticles.find(x => x.id === articleId)?.subcategory) || '';
+            loadSubcategoriesForArt(catSel.value, currentSub);
             document.getElementById('articleModalOverlay').classList.add('open');
+        }
+
+        // Cache sottocategorie per categoria (key = nome categoria UPPERCASE)
+        const _subcategoriesCache = new Map();
+        async function fetchSubcategories(categoryName) {
+            const key = (categoryName || '').trim().toUpperCase();
+            if (!key) return [];
+            if (_subcategoriesCache.has(key)) return _subcategoriesCache.get(key);
+            let subs = [];
+            try {
+                const resp = await fetch(`${API_URL}/categories/${encodeURIComponent(key)}/subcategories`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                subs = resp.ok ? await resp.json() : [];
+            } catch { subs = []; }
+            _subcategoriesCache.set(key, subs);
+            return subs;
+        }
+        function invalidateSubcategoriesCache(categoryName) {
+            const key = (categoryName || '').trim().toUpperCase();
+            if (key) _subcategoriesCache.delete(key);
+        }
+        async function loadSubcategoriesForArt(categoryName, currentValue) {
+            const sel = document.getElementById('artSubcategory');
+            if (!sel) return;
+            const cur = (currentValue != null ? currentValue : sel.value || '').toString().trim().toUpperCase();
+            const key = (categoryName || '').trim().toUpperCase();
+            const subs = await fetchSubcategories(key);
+            const opts = ['<option value="">— nessuna —</option>'];
+            for (const s of subs) {
+                const v = s.replace(/"/g, '&quot;');
+                opts.push(`<option value="${v}"${cur === s.toUpperCase() ? ' selected' : ''}>${v}</option>`);
+            }
+            // Se l'articolo aveva una sub legacy non più in elenco, la mantengo selezionabile
+            if (cur && !subs.some(s => s.toUpperCase() === cur)) {
+                opts.push(`<option value="${cur}" selected>${cur} (legacy)</option>`);
+            }
+            sel.innerHTML = opts.join('');
+        }
+
+        function onArtCategoryChange() {
+            const cat = document.getElementById('artCategory').value;
+            // azzera sub quando cambio categoria
+            loadSubcategoriesForArt(cat, '');
         }
 
         function closeArticleModal(event) {
@@ -2809,6 +3005,7 @@
                 name,
                 description: document.getElementById('artDescription').value.trim() || null,
                 category: document.getElementById('artCategory').value.trim() || null,
+                subcategory: document.getElementById('artSubcategory').value.trim() || null,
                 unit: document.getElementById('artUnit').value.trim() || 'kg',
                 weightPerUnit: parseFloat(document.getElementById('artWeightPerUnit').value) || 1,
                 barcode: document.getElementById('artBarcode').value.trim() || null
@@ -2828,6 +3025,9 @@
                     body: JSON.stringify(payload)
                 });
                 if (!resp.ok) { const e = await resp.json().catch(()=>{}); throw new Error(e?.error || `HTTP ${resp.status}`); }
+
+                // invalida la cache sottocategorie per la categoria appena salvata
+                if (payload.category) invalidateSubcategoriesCache(payload.category);
 
                 // Salva soglie su inventory (solo se articolo esiste/aggiornato e ha già inventario)
                 const savedArticle = id ? { id: parseInt(id) } : (await resp.clone().json().catch(()=>null));
@@ -3209,16 +3409,14 @@
 
         async function avLoadOperators() {
             try {
-                const [opsR, admR] = await Promise.all([
-                    fetch(`${API_URL}/auth/operators/public`),
-                    fetch(`${API_URL}/auth/admins/public`)
-                ]);
-                const ops = opsR.ok ? await opsR.json() : [];
-                const adm = admR.ok ? await admR.json() : [];
-                avOperatorsList = [
-                    ...adm.map(a => ({ id: a.id, username: a.username, role: 'master' })),
-                    ...ops.map(o => ({ id: o.id, username: o.username, role: 'slave' }))
-                ];
+                // /auth/operators/public ritorna GIÀ slave + admin + master con role.
+                const r = await fetch(`${API_URL}/auth/operators/public`);
+                const all = r.ok ? await r.json() : [];
+                const uniqueById = Array.from(new Map(all.map(u => [u.id, u])).values());
+                const isAdmin = (u) => u.role === 'master' || u.role === 'admin';
+                const admins = uniqueById.filter(isAdmin).map(a => ({ id: a.id, username: a.username, role: 'master' }));
+                const slaves = uniqueById.filter(u => !isAdmin(u)).map(o => ({ id: o.id, username: o.username, role: 'slave' }));
+                avOperatorsList = [...admins, ...slaves];
             } catch (_) { avOperatorsList = []; }
         }
 
@@ -3446,7 +3644,7 @@
 
             <div class="print-actions">
                 <button class="btn" style="background:#374151;color:#e0e0e0;" onclick="closePrintInventory()">Annulla</button>
-                <button class="btn btn-primary" onclick="generateAndPrint()">🖨️ Stampa</button>
+                <button class="btn btn-primary" onclick="generateAndPrint()">🖨️ Stampa A4</button>
             </div>
         </div>
     </div>

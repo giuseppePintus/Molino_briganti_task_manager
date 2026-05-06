@@ -85,6 +85,36 @@ $STATIC_STAGE = '/share/Container/molino-static-stage'  # per Quick: dove scompa
 Write-Host "[NAS-DEPLOY] Molino Briganti - Deploy unificato" -ForegroundColor Cyan
 Write-Host "================================================" -ForegroundColor Cyan
 
+# Helper: esegue uno script bash sul NAS senza che PowerShell contamini i line-ending.
+# Pipare una stringa direttamente a `ssh "bash -s"` su Windows ri-introduce CRLF
+# (PowerShell scrive su stdin con Environment.NewLine), facendo apparire \r spuri
+# che bash interpreta come comandi vuoti => "bash: line N: : command not found".
+# Workaround: scrive lo script in un file LF puro, lo carica via scp, lo esegue.
+function Invoke-RemoteBash {
+    param(
+        [Parameter(Mandatory)] [string] $Script,
+        [string] $Label = 'remote-script',
+        [switch] $CaptureOutput
+    )
+    $tmpLocal  = Join-Path ([System.IO.Path]::GetTempPath()) ("nas-$Label-" + [Guid]::NewGuid().ToString('N') + '.sh')
+    $remoteSh  = "/tmp/nas-$Label-$([Guid]::NewGuid().ToString('N')).sh"
+    $clean     = ($Script -replace "`r`n", "`n") + "`n"
+    [System.IO.File]::WriteAllText($tmpLocal, $clean, [System.Text.UTF8Encoding]::new($false))
+    try {
+        scp -q $tmpLocal "$($NAS_USER)@$($NAS_IP):$remoteSh" 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "scp script remoto fallito ($Label)" }
+        if ($CaptureOutput) {
+            $out = ssh -o ConnectTimeout=15 -o ServerAliveInterval=15 "$($NAS_USER)@$($NAS_IP)" "bash $remoteSh; rc=`$?; rm -f $remoteSh; exit `$rc" 2>&1
+            return @{ Output = $out; ExitCode = $LASTEXITCODE }
+        } else {
+            ssh -o ConnectTimeout=15 -o ServerAliveInterval=15 "$($NAS_USER)@$($NAS_IP)" "bash $remoteSh; rc=`$?; rm -f $remoteSh; exit `$rc" 2>&1 | Out-Host
+            return $LASTEXITCODE
+        }
+    } finally {
+        Remove-Item $tmpLocal -Force -ErrorAction SilentlyContinue
+    }
+}
+
 # ---------- 0. -RemoveShadow: cleanup ed esci ----------
 if ($RemoveShadow) {
     Write-Host "`n[CLEANUP] Rimozione shadow + immagine :mariadb-new..." -ForegroundColor Yellow
@@ -226,8 +256,8 @@ echo "  -> restart: SKIP"
 "@
     }
     $remoteLF = ($remote -replace "`r`n", "`n") + "`n"
-    $remoteLF | ssh -o ConnectTimeout=15 -o ServerAliveInterval=15 "$($NAS_USER)@$($NAS_IP)" "bash -s" 2>&1 | Out-Host
-    if ($LASTEXITCODE -ne 0) { throw "Sync su $TargetContainer fallito" }
+    $rc = Invoke-RemoteBash -Script $remoteLF -Label 'sync'
+    if ($rc -ne 0) { throw "Sync su $TargetContainer fallito (exit $rc)" }
     Write-Host "[OK] Sync completato su $TargetContainer" -ForegroundColor Green
 }
 
@@ -298,7 +328,8 @@ fi
 echo "SMOKE_TEST_OK"
 "@
     $smokeLF = ($smoke -replace "`r`n", "`n") + "`n"
-    $smokeOut = $smokeLF | ssh "$($NAS_USER)@$($NAS_IP)" "bash -s" 2>&1
+    $smokeRes = Invoke-RemoteBash -Script $smokeLF -Label 'smoke' -CaptureOutput
+    $smokeOut = $smokeRes.Output
     Write-Host $smokeOut
     if (($smokeOut | Out-String) -notmatch 'SMOKE_TEST_OK') {
         throw "Smoke test fallito. Produzione intatta. Per ripulire: .\nas-deploy.ps1 -RemoveShadow"
@@ -347,7 +378,8 @@ sleep 25
 `$DOCKER ps --filter name=`$CT --format '{{.Names}} {{.Status}}'
 "@
         $swapLF = ($swap -replace "`r`n", "`n") + "`n"
-        $swapOut = $swapLF | ssh "$($NAS_USER)@$($NAS_IP)" "bash -s" 2>&1
+        $swapRes = Invoke-RemoteBash -Script $swapLF -Label 'swap' -CaptureOutput
+        $swapOut = $swapRes.Output
         Write-Host $swapOut
         if (($swapOut | Out-String) -notmatch "$CT_PROD\s+Up") {
             Write-Host "[ERR] Swap fallito! Tentativo rollback..." -ForegroundColor Red

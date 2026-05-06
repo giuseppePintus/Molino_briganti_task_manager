@@ -11,7 +11,7 @@ description: "Frontend del task manager: HTML/JS vanilla in public/ e TS in clie
 - `warehouse-management.html` (3000+ righe), `warehouse-management-lite.html`
 - `orders-planner.html`, `customers-management.html`, `trips-management.html`
 - `operators.html`, `company-settings.html`
-- `backup-management.html` (controllata da `update-backup-page.ps1`)
+- `backup-management.html`
 
 ## Convenzioni
 - **No framework** (no React/Vue/Angular). HTML + JS vanilla + fetch API.

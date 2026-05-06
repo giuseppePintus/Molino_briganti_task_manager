@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ordini Istantanei - Molino Briganti</title>
+    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/common-styles.css">
+    <link rel="stylesheet" href="css/instant-orders-custom.css">
+    <script src="js/settings-utils.js"></script>
+    <script src="js/auth-guard.js"></script>
+    <script src="js/scroll-preserve.js"></script>
+    <script src="js/ui-confirm.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="js/alerts-badge.js" defer></script>
+    <script src="js/svg-icons.js"></script>
+    <script src="js/thermal-print.js"></script>
+</head>
+<body>
+
+<div class="container">
+    <!-- Header -->
+    <div class="header">
+        <div class="header-left">
+            <div class="header-logo">
+                <img src="images/logo INSEGNA.png" alt="Logo" class="logo-hidden">
+            </div>
+            <div class="header-title">
+                <h1>⚡ Ordini Istantanei <small>Vendita banco / scarico immediato</small></h1>
+                <div class="user-info" id="userBadge"></div>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-back btn-sm" onclick="window.location.href='warehouse-management.html'">🏭 Magazzino</button>
+            <button class="btn btn-danger btn-sm" onclick="handleLogout()">🚪 Logout</button>
+        </div>
+    </div>
+
+    <!-- Layout: prodotti a sinistra, riepilogo ordine a destra -->
+    <div class="io-layout">
+
+        <!-- COLONNA SINISTRA: POS - vista categorie OPPURE prodotti -->
+        <div class="io-col-left">
+            <!-- VISTA A: griglia categorie (POS) -->
+            <div class="card pos-card" id="categoriesView">
+                <div class="card-header">
+                    <h3>📂 Seleziona categoria</h3>
+                    <input type="text" id="globalSearchInput" class="search-input" placeholder="🔍 Cerca in tutti i prodotti..." oninput="onGlobalSearch()">
+                </div>
+                <div class="category-grid-pos" id="categoryGridPos"></div>
+                <!-- Risultati ricerca globale (mostrati solo quando searchTerm presente) -->
+                <div class="product-grid global-search-grid io-hidden" id="globalSearchGrid"></div>
+            </div>
+
+            <!-- VISTA B: prodotti della categoria selezionata -->
+            <div class="card pos-card io-hidden" id="productsView">
+                <div class="card-header pos-products-header">
+                    <button class="btn btn-back btn-sm" onclick="backToCategories()">← Categorie</button>
+                    <h3 id="productsHeader">📦 Prodotti</h3>
+                    <input type="text" id="searchInput" class="search-input" placeholder="🔍 Filtra..." oninput="onSearch()">
+                </div>
+                <div class="subcategory-bar io-hidden" id="subcategoryBar"></div>
+                <div class="product-grid" id="productGrid">
+                    <div class="empty-state">⏳ Caricamento prodotti...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- COLONNA DESTRA: cliente + righe ordine + azioni -->
+        <div class="io-col-right">
+            <div class="card sticky-card">
+                <div class="card-header">
+                    <h3>🧾 Ordine in corso</h3>
+                </div>
+
+                <!-- Cliente -->
+                <div class="client-row">
+                    <label>Cliente (opzionale)</label>
+                    <input type="text" id="clientNameInput" placeholder="Banco" autocomplete="off">
+                </div>
+
+                <!-- Operatore -->
+                <div class="client-row">
+                    <label>Operatore</label>
+                    <select id="operatorSelect"></select>
+                </div>
+
+                <!-- Righe ordine -->
+                <div class="order-lines" id="orderLines">
+                    <div class="empty-lines">Nessuna riga. Seleziona un prodotto per iniziare.</div>
+                </div>
+
+                <!-- Totali -->
+                <div class="order-totals">
+                    <div><span>Righe</span><strong id="totLines">0</strong></div>
+                    <div><span>Colli</span><strong id="totColli">0</strong></div>
+                    <div><span>Kg</span><strong id="totKg">0</strong></div>
+                </div>
+
+                <!-- Note -->
+                <div class="notes-row">
+                    <label>Note (opzionale)</label>
+                    <textarea id="orderNotes" rows="2" placeholder="Eventuali note sull'ordine..."></textarea>
+                </div>
+
+                <!-- Azioni -->
+                <div class="action-buttons">
+                    <button class="btn btn-secondary" id="btnPrintA4" onclick="printOrder('a4')" disabled>🖨 Stampa A4</button>
+                    <button class="btn btn-secondary" id="btnPrintThermal" onclick="printOrder('thermal')" disabled>🧾 Stampa 80mm</button>
+                    <button class="btn btn-warning" id="btnComplete" onclick="completeOrder(false)" disabled>✅ Solo completa</button>
+                    <button class="btn btn-success" id="btnPrintComplete" onclick="completeOrder(true)" disabled>🖨✅ Stampa &amp; completa</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- MODAL: aggiunta riga prodotto -->
+<div class="modal-overlay" id="addLineOverlay" onclick="closeAddLineOverlay(event)">
+    <div class="modal">
+        <h3>➕ Aggiungi prodotto all'ordine</h3>
+
+        <div class="modal-article-info">
+            <div class="art-name" id="alArtName">-</div>
+            <div class="art-code" id="alArtCode">-</div>
+            <div class="art-stock">Giacenza totale: <strong id="alArtStock">0</strong> colli</div>
+        </div>
+
+        <div class="field">
+            <label>Posizione scaffale</label>
+            <select id="alShelfSelect" title="Posizione scaffale" onchange="onShelfChange()">
+                <option value="">-- Seleziona scaffale --</option>
+            </select>
+            <div class="hint" id="alShelfHint"></div>
+        </div>
+
+        <div class="field">
+            <label>Quantità (colli)</label>
+            <div class="qty-control">
+                <button type="button" class="qty-btn" onclick="alStepQty(-10)">-10</button>
+                <button type="button" class="qty-btn" onclick="alStepQty(-1)">−</button>
+                <input type="number" class="qty-input" id="alQty" title="Quantità in colli" value="1" min="1" oninput="updateAlPreview()">
+                <button type="button" class="qty-btn" onclick="alStepQty(1)">+</button>
+                <button type="button" class="qty-btn" onclick="alStepQty(10)">+10</button>
+            </div>
+            <div class="qty-kg-preview" id="alKgPreview"></div>
+        </div>
+
+        <div class="modal-actions">
+            <button class="btn btn-gray" onclick="closeAddLine()">✕ Annulla</button>
+            <button class="btn btn-success" id="alConfirmBtn" onclick="confirmAddLine()">✓ Aggiungi</button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ===================================================================
+// STATE
+// ===================================================================
+const API_URL = `${window.location.protocol}//${window.location.hostname}${window.location.port ? ':' + window.location.port : ''}/api`;
+let token = localStorage.getItem('token') || '';
+let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+
+let allArticles = [];
+let allShelfPositions = [];
+let allShelfEntries = [];
+let allCategories = []; // [{name, icon, color}]
+let allOperators = []; // [{id, username, fullName, role}]
+let companyInfo = null;
+
+let selectedCategory = null;
+let selectedSubcategory = null;
+let searchTerm = '';
+let orderLines = []; // [{articleId, articleName, articleCode, weightPerUnit, positionCode, shelfEntryId, batch, quantity}]
+
+// Modal "aggiungi riga" state
+let alArticle = null;
+let alAvailableEntries = []; // shelf entries con quantità > 0 per l'articolo
+
+// ===================================================================
+// CATEGORY HELPERS (allineato a warehouse-management-lite.html)
+// ===================================================================
+const CATEGORY_META_FALLBACK = {
+    'FARINE':         { icon: '🌾', color: '#f59e0b' },
+    'MIX FARINE':     { icon: '🥣', color: '#d97706' },
+    'SEMOLE':         { icon: '🌽', color: '#84cc16' },
+    'CEREALI':        { icon: '🌿', color: '#10b981' },
+    'CEREALI PERLATI':{ icon: '💎', color: '#06b6d4' },
+    'MANGIMI':        { icon: '🐄', color: '#8b5cf6' },
+    'ALTRO':          { icon: '📦', color: '#6b7280' },
+};
+
+function getCategoryMeta(name) {
+    const fromDb = allCategories.find(c => c.name === name);
+    if (fromDb) return { icon: fromDb.icon || '📦', color: fromDb.color || '#6b7280' };
+    return CATEGORY_META_FALLBACK[name] || { icon: '📦', color: '#6b7280' };
+}
+
+function getArticleCategory(art) {
+    if (art.category) return art.category.toUpperCase();
+    const code = art.code || '';
+    if (code.startsWith('F-')) return 'FARINE';
+    if (code.startsWith('FM-')) return 'MIX FARINE';
+    if (code.startsWith('GD-')) return 'SEMOLE';
+    if (code.startsWith('Z-')) return 'CEREALI';
+    if (code.startsWith('MG-')) return 'MANGIMI';
+    if (code.startsWith('CP-')) return 'CEREALI PERLATI';
+    return 'ALTRO';
+}
+
+function getWeightPerUnit(article) {
+    if (article && article.weightPerUnit && article.weightPerUnit > 0) return article.weightPerUnit;
+    const code = article?.code || '';
+    const match = code.match(/-(\d+)$/);
+    return match ? (parseInt(match[1]) || 1) : 1;
+}
+
+// Esposto per thermal-print.js (productHtml usa window.extractWeightPerCollo)
+window.extractWeightPerCollo = function (productCodeOrName) {
+    if (!productCodeOrName) return 1;
+    const m = String(productCodeOrName).match(/-(\d+(?:[\.,]\d+)?)\s*$/);
+    return m ? (parseFloat(m[1].replace(',', '.')) || 1) : 1;
+};
+
+// ===================================================================
+// INIT
+// ===================================================================
+window.addEventListener('load', async () => {
+    if (!token || !currentUser.id) {
+        window.location.href = '/index.html';
+        return;
+    }
+    const badge = document.getElementById('userBadge');
+    if (badge && currentUser.username) badge.textContent = `👤 ${currentUser.username}`;
+    if (window.SettingsUtils && window.SettingsUtils.loadAndApplyBranding) {
+        await window.SettingsUtils.loadAndApplyBranding();
+    }
+    await loadAll();
+    setupSocket();
+});
+
+function handleLogout() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('currentUser');
+    window.location.href = '/index.html';
+}
+
+function setupSocket() {
+    if (typeof io === 'undefined') return;
+    const socket = io(window.location.origin, { transports: ['websocket', 'polling'] });
+    let reloadTimer = null;
+    socket.on('inventory:updated', () => {
+        clearTimeout(reloadTimer);
+        reloadTimer = setTimeout(() => loadAll(), 500);
+    });
+}
+
+// ===================================================================
+// DATA LOAD
+// ===================================================================
+async function loadAll() {
+    try {
+        const headers = { 'Authorization': `Bearer ${token}` };
+        const [artR, posR, entR, catR, settR, opR] = await Promise.all([
+            fetch(`${API_URL}/inventory/articles`, { headers }),
+            fetch(`${API_URL}/inventory/shelf-positions`, { headers }),
+            fetch(`${API_URL}/inventory/shelf-entries`, { headers }),
+            fetch(`${API_URL}/categories`, { headers }),
+            fetch(`${API_URL}/settings/company`, { headers }).catch(() => null),
+            fetch(`${API_URL}/auth/operators/public`, { headers }).catch(() => null),
+        ]);
+        if (artR.ok) allArticles = await artR.json();
+        if (posR.ok) allShelfPositions = await posR.json();
+        if (entR.ok) allShelfEntries = await entR.json();
+        if (catR && catR.ok) allCategories = await catR.json();
+        if (settR && settR.ok) companyInfo = await settR.json();
+        if (opR && opR.ok) {
+            const ops = await opR.json();
+            // ordina admin prima, poi operator, alfabetico
+            allOperators = (Array.isArray(ops) ? ops : []).slice().sort((a, b) => {
+                const ra = (a.role === 'admin' || a.role === 'master') ? 0 : 1;
+                const rb = (b.role === 'admin' || b.role === 'master') ? 0 : 1;
+                if (ra !== rb) return ra - rb;
+                return (a.fullName || a.username || '').localeCompare(b.fullName || b.username || '');
+            });
+            renderOperatorSelect();
+        }
+    } catch (e) {
+        console.error('Errore caricamento:', e);
+        showToast('Errore di rete durante il caricamento', 'error');
+    }
+    renderCategoryBar();
+    renderProductGrid();
+    // Se l'utente sta cercando dalla vista categorie, rinfresca i risultati
+    const gsi = document.getElementById('globalSearchInput');
+    if (gsi && gsi.value.trim()) onGlobalSearch();
+}
+
+// ===================================================================
+// OPERATOR SELECT
+// ===================================================================
+function renderOperatorSelect() {
+    const sel = document.getElementById('operatorSelect');
+    if (!sel) return;
+    const opts = ['<option value="">Disponibile</option>'];
+    for (const op of allOperators) {
+        const label = escapeHtml(op.fullName || op.username || `#${op.id}`);
+        const role = op.role === 'admin' || op.role === 'master' ? ' ★' : '';
+        opts.push(`<option value="${op.id}">${label}${role}</option>`);
+    }
+    sel.innerHTML = opts.join('');
+    // default: nessun operatore preselezionato ("Disponibile")
+}
+
+// ===================================================================
+// CATEGORY GRID (POS view)
+// ===================================================================
+function renderCategoryBar() {
+    const grid = document.getElementById('categoryGridPos');
+    if (!grid) return;
+    const valid = allArticles.filter(a => !a.code?.startsWith('EMPTY-'));
+    const counts = {};
+    const stockByCat = {};
+    valid.forEach(a => {
+        const c = getArticleCategory(a);
+        counts[c] = (counts[c] || 0) + 1;
+        const totQty = allShelfEntries
+            .filter(e => e.articleId === a.id)
+            .reduce((s, e) => s + (e.quantity || 0), 0);
+        stockByCat[c] = (stockByCat[c] || 0) + (totQty > 0 ? 1 : 0);
+    });
+
+    // ordine uguale a "Gestione Categorie Prodotti" (usa allCategories da /api/categories)
+    const serverOrder = allCategories.map(c => String(c.name || '').toUpperCase());
+    const cats = [
+        ...serverOrder.filter(c => counts[c]),
+        ...Object.keys(counts).filter(c => !serverOrder.includes(c)),
+    ];
+
+    if (!cats.length) {
+        grid.innerHTML = '<div class="empty-state">Nessuna categoria disponibile</div>';
+        return;
+    }
+
+    grid.innerHTML = cats.map(cat => {
+        const meta = getCategoryMeta(cat);
+        const inStock = stockByCat[cat] || 0;
+        return `<button class="cat-tile"
+            onclick="selectCategory('${cat.replace(/'/g, "\\'")}')"
+            style="background:${meta.color};border-color:${meta.color}">
+            <span class="ct-icon">${iconHtml(meta.icon)}</span>
+            <span class="ct-name">${cat}</span>
+            <span class="ct-info">${inStock} disp. / ${counts[cat]} tot</span>
+        </button>`;
+    }).join('');
+}
+
+function selectCategory(cat) {
+    selectedCategory = cat;
+    selectedSubcategory = null;
+    searchTerm = '';
+    const si = document.getElementById('searchInput');
+    if (si) si.value = '';
+    document.getElementById('categoriesView').classList.add('io-hidden');
+    document.getElementById('productsView').classList.remove('io-hidden');
+    renderSubcategoryBar();
+    renderProductGrid();
+}
+
+function backToCategories() {
+    selectedCategory = null;
+    selectedSubcategory = null;
+    document.getElementById('productsView').classList.add('io-hidden');
+    document.getElementById('categoriesView').classList.remove('io-hidden');
+    // Rinfresca per riflettere eventuali variazioni di stock
+    renderCategoryBar();
+}
+
+function onSearch() {
+    searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+    renderProductGrid();
+}
+
+// Ricerca globale dalla vista categorie: mostra direttamente i prodotti
+// che corrispondono, in tutte le categorie.
+function onGlobalSearch() {
+    const inp = document.getElementById('globalSearchInput');
+    const term = inp.value.toLowerCase().trim();
+    const grid = document.getElementById('globalSearchGrid');
+    const catGrid = document.getElementById('categoryGridPos');
+    if (!term) {
+        grid.classList.add('io-hidden');
+        catGrid.classList.remove('io-hidden');
+        return;
+    }
+    catGrid.classList.add('io-hidden');
+    grid.classList.remove('io-hidden');
+    let list = allArticles.filter(a => !a.code?.startsWith('EMPTY-'));
+    list = list.filter(a => `${a.name || ''} ${a.code || ''}`.toLowerCase().includes(term));
+    list.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'it'));
+    renderProductCardsInto(grid, list, term);
+}
+
+// ===================================================================
+// SUBCATEGORY BAR (chip filtri sotto l'header categoria)
+// ===================================================================
+function getArticleSubcategory(art) {
+    return (art && art.subcategory ? String(art.subcategory).trim().toUpperCase() : '');
+}
+
+function renderSubcategoryBar() {
+    const bar = document.getElementById('subcategoryBar');
+    if (!bar) return;
+    if (!selectedCategory) {
+        bar.innerHTML = '';
+        bar.classList.add('io-hidden');
+        return;
+    }
+    // raccogli sub uniche per la categoria selezionata, ignorando articoli vuoti
+    const inCat = allArticles.filter(a => !a.code?.startsWith('EMPTY-') && getArticleCategory(a) === selectedCategory);
+    const set = new Map(); // upper -> display
+    for (const a of inCat) {
+        const up = getArticleSubcategory(a);
+        if (up && !set.has(up)) set.set(up, up);
+    }
+    const subs = Array.from(set.keys()).sort((x, y) => x.localeCompare(y, 'it', { sensitivity: 'base' }));
+    if (subs.length === 0) {
+        bar.innerHTML = '';
+        bar.classList.add('io-hidden');
+        return;
+    }
+    bar.classList.remove('io-hidden');
+    const chip = (label, value, active) =>
+        `<button type="button" class="sub-chip${active ? ' active' : ''}" onclick="selectSubcategory(${value === null ? 'null' : `'${value.replace(/'/g, "\\'").replace(/"/g, '&quot;')}'`})">${escapeHtml(label)}</button>`;
+    bar.innerHTML = chip('Tutti', null, !selectedSubcategory) + subs.map(s => chip(s, s, selectedSubcategory === s)).join('');
+}
+
+function selectSubcategory(sub) {
+    selectedSubcategory = sub || null;
+    renderSubcategoryBar();
+    renderProductGrid();
+}
+
+// ===================================================================
+// PRODUCT GRID
+// ===================================================================
+function renderProductGrid() {
+    const grid = document.getElementById('productGrid');
+    const header = document.getElementById('productsHeader');
+
+    let list = allArticles.filter(a => !a.code?.startsWith('EMPTY-'));
+    if (selectedCategory) list = list.filter(a => getArticleCategory(a) === selectedCategory);
+    if (selectedSubcategory) list = list.filter(a => getArticleSubcategory(a) === selectedSubcategory);
+    if (searchTerm) {
+        list = list.filter(a => {
+            const txt = `${a.name || ''} ${a.code || ''}`.toLowerCase();
+            return txt.includes(searchTerm);
+        });
+    }
+    list.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'it'));
+
+    const meta = selectedCategory ? getCategoryMeta(selectedCategory) : null;
+    const subSuffix = selectedSubcategory ? ` <span style="color:#9ca3af;font-weight:500;">› ${escapeHtml(selectedSubcategory)}</span>` : '';
+    header.innerHTML = selectedCategory
+        ? `${iconHtml(meta.icon)} ${selectedCategory}${subSuffix} <span style="color:#9ca3af;font-weight:400;">(${list.length})</span>`
+        : `📦 Tutti i prodotti <span style="color:#9ca3af;font-weight:400;">(${list.length})</span>`;
+
+    renderProductCardsInto(grid, list, searchTerm);
+}
+
+function renderProductCardsInto(grid, list, term) {
+    if (!list.length) {
+        grid.innerHTML = `<div class="empty-state">${term ? '🔍 Nessun risultato' : '📦 Nessun prodotto in questa categoria'}</div>`;
+        return;
+    }
+    grid.innerHTML = list.map(art => {
+        const entries = allShelfEntries.filter(e => e.articleId === art.id);
+        const totalQty = entries.reduce((s, e) => s + (e.quantity || 0), 0);
+        const positions = entries.filter(e => (e.quantity || 0) > 0).map(e => e.positionCode).join(', ') || '—';
+        const cat = getArticleCategory(art);
+        const cMeta = getCategoryMeta(cat);
+        const disabled = totalQty <= 0;
+        return `<div class="product-card ${disabled ? 'disabled' : ''}"
+            ${disabled ? '' : `onclick="openAddLine(${art.id})"`}
+            style="border-left-color:${cMeta.color}">
+            <div class="pc-name">${art.name || '—'}</div>
+            <div class="pc-code">${art.code || '—'}</div>
+            <div class="pc-meta">
+                <span class="pc-stock ${disabled ? 'zero' : ''}">${totalQty} colli</span>
+                <span class="pc-pos">📍 ${positions}</span>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// ===================================================================
+// MODAL: AGGIUNGI RIGA
+// ===================================================================
+function openAddLine(articleId) {
+    const art = allArticles.find(a => a.id === articleId);
+    if (!art) return;
+    alArticle = art;
+    alAvailableEntries = allShelfEntries
+        .filter(e => e.articleId === art.id && (e.quantity || 0) > 0)
+        .sort((a, b) => (a.positionCode || '').localeCompare(b.positionCode || ''));
+
+    document.getElementById('alArtName').textContent = art.name || '—';
+    document.getElementById('alArtCode').textContent = art.code || '—';
+    const totQty = alAvailableEntries.reduce((s, e) => s + (e.quantity || 0), 0);
+    document.getElementById('alArtStock').textContent = totQty;
+
+    const sel = document.getElementById('alShelfSelect');
+    sel.innerHTML = '<option value="">-- Seleziona scaffale --</option>' +
+        alAvailableEntries.map(e => {
+            const lotto = e.batch ? ` · L.${e.batch}` : '';
+            return `<option value="${e.id}">${e.positionCode} — ${e.quantity} colli${lotto}</option>`;
+        }).join('');
+
+    // Auto-preselect il primo scaffale disponibile
+    if (alAvailableEntries.length >= 1) {
+        sel.value = String(alAvailableEntries[0].id);
+    }
+
+    document.getElementById('alQty').value = 1;
+    onShelfChange();
+    document.getElementById('addLineOverlay').classList.add('active');
+}
+
+function closeAddLine() {
+    document.getElementById('addLineOverlay').classList.remove('active');
+    alArticle = null;
+    alAvailableEntries = [];
+}
+
+function closeAddLineOverlay(ev) {
+    if (ev.target.id === 'addLineOverlay') closeAddLine();
+}
+
+function onShelfChange() {
+    const sel = document.getElementById('alShelfSelect');
+    const hint = document.getElementById('alShelfHint');
+    const id = parseInt(sel.value, 10);
+    const entry = alAvailableEntries.find(e => e.id === id);
+    if (entry) {
+        const lotto = entry.batch ? ` · Lotto: ${entry.batch}` : '';
+        const exp = entry.expiry ? ` · Scad.: ${entry.expiry}` : '';
+        hint.textContent = `Disponibili: ${entry.quantity} colli${lotto}${exp}`;
+        document.getElementById('alQty').max = entry.quantity;
+    } else {
+        hint.textContent = '';
+        document.getElementById('alQty').removeAttribute('max');
+    }
+    updateAlPreview();
+}
+
+function alStepQty(delta) {
+    const inp = document.getElementById('alQty');
+    const v = (parseInt(inp.value, 10) || 0) + delta;
+    inp.value = Math.max(1, v);
+    updateAlPreview();
+}
+
+function updateAlPreview() {
+    const qty = parseInt(document.getElementById('alQty').value, 10) || 0;
+    const wpu = getWeightPerUnit(alArticle);
+    const kg = qty * wpu;
+    document.getElementById('alKgPreview').textContent = qty > 0 ? `≈ ${kg} kg (${wpu} kg/collo)` : '';
+}
+
+function confirmAddLine() {
+    const sel = document.getElementById('alShelfSelect');
+    const entryId = parseInt(sel.value, 10);
+    const entry = alAvailableEntries.find(e => e.id === entryId);
+    const qty = parseInt(document.getElementById('alQty').value, 10) || 0;
+
+    if (!entry) { showToast('Seleziona uno scaffale', 'error'); return; }
+    if (qty <= 0) { showToast('Quantità non valida', 'error'); return; }
+
+    // Calcolo quantità già impegnata in righe pendenti per stessa shelfEntry
+    const already = orderLines
+        .filter(l => l.shelfEntryId === entry.id)
+        .reduce((s, l) => s + l.quantity, 0);
+
+    if (already + qty > entry.quantity) {
+        showToast(`Disponibili solo ${entry.quantity - already} colli su questo scaffale`, 'error');
+        return;
+    }
+
+    orderLines.push({
+        articleId: alArticle.id,
+        articleName: alArticle.name,
+        articleCode: alArticle.code,
+        weightPerUnit: getWeightPerUnit(alArticle),
+        positionCode: entry.positionCode,
+        shelfEntryId: entry.id,
+        batch: entry.batch || null,
+        expiry: entry.expiry || null,
+        quantity: qty,
+    });
+
+    closeAddLine();
+    renderOrderLines();
+    showToast('Riga aggiunta all\'ordine', 'success');
+}
+
+// ===================================================================
+// ORDER LINES
+// ===================================================================
+function renderOrderLines() {
+    const cont = document.getElementById('orderLines');
+    if (!orderLines.length) {
+        cont.innerHTML = '<div class="empty-lines">Nessuna riga. Seleziona un prodotto per iniziare.</div>';
+    } else {
+        cont.innerHTML = orderLines.map((l, i) => {
+            const kg = l.quantity * (l.weightPerUnit || 1);
+            const lotto = l.batch ? ` · L.${l.batch}` : '';
+            return `<div class="order-line">
+                <div class="ol-info">
+                    <div class="ol-name">${l.articleName}</div>
+                    <div class="ol-meta">${l.articleCode} · 📍 ${l.positionCode}${lotto}</div>
+                </div>
+                <div class="ol-qty">
+                    <strong>${l.quantity}</strong> colli
+                    <small>${kg} kg</small>
+                </div>
+                <button class="ol-remove" onclick="removeLine(${i})" title="Rimuovi">✕</button>
+            </div>`;
+        }).join('');
+    }
+    updateTotals();
+}
+
+function removeLine(idx) {
+    orderLines.splice(idx, 1);
+    renderOrderLines();
+}
+
+function updateTotals() {
+    const lines = orderLines.length;
+    const colli = orderLines.reduce((s, l) => s + l.quantity, 0);
+    const kg = orderLines.reduce((s, l) => s + l.quantity * (l.weightPerUnit || 1), 0);
+    document.getElementById('totLines').textContent = lines;
+    document.getElementById('totColli').textContent = colli;
+    document.getElementById('totKg').textContent = Math.round(kg * 100) / 100;
+
+    const has = lines > 0;
+    document.getElementById('btnPrintA4').disabled = !has;
+    document.getElementById('btnPrintThermal').disabled = !has;
+    document.getElementById('btnComplete').disabled = !has;
+    document.getElementById('btnPrintComplete').disabled = !has;
+}
+
+// ===================================================================
+// PRINT (A4 + termica 72mm) — stesso stile di orders-planner
+// ===================================================================
+
+// Costruisce un payload comune da orderLines + form
+function buildOrderPayload(orderId) {
+    const opSel = document.getElementById('operatorSelect');
+    const opId = opSel && opSel.value ? parseInt(opSel.value, 10) : null;
+    const opObj = allOperators.find(o => o.id === opId);
+    const opName = opObj ? (opObj.fullName || opObj.username) : 'Disponibile';
+    return {
+        orderId: orderId || null,
+        clientName: (document.getElementById('clientNameInput').value || '').trim() || 'Banco',
+        notes: document.getElementById('orderNotes').value.trim(),
+        date: new Date(),
+        operator: opName,
+        operatorId: opId,
+        lines: orderLines.map(l => ({
+            articleId: l.articleId,
+            articleName: l.articleName,
+            articleCode: l.articleCode,
+            weightPerUnit: l.weightPerUnit || 1,
+            positionCode: l.positionCode,
+            shelfEntryId: l.shelfEntryId,
+            batch: l.batch || null,
+            expiry: l.expiry || null,
+            quantity: l.quantity,
+            kg: l.quantity * (l.weightPerUnit || 1),
+        })),
+    };
+}
+
+function escapeHtml(s) {
+    return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+// === A4: replica del formato printPickupOrder di orders-planner (tema verde) ===
+function printOrderA4(orderId) {
+    if (!orderLines.length) return;
+    const order = buildOrderPayload(orderId);
+    const company = companyInfo || {};
+    const compName = company.businessName || company.name || company.companyName || 'Molino Briganti';
+    const orderDate = order.date;
+    const totColli = order.lines.reduce((s, l) => s + l.quantity, 0);
+    const totKg = order.lines.reduce((s, l) => s + l.kg, 0);
+
+    // Aggregato per articolo (per box totali in fondo)
+    const totalsMap = {};
+    order.lines.forEach(l => {
+        totalsMap[l.articleName] = (totalsMap[l.articleName] || 0) + l.kg;
+    });
+
+    const productsHTML = order.lines.map(l => {
+        const lotto = l.batch ? l.batch : '—';
+        const scad = l.expiry ? l.expiry : '—';
+        return `<div style="padding: 8px; margin: 4px 0; background: #dcfce7; border: 2px solid #16a34a; border-radius: 4px; font-weight: bold; color: #14532d; font-size: 16px;">
+            ${escapeHtml(l.articleName)} (${l.quantity} colli • ${l.kg}kg)
+            <span style="color: #666; font-size: 14px;">🏷️ Lotto: ${escapeHtml(lotto)} • 📅 Scad: ${escapeHtml(scad)} • 📍 ${escapeHtml(l.positionCode)} • Cod: ${escapeHtml(l.articleCode)}</span>
+        </div>`;
+    }).join('');
+
+    const printHTML = `
+        <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>Ordine Istantaneo - ${escapeHtml(order.clientName)}</title>
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 20px; color: #333; }
+                    .header { border-bottom: 3px solid #16a34a; padding-bottom: 15px; margin-bottom: 20px; }
+                    .header h1 { margin: 0; color: #16a34a; font-size: 24px; }
+                    .header p { margin: 5px 0; color: #666; }
+                    .details { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+                    .detail-box { padding: 10px; background: #f5f5f5; border-radius: 4px; }
+                    .detail-label { font-weight: bold; color: #16a34a; font-size: 12px; }
+                    .detail-value { font-size: 16px; margin-top: 5px; }
+                    .orders-section { margin: 20px 0; }
+                    .orders-section h2 { color: #16a34a; border-bottom: 2px solid #16a34a; padding-bottom: 10px; }
+                    .order-item { padding: 12px; margin: 8px 0; background: #f9f9f9; border-left: 4px solid #16a34a; border-radius: 4px; }
+                    .order-item strong { color: #333; }
+                    .order-item p { margin: 5px 0; color: #666; font-size: 14px; }
+                    .totals { margin-top: 20px; padding: 15px; background: #dcfce7; border-radius: 6px; border: 2px solid #16a34a; }
+                    .totals h3 { color: #16a34a; margin-top: 0; }
+                    .total-row { display: flex; justify-content: space-between; padding: 5px 0; }
+                    @media print { body { margin: 0; } .no-print { display: none; } }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1>⚡ Ordine Istantaneo - ${escapeHtml(order.clientName)}</h1>
+                    <p>Vendita banco / scarico immediato • ${orderDate.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                </div>
+
+                <div class="details">
+                    <div class="detail-box">
+                        <div class="detail-label">📅 DATA</div>
+                        <div class="detail-value">${orderDate.toLocaleDateString('it-IT')}</div>
+                    </div>
+                    <div class="detail-box">
+                        <div class="detail-label">⏰ ORARIO</div>
+                        <div class="detail-value">${orderDate.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</div>
+                    </div>
+                    <div class="detail-box">
+                        <div class="detail-label">👤 OPERATORE</div>
+                        <div class="detail-value">${escapeHtml(order.operator || '—')}</div>
+                    </div>
+                    <div class="detail-box">
+                        <div class="detail-label">📦 TIPO</div>
+                        <div class="detail-value">Ordine Istantaneo${order.orderId ? ' #' + order.orderId : ''}</div>
+                    </div>
+                </div>
+
+                <div class="orders-section">
+                    <h2>📋 DETTAGLIO PRODOTTI</h2>
+                    <div class="order-item">
+                        <strong>${escapeHtml(order.clientName)}</strong>
+                        <p style="margin-top: 10px; margin-bottom: 5px;"><strong style="color: #333;">📦 PRODOTTI:</strong></p>
+                        ${productsHTML}
+                        <p style="margin-top: 10px;"><strong>Quantità Totali:</strong> ${totColli} colli • <strong style="color: #16a34a;">${totKg} kg</strong></p>
+                        <p><strong>Data/Ora:</strong> ${orderDate.toLocaleString('it-IT')}</p>
+                        <p><strong>Note:</strong> ${escapeHtml(order.notes || '—')}</p>
+                    </div>
+                </div>
+
+                <div class="totals">
+                    <h3>📊 TOTALI PRODOTTI</h3>
+                    ${Object.entries(totalsMap).map(([name, qty]) => {
+                        // Trova il primo collo che ha questo nome per il rapporto kg/collo
+                        const line = order.lines.find(l => l.articleName === name);
+                        const wpu = line ? (line.weightPerUnit || 1) : 1;
+                        const c = wpu > 0 ? Math.round(qty / wpu) : 0;
+                        return `<div class="total-row"><span><strong>${escapeHtml(name)}</strong></span><span style="color: #16a34a; font-weight: bold;">${c} colli • ${qty.toFixed(1)} kg</span></div>`;
+                    }).join('')}
+                    <div class="total-row" style="border-top: 1px solid #16a34a; padding-top: 10px; margin-top: 10px; font-weight: bold; font-size: 16px;">
+                        <span>TOTALE</span>
+                        <span style="color: #16a34a;">${totColli} colli • ${totKg.toFixed(1)} kg</span>
+                    </div>
+                </div>
+
+                <div style="margin-top: 40px; text-align: center; color: #999; font-size: 12px;" class="no-print">
+                    <p>Stampato il ${new Date().toLocaleString('it-IT')} • ${escapeHtml(compName)}</p>
+                    <button onclick="window.print()" style="padding: 10px 20px; background: #16a34a; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">🖨️ Stampa A4</button>
+                    <button onclick="window.close()" style="padding: 10px 20px; background: #999; color: white; border: none; border-radius: 4px; cursor: pointer; margin-left: 10px; font-size: 14px;">❌ Chiudi</button>
+                </div>
+            </body>
+        </html>
+    `;
+    const printWindow = window.open('', 'PrintInstantOrder', 'height=800,width=900');
+    if (!printWindow) {
+        showToast('Abilita i popup per stampare', 'error');
+        return;
+    }
+    printWindow.document.write(printHTML);
+    printWindow.document.close();
+}
+
+// === Termica 72mm: usa thermalPrintAPI di thermal-print.js ===
+function printOrderThermal(orderId) {
+    if (!orderLines.length) return;
+    if (!window.thermalPrintAPI) {
+        showToast('Modulo stampa termica non disponibile', 'error');
+        return;
+    }
+    const api = window.thermalPrintAPI;
+    const order = buildOrderPayload(orderId);
+    const totColli = order.lines.reduce((s, l) => s + l.quantity, 0);
+    const totKg = order.lines.reduce((s, l) => s + l.kg, 0);
+
+    let html = '';
+    html += api.brandHeaderHtml();
+    html += '<div class="rcpt-title">ORDINE</div>';
+    html += '<div class="rcpt-sub">' + api.escapeHtml(order.clientName) + '</div>';
+    html += api.infoBoxHtml([
+        ['Data', order.date.toLocaleDateString('it-IT')],
+        ['Ora', order.date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })],
+        ['Operatore', order.operator || '-'],
+        ['Tipo', 'Vendita banco' + (order.orderId ? ' #' + order.orderId : '')],
+    ]);
+    html += '<div class="rcpt-section">PRODOTTI</div>';
+    order.lines.forEach(l => {
+        // Costruisco la riga manualmente per usare i colli reali (l.quantity)
+        // invece di farli ricalcolare da productHtml che usa extractWeightPerCollo
+        // sul nome (non sempre affidabile).
+        const esc = api.escapeHtml;
+        const pos = l.positionCode ? '<span class="rcpt-prod-shelf">' + esc(l.positionCode) + '</span>' : '';
+        const r3items = [];
+        if (l.batch)  r3items.push('<span class="r3-item">L.\u00A0' + esc(l.batch) + '</span>');
+        if (l.expiry) r3items.push('<span class="r3-item">Sc.\u00A0' + esc(l.expiry) + '</span>');
+        const r3 = r3items.length ? '<div class="rcpt-prod-row3">' + r3items.join('') + '</div>' : '';
+        html += '<div class="rcpt-prod">' +
+            '<span class="rcpt-prod-name">' + esc(l.articleName) + '</span>' +
+            '<div class="rcpt-prod-row2">' + pos +
+                '<span class="rcpt-prod-colli">' + l.quantity + '\u00A0Colli</span>' +
+                '<span class="rcpt-prod-kg">' + l.kg.toFixed(1) + '\u00A0kg</span>' +
+            '</div>' + r3 +
+            '</div>';
+    });
+    if (order.notes) {
+        html += '<div class="rcpt-notes"><span class="lbl">Note</span>' +
+            api.escapeHtml(order.notes) + '</div>';
+    }
+    html += api.totalBoxHtml(totColli, totKg);
+    html += api.footerHtml();
+
+    api.openReceipt('Ordine ' + (order.clientName || orderId || ''), html);
+}
+
+// Wrapper unico chiamato dai bottoni
+function printOrder(mode, orderId = null) {
+    if (mode === 'thermal') return printOrderThermal(orderId);
+    return printOrderA4(orderId);
+}
+
+// ===================================================================
+// COMPLETE ORDER (transazione atomica lato server)
+// ===================================================================
+async function completeOrder(withPrint) {
+    if (!orderLines.length) return;
+    const btnA = document.getElementById('btnComplete');
+    const btnB = document.getElementById('btnPrintComplete');
+    btnA.disabled = true; btnB.disabled = true;
+
+    const payload = {
+        clientName: (document.getElementById('clientNameInput').value || '').trim() || 'Banco',
+        notes: document.getElementById('orderNotes').value.trim() || null,
+        assignedOperatorId: (() => {
+            const v = document.getElementById('operatorSelect')?.value;
+            return v ? parseInt(v, 10) : null;
+        })(),
+        items: orderLines.map(l => ({
+            articleId: l.articleId,
+            quantity: l.quantity,
+            positionCode: l.positionCode,
+            shelfEntryId: l.shelfEntryId,
+            batch: l.batch || undefined,
+        })),
+    };
+
+    try {
+        const resp = await fetch(`${API_URL}/orders/instant-complete`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(payload),
+        });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || 'Errore creazione ordine');
+
+        const orderId = data.order?.id;
+        showToast(`Ordine ${orderId ? '#' + orderId : ''} completato e magazzino aggiornato`, 'success');
+
+        if (withPrint) {
+            // Stampa A4 di default; se serve termica modificare qui
+            printOrder('a4', orderId);
+        }
+
+        // Reset form
+        orderLines = [];
+        document.getElementById('orderNotes').value = '';
+        document.getElementById('clientNameInput').value = '';
+        renderOrderLines();
+        // Ricarica dati per riflettere lo scarico
+        await loadAll();
+    } catch (e) {
+        console.error('completeOrder error:', e);
+        showToast(e.message || 'Errore durante il completamento', 'error');
+        // Riabilita bottoni se la creazione è fallita (le righe sono ancora qui)
+        updateTotals();
+    }
+}
+
+// ===================================================================
+// TOAST
+// ===================================================================
+function showToast(msg, type = 'info') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show ' + type;
+    setTimeout(() => { t.className = 'toast'; }, 3500);
+}
+</script>
+
+</body>
+</html>

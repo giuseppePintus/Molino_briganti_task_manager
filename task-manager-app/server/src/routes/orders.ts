@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma';
-import { socketService } from '../services/socketService';
+import { socketService, SocketEvents } from '../services/socketService';
 import { InventoryService } from '../services/inventoryService';
 
 const router = Router();
@@ -266,6 +266,235 @@ router.put('/:id', async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Error updating order:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/orders/instant-complete
+ * Crea un ordine "istantaneo" (vendita banco) e contestualmente scarica
+ * il magazzino dalle specifiche ShelfEntry indicate. Tutto in una singola
+ * transazione: se uno qualsiasi degli scarichi fallisce per stock insufficiente
+ * l'ordine NON viene creato e nessun movimento viene registrato.
+ */
+router.post('/instant-complete', async (req: Request, res: Response) => {
+  try {
+    const {
+      clientName,
+      customerId,
+      notes,
+      items,
+      assignedOperatorId,
+    } = req.body as {
+      clientName?: string;
+      customerId?: number | null;
+      notes?: string;
+      assignedOperatorId?: number | null;
+      items: Array<{
+        articleId: number;
+        quantity: number;
+        positionCode: string;
+        shelfEntryId?: number;
+        batch?: string;
+        unitPrice?: number;
+      }>;
+    };
+
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: 'items è obbligatorio e deve contenere almeno una riga' });
+    }
+
+    for (const it of items) {
+      if (!it || typeof it.articleId !== 'number' || !it.positionCode) {
+        return res.status(400).json({ error: 'Ogni item richiede articleId e positionCode' });
+      }
+      const q = Number(it.quantity);
+      if (!Number.isFinite(q) || q <= 0) {
+        return res.status(400).json({ error: `Quantità non valida per articolo ${it.articleId}` });
+      }
+    }
+
+    const userId = (req as any).user?.id ?? 1;
+    const finalClientName = (clientName && clientName.trim()) || 'Banco';
+
+    const result = await prisma.$transaction(async (tx) => {
+      type Resolved = {
+        item: typeof items[number];
+        shelfEntry: { id: number; articleId: number; positionCode: string; quantity: number; batch: string | null };
+        article: { id: number; code: string; name: string };
+        inventory: { id: number; currentStock: number; minimumStock: number };
+      };
+
+      const resolved: Resolved[] = [];
+
+      for (const it of items) {
+        const qty = Number(it.quantity);
+
+        let shelfEntry;
+        if (it.shelfEntryId) {
+          shelfEntry = await tx.shelfEntry.findUnique({ where: { id: it.shelfEntryId } });
+          if (!shelfEntry || shelfEntry.articleId !== it.articleId || shelfEntry.positionCode !== it.positionCode) {
+            throw new Error(`ShelfEntry ${it.shelfEntryId} non corrisponde a articolo ${it.articleId} / posizione ${it.positionCode}`);
+          }
+        } else {
+          shelfEntry = await tx.shelfEntry.findFirst({
+            where: { articleId: it.articleId, positionCode: it.positionCode },
+            orderBy: { id: 'asc' },
+          });
+          if (!shelfEntry) {
+            throw new Error(`Nessuna giacenza trovata per articolo ${it.articleId} sulla posizione ${it.positionCode}`);
+          }
+        }
+
+        if (shelfEntry.quantity < qty) {
+          throw new Error(`Stock insufficiente: posizione ${shelfEntry.positionCode} ha ${shelfEntry.quantity} colli, richiesti ${qty}`);
+        }
+
+        const article = await tx.article.findUnique({ where: { id: it.articleId } });
+        if (!article) throw new Error(`Articolo ${it.articleId} non trovato`);
+
+        // ShelfEntry è la fonte autorevole della giacenza fisica.
+        // Inventory.currentStock è una cache aggregata che può essere disallineata:
+        // la risincronizziamo dalla somma reale delle ShelfEntry per evitare falsi
+        // "stock insufficiente" quando la cache è stale.
+        const shelfAgg = await tx.shelfEntry.aggregate({
+          where: { articleId: it.articleId },
+          _sum: { quantity: true },
+        });
+        const realShelfStock = shelfAgg._sum.quantity ?? 0;
+
+        let inventory = await tx.inventory.findUnique({ where: { articleId: it.articleId } });
+        if (!inventory) {
+          inventory = await tx.inventory.create({
+            data: { articleId: it.articleId, currentStock: realShelfStock, minimumStock: 0 },
+          });
+        } else if (inventory.currentStock !== realShelfStock) {
+          // Risincronizza la cache prima di procedere
+          inventory = await tx.inventory.update({
+            where: { id: inventory.id },
+            data: { currentStock: realShelfStock },
+          });
+        }
+
+        if (realShelfStock < qty) {
+          throw new Error(`Stock insufficiente per ${article.code}: ${realShelfStock} colli totali a magazzino, richiesti ${qty}`);
+        }
+
+        resolved.push({ item: it, shelfEntry, article, inventory });
+      }
+
+      const productsJson = JSON.stringify(
+        resolved.map(r => ({
+          product: r.article.name,
+          code: r.article.code,
+          quantity: Number(r.item.quantity),
+          unit: 'colli',
+          positionCode: r.item.positionCode,
+          batch: r.item.batch || r.shelfEntry.batch || null,
+        }))
+      );
+
+      const order = await tx.order.create({
+        data: {
+          type: 'istantaneo',
+          customerId: customerId ?? null,
+          clientName: finalClientName,
+          products: productsJson,
+          status: 'completed',
+          completedAt: new Date(),
+          notes: notes || null,
+          assignedOperatorId: typeof assignedOperatorId === 'number' ? assignedOperatorId : null,
+        },
+      });
+
+      for (const r of resolved) {
+        await tx.orderItem.create({
+          data: {
+            orderId: order.id,
+            articleId: r.article.id,
+            quantityOrdered: Number(r.item.quantity),
+            quantityDelivered: Number(r.item.quantity),
+            unitPrice: typeof r.item.unitPrice === 'number' ? r.item.unitPrice : null,
+          },
+        });
+      }
+
+      const movements: Array<{ articleId: number; positionCode: string; shelfEntryId: number; quantity: number }> = [];
+
+      for (const r of resolved) {
+        const qty = Number(r.item.quantity);
+
+        await tx.shelfEntry.update({
+          where: { id: r.shelfEntry.id },
+          data: { quantity: r.shelfEntry.quantity - qty },
+        });
+
+        const newStock = r.inventory.currentStock - qty;
+        await tx.inventory.update({
+          where: { id: r.inventory.id },
+          data: { currentStock: newStock },
+        });
+
+        await tx.stockMovement.create({
+          data: {
+            inventoryId: r.inventory.id,
+            type: 'OUT',
+            quantity: qty,
+            reason: 'ORDINE_ISTANTANEO',
+            orderId: order.id,
+            notes: `Posizione: ${r.shelfEntry.positionCode}${r.item.batch ? ` · Lotto: ${r.item.batch}` : ''}`,
+            createdBy: userId,
+          },
+        });
+
+        if (r.inventory.minimumStock > 0 && newStock <= r.inventory.minimumStock) {
+          const existingAlert = await tx.stockAlert.findFirst({
+            where: { articleId: r.article.id, alertType: 'LOW_STOCK', isResolved: false },
+          });
+          if (!existingAlert) {
+            await tx.stockAlert.create({
+              data: {
+                articleId: r.article.id,
+                inventoryId: r.inventory.id,
+                alertType: 'LOW_STOCK',
+                currentStock: newStock,
+                minimumStock: r.inventory.minimumStock,
+              },
+            });
+          }
+        }
+
+        movements.push({
+          articleId: r.article.id,
+          positionCode: r.shelfEntry.positionCode,
+          shelfEntryId: r.shelfEntry.id,
+          quantity: qty,
+        });
+      }
+
+      const fullOrder = await tx.order.findUnique({
+        where: { id: order.id },
+        include: {
+          customer: true,
+          items: { include: { article: true } },
+        },
+      });
+
+      return { order: fullOrder, movements };
+    });
+
+    socketService.broadcast(SocketEvents.INVENTORY_UPDATED, { type: 'instant-order', orderId: result.order?.id });
+    if (result.order) {
+      const orderForSocket = {
+        ...result.order,
+        products: result.order.products ? JSON.parse(result.order.products) : [],
+      };
+      socketService.notifyOrderCreated(orderForSocket);
+    }
+
+    return res.status(201).json(result);
+  } catch (error: any) {
+    console.error('❌ Errore /orders/instant-complete:', error?.message || error);
+    return res.status(400).json({ error: error?.message || 'Errore creazione ordine istantaneo' });
   }
 });
 
