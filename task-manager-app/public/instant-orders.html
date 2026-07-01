@@ -82,7 +82,7 @@
                 <!-- Operatore -->
                 <div class="client-row">
                     <label>Operatore</label>
-                    <select id="operatorSelect"></select>
+                    <select id="operatorSelect" title="Operatore"></select>
                 </div>
 
                 <!-- Righe ordine -->
@@ -602,6 +602,19 @@ function confirmAddLine() {
         quantity: qty,
     });
 
+    sendInstantOrderAudit('add-line', {
+        clientName: (document.getElementById('clientNameInput').value || '').trim() || 'Banco',
+        operatorId: document.getElementById('operatorSelect')?.value ? parseInt(document.getElementById('operatorSelect').value, 10) : null,
+        articleId: alArticle.id,
+        articleCode: alArticle.code,
+        articleName: alArticle.name,
+        positionCode: entry.positionCode,
+        shelfEntryId: entry.id,
+        batch: entry.batch || null,
+        quantity: qty,
+        linesCount: orderLines.length,
+    });
+
     closeAddLine();
     renderOrderLines();
     showToast('Riga aggiunta all\'ordine', 'success');
@@ -635,7 +648,22 @@ function renderOrderLines() {
 }
 
 function removeLine(idx) {
+    const removed = orderLines[idx];
     orderLines.splice(idx, 1);
+    if (removed) {
+        sendInstantOrderAudit('remove-line', {
+            clientName: (document.getElementById('clientNameInput').value || '').trim() || 'Banco',
+            operatorId: document.getElementById('operatorSelect')?.value ? parseInt(document.getElementById('operatorSelect').value, 10) : null,
+            articleId: removed.articleId,
+            articleCode: removed.articleCode,
+            articleName: removed.articleName,
+            positionCode: removed.positionCode,
+            shelfEntryId: removed.shelfEntryId,
+            batch: removed.batch || null,
+            quantity: removed.quantity,
+            linesCount: orderLines.length,
+        });
+    }
     renderOrderLines();
 }
 
@@ -686,6 +714,23 @@ function buildOrderPayload(orderId) {
     };
 }
 
+async function sendInstantOrderAudit(action, details = {}) {
+    try {
+        const flowId = `${action}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+        await fetch(`${API_URL}/orders/audit`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+                'x-flow-id': flowId,
+            },
+            body: JSON.stringify({ action, details }),
+        });
+    } catch (error) {
+        console.warn('⚠️ [INSTANT_ORDER_AUDIT] invio audit fallito:', error);
+    }
+}
+
 function escapeHtml(s) {
     return String(s == null ? '' : s)
         .replace(/&/g, '&amp;')
@@ -697,6 +742,14 @@ function escapeHtml(s) {
 function printOrderA4(orderId) {
     if (!orderLines.length) return;
     const order = buildOrderPayload(orderId);
+    sendInstantOrderAudit('print-a4', {
+        clientName: order.clientName,
+        operatorId: order.operatorId ?? null,
+        operator: order.operator || null,
+        notes: order.notes || null,
+        lines: order.lines,
+        orderId: order.orderId ?? null,
+    });
     const company = companyInfo || {};
     const compName = company.businessName || company.name || company.companyName || 'Molino Briganti';
     const orderDate = order.date;
@@ -821,6 +874,14 @@ function printOrderThermal(orderId) {
     }
     const api = window.thermalPrintAPI;
     const order = buildOrderPayload(orderId);
+    sendInstantOrderAudit('print-thermal', {
+        clientName: order.clientName,
+        operatorId: order.operatorId ?? null,
+        operator: order.operator || null,
+        notes: order.notes || null,
+        lines: order.lines,
+        orderId: order.orderId ?? null,
+    });
     const totColli = order.lines.reduce((s, l) => s + l.quantity, 0);
     const totKg = order.lines.reduce((s, l) => s + l.kg, 0);
 
@@ -895,6 +956,14 @@ async function completeOrder(withPrint) {
     };
 
     try {
+        await sendInstantOrderAudit('complete-start', {
+            clientName: payload.clientName,
+            operatorId: payload.assignedOperatorId ?? null,
+            notes: payload.notes || null,
+            lines: payload.items,
+            withPrint: !!withPrint,
+        });
+
         const resp = await fetch(`${API_URL}/orders/instant-complete`, {
             method: 'POST',
             headers: {
@@ -905,6 +974,14 @@ async function completeOrder(withPrint) {
         });
         const data = await resp.json();
         if (!resp.ok) throw new Error(data.error || 'Errore creazione ordine');
+
+        await sendInstantOrderAudit('complete-end', {
+            clientName: payload.clientName,
+            operatorId: payload.assignedOperatorId ?? null,
+            withPrint: !!withPrint,
+            orderId: data.order?.id ?? null,
+            lines: payload.items,
+        });
 
         const orderId = data.order?.id;
         showToast(`Ordine ${orderId ? '#' + orderId : ''} completato e magazzino aggiornato`, 'success');

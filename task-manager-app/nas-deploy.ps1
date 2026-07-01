@@ -98,7 +98,8 @@ function Invoke-RemoteBash {
     )
     $tmpLocal  = Join-Path ([System.IO.Path]::GetTempPath()) ("nas-$Label-" + [Guid]::NewGuid().ToString('N') + '.sh')
     $remoteSh  = "/tmp/nas-$Label-$([Guid]::NewGuid().ToString('N')).sh"
-    $clean     = ($Script -replace "`r`n", "`n") + "`n"
+    # Normalizza anche eventuali CR isolati per evitare righe vuote interpretate da bash.
+    $clean     = (($Script -replace "`r`n", "`n") -replace "`r", "`n") + "`n"
     [System.IO.File]::WriteAllText($tmpLocal, $clean, [System.Text.UTF8Encoding]::new($false))
     try {
         scp -q $tmpLocal "$($NAS_USER)@$($NAS_IP):$remoteSh" 2>&1 | Out-Null

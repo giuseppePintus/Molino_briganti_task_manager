@@ -487,6 +487,56 @@ export class TasksController {
         }
     }
 
+    async completeTask(req: Request, res: Response) {
+        try {
+            if (!req.user || req.user.role !== 'slave') {
+                return res.status(403).json({ message: 'Only operators can complete tasks' });
+            }
+
+            const { id } = req.params;
+
+            // Verify task exists and is assigned to this operator
+            const task = await prisma.task.findUnique({ where: { id: parseInt(id) } });
+            if (!task) {
+                return res.status(404).json({ message: 'Task not found' });
+            }
+
+            if (task.assignedOperatorId !== req.user.id) {
+                return res.status(403).json({ message: 'Task not assigned to you' });
+            }
+
+            if (task.completed) {
+                return res.status(400).json({ message: 'Task already completed' });
+            }
+
+            // Complete task
+            const completedTask = await prisma.task.update({
+                where: { id: parseInt(id) },
+                data: {
+                    completed: true,
+                    completedAt: new Date(),
+                    completedById: req.user.id,
+                    paused: false,
+                    pausedAt: null,
+                },
+                include: {
+                    assignedOperator: { select: { id: true, username: true } },
+                    acceptedBy: { select: { id: true, username: true } },
+                    createdBy: { select: { id: true, username: true } },
+                    completedBy: { select: { id: true, username: true } },
+                },
+            });
+
+            // Notifica WebSocket
+            socketService.notifyTaskUpdated(completedTask);
+
+            res.json(completedTask);
+        } catch (err: unknown) {
+            const errorMsg = err instanceof Error ? err.message : 'Internal server error';
+            res.status(500).json({ message: errorMsg });
+        }
+    }
+
     async resumeTask(req: Request, res: Response) {
         try {
             if (!req.user || req.user.role !== 'slave') {

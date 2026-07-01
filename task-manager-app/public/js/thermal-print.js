@@ -79,6 +79,25 @@
         }
         return 'Non assegnato';
     }
+
+    async function sendOrderAudit(orderId, action, details) {
+        try {
+            const apiBase = window.API_URL || '/api';
+            const token = typeof getToken === 'function' ? getToken() : localStorage.getItem('token');
+            if (!token) return;
+
+            await fetch(`${apiBase}/orders/${orderId}/audit`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + token,
+                },
+                body: JSON.stringify({ action, details: details || {} }),
+            });
+        } catch (error) {
+            console.warn('⚠️ [ORDER_AUDIT] audit termica fallito:', error);
+        }
+    }
     function parseProducts(raw) {
         if (!raw) return [];
         if (typeof raw === 'string') {
@@ -695,6 +714,14 @@
         const order = findById(getOrders(), orderId);
         if (!order) { alert('Ordine non trovato'); return; }
 
+        sendOrderAudit(orderId, 'print-thermal', {
+            clientName: (typeof window.getClientName === 'function') ? window.getClientName(order) : (order.client || order.clientName || ''),
+            customerId: order.customerId ?? null,
+            tripId: order.tripId ?? null,
+            status: order.status || null,
+            products: order.products || [],
+        });
+
         const cliente = (typeof window.getClientName === 'function')
             ? window.getClientName(order)
             : (order.client || order.clientName || '');
@@ -1081,6 +1108,15 @@
             const cliente = titleRaw.slice('ritiro - '.length).toUpperCase();
             const desc = task.description || '';
 
+            if (task.orderId) {
+                sendOrderAudit(task.orderId, 'print-thermal-task', {
+                    title: task.title || null,
+                    scheduledAt: task.scheduledAt || null,
+                    assignedOperatorId: task.assignedOperatorId || null,
+                    description: task.description || null,
+                });
+            }
+
             // Estrae "Prodotti: F-00-25 (250 kg), ..." dalla descrizione
             const prodMatch = desc.match(/Prodotti:\s*([^\n]+)/i);
             const prodStr = prodMatch ? prodMatch[1].trim() : '';
@@ -1169,51 +1205,98 @@
     const COMPLETE_MODAL_ID = '__completeInternalOrderModal';
     let _completeOnSuccess = null;
     let _completeTaskId = null;
+    let _shelfPositions = [];
+    let _shelfEntriesByPosition = {};
+
+    function ensureFocusedFieldVisible(targetEl) {
+        if (!targetEl) return;
+        const modal = document.getElementById(COMPLETE_MODAL_ID);
+        if (!modal || modal.style.display === 'none') return;
+
+        try {
+            if (targetEl.scrollIntoView) {
+                try {
+                    targetEl.scrollIntoView({ block: 'center', inline: 'nearest' });
+                } catch (_) {
+                    targetEl.scrollIntoView(true);
+                }
+            }
+        } catch (_) { /* ignore */ }
+
+        // Alcune WebView mostrano la tastiera con ritardo: riprova dopo breve delay.
+        setTimeout(function() {
+            try {
+                if (targetEl && targetEl.scrollIntoView) {
+                    try {
+                        targetEl.scrollIntoView({ block: 'center', inline: 'nearest' });
+                    } catch (_) {
+                        targetEl.scrollIntoView(true);
+                    }
+                }
+            } catch (_) { /* ignore */ }
+        }, 260);
+    }
 
     function ensureCompleteModal() {
         let m = document.getElementById(COMPLETE_MODAL_ID);
         if (m) return m;
         m = document.createElement('div');
         m.id = COMPLETE_MODAL_ID;
-        m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:99999;display:none;align-items:center;justify-content:center;padding:16px;';
+        // Fullscreen: evita sezioni nascoste su schermi piccoli (Jelly Bean compreso).
+        m.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.82);z-index:99999;display:none;padding:0;overflow:hidden;';
         m.innerHTML = `
-            <div style="background:#1f2937;color:#e5e7eb;border-radius:10px;max-width:520px;width:100%;padding:20px;box-shadow:0 12px 40px rgba(0,0,0,.5);max-height:92vh;overflow:auto;">
-                <h2 style="margin:0 0 4px;font-size:18px;color:#10b981;">✅ Completa Ordine Interno</h2>
-                <div id="__cioSub" style="font-size:13px;color:#9ca3af;margin-bottom:14px;">Registra il carico merce sullo scaffale</div>
+            <div id="__cioBody" style="background:#111827;color:#e5e7eb;border-radius:0;width:100%;height:100%;padding:16px 14px 20px;box-sizing:border-box;overflow:auto;-webkit-overflow-scrolling:touch;">
+                <h2 style="margin:0 0 6px;font-size:26px;line-height:1.2;color:#10b981;">✅ Completa Ordine Interno</h2>
+                <div id="__cioSub" style="font-size:22px;line-height:1.25;color:#f3f4f6;font-weight:700;margin-bottom:6px;"></div>
+                <div style="font-size:17px;line-height:1.3;color:#cbd5e1;margin-bottom:12px;">Inserisci i dati del carico merce da mettere in scaffale</div>
 
-                <label style="display:block;font-size:12px;color:#9ca3af;margin-top:8px;">📦 Quantità preparata (colli) *</label>
-                <input id="__cioQty" type="number" min="1" step="1" inputmode="numeric"
-                    style="width:100%;padding:10px;background:#111827;color:#fff;border:1px solid #374151;border-radius:6px;font-size:16px;" />
+                <table style="width:100%;border-collapse:separate;border-spacing:8px 8px;table-layout:fixed;">
+                    <tr>
+                        <td style="width:33.33%;vertical-align:top;">
+                            <label style="display:block;font-size:18px;color:#cbd5e1;font-weight:700;">📦 Colli *</label>
+                            <input id="__cioQty" type="number" min="1" step="1" inputmode="numeric"
+                                style="width:100%;height:60px;padding:10px 12px;background:#0b1220;color:#fff;border:2px solid #334155;border-radius:8px;font-size:28px;line-height:1.1;box-sizing:border-box;" />
+                        </td>
+                        <td style="vertical-align:top;">
+                            <label style="display:block;font-size:18px;color:#cbd5e1;font-weight:700;">🏷️ Lotto</label>
+                            <input id="__cioBatch" type="text"
+                                style="width:100%;height:60px;padding:10px 12px;background:#0b1220;color:#fff;border:2px solid #334155;border-radius:8px;font-size:24px;line-height:1.1;box-sizing:border-box;" />
+                        </td>
+                        <td style="vertical-align:top;">
+                            <label style="display:block;font-size:18px;color:#cbd5e1;font-weight:700;">📅 Scadenza</label>
+                            <input id="__cioExp" type="text" placeholder="GG/MM/AAAA"
+                                style="width:100%;height:60px;padding:10px 12px;background:#0b1220;color:#fff;border:2px solid #334155;border-radius:8px;font-size:24px;line-height:1.1;box-sizing:border-box;" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="vertical-align:top;">
+                            <label style="display:block;font-size:18px;color:#cbd5e1;font-weight:700;">📌 Posizione *</label>
+                            <input id="__cioPos" type="text" readonly placeholder="Tocca per scegliere"
+                                style="width:72%;min-width:140px;max-width:210px;height:60px;padding:10px 12px;background:#0b1220;color:#fff;border:2px solid #334155;border-radius:8px;font-size:24px;line-height:1.1;box-sizing:border-box;cursor:pointer;" />
+                        </td>
+                        <td colspan="2" style="vertical-align:top;">
+                            <label style="display:block;font-size:18px;color:#cbd5e1;font-weight:700;">📝 Note aggiuntive</label>
+                            <input id="__cioNotes" type="text"
+                                style="width:100%;height:60px;padding:10px 12px;background:#0b1220;color:#fff;border:2px solid #334155;border-radius:8px;font-size:24px;line-height:1.2;box-sizing:border-box;" />
+                        </td>
+                    </tr>
+                </table>
 
-                <label style="display:block;font-size:12px;color:#9ca3af;margin-top:10px;">📍 Posizione scaffale *</label>
-                <input id="__cioPos" type="text" list="__cioPosList" placeholder="es. A1-2"
-                    style="width:100%;padding:10px;background:#111827;color:#fff;border:1px solid #374151;border-radius:6px;font-size:16px;text-transform:uppercase;" />
-                <datalist id="__cioPosList"></datalist>
-
-                <div style="display:flex;gap:10px;margin-top:10px;">
-                    <div style="flex:1;">
-                        <label style="display:block;font-size:12px;color:#9ca3af;">🏷️ Lotto</label>
-                        <input id="__cioBatch" type="text"
-                            style="width:100%;padding:10px;background:#111827;color:#fff;border:1px solid #374151;border-radius:6px;" />
-                    </div>
-                    <div style="flex:1;">
-                        <label style="display:block;font-size:12px;color:#9ca3af;">📅 Scadenza</label>
-                        <input id="__cioExp" type="text" placeholder="GG/MM/AAAA"
-                            style="width:100%;padding:10px;background:#111827;color:#fff;border:1px solid #374151;border-radius:6px;" />
-                    </div>
+                <div id="__cioPosPicker" style="display:none;margin-top:8px;background:#0b1220;border:2px solid #334155;border-radius:10px;padding:10px;">
+                    <div style="font-size:17px;color:#93c5fd;font-weight:700;margin-bottom:8px;">1) Seleziona settore</div>
+                    <div id="__cioSectorBtns" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;"></div>
+                    <div id="__cioSectorDesc" style="display:none;font-size:16px;color:#cbd5e1;font-weight:600;margin:2px 0 12px;"></div>
+                    <div style="font-size:17px;color:#93c5fd;font-weight:700;margin-bottom:8px;">2) Seleziona posizione</div>
+                    <div id="__cioPosBtns" style="display:flex;align-items:flex-end;gap:28px;overflow-x:auto;padding:6px 6px 4px 2px;"></div>
                 </div>
 
-                <label style="display:block;font-size:12px;color:#9ca3af;margin-top:10px;">📝 Note (opzionale)</label>
-                <textarea id="__cioNotes" rows="2"
-                    style="width:100%;padding:10px;background:#111827;color:#fff;border:1px solid #374151;border-radius:6px;resize:vertical;"></textarea>
+                <div id="__cioErr" style="display:none;background:#7f1d1d;color:#fecaca;padding:10px 12px;border-radius:8px;margin-top:10px;font-size:16px;line-height:1.2;"></div>
 
-                <div id="__cioErr" style="display:none;background:#7f1d1d;color:#fecaca;padding:8px 12px;border-radius:6px;margin-top:10px;font-size:13px;"></div>
-
-                <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
+                <div style="display:flex;gap:10px;justify-content:space-between;margin-top:14px;">
                     <button id="__cioCancel" type="button"
-                        style="padding:10px 18px;background:#374151;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600;">Annulla</button>
+                        style="padding:14px 16px;min-width:42%;background:#334155;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-size:19px;">Annulla</button>
                     <button id="__cioSubmit" type="button"
-                        style="padding:10px 18px;background:#10b981;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600;">✓ Completa &amp; Carica</button>
+                        style="padding:14px 16px;min-width:56%;background:#10b981;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-size:19px;">✓ Completa &amp; Carica</button>
                 </div>
             </div>
         `;
@@ -1221,6 +1304,27 @@
         m.addEventListener('click', (e) => { if (e.target === m) closeCompleteModal(); });
         m.querySelector('#__cioCancel').addEventListener('click', closeCompleteModal);
         m.querySelector('#__cioSubmit').addEventListener('click', submitCompleteInternalOrder);
+        m.querySelector('#__cioPos').addEventListener('click', function() { openPositionPicker(); });
+
+        // Mantieni visibile il campo attivo quando compare la tastiera.
+        m.addEventListener('focusin', function(ev) {
+            const t = ev && ev.target;
+            if (!t || !t.tagName) return;
+            const tag = String(t.tagName).toUpperCase();
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
+                ensureFocusedFieldVisible(t);
+            }
+        });
+
+        if (window.visualViewport && !m.getAttribute('data-vv-bound')) {
+            const onVvResize = function() {
+                if (m.style.display === 'none') return;
+                const active = document.activeElement;
+                if (active) ensureFocusedFieldVisible(active);
+            };
+            window.visualViewport.addEventListener('resize', onVvResize);
+            m.setAttribute('data-vv-bound', '1');
+        }
         return m;
     }
 
@@ -1228,18 +1332,176 @@
         try {
             const tk = localStorage.getItem('authToken') || localStorage.getItem('token') || '';
             const apiBase = window.API_URL || '/api';
-            const r = await fetch(`${apiBase}/inventory/shelf-positions`, {
-                headers: { 'Authorization': `Bearer ${tk}` }
-            });
-            if (!r.ok) return;
-            const j = await r.json();
+            const results = await Promise.all([
+                fetch(`${apiBase}/inventory/shelf-positions`, {
+                    headers: { 'Authorization': `Bearer ${tk}` }
+                }),
+                fetch(`${apiBase}/inventory/shelf-entries`, {
+                    headers: { 'Authorization': `Bearer ${tk}` }
+                }).catch(function() { return null; })
+            ]);
+
+            const posResp = results[0];
+            const entriesResp = results[1];
+            if (!posResp || !posResp.ok) return;
+
+            const j = await posResp.json();
             const positions = Array.isArray(j) ? j : (j.data || j.positions || []);
-            const dl = document.getElementById('__cioPosList');
-            if (!dl) return;
-            dl.innerHTML = positions
-                .map(p => `<option value="${escapeHtml(p.code || p)}"></option>`)
-                .join('');
+            _shelfPositions = positions.map(function(p) {
+                if (p && typeof p === 'object') {
+                    return {
+                        code: String(p.code || '').toUpperCase(),
+                        description: p.description ? String(p.description) : ''
+                    };
+                }
+                return { code: String(p || '').toUpperCase(), description: '' };
+            }).filter(function(p) { return p.code; });
+
+            _shelfEntriesByPosition = {};
+            if (entriesResp && entriesResp.ok) {
+                const entriesJson = await entriesResp.json().catch(function() { return []; });
+                const entries = Array.isArray(entriesJson) ? entriesJson : (entriesJson.data || entriesJson.entries || []);
+                for (let i = 0; i < entries.length; i++) {
+                    const entry = entries[i] || {};
+                    const code = String(entry.positionCode || '').toUpperCase();
+                    if (!code) continue;
+                    const qty = parseFloat(entry.quantity) || 0;
+                    _shelfEntriesByPosition[code] = (_shelfEntriesByPosition[code] || 0) + qty;
+                }
+            }
+
+            renderPositionPicker('');
         } catch (_) { /* ignore */ }
+    }
+
+    function getSectorFromCode(code) {
+        const m = String(code || '').toUpperCase().match(/^([A-Z])/);
+        return m ? m[1] : '#';
+    }
+
+    function parseShelfPositionCode(code) {
+        const normalized = String(code || '').toUpperCase().trim();
+        const match = normalized.match(/^([A-Z]+)(\d+)\.(\d+)$/);
+        if (match) {
+            return {
+                code: normalized,
+                sector: match[1],
+                column: parseInt(match[2], 10),
+                level: parseInt(match[3], 10)
+            };
+        }
+
+        const fallback = normalized.match(/^([A-Z]+)(\d+)/);
+        return {
+            code: normalized,
+            sector: fallback ? fallback[1] : getSectorFromCode(normalized),
+            column: fallback ? parseInt(fallback[2], 10) : 0,
+            level: 0
+        };
+    }
+
+    function renderPositionPicker(activeSector) {
+        const sectorBox = document.getElementById('__cioSectorBtns');
+        const sectorDescBox = document.getElementById('__cioSectorDesc');
+        const posBox = document.getElementById('__cioPosBtns');
+        if (!sectorBox || !posBox) return;
+
+        const sectorsMap = {};
+        _shelfPositions.forEach(function(position) { sectorsMap[getSectorFromCode(position.code)] = true; });
+        const sectors = Object.keys(sectorsMap).sort();
+        const selectedSector = (activeSector || sectors[0] || '').toUpperCase();
+
+        const sectorDescription = _shelfPositions
+            .filter(function(position) { return getSectorFromCode(position.code) === selectedSector && position.description; })
+            .map(function(position) { return position.description; })[0] || '';
+
+        sectorBox.innerHTML = sectors.map(function(s) {
+            const active = s === selectedSector;
+            const bg = active ? '#16a34a' : '#334155';
+            const desc = _shelfPositions
+                .filter(function(position) { return getSectorFromCode(position.code) === s && position.description; })
+                .map(function(position) { return position.description; })[0] || '';
+            return '<button type="button" data-sector="' + escapeHtml(s) + '" style="min-height:56px;padding:8px 14px;border:none;border-radius:8px;background:' + bg + ';color:#fff;font-size:24px;font-weight:700;min-width:72px;">'
+                + '<div>' + escapeHtml(s) + '</div>'
+                + (desc ? '<div style="font-size:12px;line-height:1.2;font-weight:600;color:#dbeafe;margin-top:2px;white-space:normal;">' + escapeHtml(desc) + '</div>' : '')
+                + '</button>';
+        }).join('');
+
+        if (sectorDescBox) {
+            if (sectorDescription) {
+                sectorDescBox.style.display = 'block';
+                sectorDescBox.textContent = 'Settore ' + selectedSector + ': ' + sectorDescription;
+            } else {
+                sectorDescBox.style.display = 'none';
+                sectorDescBox.textContent = '';
+            }
+        }
+
+        const filtered = _shelfPositions.filter(function(position) {
+            return getSectorFromCode(position.code) === selectedSector;
+        }).map(function(position) {
+            const parsed = parseShelfPositionCode(position.code);
+            parsed.description = position.description || '';
+            parsed.quantity = _shelfEntriesByPosition[parsed.code] || 0;
+            return parsed;
+        }).sort(function(a, b) {
+            if (a.column !== b.column) return a.column - b.column;
+            return b.level - a.level;
+        });
+
+        const columnsMap = {};
+        filtered.forEach(function(item) {
+            const key = String(item.column);
+            if (!columnsMap[key]) columnsMap[key] = [];
+            columnsMap[key].push(item);
+        });
+
+        const columnKeys = Object.keys(columnsMap).sort(function(a, b) {
+            return parseInt(a, 10) - parseInt(b, 10);
+        });
+
+        posBox.innerHTML = columnKeys.map(function(columnKey) {
+            const items = columnsMap[columnKey].sort(function(a, b) { return b.level - a.level; });
+            const buttonsHtml = items.map(function(item) {
+                const hasStock = item.quantity > 0;
+                const bg = hasStock ? '#b45309' : '#1d4ed8';
+                const border = hasStock ? '#f59e0b' : '#60a5fa';
+                return '<button type="button" data-pos="' + escapeHtml(item.code) + '" title="' + escapeHtml(item.description || item.code) + '" style="display:block;width:100%;height:62px;padding:8px 10px;border:2px solid ' + border + ';border-radius:8px;background:' + bg + ';color:#fff;font-size:24px;font-weight:700;">'
+                    + '<div style="line-height:1;">' + escapeHtml(item.code) + '</div>'
+                    + (hasStock ? '<div style="font-size:12px;line-height:1.1;color:#fef3c7;margin-top:4px;">Giac. ' + escapeHtml(String(item.quantity)) + '</div>' : '')
+                    + '</button>';
+            }).join('');
+            return '<div style="display:flex;flex-direction:column;justify-content:flex-end;gap:12px;min-width:102px;">' + buttonsHtml + '</div>';
+        }).join('');
+
+        const sectorBtns = sectorBox.querySelectorAll('button[data-sector]');
+        for (let i = 0; i < sectorBtns.length; i++) {
+            sectorBtns[i].addEventListener('click', function() {
+                renderPositionPicker(this.getAttribute('data-sector') || '');
+            });
+        }
+
+        const posBtns = posBox.querySelectorAll('button[data-pos]');
+        for (let i = 0; i < posBtns.length; i++) {
+            posBtns[i].addEventListener('click', function() {
+                const val = (this.getAttribute('data-pos') || '').toUpperCase();
+                const posInput = document.getElementById('__cioPos');
+                if (posInput) posInput.value = val;
+                closePositionPicker();
+            });
+        }
+    }
+
+    function openPositionPicker() {
+        const p = document.getElementById('__cioPosPicker');
+        if (!p) return;
+        p.style.display = 'block';
+        renderPositionPicker('');
+    }
+
+    function closePositionPicker() {
+        const p = document.getElementById('__cioPosPicker');
+        if (p) p.style.display = 'none';
     }
 
     function closeCompleteModal() {
@@ -1247,6 +1509,36 @@
         if (m) m.style.display = 'none';
         _completeOnSuccess = null;
         _completeTaskId = null;
+    }
+
+    function pad2(n) {
+        return n < 10 ? '0' + n : '' + n;
+    }
+
+    function getIsoWeekNumber(date) {
+        // ISO week: Monday=1, week 1 is the week with Jan 4th.
+        const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+        const day = d.getUTCDay() || 7; // Sunday -> 7
+        d.setUTCDate(d.getUTCDate() + 4 - day);
+        const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+        return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    }
+
+    function getSuggestedBatchCode() {
+        const now = new Date();
+        const dayOfWeek = now.getDay() === 0 ? 7 : now.getDay(); // Monday=1 ... Sunday=7
+        const week = getIsoWeekNumber(now);
+        const yy = pad2(now.getFullYear() % 100);
+        return '' + dayOfWeek + pad2(week) + yy;
+    }
+
+    function getSuggestedExpiry() {
+        const now = new Date();
+        // "5 mesi dal mese corrente" con mese corrente incluso -> offset di 4 mesi.
+        const target = new Date(now.getFullYear(), now.getMonth() + 4, 1);
+        const mm = pad2(target.getMonth() + 1);
+        const yy = pad2(target.getFullYear() % 100);
+        return '28/' + mm + '/' + yy;
     }
 
     function openCompleteInternalOrderModal(task, onSuccess) {
@@ -1261,19 +1553,21 @@
         const codeMatch = desc.match(/Codice:\s*(\S+)/i);
         const nameMatch = desc.match(/Articolo:\s*(.+)/i);
 
-        document.getElementById('__cioSub').innerHTML =
-            `${nameMatch ? escapeHtml(nameMatch[1].trim()) : ''}` +
-            (codeMatch ? ` <span style="color:#60a5fa;">[${escapeHtml(codeMatch[1])}]</span>` : '');
+        // Testo descrittivo: usa "Articolo:" dalla descrizione, altrimenti usa il titolo del task
+        var articleName = nameMatch ? escapeHtml(nameMatch[1].trim()) : escapeHtml((task.title || '').replace(/^.*Ordine interno:\s*/i, ''));
+        var codePart = codeMatch ? ' <span style="color:#60a5fa;">[' + escapeHtml(codeMatch[1]) + ']</span>' : '';
+        document.getElementById('__cioSub').innerHTML = articleName + codePart;
         document.getElementById('__cioQty').value = suggestedQty;
         document.getElementById('__cioPos').value = '';
-        document.getElementById('__cioBatch').value = '';
-        document.getElementById('__cioExp').value = '';
+        document.getElementById('__cioBatch').value = getSuggestedBatchCode();
+        document.getElementById('__cioExp').value = getSuggestedExpiry();
         document.getElementById('__cioNotes').value = '';
         document.getElementById('__cioErr').style.display = 'none';
 
-        m.style.display = 'flex';
+        m.style.display = 'block';
         loadShelfPositionsList();
-        setTimeout(() => { try { document.getElementById('__cioQty').focus(); } catch(_){} }, 50);
+        closePositionPicker();
+        // Non fare auto-focus su dispositivi touch: l'operatore deve prima leggere il form
     }
 
     async function submitCompleteInternalOrder() {

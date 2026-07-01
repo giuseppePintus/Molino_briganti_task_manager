@@ -1,5 +1,13 @@
 import prisma from '../lib/prisma';
 
+type ConsumeDiagnosticContext = {
+  flowId?: string;
+  userId?: number | null;
+  orderId?: number | null;
+  tripId?: number | null;
+  source?: string | null;
+};
+
 export class InventoryService {
   /**
    * Aggiorna stock per un articolo
@@ -450,7 +458,7 @@ export class InventoryService {
    * Consuma inventario prenotato (quando ordine completato)
    * quantity è in KG; currentStock e ShelfEntries sono in COLLI
    */
-  static async consumeReservedInventory(articleCode: string, quantityKg: number) {
+  static async consumeReservedInventory(articleCode: string, quantityKg: number, context: ConsumeDiagnosticContext = {}) {
     try {
       const article = await prisma.article.findFirst({
         where: { code: articleCode },
@@ -469,10 +477,58 @@ export class InventoryService {
       const colliToConsume = Math.ceil(quantityKg / weightPerUnit);
 
       const inv = article.inventory;
+      const realShelfStock = article.shelfEntries.reduce((sum, entry) => sum + (entry.quantity || 0), 0);
+      const shelfBefore = article.shelfEntries.map((entry) => ({
+        shelfEntryId: entry.id,
+        positionCode: entry.positionCode,
+        quantity: entry.quantity,
+      }));
+
+      console.log('🔎 [DIAG][CONSUME_START]', {
+        flowId: context.flowId ?? null,
+        userId: context.userId ?? null,
+        orderId: context.orderId ?? null,
+        tripId: context.tripId ?? null,
+        source: context.source ?? null,
+        articleId: article.id,
+        articleCode,
+        articleName: article.name,
+        quantityKg,
+        weightPerUnit,
+        colliToConsume,
+        inventoryBefore: {
+          inventoryId: inv.id,
+          currentStock: inv.currentStock || 0,
+          realShelfStock,
+          reservedKg: inv.reserved || 0,
+          minimumStock: inv.minimumStock || 0,
+        },
+        shelfBefore,
+      });
+
+      if (realShelfStock < colliToConsume) {
+        throw new Error(
+          `Stock insufficiente per ${articleCode}: scaffale=${realShelfStock} colli, richiesti=${colliToConsume}`
+        );
+      }
+
+      if ((inv.currentStock || 0) !== realShelfStock) {
+        console.warn('⚠️ [DIAG][CONSUME_STOCK_MISMATCH]', {
+          flowId: context.flowId ?? null,
+          userId: context.userId ?? null,
+          orderId: context.orderId ?? null,
+          tripId: context.tripId ?? null,
+          source: context.source ?? null,
+          articleCode,
+          inventoryCurrentStock: inv.currentStock || 0,
+          realShelfStock,
+        });
+      }
+
       // reserved è in KG (salvato direttamente dall'ordine)
       const reservedKg = Math.max(0, (inv.reserved || 0) - quantityKg);
       // currentStock è in COLLI
-      const newCurrentStock = Math.max(0, (inv.currentStock || 0) - colliToConsume);
+      const newCurrentStock = realShelfStock - colliToConsume;
 
       await prisma.inventory.update({
         where: { id: inv.id },
@@ -481,6 +537,7 @@ export class InventoryService {
 
       // Riduci le ShelfEntry in ordine (svuota la prima, poi la seconda, ecc.)
       let remaining = colliToConsume;
+      const shelfMovements: Array<{ shelfEntryId: number; positionCode: string; before: number; after: number; subtracted: number }> = [];
       for (const entry of article.shelfEntries) {
         if (remaining <= 0) break;
         const toSubtract = Math.min(entry.quantity, remaining);
@@ -490,12 +547,54 @@ export class InventoryService {
           data: { quantity: newQty }
         });
         remaining -= toSubtract;
+        shelfMovements.push({
+          shelfEntryId: entry.id,
+          positionCode: entry.positionCode,
+          before: entry.quantity,
+          after: newQty,
+          subtracted: toSubtract,
+        });
         console.log(`📦 [consume] ShelfEntry ${entry.id} (${entry.positionCode}): ${entry.quantity} → ${newQty} colli`);
       }
+
+      if (remaining > 0) {
+        throw new Error(
+          `Scarico incompleto per ${articleCode}: residuo non sottratto ${remaining} colli su ${colliToConsume}`
+        );
+      }
+
+      console.log('🔎 [DIAG][CONSUME_END]', {
+        flowId: context.flowId ?? null,
+        userId: context.userId ?? null,
+        orderId: context.orderId ?? null,
+        tripId: context.tripId ?? null,
+        source: context.source ?? null,
+        articleId: article.id,
+        articleCode,
+        quantityKg,
+        colliToConsume,
+        inventoryAfter: {
+          inventoryId: inv.id,
+          currentStock: newCurrentStock,
+          reservedKg,
+        },
+        shelfMovements,
+        remainingColli: remaining,
+      });
 
       console.log(`✅ [consume] ${articleCode}: -${quantityKg}kg = -${colliToConsume} colli. currentStock: ${inv.currentStock} → ${newCurrentStock}`);
       return { success: true, reserved: reservedKg, currentStock: newCurrentStock, colliConsumed: colliToConsume };
     } catch (error) {
+      console.error('❌ [DIAG][CONSUME_THROW]', {
+        flowId: context.flowId ?? null,
+        userId: context.userId ?? null,
+        orderId: context.orderId ?? null,
+        tripId: context.tripId ?? null,
+        source: context.source ?? null,
+        articleCode,
+        quantityKg,
+        error: String(error),
+      });
       throw new Error(`Errore consumo inventario: ${error}`);
     }
   }

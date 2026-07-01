@@ -3,6 +3,14 @@ import { InventoryService } from '../services/inventoryService';
 import { socketService, SocketEvents } from '../services/socketService';
 
 export class InventoryController {
+  private static buildDiagFlowId(req: Request): string {
+    const headerFlowId = req.headers['x-flow-id'] || req.headers['x-request-id'];
+    if (typeof headerFlowId === 'string' && headerFlowId.trim().length > 0) {
+      return headerFlowId.trim();
+    }
+    return `diag-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  }
+
   /**
    * Ottiene tutti gli articoli
    */
@@ -258,18 +266,55 @@ export class InventoryController {
   static async consumeReservedInventory(req: Request, res: Response) {
     try {
       const { code, quantity } = req.body;
+      const flowId = InventoryController.buildDiagFlowId(req);
+      const userId = (req as any).user?.id ?? null;
 
       if (!code || !quantity) {
         return res.status(400).json({ error: 'Campi obbligatori: code, quantity' });
       }
 
+      console.log('🔎 [DIAG][CONSUME_REQUEST]', {
+        flowId,
+        userId,
+        articleCode: code,
+        quantityKg: parseInt(quantity),
+        orderId: req.body?.orderId ?? null,
+        tripId: req.body?.tripId ?? null,
+        source: req.body?.source ?? null,
+      });
+
       const result = await InventoryService.consumeReservedInventory(
         code as string,
-        parseInt(quantity)
+        parseInt(quantity),
+        {
+          flowId,
+          userId,
+          orderId: req.body?.orderId ?? null,
+          tripId: req.body?.tripId ?? null,
+          source: req.body?.source ?? 'inventory.consume',
+        }
       );
+
+      console.log('🔎 [DIAG][CONSUME_RESPONSE]', {
+        flowId,
+        userId,
+        articleCode: code,
+        quantityKg: parseInt(quantity),
+        result,
+      });
 
       res.json(result);
     } catch (error: any) {
+      console.error('❌ [DIAG][CONSUME_ERROR]', {
+        flowId: InventoryController.buildDiagFlowId(req),
+        userId: (req as any).user?.id ?? null,
+        articleCode: req.body?.code ?? null,
+        quantityKg: req.body?.quantity ?? null,
+        orderId: req.body?.orderId ?? null,
+        tripId: req.body?.tripId ?? null,
+        source: req.body?.source ?? null,
+        error: error.message,
+      });
       res.status(500).json({ error: error.message });
     }
   }
@@ -291,9 +336,14 @@ export class InventoryController {
    */
   static async createArticle(req: Request, res: Response) {
     try {
-      const { code, name, description, category, subcategory, unit, weightPerUnit, barcode } = req.body;
-      if (!code || !name) {
+      const { code: rawCode, name, description, category, subcategory, unit, weightPerUnit, barcode } = req.body;
+      if (!rawCode || !name) {
         return res.status(400).json({ success: false, error: 'Codice e nome sono obbligatori' });
+      }
+      // Rimuove tutti gli spazi dal codice (es. "F-BIO- 00 PIZZA" → "F-BIO-00PIZZA")
+      const code = (rawCode as string).replace(/\s+/g, '');
+      if (!code) {
+        return res.status(400).json({ success: false, error: 'Il codice non può essere composto solo da spazi' });
       }
       const article = await InventoryService.createArticle({ code, name, description, category, subcategory, unit, weightPerUnit: weightPerUnit ? parseFloat(weightPerUnit) : undefined, barcode });
       res.json({ success: true, data: article });
@@ -309,7 +359,12 @@ export class InventoryController {
   static async updateArticle(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const { code, name, description, category, subcategory, unit, weightPerUnit, barcode } = req.body;
+      const { code: rawCode, name, description, category, subcategory, unit, weightPerUnit, barcode } = req.body;
+      // Rimuove tutti gli spazi dal codice se presente
+      const code = rawCode !== undefined ? (rawCode as string).replace(/\s+/g, '') : undefined;
+      if (code !== undefined && !code) {
+        return res.status(400).json({ success: false, error: 'Il codice non può essere vuoto o composto solo da spazi' });
+      }
       const article = await InventoryService.updateArticle(parseInt(id), { code, name, description, category, subcategory, unit, weightPerUnit: weightPerUnit !== undefined ? parseFloat(weightPerUnit) : undefined, barcode });
       res.json({ success: true, data: article });
     } catch (error: any) {

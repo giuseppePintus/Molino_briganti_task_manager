@@ -1482,6 +1482,13 @@
             try {
                 const order = orders.find(o => o.id === orderId);
                 if (!order) return;
+                await sendOrderAudit(orderId, 'accept', {
+                    clientName: getClientName(order),
+                    customerId: order.customerId ?? null,
+                    tripId: order.tripId ?? null,
+                    status: order.status || null,
+                    products: order.products || [],
+                });
                 const updated = await DataSync.updateOrder(orderId, { status: 'in_progress' });
                 if (updated) {
                     order.status = updated.status || 'in_progress';
@@ -1497,46 +1504,81 @@
             }
         }
 
+        function createDiagFlowId(prefix) {
+            return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+        }
+
+        async function sendOrderAudit(orderId, action, details = {}) {
+            try {
+                const flowId = createDiagFlowId(action);
+                await fetch(`${API_URL}/orders/${orderId}/audit`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                        'x-flow-id': flowId,
+                    },
+                    body: JSON.stringify({ action, details }),
+                });
+            } catch (error) {
+                console.warn('⚠️ [ORDER_AUDIT] invio audit fallito:', error);
+            }
+        }
+
+        async function sendTripAudit(tripId, action, details = {}) {
+            try {
+                const flowId = createDiagFlowId(action);
+                await fetch(`${API_URL}/trips/${tripId}/audit`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                        'x-flow-id': flowId,
+                    },
+                    body: JSON.stringify({ action, details }),
+                });
+            } catch (error) {
+                console.warn('⚠️ [TRIP_AUDIT] invio audit fallito:', error);
+            }
+        }
+
         async function completePickupOrder(orderId) {
             try {
                 const order = orders.find(o => o.id === orderId);
                 if (!order) return;
                 if (!confirm('Completare l\'ordine? La merce verrà scaricata dal magazzino.')) return;
 
-                // Scarico magazzino: stessa logica di completeTrip
-                const fullInfo = getOrderFullInfo(orderId);
-                let consumeOk = 0, consumeErr = 0;
-                if (fullInfo && Array.isArray(fullInfo.products) && fullInfo.products.length > 0) {
-                    for (const product of fullInfo.products) {
-                        const code = product.product || product.code;
-                        if (!code || !product.quantity) continue;
-                        try {
-                            const response = await fetch(`${API_URL}/inventory/consume`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                                body: JSON.stringify({ code, quantity: product.quantity })
-                            });
-                            if (!response.ok) {
-                                console.error(`❌ [completePickupOrder] consume ${code} fallito:`, await response.text());
-                                consumeErr++;
-                            } else {
-                                consumeOk++;
-                            }
-                        } catch (err) {
-                            console.error(`❌ [completePickupOrder] consume ${code} errore:`, err);
-                            consumeErr++;
-                        }
+                await sendOrderAudit(orderId, 'complete', {
+                    clientName: getClientName(order),
+                    customerId: order.customerId ?? null,
+                    tripId: order.tripId ?? null,
+                    status: order.status || null,
+                    products: order.products || [],
+                });
+
+                const flowId = createDiagFlowId('pickup-complete');
+                const response = await fetch(`${API_URL}/orders/${orderId}/complete`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                        'x-flow-id': flowId
                     }
+                });
+
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    throw new Error(payload.error || 'Errore completamento ordine');
                 }
 
-                const updated = await DataSync.updateOrder(orderId, { status: 'completed' });
-                order.status = 'completed';
+                const updated = payload.order;
+                const consumeSummary = payload.consumeSummary || { consumeOk: 0, consumeErr: 0 };
+
+                order.status = updated?.status || 'completed';
                 order.completedAt = (updated && updated.completedAt) || new Date().toISOString();
 
-                if (consumeErr > 0) {
-                    alert(`✅ Ordine completato.\n⚠️ ${consumeErr} prodotto/i con errori di scarico (vedi console F12).`);
-                } else if (consumeOk > 0) {
-                    alert(`✅ Ordine completato! ${consumeOk} prodotto/i scaricati dall'inventario.`);
+                if (consumeSummary.consumeOk > 0) {
+                    alert(`✅ Ordine completato! ${consumeSummary.consumeOk} prodotto/i scaricati dall'inventario.`);
                 } else {
                     alert('✅ Ordine completato.');
                 }
@@ -1920,6 +1962,16 @@
             try {
                 const trip = trips.find(t => t.id === tripId);
                 if (!trip) return;
+
+                await sendTripAudit(tripId, 'accept', {
+                    name: trip.name || null,
+                    date: trip.date || null,
+                    assignedOperatorId: trip.assignedOperatorId ?? null,
+                    vehicleId: trip.vehicleId ?? null,
+                    vehicleName: trip.vehicleName ?? null,
+                    sequence: trip.sequence || [],
+                    status: trip.status || null,
+                });
                 
                 // Persiste nel backend (sopravvive ai reload di pagina)
                 const updatedTrip = await DataSync.updateTrip(tripId, { accepted: true });
@@ -1943,83 +1995,53 @@
                 const trip = trips.find(t => t.id === tripId);
                 if (!trip) return;
 
-                // Ottieni gli ordini del viaggio
-                const tripOrders = getTripOrders(tripId);
-                console.log(`🚚 [completeTrip] tripId=${tripId}, ordini nel viaggio:`, tripOrders.map(o => o.id));
+                await sendTripAudit(tripId, 'complete', {
+                    name: trip.name || null,
+                    date: trip.date || null,
+                    assignedOperatorId: trip.assignedOperatorId ?? null,
+                    vehicleId: trip.vehicleId ?? null,
+                    vehicleName: trip.vehicleName ?? null,
+                    sequence: trip.sequence || [],
+                    status: trip.status || null,
+                });
 
-                // Per ogni ordine del viaggio:
-                // 1. Consuma inventario (sottrae da currentStock + reserved)
-                // 2. Segna ordine come "completed" nel backend 
-                //    (la warehouse mostra "prenotato" in base agli ordini status=pending → 
-                //     se l'ordine rimane pending, la merce rimane prenotata anche dopo il viaggio)
-                let consumeOk = 0, consumeErr = 0;
-                for (const order of tripOrders) {
-                    try {
-                        // Solo consuma se l'ordine non è già completato
-                        if (order.status === 'completed') {
-                            console.log(`⏭️ [completeTrip] Ordine ${order.id} già completato → skip`);
-                            continue;
-                        }
-                        
-                        const fullInfo = getOrderFullInfo(order.id);
-                        console.log(`📦 [completeTrip] ordine ${order.id} → prodotti:`, fullInfo?.products);
-                        
-                        if (fullInfo && fullInfo.products && fullInfo.products.length > 0) {
-                            for (const product of fullInfo.products) {
-                                const code = product.product || product.code;
-                                if (!code || !product.quantity) {
-                                    console.warn('⚠️ [completeTrip] Skip prodotto senza codice/quantità:', product);
-                                    continue;
-                                }
-                                const response = await fetch(`${API_URL}/inventory/consume`, {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                        'Authorization': `Bearer ${token}`
-                                    },
-                                    body: JSON.stringify({ code: code, quantity: product.quantity })
-                                });
-                                
-                                if (!response.ok) {
-                                    const errText = await response.text();
-                                    console.error(`❌ [completeTrip] Impossibile consumare ${code}:`, errText);
-                                    consumeErr++;
-                                } else {
-                                    const result = await response.json();
-                                    console.log(`✅ [completeTrip] Consumato ${code} - ${product.quantity}kg →`, result);
-                                    consumeOk++;
-                                }
-                            }
-                        } else {
-                            console.warn(`⚠️ [completeTrip] Ordine ${order.id} senza prodotti → skip consume`);
-                        }
-                        
-                        // Segna l'ordine come completato nel backend
-                        // FONDAMENTALE: la warehouse legge gli ordini status=pending per calcolare "prenotato"
-                        // Se non aggiorniamo lo status dell'ordine, la merce resterà "prenotata" nella warehouse
-                        const orderObj = orders.find(o => o.id === order.id);
-                        if (orderObj) orderObj.status = 'completed';
-                        await DataSync.updateOrder(order.id, { status: 'completed' });
-                        console.log(`✅ [completeTrip] Ordine ${order.id} marcato come completato nel backend`);
-                        
-                    } catch (e) {
-                        console.error(`❌ [completeTrip] Errore su ordine ${order.id}:`, e);
-                        consumeErr++;
+                const flowId = createDiagFlowId('trip-complete');
+                const response = await fetch(`${API_URL}/trips/${tripId}/complete`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                        'x-flow-id': flowId
                     }
+                });
+
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    throw new Error(payload.error || 'Errore completamento viaggio');
                 }
 
-                // Marca il viaggio come completato
-                trip.completed = true;
-                trip.completedAt = new Date().toISOString();
-                trip.completedBy = currentUser.id;
+                const updatedTrip = payload.trip;
+                const consumeSummary = payload.consumeSummary || { consumeOk: 0, consumeErr: 0 };
 
-                await DataSync.updateTrip(tripId, { status: 'completed' });
+                trip.completed = true;
+                trip.completedAt = (updatedTrip && updatedTrip.completedAt) || new Date().toISOString();
+                trip.completedBy = currentUser.id;
+                trip.status = (updatedTrip && updatedTrip.status) || 'completed';
+
+                if (updatedTrip && Array.isArray(updatedTrip.orders)) {
+                    updatedTrip.orders.forEach(updatedOrder => {
+                        const orderObj = orders.find(o => o.id === updatedOrder.id);
+                        if (orderObj) {
+                            orderObj.status = updatedOrder.status;
+                            orderObj.completedAt = updatedOrder.completedAt;
+                        }
+                    });
+                }
+
                 await saveTrips();
-                
-                if (consumeErr > 0) {
-                    alert(`✅ Viaggio completato.\n⚠️ ${consumeErr} operazione/i con errori (vedi console F12).`);
-                } else if (consumeOk > 0) {
-                    alert(`✅ Viaggio completato! ${consumeOk} prodotti scaricati dall'inventario.`);
+
+                if (consumeSummary.consumeOk > 0) {
+                    alert(`✅ Viaggio completato! ${consumeSummary.consumeOk} prodotti scaricati dall'inventario.`);
                 } else {
                     alert('✅ Viaggio completato.');
                 }
@@ -2472,6 +2494,14 @@
         async function removeOrderFromTrip(tripId, orderId) {
             const trip = trips.find(t => t.id === tripId);
             if (trip) {
+                const tripOrder = orders.find(o => o.id === orderId);
+                await sendTripAudit(tripId, 'remove-order', {
+                    orderId,
+                    tripName: trip.name || null,
+                    orderClientName: tripOrder ? getClientName(tripOrder) : null,
+                    orderStatus: tripOrder?.status || null,
+                    sequence: trip.sequence || [],
+                });
                 trip.orderIds = trip.orderIds.filter(id => id !== orderId);
                 trip.sequence = trip.sequence.filter(id => id !== orderId);
                 await saveTrips();
@@ -4532,6 +4562,16 @@
             if (task) {
                 await deleteBackendEntriesForTask(task);
             }
+
+            const orderBeforeDelete = orders.find(o => o.id === id);
+            await sendOrderAudit(id, 'delete', {
+                status: orderBeforeDelete?.status || null,
+                clientName: getClientName(orderBeforeDelete),
+                customerId: orderBeforeDelete?.customerId ?? null,
+                tripId: orderBeforeDelete?.tripId ?? null,
+                products: orderBeforeDelete?.products || [],
+                reason: 'user_action',
+            });
             
             // LIBERA la prenotazione di inventario (solo se non ancora completato)
             const order = orders.find(o => o.id === id);
@@ -4602,6 +4642,17 @@
                 console.log('🗑️ [deleteTrip] Viaggio trovato:', trip);
                 
                 if (trip) {
+                    await sendTripAudit(id, 'delete-open', {
+                        name: trip.name || null,
+                        date: trip.date || null,
+                        assignedOperatorId: trip.assignedOperatorId ?? null,
+                        vehicleId: trip.vehicleId ?? null,
+                        vehicleName: trip.vehicleName ?? null,
+                        sequence: trip.sequence || [],
+                        status: trip.status || null,
+                        ordersCount: Math.max(trip.sequence?.length || 0, trip.orders?.length || 0),
+                    });
+
                     // Conta ordini: usa sequence MA anche trip.orders dal server (relazione DB)
                     const seqCount = trip.sequence?.length || 0;
                     const dbOrdersCount = trip.orders?.length || 0;
@@ -4675,6 +4726,15 @@
             try {
                 const trip = trips.find(t => String(t.id) === String(id) || Number(t.id) === Number(id));
                 if (trip) {
+                    await sendTripAudit(id, 'delete-with-orders', {
+                        name: trip.name || null,
+                        date: trip.date || null,
+                        assignedOperatorId: trip.assignedOperatorId ?? null,
+                        vehicleId: trip.vehicleId ?? null,
+                        vehicleName: trip.vehicleName ?? null,
+                        sequence: trip.sequence || [],
+                        status: trip.status || null,
+                    });
                     console.log(`🗑️ [deleteTripWithOrders] Eliminazione viaggio ${id} (${trip.name}) E ${trip.sequence?.length || 0} ordini`);
                     
                     // Elimina tutti gli ordini associati al viaggio
@@ -4717,6 +4777,15 @@
             try {
                 const trip = trips.find(t => String(t.id) === String(id) || Number(t.id) === Number(id));
                 if (trip) {
+                    await sendTripAudit(id, 'delete-only', {
+                        name: trip.name || null,
+                        date: trip.date || null,
+                        assignedOperatorId: trip.assignedOperatorId ?? null,
+                        vehicleId: trip.vehicleId ?? null,
+                        vehicleName: trip.vehicleName || null,
+                        sequence: trip.sequence || [],
+                        status: trip.status || null,
+                    });
                     console.log(`✂️ [deleteTripOnly] Eliminazione SOLO viaggio ${id}, mantenendo ${trip.sequence?.length || 0} ordini`);
                     
                     // Rimuovi la relazione tra ordini e viaggio (senza eliminarli)
@@ -4916,6 +4985,15 @@
                 alert('Ordine non trovato');
                 return;
             }
+
+            sendOrderAudit(orderId, 'print', {
+                clientName: getClientName(order),
+                customerId: order.customerId ?? null,
+                tripId: order.tripId ?? null,
+                status: order.status || null,
+                products: order.products || [],
+                printType: 'a4',
+            });
 
             const colli = (typeof getOrderTotalColli === 'function') ? getOrderTotalColli(order) : 0;
             const kg = (typeof getOrderTotalQuantity === 'function') ? getOrderTotalQuantity(order) : (order.quantity || 0);
@@ -5274,6 +5352,16 @@
                     id: trip.id,
                     ...payload
                 });
+
+                await sendTripAudit(trip.id, 'update', {
+                    name: trip.name || null,
+                    date: trip.date || null,
+                    assignedOperatorId: trip.assignedOperatorId ?? null,
+                    vehicleId: trip.vehicleId ?? null,
+                    vehicleName: trip.vehicleName ?? null,
+                    sequence: trip.sequence || [],
+                    status: trip.status || null,
+                });
                 
                 const response = await fetch(`${API_URL}/trips/${trip.id}`, {
                     method: 'PUT',
@@ -5360,82 +5448,65 @@
             const order = orders.find(o => o.id === id);
             if (order) {
                 const oldStatus = order.status;
+                const oldCompletedAt = order.completedAt;
                 order.status = newStatus;
-                
-                // Se marca come completato, CONSUMA l'inventario
-                if (newStatus === 'completed' && oldStatus !== 'completed') {
-                    // Usa la prenotazione in memoria se disponibile, altrimenti i prodotti dell'ordine direttamente
-                    const reservations = orderInventoryReservations[id];
-                    const productsToConsume = (reservations && reservations.length > 0)
-                        ? reservations.map(r => ({ code: r.productCode, quantity: r.quantity }))
-                        : (Array.isArray(order.products) ? order.products.map(p => ({ code: p.product || p.code, quantity: p.quantity })) : []);
-                    
-                    console.log(`🔍 [updateOrderStatus] orderId=${id}, prodotti da consumare:`, JSON.stringify(productsToConsume));
-                    
-                    if (productsToConsume.length === 0) {
-                        console.warn('⚠️ [updateOrderStatus] Nessun prodotto trovato da consumare per ordine', id, 'products:', order.products);
-                    }
-                    
-                    let consumeOk = 0, consumeErr = 0;
-                    for (const item of productsToConsume) {
-                        if (!item.code || !item.quantity) {
-                            console.warn('⚠️ [updateOrderStatus] Skip prodotto (code/quantity mancante):', item);
-                            continue;
-                        }
-                        try {
-                            const consumeResponse = await fetch(`${API_URL}/inventory/consume`, {
-                                method: 'POST',
-                                headers: {
-                                    'Authorization': `Bearer ${token}`,
-                                    'Content-Type': 'application/json'
-                                },
-                                body: JSON.stringify({ code: item.code, quantity: item.quantity })
-                            });
 
-                            if (!consumeResponse.ok) {
-                                const errData = await consumeResponse.json().catch(() => ({}));
-                                console.error('❌ Errore consumo inventario:', item.code, errData);
-                                consumeErr++;
-                            } else {
-                                const result = await consumeResponse.json();
-                                console.log('✅ Inventario consumato:', item.code, '-', item.quantity, 'kg →', result);
-                                consumeOk++;
+                try {
+                    // Se marca come completato, CONSUMA l'inventario
+                    if (newStatus === 'completed' && oldStatus !== 'completed') {
+                        const flowId = createDiagFlowId('order-status-complete');
+                        const completeResponse = await fetch(`${API_URL}/orders/${id}/complete`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json',
+                                'x-flow-id': flowId
                             }
-                        } catch (error) {
-                            console.error('❌ Errore durante consumo inventario:', item.code, error);
-                            consumeErr++;
+                        });
+
+                        const completePayload = await completeResponse.json().catch(() => ({}));
+                        if (!completeResponse.ok) {
+                            throw new Error(completePayload.error || 'Errore completamento ordine');
+                        }
+
+                        const updatedOrder = completePayload.order;
+                        const consumeSummary = completePayload.consumeSummary || { consumeOk: 0 };
+                        order.status = updatedOrder?.status || 'completed';
+                        order.completedAt = updatedOrder?.completedAt || new Date().toISOString();
+
+                        if (consumeSummary.consumeOk > 0) {
+                            console.log(`✅ [updateOrderStatus] Inventario scaricato per ${consumeSummary.consumeOk} prodotti.`);
+                        }
+                        delete orderInventoryReservations[id];
+                        saveInventoryReservations(orderInventoryReservations);
+                    } else {
+                        await DataSync.updateOrder(id, { status: newStatus });
+                    }
+
+                    renderOrders();
+                    // If marking completed, sync related task status too
+                    if (newStatus === 'completed') {
+                        const task = orderTasks.find(t => t.orderId === id);
+                        if (task) {
+                            task.status = 'completed';
+                            saveOrderTasks();
+                            renderOrderTasks();
                         }
                     }
+                    updateStats();
+                    renderCalendar();
                     
-                    if (consumeErr > 0) {
-                        alert(`⚠️ Completato, ma ${consumeErr} prodotto/i non scaricato/i dall'inventario (vedi console F12).`);
-                    } else if (consumeOk > 0) {
-                        console.log(`✅ [updateOrderStatus] Inventario scaricato per ${consumeOk} prodotti.`);
-                    }
-                    delete orderInventoryReservations[id];
-                    saveInventoryReservations(orderInventoryReservations);
+                    // Sincronizza automaticamente i viaggi dopo il cambio di stato
+                    // Con small delay per permettere al backend di elaborare
+                    setTimeout(async () => {
+                        await forceRefreshTrips();
+                        renderOrderTasks();  // Ricarica lista ordini per mostrare filtro aggiornato
+                    }, 300);
+                } catch (error) {
+                    order.status = oldStatus;
+                    order.completedAt = oldCompletedAt;
+                    alert('Errore aggiornamento ordine: ' + (error?.message || error));
                 }
-                
-                await DataSync.updateOrder(id, { status: newStatus });
-                renderOrders();
-                // If marking completed, sync related task status too
-                if (newStatus === 'completed') {
-                    const task = orderTasks.find(t => t.orderId === id);
-                    if (task) {
-                        task.status = 'completed';
-                        saveOrderTasks();
-                        renderOrderTasks();
-                    }
-                }
-                updateStats();
-                renderCalendar();
-                
-                // Sincronizza automaticamente i viaggi dopo il cambio di stato
-                // Con small delay per permettere al backend di elaborare
-                setTimeout(async () => {
-                    await forceRefreshTrips();
-                    renderOrderTasks();  // Ricarica lista ordini per mostrare filtro aggiornato
-                }, 300);
             }
         }
 

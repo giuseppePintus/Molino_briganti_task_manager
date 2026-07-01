@@ -503,23 +503,14 @@
 
         async function loadOperators() {
             try {
-                // Carica operatori e admin
-                const [operatorsRes, adminsRes] = await Promise.all([
-                    fetch(`${API_URL}/auth/operators/public`),
-                    fetch(`${API_URL}/auth/admins/public`)
-                ]);
-                
+                // /auth/operators/public restituisce già tutti (slave + admin + master) con role corretto
+                const operatorsRes = await fetch(`${API_URL}/auth/operators/public`);
                 const ops = operatorsRes.ok ? await operatorsRes.json() : [];
-                const admins = adminsRes.ok ? await adminsRes.json() : [];
                 
-                // Aggiungi role field
-                const opsWithRole = ops.map(op => ({ ...op, role: 'slave' }));
-                const adminsWithRole = admins.map(a => ({ ...a, role: 'master' }));
-                
-                // Combina: admin prima, poi operatori, entrambi alfabetici
-                const sortedAdmins = adminsWithRole.sort((a, b) => a.username.localeCompare(b.username));
-                const sortedOps = opsWithRole.sort((a, b) => a.username.localeCompare(b.username));
-                operators = [...sortedAdmins, ...sortedOps];
+                // Ordina: master prima, poi tutti gli altri, entrambi alfabetici
+                const adminsGroup = ops.filter(op => op.role === 'master').sort((a, b) => a.username.localeCompare(b.username));
+                const slavesGroup = ops.filter(op => op.role !== 'master').sort((a, b) => a.username.localeCompare(b.username));
+                operators = [...adminsGroup, ...slavesGroup];
                 allOperators = operators;
                 
                 console.log('✅ Operatori/Admin caricati:', operators.length);

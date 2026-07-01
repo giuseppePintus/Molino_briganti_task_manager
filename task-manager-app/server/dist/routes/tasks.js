@@ -28,6 +28,7 @@ router.delete('/:id', (req, res) => tasksController.deleteTask(req, res));
 // Task acceptance workflow
 router.post('/:id/accept', (req, res) => tasksController.acceptTask(req, res));
 router.post('/:id/pause', (req, res) => tasksController.pauseTask(req, res));
+router.post('/:id/complete', (req, res) => tasksController.completeTask(req, res));
 router.post('/:id/resume', (req, res) => tasksController.resumeTask(req, res));
 router.post('/:id/postpone', (req, res) => tasksController.postponeTask(req, res));
 router.post('/:id/reset-suspended', (req, res) => tasksController.resetTaskToSuspended(req, res));
@@ -134,6 +135,7 @@ router.post('/internal-order', (req, res) => __awaiter(void 0, void 0, void 0, f
  * - Marca il task come completato.
  */
 router.post('/:id/complete-internal-order', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
     try {
         const user = req.user;
         if (!user)
@@ -203,6 +205,36 @@ router.post('/:id/complete-internal-order', (req, res) => __awaiter(void 0, void
                 }
             });
         }
+        const shelfAgg = yield prisma_1.default.shelfEntry.aggregate({
+            where: { articleId: article.id },
+            _sum: { quantity: true }
+        });
+        const realShelfStock = (_a = shelfAgg._sum.quantity) !== null && _a !== void 0 ? _a : 0;
+        let inventory = yield prisma_1.default.inventory.findUnique({ where: { articleId: article.id } });
+        if (!inventory) {
+            inventory = yield prisma_1.default.inventory.create({
+                data: {
+                    articleId: article.id,
+                    currentStock: realShelfStock,
+                    minimumStock: 0
+                }
+            });
+        }
+        else if (inventory.currentStock !== realShelfStock) {
+            inventory = yield prisma_1.default.inventory.update({
+                where: { id: inventory.id },
+                data: { currentStock: realShelfStock }
+            });
+        }
+        yield prisma_1.default.stockMovement.create({
+            data: {
+                inventoryId: inventory.id,
+                type: 'IN',
+                quantity: qty,
+                reason: 'ORDINE_INTERNO',
+                createdBy: user.id
+            }
+        });
         // Rimuovi snooze (merce arrivata)
         try {
             yield prisma_1.default.$executeRawUnsafe('UPDATE Inventory SET snoozedAt = NULL, snoozedAtStock = NULL WHERE articleId = ?', article.id);

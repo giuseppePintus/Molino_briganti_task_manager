@@ -11,7 +11,6 @@
     <script src="/socket.io/socket.io.js"></script>
     <script src="js/socket-client.js"></script>
     <script src="js/thermal-print.js"></script>
-    <script src="js/auth-guard.js"></script>
     <script src="js/scroll-preserve.js"></script>
 </head>
 <body>
@@ -138,7 +137,10 @@
         document.addEventListener('mozfullscreenchange', handleFullscreenChange);
         
         // Se già in fullscreen (es. PWA), nascondi overlay
-        if (isFullscreen() || window.navigator.standalone || window.matchMedia('(display-mode: fullscreen)').matches) {
+        // window.matchMedia potrebbe non esistere su Android 4.x (Jelly Bean)
+        var _inPwaMode = false;
+        try { _inPwaMode = window.matchMedia && window.matchMedia('(display-mode: fullscreen)').matches; } catch(e) {}
+        if (isFullscreen() || window.navigator.standalone || _inPwaMode) {
             var overlay = document.getElementById('fullscreenOverlay');
             if (overlay) overlay.style.display = 'none';
         }
@@ -480,6 +482,9 @@
         function showLogin() {
             document.getElementById('loginSection').style.display = 'block';
             document.getElementById('dashboardSection').style.display = 'none';
+            // Chiudi eventuale modal "Completa Ordine Interno" rimasto aperto
+            var cioModal = document.getElementById('__completeInternalOrderModal');
+            if (cioModal) cioModal.style.display = 'none';
             stopInactivityTimer();
             loadOperators();
         }
@@ -561,10 +566,11 @@
             if (!alertBox) {
                 alertBox = document.createElement('div');
                 alertBox.id = 'alertBox';
-                alertBox.style.cssText = 'position: fixed; top: 250px; left: 50%; transform: translateX(-50%); ' +
-                    'padding: 20px 30px; border-radius: 8px; font-size: 22px; z-index: 10000; ' +
-                    'box-shadow: 0 4px 12px rgba(0,0,0,0.3); max-width: 600px; text-align: center; ' +
-                    'animation: slideIn 0.3s ease-out;';
+                // Evita transform: per compatibilità con Android 4.x (Jelly Bean)
+                alertBox.style.cssText = 'position:fixed;top:80px;left:10%;right:10%;width:80%;' +
+                    'padding:18px 20px;border-radius:8px;font-size:18px;z-index:10000;' +
+                    'box-shadow:0 4px 12px rgba(0,0,0,0.4);text-align:center;' +
+                    'word-wrap:break-word;line-height:1.4;';
                 document.body.appendChild(alertBox);
             }
             
@@ -583,10 +589,11 @@
             
             alertBox.style.display = 'block';
             
-            // Auto-nascondi dopo 3 secondi
+            // Auto-nascondi dopo 5 secondi per i messaggi di errore, 3 per gli altri
+            var delay = (type === 'error') ? 5000 : 3000;
             setTimeout(function() {
                 alertBox.style.display = 'none';
-            }, 3000);
+            }, delay);
         }
         
         // Logout
@@ -658,11 +665,23 @@
                 var task = tasks[i];
                 if (task.assignedOperatorId === currentUser.id || 
                     (task.assignedOperator && task.assignedOperator.id === currentUser.id)) {
-                    if (task.scheduledAt) {
+                    var shouldShow = false;
+
+                    // Mostra sempre i task in corso (accettati o in pausa) anche se senza data.
+                    if (!task.completed && (task.acceptedAt || task.paused)) {
+                        shouldShow = true;
+                    }
+
+                    // Per i task non attivi, mantieni il filtro data (oggi + 5 giorni).
+                    if (!shouldShow && task.scheduledAt) {
                         var taskDate = task.scheduledAt.split('T')[0];
                         if (allowedDates.indexOf(taskDate) !== -1) {
-                            myTasks.push(task);
+                            shouldShow = true;
                         }
+                    }
+
+                    if (shouldShow) {
+                        myTasks.push(task);
                     }
                 }
             }
@@ -780,27 +799,47 @@
             sendTaskAction(taskId, 'pause');
         }
         
+        // customConfirm - ES5 compatibile (Jelly Bean WebView).
+        // Su browser moderni restituisce una Promise; su browser senza Promise usa confirm() nativo.
         function customConfirm(msg) {
-            return new Promise(resolve => {
-                const ov = document.createElement('div');
-                ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:99999;display:flex;align-items:center;justify-content:center;';
-                ov.innerHTML = `<div style="background:#2d2d2d;border-radius:12px;padding:28px 32px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.5);border:1px solid #4d4d4d;"><p style="color:#e0e0e0;font-size:15px;margin:0 0 24px;line-height:1.6;">${msg.replace(/\n/g,'<br>')}</p><div style="display:flex;gap:10px;justify-content:flex-end;"><button id="_ccNo" style="background:#374151;color:#e0e0e0;border:none;border-radius:6px;padding:9px 22px;font-size:14px;cursor:pointer;">Annulla</button><button id="_ccYes" style="background:#16a34a;color:#fff;border:none;border-radius:6px;padding:9px 22px;font-size:14px;font-weight:600;cursor:pointer;">Conferma</button></div></div>`;
-                document.body.appendChild(ov);
-                const done = r => { ov.remove(); resolve(r); };
-                ov.querySelector('#_ccYes').onclick = () => done(true);
-                ov.querySelector('#_ccNo').onclick = () => done(false);
-                ov.onclick = ev => { if (ev.target === ov) done(false); };
-                const kh = ev => { if (ev.key === 'Enter') { ev.preventDefault(); done(true); } else if (ev.key === 'Escape') done(false); document.removeEventListener('keydown', kh); };
-                document.addEventListener('keydown', kh);
-                ov.querySelector('#_ccYes').focus();
-            });
+            if (typeof Promise !== 'undefined') {
+                return new Promise(function(resolve) {
+                    var ov = document.createElement('div');
+                    ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.65);z-index:99999;display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;-webkit-justify-content:center;justify-content:center;';
+                    var inner = document.createElement('div');
+                    inner.style.cssText = 'background:#2d2d2d;border-radius:12px;padding:28px 32px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.5);border:1px solid #4d4d4d;';
+                    var p = document.createElement('p');
+                    p.style.cssText = 'color:#e0e0e0;font-size:15px;margin:0 0 24px;line-height:1.6;';
+                    p.innerHTML = msg.replace(/\n/g, '<br>');
+                    var btns = document.createElement('div');
+                    btns.style.cssText = 'display:-webkit-flex;display:flex;gap:10px;-webkit-justify-content:flex-end;justify-content:flex-end;';
+                    var btnNo = document.createElement('button');
+                    btnNo.style.cssText = 'background:#374151;color:#e0e0e0;border:none;border-radius:6px;padding:9px 22px;font-size:14px;cursor:pointer;';
+                    btnNo.textContent = 'Annulla';
+                    var btnYes = document.createElement('button');
+                    btnYes.style.cssText = 'background:#16a34a;color:#fff;border:none;border-radius:6px;padding:9px 22px;font-size:14px;font-weight:600;cursor:pointer;';
+                    btnYes.textContent = 'Conferma';
+                    btns.appendChild(btnNo);
+                    btns.appendChild(btnYes);
+                    inner.appendChild(p);
+                    inner.appendChild(btns);
+                    ov.appendChild(inner);
+                    document.body.appendChild(ov);
+                    function done(r) { if (ov.parentNode) ov.parentNode.removeChild(ov); resolve(r); }
+                    btnYes.onclick = function() { done(true); };
+                    btnNo.onclick = function() { done(false); };
+                    ov.onclick = function(ev) { if (ev.target === ov) done(false); };
+                    btnYes.focus();
+                });
+            }
+            return window.confirm(msg);
         }
 
         function resumeTask(taskId) {
             sendTaskAction(taskId, 'resume');
         }
         
-        async function completeTask(taskId) {
+        function completeTask(taskId) {
             if (true) {
                 sendTaskAction(taskId, 'complete');
             }
@@ -808,39 +847,39 @@
         
         function sendTaskAction(taskId, action) {
             var xhr = new XMLHttpRequest();
-            
-            if (action === 'complete') {
-                xhr.open('PUT', API_URL + '/tasks/' + taskId, true);
-                xhr.setRequestHeader('Content-Type', 'application/json');
-                xhr.setRequestHeader('Authorization', 'Bearer ' + token);
-                
-                xhr.onreadystatechange = function() {
-                    if (xhr.readyState === 4) {
-                        if (xhr.status === 200) {
-                            loadTasks();
-                        } else {
-                            alert('Errore durante l\'operazione');
-                        }
+
+            xhr.open('POST', API_URL + '/tasks/' + taskId + '/' + action, true);
+            xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        loadTasks();
+                    } else if (xhr.status === 400) {
+                        var errMsg = 'Operazione non consentita';
+                        try {
+                            var body = JSON.parse(xhr.responseText);
+                            if (body.message && body.message.indexOf('active task') !== -1) {
+                                errMsg = '⚠️ Hai già un task attivo. Metti in pausa quello corrente prima di accettarne un altro.';
+                            } else if (body.message) {
+                                errMsg = body.message;
+                            }
+                        } catch(e) {}
+                        showAlert(errMsg, 'error');
+                    } else if (xhr.status === 403) {
+                        var errMsg403 = 'Accesso non autorizzato';
+                        try {
+                            var body403 = JSON.parse(xhr.responseText);
+                            if (body403.message) errMsg403 = body403.message;
+                        } catch(e) {}
+                        showAlert(errMsg403, 'error');
+                    } else {
+                        showAlert('❌ Errore durante l\'operazione (' + xhr.status + ')', 'error');
                     }
-                };
-                
-                xhr.send(JSON.stringify({ completed: true }));
-            } else {
-                xhr.open('POST', API_URL + '/tasks/' + taskId + '/' + action, true);
-                xhr.setRequestHeader('Authorization', 'Bearer ' + token);
-                
-                xhr.onreadystatechange = function() {
-                    if (xhr.readyState === 4) {
-                        if (xhr.status === 200) {
-                            loadTasks();
-                        } else {
-                            alert('Errore durante l\'operazione');
-                        }
-                    }
-                };
-                
-                xhr.send();
-            }
+                }
+            };
+
+            xhr.send();
         }
         
         // Utility functions
@@ -1269,8 +1308,10 @@
         
         // --- Shims per thermal-print.js ---
         window.getTripOrders = function(tripId) {
-            var t = trips.find(function(t) { return String(t.id) === String(tripId); });
-            return t ? (t.orders || []) : [];
+            for (var _i = 0; _i < trips.length; _i++) {
+                if (String(trips[_i].id) === String(tripId)) return trips[_i].orders || [];
+            }
+            return [];
         };
         (function() {
             var _orig = calculateTripTotals;
@@ -1337,8 +1378,7 @@
             });
             
             // Crea HTML per la stampa
-            var printHTML = '<html><head><meta charset=\"UTF-8\"><title>Stampa Viaggio - ' + trip.name + '</title>
-</head><body>';
+            var printHTML = '<html><head><meta charset=\"UTF-8\"><title>Stampa Viaggio - ' + trip.name + '</title></head><body>';
             
             // Header
             var tripDate = new Date(trip.date);

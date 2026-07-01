@@ -1,8 +1,36 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma';
 import { socketService } from '../services/socketService';
+import { InventoryService } from '../services/inventoryService';
+import { appendAuditLog, getAuditLogFilePath } from '../services/auditLogService';
 
 const router = Router();
+
+function buildDiagFlowId(req: Request): string {
+  const headerFlowId = req.headers['x-flow-id'] || req.headers['x-request-id'];
+  if (typeof headerFlowId === 'string' && headerFlowId.trim().length > 0) {
+    return headerFlowId.trim();
+  }
+  return `diag-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function parseTripOrderProducts(productsRaw: string | null): any[] {
+  if (!productsRaw) return [];
+  try {
+    const parsed = JSON.parse(productsRaw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function summarizeTripProducts(products: any[]): Array<{ code: string | null; product: string | null; quantity: number | null }> {
+  return products.map((product: any) => ({
+    code: product?.code || null,
+    product: product?.product || null,
+    quantity: typeof product?.quantity === 'number' ? product.quantity : Number(product?.quantity ?? null),
+  }));
+}
 
 /**
  * GET /api/trips
@@ -319,6 +347,309 @@ router.put('/:id', async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Error updating trip:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/trips/:id/complete
+ * Completa un viaggio lato backend: valida, consuma inventario e chiude ordini/viaggio.
+ */
+router.post('/:id/complete', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const tripId = parseInt(id);
+    const flowId = buildDiagFlowId(req);
+    const userId = (req as any).user?.id ?? null;
+
+    const trip = await prisma.trip.findUnique({
+      where: { id: tripId },
+      include: {
+        assignedOperator: {
+          select: { id: true, username: true, image: true }
+        },
+        orders: {
+          include: { customer: true },
+          orderBy: { id: 'asc' }
+        }
+      }
+    });
+
+  /**
+   * POST /api/trips/:id/audit
+   * Traccia eventi operativi lato frontend per i viaggi.
+   */
+  router.post('/:id/audit', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const tripId = parseInt(id);
+      const flowId = buildDiagFlowId(req);
+      const userId = (req as any).user?.id ?? null;
+      const { action, details } = req.body || {};
+
+      if (!action || typeof action !== 'string') {
+        return res.status(400).json({ error: 'action mancante' });
+      }
+
+      const trip = await prisma.trip.findUnique({
+        where: { id: tripId },
+        include: {
+          assignedOperator: {
+            select: { id: true, username: true, image: true }
+          },
+          orders: {
+            include: { customer: true },
+            orderBy: { id: 'asc' }
+          }
+        }
+      });
+
+      console.log('🔎 [DIAG][TRIP_AUDIT]', {
+        flowId,
+        action,
+        userId,
+        tripId,
+        tripStatus: trip?.status ?? null,
+        accepted: trip?.accepted ?? null,
+        acceptedAt: trip?.acceptedAt ?? null,
+        printed: trip?.printed ?? null,
+        printedAt: trip?.printedAt ?? null,
+        sequence: trip?.sequence ? JSON.parse(trip.sequence) : [],
+        orderIds: trip?.orders?.map((order) => order.id) ?? [],
+        products: trip?.orders?.flatMap((order) => summarizeTripProducts(parseTripOrderProducts(order.products))) ?? [],
+        details: details || null,
+      });
+
+      await appendAuditLog({
+        scope: 'trip',
+        action,
+        flowId,
+        userId,
+        tripId,
+        details: details || null,
+        logFile: getAuditLogFilePath(),
+      });
+
+      return res.json({ ok: true });
+    } catch (error: any) {
+      console.error('❌ [DIAG][TRIP_AUDIT_ERROR]', {
+        flowId: buildDiagFlowId(req),
+        tripId: req.params?.id ?? null,
+        userId: (req as any).user?.id ?? null,
+        action: req.body?.action ?? null,
+        error: error?.message || String(error),
+      });
+      return res.status(500).json({ error: error?.message || 'Errore audit viaggio' });
+    }
+  });
+
+    if (!trip) {
+      return res.status(404).json({ error: 'Trip not found' });
+    }
+
+    const pendingOrders = trip.orders.filter((order) => order.status !== 'completed');
+    if (pendingOrders.length === 0) {
+      const completedTrip = await prisma.trip.update({
+        where: { id: tripId },
+        data: { status: 'completed', completedAt: new Date() },
+        include: {
+          assignedOperator: {
+            select: { id: true, username: true, image: true }
+          },
+          orders: { include: { customer: true } }
+        }
+      });
+
+      socketService.notifyTripUpdated({
+        ...completedTrip,
+        sequence: completedTrip.sequence ? JSON.parse(completedTrip.sequence) : [],
+        orders: completedTrip.orders.map((order) => ({
+          ...order,
+          products: parseTripOrderProducts(order.products)
+        }))
+      });
+
+      return res.json({
+        trip: completedTrip,
+        consumeSummary: { consumeOk: 0, consumeErr: 0, alreadyCompleted: true }
+      });
+    }
+
+    const aggregateDemand = new Map<string, { quantityKg: number; colliDemand: number; orderIds: number[] }>();
+
+    for (const order of pendingOrders) {
+      const products = parseTripOrderProducts(order.products);
+      for (const product of products) {
+        const code = product?.code || product?.product;
+        const quantityKg = Number(product?.quantity || 0);
+        if (!code || !Number.isFinite(quantityKg) || quantityKg <= 0) {
+          continue;
+        }
+
+        const article = await prisma.article.findFirst({ where: { code } });
+        const weightPerUnit = article?.weightPerUnit || 1;
+        const colliDemand = Math.ceil(quantityKg / weightPerUnit);
+        const existing = aggregateDemand.get(code);
+        if (existing) {
+          existing.quantityKg += quantityKg;
+          existing.colliDemand += colliDemand;
+          existing.orderIds.push(order.id);
+        } else {
+          aggregateDemand.set(code, {
+            quantityKg,
+            colliDemand,
+            orderIds: [order.id]
+          });
+        }
+      }
+    }
+
+    const validationRows: Array<{
+      code: string;
+      quantityKg: number;
+      colliDemand: number;
+      realShelfStock: number;
+      inventoryStock: number;
+      reservedKg: number;
+      orderIds: number[];
+    }> = [];
+
+    for (const [code, demand] of aggregateDemand.entries()) {
+      const article = await prisma.article.findFirst({
+        where: { code },
+        include: {
+          inventory: true,
+          shelfEntries: { orderBy: { id: 'asc' } }
+        }
+      });
+
+      if (!article || !article.inventory) {
+        return res.status(409).json({
+          error: `Articolo ${code} non trovato o senza inventario`,
+          flowId,
+          tripId,
+          code,
+          orderIds: demand.orderIds,
+        });
+      }
+
+      const realShelfStock = article.shelfEntries.reduce((sum, entry) => sum + (entry.quantity || 0), 0);
+      if (realShelfStock < demand.colliDemand) {
+        return res.status(409).json({
+          error: `Stock insufficiente per ${code}: scaffale=${realShelfStock}, richiesti=${demand.colliDemand}`,
+          flowId,
+          tripId,
+          code,
+          quantityKg: demand.quantityKg,
+          colliDemand: demand.colliDemand,
+          realShelfStock,
+          orderIds: demand.orderIds,
+        });
+      }
+
+      validationRows.push({
+        code,
+        quantityKg: demand.quantityKg,
+        colliDemand: demand.colliDemand,
+        realShelfStock,
+        inventoryStock: article.inventory.currentStock || 0,
+        reservedKg: article.inventory.reserved || 0,
+        orderIds: demand.orderIds,
+      });
+    }
+
+    console.log('🔎 [DIAG][TRIP_COMPLETE_VALIDATE]', {
+      flowId,
+      tripId,
+      userId,
+      pendingOrderIds: pendingOrders.map((order) => order.id),
+      rows: validationRows,
+    });
+
+    let consumeOk = 0;
+    for (const order of pendingOrders) {
+      const products = parseTripOrderProducts(order.products);
+      for (const product of products) {
+        const code = product?.code || product?.product;
+        const quantityKg = Number(product?.quantity || 0);
+        if (!code || !Number.isFinite(quantityKg) || quantityKg <= 0) {
+          continue;
+        }
+
+        await InventoryService.consumeReservedInventory(code, quantityKg, {
+          flowId,
+          userId,
+          orderId: order.id,
+          tripId,
+          source: 'trip.complete',
+        });
+        consumeOk++;
+      }
+    }
+
+    await prisma.$transaction(async (tx) => {
+      for (const order of pendingOrders) {
+        await tx.order.update({
+          where: { id: order.id },
+          data: { status: 'completed', completedAt: new Date() }
+        });
+      }
+
+      await tx.trip.update({
+        where: { id: tripId },
+        data: { status: 'completed', completedAt: new Date() }
+      });
+    });
+
+    const completedTrip = await prisma.trip.findUnique({
+      where: { id: tripId },
+      include: {
+        assignedOperator: {
+          select: { id: true, username: true, image: true }
+        },
+        orders: {
+          include: { customer: true }
+        }
+      }
+    });
+
+    const tripResponse = completedTrip ? {
+      ...completedTrip,
+      sequence: completedTrip.sequence ? JSON.parse(completedTrip.sequence) : [],
+      accepted: completedTrip.accepted !== undefined ? completedTrip.accepted : false,
+      acceptedAt: completedTrip.acceptedAt || null,
+      printed: completedTrip.printed !== undefined ? completedTrip.printed : false,
+      printedAt: completedTrip.printedAt || null,
+      orders: completedTrip.orders.map((order) => ({
+        ...order,
+        products: parseTripOrderProducts(order.products)
+      }))
+    } : null;
+
+    if (tripResponse) {
+      socketService.notifyTripUpdated(tripResponse);
+    }
+    socketService.requestDataRefresh('orders');
+
+    console.log('🔎 [DIAG][TRIP_COMPLETE_SUCCESS]', {
+      flowId,
+      tripId,
+      userId,
+      consumeOk,
+      completedOrderIds: pendingOrders.map((order) => order.id),
+    });
+
+    return res.json({
+      trip: tripResponse,
+      consumeSummary: { consumeOk, consumeErr: 0, alreadyCompleted: false }
+    });
+  } catch (error: any) {
+    console.error('❌ [DIAG][TRIP_COMPLETE_ERROR]', {
+      flowId: buildDiagFlowId(req),
+      tripId: req.params?.id ?? null,
+      userId: (req as any).user?.id ?? null,
+      error: error?.message || String(error),
+    });
+    return res.status(500).json({ error: error?.message || 'Errore completamento viaggio' });
   }
 });
 

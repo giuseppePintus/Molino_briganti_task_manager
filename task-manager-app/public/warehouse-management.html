@@ -443,7 +443,9 @@
             <input type="hidden" id="articleModalId">
             <div class="cargo-field">
                 <label>Codice *</label>
-                <input type="text" id="artCode" placeholder="es. F-0-SP35-5">
+                <input type="text" id="artCode" placeholder="es. F-0-SP35-5"
+                    oninput="this.value=this.value.replace(/\s+/g,'').toUpperCase()"
+                    title="Il codice non può contenere spazi">
             </div>
             <div class="cargo-field">
                 <label>Nome *</label>
@@ -2990,7 +2992,8 @@
 
         async function submitArticleForm() {
             const id = document.getElementById('articleModalId').value;
-            const code = document.getElementById('artCode').value.trim();
+            const rawCode = document.getElementById('artCode').value.trim();
+            const code = rawCode.replace(/\s+/g, '');
             const name = document.getElementById('artName').value.trim();
             const errEl = document.getElementById('articleModalError');
 
@@ -2998,6 +3001,10 @@
                 errEl.textContent = '❌ Codice e Nome sono obbligatori';
                 errEl.style.display = 'block';
                 return;
+            }
+            if (code !== rawCode) {
+                // Aggiorna il campo visivamente col codice corretto (già senza spazi)
+                document.getElementById('artCode').value = code;
             }
 
             const payload = {

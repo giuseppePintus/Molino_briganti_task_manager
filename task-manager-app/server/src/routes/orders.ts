@@ -2,8 +2,79 @@ import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma';
 import { socketService, SocketEvents } from '../services/socketService';
 import { InventoryService } from '../services/inventoryService';
+import { appendAuditLog, getAuditLogFilePath } from '../services/auditLogService';
 
 const router = Router();
+
+function buildDiagFlowId(req: Request): string {
+  const headerFlowId = req.headers['x-flow-id'] || req.headers['x-request-id'];
+  if (typeof headerFlowId === 'string' && headerFlowId.trim().length > 0) {
+    return headerFlowId.trim();
+  }
+  return `diag-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function parseOrderProducts(productsRaw: string | null): any[] {
+  if (!productsRaw) return [];
+  try {
+    const parsed = JSON.parse(productsRaw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function summarizeOrderProducts(products: any[]): Array<{ code: string | null; product: string | null; quantity: number | null }> {
+  return products.map((product: any) => ({
+    code: product?.code || null,
+    product: product?.product || null,
+    quantity: typeof product?.quantity === 'number' ? product.quantity : Number(product?.quantity ?? null),
+  }));
+}
+
+/**
+ * POST /api/orders/audit
+ * Audit generico per eventi operativi legati agli ordini, anche prima della creazione definitiva.
+ */
+router.post('/audit', async (req: Request, res: Response) => {
+  try {
+    const flowId = buildDiagFlowId(req);
+    const userId = (req as any).user?.id ?? null;
+    const { action, details, orderId = null } = req.body || {};
+
+    if (!action || typeof action !== 'string') {
+      return res.status(400).json({ error: 'action mancante' });
+    }
+
+    console.log('🔎 [DIAG][ORDER_AUDIT]', {
+      flowId,
+      action,
+      userId,
+      orderId,
+      details: details || null,
+    });
+        
+      await appendAuditLog({
+        scope: 'order',
+        action,
+        flowId,
+        userId,
+        orderId,
+        details: details || null,
+        logFile: getAuditLogFilePath(),
+      });
+
+    return res.json({ ok: true });
+  } catch (error: any) {
+    console.error('❌ [DIAG][ORDER_AUDIT_ERROR]', {
+      flowId: buildDiagFlowId(req),
+      userId: (req as any).user?.id ?? null,
+      action: req.body?.action ?? null,
+      error: error?.message || String(error),
+    });
+    return res.status(500).json({ error: error?.message || 'Errore audit ordine' });
+  }
+});
 
 /**
  * GET /api/orders
@@ -107,6 +178,233 @@ router.get('/:id', async (req: Request, res: Response) => {
 });
 
 /**
+ * POST /api/orders/:id/complete
+ * Completa un ordine lato backend, consumando il magazzino prima del cambio stato.
+ */
+router.post('/:id/complete', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const orderId = parseInt(id);
+    const flowId = buildDiagFlowId(req);
+    const userId = (req as any).user?.id ?? null;
+
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        customer: true,
+        trip: true,
+        assignedOperator: {
+          select: { id: true, username: true, image: true }
+        }
+      }
+    });
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    const products = parseOrderProducts(order.products);
+    if (order.status === 'completed') {
+      return res.json({
+        order: {
+          ...order,
+          products,
+        },
+        consumeSummary: { consumeOk: 0, consumeErr: 0, alreadyCompleted: true }
+      });
+    }
+
+    const validationRows: Array<{
+      code: string;
+      quantityKg: number;
+      colliDemand: number;
+      inventoryStock: number;
+      realShelfStock: number;
+      reservedKg: number;
+      weightPerUnit: number;
+    }> = [];
+
+    for (const product of products) {
+      const code = product?.code || product?.product;
+      const quantityKg = Number(product?.quantity || 0);
+      if (!code || !Number.isFinite(quantityKg) || quantityKg <= 0) {
+        continue;
+      }
+
+      const article = await prisma.article.findFirst({
+        where: { code },
+        include: {
+          inventory: true,
+          shelfEntries: { orderBy: { id: 'asc' } }
+        }
+      });
+
+      if (!article || !article.inventory) {
+        return res.status(409).json({
+          error: `Articolo ${code} non trovato o senza inventario`,
+          flowId,
+          orderId,
+        });
+      }
+
+      const weightPerUnit = article.weightPerUnit || 1;
+      const colliDemand = Math.ceil(quantityKg / weightPerUnit);
+      const realShelfStock = article.shelfEntries.reduce((sum, entry) => sum + (entry.quantity || 0), 0);
+      if (realShelfStock < colliDemand) {
+        return res.status(409).json({
+          error: `Stock insufficiente per ${code}: scaffale=${realShelfStock}, richiesti=${colliDemand}`,
+          flowId,
+          orderId,
+          code,
+          quantityKg,
+          colliDemand,
+          realShelfStock,
+        });
+      }
+
+      validationRows.push({
+        code,
+        quantityKg,
+        colliDemand,
+        inventoryStock: article.inventory.currentStock || 0,
+        realShelfStock,
+        reservedKg: article.inventory.reserved || 0,
+        weightPerUnit,
+      });
+    }
+
+    console.log('🔎 [DIAG][ORDER_COMPLETE_VALIDATE]', {
+      flowId,
+      orderId,
+      tripId: order.tripId ?? null,
+      userId,
+      rows: validationRows,
+    });
+
+    let consumeOk = 0;
+    for (const product of products) {
+      const code = product?.code || product?.product;
+      const quantityKg = Number(product?.quantity || 0);
+      if (!code || !Number.isFinite(quantityKg) || quantityKg <= 0) {
+        continue;
+      }
+
+      await InventoryService.consumeReservedInventory(code, quantityKg, {
+        flowId,
+        userId,
+        orderId,
+        tripId: order.tripId ?? null,
+        source: 'order.complete',
+      });
+      consumeOk++;
+    }
+
+    const updatedOrder = await prisma.order.update({
+      where: { id: orderId },
+      data: { status: 'completed', completedAt: new Date() },
+      include: {
+        customer: true,
+        trip: true,
+        assignedOperator: {
+          select: { id: true, username: true, image: true }
+        }
+      }
+    });
+
+    const orderWithProducts = {
+      ...updatedOrder,
+      products,
+    };
+
+    socketService.notifyOrderStatusChanged(orderWithProducts);
+
+    console.log('🔎 [DIAG][ORDER_COMPLETE_SUCCESS]', {
+      flowId,
+      orderId,
+      tripId: updatedOrder.tripId ?? null,
+      userId,
+      consumeOk,
+      completedAt: updatedOrder.completedAt ?? null,
+    });
+
+    return res.json({
+      order: orderWithProducts,
+      consumeSummary: { consumeOk, consumeErr: 0, alreadyCompleted: false }
+    });
+  } catch (error: any) {
+    console.error('❌ [DIAG][ORDER_COMPLETE_ERROR]', {
+      flowId: buildDiagFlowId(req),
+      orderId: req.params?.id ?? null,
+      userId: (req as any).user?.id ?? null,
+      error: error?.message || String(error),
+    });
+    return res.status(500).json({ error: error?.message || 'Errore completamento ordine' });
+  }
+});
+
+/**
+ * POST /api/orders/:id/audit
+ * Traccia eventi operativi lato frontend per gli ordini di ritiro.
+ */
+router.post('/:id/audit', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const orderId = parseInt(id);
+    const flowId = buildDiagFlowId(req);
+    const userId = (req as any).user?.id ?? null;
+    const { action, details } = req.body || {};
+
+    if (!action || typeof action !== 'string') {
+      return res.status(400).json({ error: 'action mancante' });
+    }
+
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        customer: true,
+        trip: true,
+        assignedOperator: { select: { id: true, username: true, image: true } },
+      }
+    });
+
+    console.log('🔎 [DIAG][ORDER_AUDIT]', {
+      flowId,
+      action,
+      userId,
+      orderId,
+      orderStatus: order?.status ?? null,
+      orderType: order?.type ?? null,
+      clientName: order?.clientName ?? null,
+      customerId: order?.customerId ?? null,
+      tripId: order?.tripId ?? null,
+      products: summarizeOrderProducts(parseOrderProducts(order?.products ?? null)),
+      details: details || null,
+    });
+
+      await appendAuditLog({
+        scope: 'order',
+        action,
+        flowId,
+        userId,
+        orderId,
+        details: details || null,
+        logFile: getAuditLogFilePath(),
+      });
+
+    return res.json({ ok: true });
+  } catch (error: any) {
+    console.error('❌ [DIAG][ORDER_AUDIT_ERROR]', {
+      flowId: buildDiagFlowId(req),
+      orderId: req.params?.id ?? null,
+      userId: (req as any).user?.id ?? null,
+      action: req.body?.action ?? null,
+      error: error?.message || String(error),
+    });
+    return res.status(500).json({ error: error?.message || 'Errore audit ordine' });
+  }
+});
+
+/**
  * POST /api/orders
  * Crea nuovo ordine
  */
@@ -178,6 +476,7 @@ router.post('/', async (req: Request, res: Response) => {
 router.put('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const flowId = buildDiagFlowId(req);
     const { 
       type, 
       customerId, 
@@ -190,6 +489,9 @@ router.put('/:id', async (req: Request, res: Response) => {
       status,
       notes 
     } = req.body;
+
+    const orderId = parseInt(id);
+    const userId = (req as any).user?.id ?? null;
     
     const updateData: any = {};
     
@@ -217,8 +519,65 @@ router.put('/:id', async (req: Request, res: Response) => {
     if (dateTime !== undefined) updateData.dateTime = dateTime ? new Date(dateTime) : null;
     if (status !== undefined) {
       updateData.status = status;
+      if (status === 'in_progress') {
+        const beforeOrder = await prisma.order.findUnique({
+          where: { id: orderId },
+          select: {
+            id: true,
+            status: true,
+            tripId: true,
+            products: true,
+            acceptedAt: true,
+            completedAt: true,
+            assignedOperatorId: true,
+            clientName: true,
+            customerId: true,
+            type: true,
+          }
+        });
+
+        console.log('🔎 [DIAG][ORDER_ACCEPT_START]', {
+          flowId,
+          orderId,
+          userId,
+          fromStatus: beforeOrder?.status ?? null,
+          toStatus: status,
+          tripId: beforeOrder?.tripId ?? null,
+          clientName: beforeOrder?.clientName ?? null,
+          customerId: beforeOrder?.customerId ?? null,
+          type: beforeOrder?.type ?? null,
+          productsCount: parseOrderProducts(beforeOrder?.products ?? null).length,
+          acceptedAtBefore: beforeOrder?.acceptedAt ?? null,
+          completedAtBefore: beforeOrder?.completedAt ?? null,
+        });
+      }
       if (status === 'completed') {
         updateData.completedAt = new Date();
+
+        const beforeOrder = await prisma.order.findUnique({
+          where: { id: orderId },
+          select: {
+            id: true,
+            status: true,
+            tripId: true,
+            products: true,
+            acceptedAt: true,
+            completedAt: true,
+            assignedOperatorId: true,
+          }
+        });
+
+        console.log('🔎 [DIAG][ORDER_COMPLETE_START]', {
+          flowId,
+          orderId,
+          userId,
+          fromStatus: beforeOrder?.status ?? null,
+          toStatus: status,
+          tripId: beforeOrder?.tripId ?? null,
+          productsCount: parseOrderProducts(beforeOrder?.products ?? null).length,
+          acceptedAt: beforeOrder?.acceptedAt ?? null,
+          completedAtBefore: beforeOrder?.completedAt ?? null,
+        });
       }
       // Se lo status passa a in_progress (accettato), salva acceptedAt
       if (status === 'in_progress') {
@@ -231,7 +590,7 @@ router.put('/:id', async (req: Request, res: Response) => {
     if (notes !== undefined) updateData.notes = notes;
     
     const order = await prisma.order.update({
-      where: { id: parseInt(id) },
+      where: { id: orderId },
       data: updateData,
       include: {
         customer: true,
@@ -254,6 +613,29 @@ router.put('/:id', async (req: Request, res: Response) => {
       ...order,
       products: parsedProducts
     };
+
+    if (status === 'completed') {
+      console.log('🔎 [DIAG][ORDER_COMPLETE_END]', {
+        flowId,
+        orderId: order.id,
+        userId,
+        status: order.status,
+        tripId: order.tripId ?? null,
+        completedAt: order.completedAt ?? null,
+        productsCount: parsedProducts.length,
+      });
+    } else if (status === 'in_progress') {
+      console.log('🔎 [DIAG][ORDER_ACCEPT_END]', {
+        flowId,
+        orderId: order.id,
+        userId,
+        status: order.status,
+        tripId: order.tripId ?? null,
+        acceptedAt: order.acceptedAt ?? null,
+        completedAt: order.completedAt ?? null,
+        productsCount: parsedProducts.length,
+      });
+    }
     
     // Notifica WebSocket (distinguo se è cambio status o update generico)
     if (status !== undefined) {
@@ -278,6 +660,7 @@ router.put('/:id', async (req: Request, res: Response) => {
  */
 router.post('/instant-complete', async (req: Request, res: Response) => {
   try {
+    const flowId = buildDiagFlowId(req);
     const {
       clientName,
       customerId,
@@ -315,6 +698,23 @@ router.post('/instant-complete', async (req: Request, res: Response) => {
 
     const userId = (req as any).user?.id ?? 1;
     const finalClientName = (clientName && clientName.trim()) || 'Banco';
+
+    console.log('🔎 [DIAG][INSTANT_ORDER_START]', {
+      flowId,
+      userId,
+      customerId: customerId ?? null,
+      clientName: finalClientName,
+      itemsCount: Array.isArray(items) ? items.length : 0,
+      items: Array.isArray(items)
+        ? items.map((it) => ({
+            articleId: it.articleId,
+            quantity: Number(it.quantity),
+            positionCode: it.positionCode,
+            shelfEntryId: it.shelfEntryId ?? null,
+            batch: it.batch ?? null,
+          }))
+        : [],
+    });
 
     const result = await prisma.$transaction(async (tx) => {
       type Resolved = {
@@ -484,6 +884,16 @@ router.post('/instant-complete', async (req: Request, res: Response) => {
 
     socketService.broadcast(SocketEvents.INVENTORY_UPDATED, { type: 'instant-order', orderId: result.order?.id });
     if (result.order) {
+      console.log('🔎 [DIAG][INSTANT_ORDER_END]', {
+        flowId,
+        userId,
+        orderId: result.order.id,
+        status: result.order.status,
+        tripId: result.order.tripId ?? null,
+        movementCount: result.movements.length,
+        movements: result.movements,
+      });
+
       const orderForSocket = {
         ...result.order,
         products: result.order.products ? JSON.parse(result.order.products) : [],
@@ -493,6 +903,13 @@ router.post('/instant-complete', async (req: Request, res: Response) => {
 
     return res.status(201).json(result);
   } catch (error: any) {
+    const flowId = buildDiagFlowId(req);
+    console.error('❌ [DIAG][INSTANT_ORDER_ERROR]', {
+      flowId,
+      userId: (req as any).user?.id ?? null,
+      bodyItemsCount: Array.isArray(req.body?.items) ? req.body.items.length : 0,
+      error: error?.message || String(error),
+    });
     console.error('❌ Errore /orders/instant-complete:', error?.message || error);
     return res.status(400).json({ error: error?.message || 'Errore creazione ordine istantaneo' });
   }
@@ -505,10 +922,24 @@ router.post('/instant-complete', async (req: Request, res: Response) => {
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const flowId = buildDiagFlowId(req);
+    const userId = (req as any).user?.id ?? null;
     
     // Leggi l'ordine prima di eliminarlo per rilasciare le prenotazioni
     const order = await prisma.order.findUnique({
       where: { id: parseInt(id) }
+    });
+
+    console.log('🔎 [DIAG][ORDER_DELETE_START]', {
+      flowId,
+      userId,
+      orderId: parseInt(id),
+      orderStatus: order?.status ?? null,
+      orderType: order?.type ?? null,
+      clientName: order?.clientName ?? null,
+      customerId: order?.customerId ?? null,
+      tripId: order?.tripId ?? null,
+      products: summarizeOrderProducts(parseOrderProducts(order?.products ?? null)),
     });
 
     // Rilascia le prenotazioni di inventario se l'ordine non è completato
@@ -516,7 +947,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
       try {
         const products = JSON.parse(order.products);
         for (const item of products) {
-          const code = item.product || item.code;
+          const code = item.code || item.product;
           const quantity = item.quantity;
           if (code && quantity) {
             try {
@@ -539,6 +970,16 @@ router.delete('/:id', async (req: Request, res: Response) => {
 
     // Notifica WebSocket: ordine eliminato (refresh generico)
     socketService.requestDataRefresh('orders');
+
+    console.log('🔎 [DIAG][ORDER_DELETE_END]', {
+      flowId,
+      userId,
+      orderId: parseInt(id),
+      orderType: order?.type ?? null,
+      clientName: order?.clientName ?? null,
+      customerId: order?.customerId ?? null,
+      tripId: order?.tripId ?? null,
+    });
 
     res.json({ success: true, message: 'Order deleted' });
   } catch (error: any) {

@@ -1,5 +1,5 @@
 # Ibrido Dockerfile - node_modules dentro l'immagine, dist/ compilato nel build
-FROM --platform=linux/arm64 node:20-slim
+FROM node:20-slim
 
 WORKDIR /app
 

@@ -18,6 +18,7 @@ router.delete('/:id', (req, res) => tasksController.deleteTask(req, res));
 // Task acceptance workflow
 router.post('/:id/accept', (req, res) => tasksController.acceptTask(req, res));
 router.post('/:id/pause', (req, res) => tasksController.pauseTask(req, res));
+router.post('/:id/complete', (req, res) => tasksController.completeTask(req, res));
 router.post('/:id/resume', (req, res) => tasksController.resumeTask(req, res));
 router.post('/:id/postpone', (req, res) => tasksController.postponeTask(req, res));
 router.post('/:id/reset-suspended', (req, res) => tasksController.resetTaskToSuspended(req, res));
@@ -198,6 +199,38 @@ router.post('/:id/complete-internal-order', async (req: any, res) => {
         } as any
       });
     }
+
+    const shelfAgg = await prisma.shelfEntry.aggregate({
+      where: { articleId: article.id },
+      _sum: { quantity: true }
+    });
+    const realShelfStock = shelfAgg._sum.quantity ?? 0;
+
+    let inventory = await prisma.inventory.findUnique({ where: { articleId: article.id } });
+    if (!inventory) {
+      inventory = await prisma.inventory.create({
+        data: {
+          articleId: article.id,
+          currentStock: realShelfStock,
+          minimumStock: 0
+        }
+      });
+    } else if (inventory.currentStock !== realShelfStock) {
+      inventory = await prisma.inventory.update({
+        where: { id: inventory.id },
+        data: { currentStock: realShelfStock }
+      });
+    }
+
+    await prisma.stockMovement.create({
+      data: {
+        inventoryId: inventory.id,
+        type: 'IN',
+        quantity: qty,
+        reason: 'ORDINE_INTERNO',
+        createdBy: user.id
+      }
+    });
 
     // Rimuovi snooze (merce arrivata)
     try {

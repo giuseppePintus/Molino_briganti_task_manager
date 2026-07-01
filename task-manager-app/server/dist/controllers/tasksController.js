@@ -473,6 +473,51 @@ class TasksController {
             }
         });
     }
+    completeTask(req, res) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                if (!req.user || req.user.role !== 'slave') {
+                    return res.status(403).json({ message: 'Only operators can complete tasks' });
+                }
+                const { id } = req.params;
+                // Verify task exists and is assigned to this operator
+                const task = yield prisma_1.default.task.findUnique({ where: { id: parseInt(id) } });
+                if (!task) {
+                    return res.status(404).json({ message: 'Task not found' });
+                }
+                if (task.assignedOperatorId !== req.user.id) {
+                    return res.status(403).json({ message: 'Task not assigned to you' });
+                }
+                if (task.completed) {
+                    return res.status(400).json({ message: 'Task already completed' });
+                }
+                // Complete task
+                const completedTask = yield prisma_1.default.task.update({
+                    where: { id: parseInt(id) },
+                    data: {
+                        completed: true,
+                        completedAt: new Date(),
+                        completedById: req.user.id,
+                        paused: false,
+                        pausedAt: null,
+                    },
+                    include: {
+                        assignedOperator: { select: { id: true, username: true } },
+                        acceptedBy: { select: { id: true, username: true } },
+                        createdBy: { select: { id: true, username: true } },
+                        completedBy: { select: { id: true, username: true } },
+                    },
+                });
+                // Notifica WebSocket
+                socketService_1.socketService.notifyTaskUpdated(completedTask);
+                res.json(completedTask);
+            }
+            catch (err) {
+                const errorMsg = err instanceof Error ? err.message : 'Internal server error';
+                res.status(500).json({ message: errorMsg });
+            }
+        });
+    }
     resumeTask(req, res) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
