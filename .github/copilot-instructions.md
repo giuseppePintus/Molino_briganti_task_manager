@@ -22,7 +22,7 @@ Repository multi-progetto che gestisce l'operatività del Molino Briganti.
 - Docker su QNAP via Container Station: binario `/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker`.
 - Container principale: `molino-task-manager-nas`.
 - **Database**: MariaDB su NAS, charset `utf8mb4` (vedi `task-manager-app/migrations/utf8mb4-migration.sql`). Path dati container: `/share/Container/data/molino/`.
-- **Auth**: JWT, utente applicativo di servizio `master` / `masterpass`.
+- **Auth**: JWT, utente applicativo di servizio `master` con password configurata localmente.
 - **Realtime**: Socket.IO, evento principale `inventory:updated`.
 
 ## Segreti

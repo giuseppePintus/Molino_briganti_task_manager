@@ -22,11 +22,11 @@ services:
       - DATABASE_URL=file:/share/Container/data/molino/tasks.db
       
       # JWT
-      - JWT_SECRET=${JWT_SECRET:-your-secret-key-change-this}
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
       
       # Admin
       - DEFAULT_MASTER_USER=master
-      - DEFAULT_MASTER_PASS=masterpass
+      - DEFAULT_MASTER_PASS=${DEFAULT_MASTER_PASS:?DEFAULT_MASTER_PASS is required}
       
       # Backup - PERCORSI PERSISTENTI SUL NAS
       # Container: /share/Container/data/molino → Host NAS: /share/Container/data/molino  

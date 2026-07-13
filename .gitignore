@@ -141,6 +141,11 @@ coverage/
 # Task manager app specific
 task-manager-app/.env.local
 task-manager-app/server/.env
+task-manager-app/.env.docker
+!task-manager-app/.env.docker.example
+
+# Android local SDK path (machine-specific)
+android-inventory-app/local.properties
 
 # Prisma
 prisma/migrations/

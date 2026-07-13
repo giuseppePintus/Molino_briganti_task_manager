@@ -15,7 +15,7 @@ description: "App Android Kotlin/Compose per la gestione magazzino."
 ## Identità
 - Package: `com.molinobriganti.inventory`
 - Server: `http://NAS71F89C:5000`, base API `/api/inventory/`
-- Auth: JWT, credenziali di servizio `master` / `masterpass`
+- Auth: JWT, credenziali di servizio `master` con password definita in configurazione locale
 - DB lato server: SQLite/MariaDB su `/share/Container/data/molino/`
 
 ## Funzionalità presenti

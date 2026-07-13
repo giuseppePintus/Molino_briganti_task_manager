@@ -75,7 +75,7 @@ Il server sarà disponibile su `http://localhost:5000`
 | Campo | Valore |
 |-------|--------|
 | Username | `master` |
-| Password | `masterpass` |
+| Password | `change_me` |
 | Role | `master` |
 
 ## Modalità Development
@@ -181,7 +181,7 @@ NODE_ENV=development
 
 # Default Master
 DEFAULT_MASTER_USER="master"
-DEFAULT_MASTER_PASS="masterpass"
+DEFAULT_MASTER_PASS="change_me_strong_password"
 ```
 
 ## Script npm

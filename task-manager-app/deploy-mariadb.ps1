@@ -9,6 +9,14 @@ if (-not (Test-Path $configPath)) {
 }
 . $configPath
 
+# Credenziali master applicative: solo da config locale o env, mai hardcoded
+$DEFAULT_MASTER_USER = if ($Global:DEFAULT_MASTER_USER) { $Global:DEFAULT_MASTER_USER } elseif ($env:DEFAULT_MASTER_USER) { $env:DEFAULT_MASTER_USER } else { "master" }
+$DEFAULT_MASTER_PASS = if ($Global:DEFAULT_MASTER_PASS) { $Global:DEFAULT_MASTER_PASS } elseif ($env:DEFAULT_MASTER_PASS) { $env:DEFAULT_MASTER_PASS } else { $null }
+
+if (-not $DEFAULT_MASTER_PASS) {
+    throw "DEFAULT_MASTER_PASS non impostata. Definiscila in nas-config.local.ps1 o nella variabile ambiente DEFAULT_MASTER_PASS."
+}
+
 $IMAGE_NAME     = "molino-task-manager:mariadb"
 $CONTAINER_NAME = "molino-briganti-task-manager"
 
@@ -40,7 +48,7 @@ Write-Host "[START] Starting new container with MariaDB..." -ForegroundColor Cya
 $runCmd = "docker run -d --name $CONTAINER_NAME --restart unless-stopped -p 5000:5000 " +
   "-e DATABASE_URL=`"mysql://$($DB_USER):$($DB_PASSWORD)@$($NAS_IP):$($DB_PORT)/$($DB_NAME)`" " +
   "-e JWT_SECRET=`"$JWT_SECRET`" " +
-  "-e PORT=5000 -e NODE_ENV=production -e DEFAULT_MASTER_USER=`"master`" -e DEFAULT_MASTER_PASS=`"masterpass`" " +
+    "-e PORT=5000 -e NODE_ENV=production -e DEFAULT_MASTER_USER=`"$DEFAULT_MASTER_USER`" -e DEFAULT_MASTER_PASS=`"$DEFAULT_MASTER_PASS`" " +
   "-v /share/Public/molino-data/uploads:/app/uploads -v /share/Public/molino-data/backups:/app/backups -v /share/Public/molino-data/data:/app/data " +
   "$IMAGE_NAME"
 
