@@ -91,6 +91,7 @@ model Article {
   description       String?
   category          String?   // Categoria (es. FARINE, SEMOLE, MANGIMI, ecc.)
   subcategory       String?   // Sottocategoria libera (es. TIPO 0, TIPO 00, INTEGRALE) - derivata dinamicamente
+  productGroup      String?   // Terzo livello sotto la sottocategoria (es. CLASSICHE, PIZZA, PASTICCERIA)
   unit              String    @default("kg")  // Unità di misura
   weightPerUnit     Float     @default(1)     // Peso singolo collo in kg (es. 10 per sacco da 10kg)
   barcode           String?   // Codice a barre EAN/QR
@@ -268,9 +269,23 @@ model ProductSubcategory {
   sortOrder  Int             @default(0)
   createdAt  DateTime        @default(now())
   updatedAt  DateTime        @updatedAt
+  groups     ProductGroup[]
 
   @@unique([categoryId, name])
   @@index([categoryId])
+}
+
+model ProductGroup {
+  id            Int                @id @default(autoincrement())
+  subcategory   ProductSubcategory @relation(fields: [subcategoryId], references: [id], onDelete: Cascade)
+  subcategoryId Int
+  name          String
+  sortOrder     Int                @default(0)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  @@unique([subcategoryId, name])
+  @@index([subcategoryId])
 }
 
 model Order {

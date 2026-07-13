@@ -94,11 +94,25 @@ export async function createTablesIfNotExist(prisma: PrismaClient) {
         "name" TEXT NOT NULL,
         "description" TEXT,
         "category" TEXT,
+        "subcategory" TEXT,
+        "productGroup" TEXT,
         "unit" TEXT NOT NULL DEFAULT 'kg',
         "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
     `);
+
+    try {
+      await prisma.$executeRawUnsafe(`ALTER TABLE "Article" ADD COLUMN "subcategory" TEXT`);
+    } catch (e) {
+      // Ignora se la colonna esiste gi
+    }
+
+    try {
+      await prisma.$executeRawUnsafe(`ALTER TABLE "Article" ADD COLUMN "productGroup" TEXT`);
+    } catch (e) {
+      // Ignora se la colonna esiste gi
+    }
 
     // Rimuovi eventuale indice univoco su Article.code che impedisce duplicati in posizioni diverse
     try {

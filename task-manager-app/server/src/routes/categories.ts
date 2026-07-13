@@ -107,6 +107,49 @@ async function ensureCategoryId(name: string): Promise<number> {
   return created.id;
 }
 
+async function findSubcategory(categoryName: string, subcategoryName: string) {
+  const cat = await prisma.productCategory.findUnique({ where: { name: categoryName } });
+  if (!cat) return null;
+  return prisma.productSubcategory.findFirst({
+    where: { categoryId: cat.id, name: subcategoryName }
+  });
+}
+
+async function ensureSubcategoryId(categoryName: string, subcategoryName: string): Promise<number> {
+  const categoryId = await ensureCategoryId(categoryName);
+  const existing = await prisma.productSubcategory.findFirst({
+    where: { categoryId, name: subcategoryName }
+  });
+  if (existing) return existing.id;
+  const last = await prisma.productSubcategory.findFirst({
+    where: { categoryId },
+    orderBy: { sortOrder: 'desc' }
+  });
+  const created = await prisma.productSubcategory.create({
+    data: { categoryId, name: subcategoryName, sortOrder: (last?.sortOrder ?? -1) + 1 }
+  });
+  return created.id;
+}
+
+router.get('/:name/subcategories/:sub/groups', async (req: Request, res: Response) => {
+  try {
+    const name = String(req.params.name || '').trim().toUpperCase();
+    const sub = String(req.params.sub || '').trim().toUpperCase();
+    if (!name || !sub) return res.json([]);
+    const subcategory = await findSubcategory(name, sub);
+    if (!subcategory) return res.json([]);
+    const rows = await prisma.productGroup.findMany({
+      where: { subcategoryId: subcategory.id },
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+      select: { name: true },
+    });
+    return res.json(rows.map(r => r.name));
+  } catch (e: any) {
+    console.error('[categories] GET groups error', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
 // POST - aggiunge una sotto-categoria a una categoria
 router.post('/:name/subcategories', authMiddleware, async (req: Request, res: Response) => {
   try {
@@ -138,6 +181,109 @@ router.post('/:name/subcategories', authMiddleware, async (req: Request, res: Re
   }
 });
 
+router.post('/:name/subcategories/rename', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const name = String(req.params.name || '').trim().toUpperCase();
+    const fromRaw = (req.body?.from ?? '').toString().trim();
+    const toRaw = (req.body?.to ?? '').toString().trim();
+    if (!name) return res.status(400).json({ error: 'Categoria obbligatoria' });
+    if (!fromRaw || !toRaw) return res.status(400).json({ error: 'Parametri "from" e "to" obbligatori' });
+    if (/["'`]/.test(toRaw)) return res.status(400).json({ error: 'Il nome non può contenere virgolette (", \' , `)' });
+
+    const from = fromRaw.toUpperCase();
+    const to = toRaw.toUpperCase();
+    if (from === to) return res.json({ ok: true, articlesUpdated: 0 });
+
+    const cat = await prisma.productCategory.findUnique({ where: { name } });
+    if (!cat) return res.status(404).json({ error: `Categoria "${name}" non trovata` });
+
+    const source = await prisma.productSubcategory.findFirst({ where: { categoryId: cat.id, name: from } });
+    if (!source) return res.status(404).json({ error: `Sotto-categoria "${from}" non trovata` });
+
+    const existing = await prisma.productSubcategory.findFirst({ where: { categoryId: cat.id, name: to } });
+    if (existing) return res.status(409).json({ error: `Sotto-categoria "${to}" già esistente` });
+
+    await prisma.productSubcategory.update({ where: { id: source.id }, data: { name: to } });
+    const updated = await prisma.article.updateMany({
+      where: { category: name, subcategory: from },
+      data: { subcategory: to }
+    });
+
+    return res.json({ ok: true, articlesUpdated: updated.count });
+  } catch (e: any) {
+    console.error('[categories] RENAME subcategory error', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/:name/subcategories/:sub/groups', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const name = String(req.params.name || '').trim().toUpperCase();
+    const sub = String(req.params.sub || '').trim().toUpperCase();
+    const groupRaw = (req.body?.name ?? '').toString().trim();
+    if (!name) return res.status(400).json({ error: 'Categoria obbligatoria' });
+    if (!sub) return res.status(400).json({ error: 'Sotto-categoria obbligatoria' });
+    if (!groupRaw) return res.status(400).json({ error: 'Nome gruppo obbligatorio' });
+    if (/['"`]/.test(groupRaw)) return res.status(400).json({ error: 'Il nome non può contenere virgolette (", \' , `)' });
+    const group = groupRaw.toUpperCase();
+    const subcategoryId = await ensureSubcategoryId(name, sub);
+    const last = await prisma.productGroup.findFirst({
+      where: { subcategoryId },
+      orderBy: { sortOrder: 'desc' }
+    });
+    try {
+      const created = await prisma.productGroup.create({
+        data: { subcategoryId, name: group, sortOrder: (last?.sortOrder ?? -1) + 1 }
+      });
+      return res.json({ ok: true, id: created.id, name: created.name });
+    } catch (e: any) {
+      if (e?.code === 'P2002') {
+        return res.status(409).json({ error: `Gruppo "${group}" già esistente` });
+      }
+      throw e;
+    }
+  } catch (e: any) {
+    console.error('[categories] POST group error', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/:name/subcategories/:sub/groups/rename', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const name = String(req.params.name || '').trim().toUpperCase();
+    const sub = String(req.params.sub || '').trim().toUpperCase();
+    const fromRaw = (req.body?.from ?? '').toString().trim();
+    const toRaw = (req.body?.to ?? '').toString().trim();
+    if (!name || !sub) return res.status(400).json({ error: 'Categoria e sotto-categoria obbligatorie' });
+    if (!fromRaw || !toRaw) return res.status(400).json({ error: 'Parametri "from" e "to" obbligatori' });
+    if (/["'`]/.test(toRaw)) return res.status(400).json({ error: 'Il nome non può contenere virgolette (", \' , `)' });
+
+    const from = fromRaw.toUpperCase();
+    const to = toRaw.toUpperCase();
+    if (from === to) return res.json({ ok: true, articlesUpdated: 0 });
+
+    const subcategory = await findSubcategory(name, sub);
+    if (!subcategory) return res.status(404).json({ error: `Sotto-categoria "${sub}" non trovata` });
+
+    const source = await prisma.productGroup.findFirst({ where: { subcategoryId: subcategory.id, name: from } });
+    if (!source) return res.status(404).json({ error: `Gruppo "${from}" non trovato` });
+
+    const existing = await prisma.productGroup.findFirst({ where: { subcategoryId: subcategory.id, name: to } });
+    if (existing) return res.status(409).json({ error: `Gruppo "${to}" già esistente` });
+
+    await prisma.productGroup.update({ where: { id: source.id }, data: { name: to } });
+    const updated = await prisma.article.updateMany({
+      where: { category: name, subcategory: sub, productGroup: from },
+      data: { productGroup: to }
+    });
+
+    return res.json({ ok: true, articlesUpdated: updated.count });
+  } catch (e: any) {
+    console.error('[categories] RENAME group error', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
 // DELETE - rimuove una sotto-categoria
 router.delete('/:name/subcategories/:sub', authMiddleware, async (req: Request, res: Response) => {
   try {
@@ -156,12 +302,38 @@ router.delete('/:name/subcategories/:sub', authMiddleware, async (req: Request, 
       // svuota subcategory degli articoli interessati
       await prisma.article.updateMany({
         where: { category: name, subcategory: sub },
-        data: { subcategory: null }
+        data: { subcategory: null, productGroup: null }
       });
     }
     return res.json({ ok: true, clearedArticles: req.query.force === '1' ? inUse : 0 });
   } catch (e: any) {
     console.error('[categories] DELETE subcategory error', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.delete('/:name/subcategories/:sub/groups/:group', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const name = String(req.params.name || '').trim().toUpperCase();
+    const sub = String(req.params.sub || '').trim().toUpperCase();
+    const group = String(req.params.group || '').trim().toUpperCase();
+    if (!name || !sub || !group) return res.status(400).json({ error: 'Parametri mancanti' });
+    const subcategory = await findSubcategory(name, sub);
+    if (!subcategory) return res.json({ ok: true, deleted: 0 });
+    const inUse = await prisma.article.count({ where: { category: name, subcategory: sub, productGroup: group } });
+    if (inUse > 0 && req.query.force !== '1') {
+      return res.status(409).json({ error: `Gruppo usato da ${inUse} articoli`, inUse });
+    }
+    await prisma.productGroup.deleteMany({ where: { subcategoryId: subcategory.id, name: group } });
+    if (req.query.force === '1' && inUse > 0) {
+      await prisma.article.updateMany({
+        where: { category: name, subcategory: sub, productGroup: group },
+        data: { productGroup: null }
+      });
+    }
+    return res.json({ ok: true, clearedArticles: req.query.force === '1' ? inUse : 0 });
+  } catch (e: any) {
+    console.error('[categories] DELETE group error', e);
     res.status(500).json({ error: e.message });
   }
 });
@@ -179,6 +351,13 @@ router.put('/:name/subcategories', authMiddleware, async (req: Request, res: Res
       .filter(s => s.length > 0);
     const categoryId = await ensureCategoryId(name);
     await prisma.$transaction(async (tx) => {
+      await tx.article.updateMany({
+        where: {
+          category: name,
+          subcategory: sanitized.length > 0 ? { notIn: sanitized } : { not: null }
+        },
+        data: { subcategory: null, productGroup: null }
+      });
       await tx.productSubcategory.deleteMany({ where: { categoryId } });
       for (let i = 0; i < sanitized.length; i++) {
         await tx.productSubcategory.create({
@@ -266,12 +445,20 @@ router.delete('/:name', authMiddleware, async (req: Request, res: Response) => {
   try {
     const name = String(req.params.name || '').trim().toUpperCase();
     if (!name) return res.status(400).json({ error: 'Nome obbligatorio' });
+    const forceRaw = String((req.query.force ?? req.body?.force ?? '')).toLowerCase();
+    const force = forceRaw === '1' || forceRaw === 'true' || forceRaw === 'yes';
     const inUse = await prisma.article.count({ where: { category: name } });
-    if (inUse > 0) {
+    if (inUse > 0 && !force) {
       return res.status(409).json({ error: `Categoria usata da ${inUse} articoli` });
     }
+    if (inUse > 0 && force) {
+      await prisma.article.updateMany({
+        where: { category: name },
+        data: { category: null, subcategory: null, productGroup: null }
+      });
+    }
     await prisma.productCategory.deleteMany({ where: { name } });
-    res.json({ ok: true });
+    res.json({ ok: true, articlesUpdated: force ? inUse : 0 });
   } catch (e: any) {
     console.error('[categories] delete error', e);
     res.status(500).json({ error: e.message });

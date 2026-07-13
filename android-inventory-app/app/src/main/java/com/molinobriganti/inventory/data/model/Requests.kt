@@ -51,7 +51,9 @@ data class CreateArticleRequest(
     val category: String? = null,
     val unit: String = "kg",
     val weightPerUnit: Float? = null,
-    val barcode: String? = null
+    val barcode: String? = null,
+    val subcategory: String? = null,
+    val productGroup: String? = null
 )
 
 @Serializable
@@ -62,7 +64,9 @@ data class UpdateArticleRequest(
     val category: String? = null,
     val unit: String? = null,
     val weightPerUnit: Float? = null,
-    val barcode: String? = null
+    val barcode: String? = null,
+    val subcategory: String? = null,
+    val productGroup: String? = null
 )
 
 @Serializable

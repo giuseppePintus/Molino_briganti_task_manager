@@ -64,7 +64,7 @@ fun ArticleListScreen(
         OutlinedTextField(
             value = uiState.searchQuery,
             onValueChange = onSearchChanged,
-            placeholder = { Text("Cerca per nome, codice o categoria…") },
+            placeholder = { Text("Cerca per nome, codice, categoria, sotto-cat, gruppo…") },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
             singleLine = true,
             modifier = Modifier
@@ -255,6 +255,19 @@ fun ArticleCard(
                         text = article.category,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                val taxonomy = listOfNotNull(
+                    article.subcategory?.takeIf { it.isNotBlank() },
+                    article.productGroup?.takeIf { it.isNotBlank() }
+                )
+                if (taxonomy.isNotEmpty()) {
+                    Text(
+                        text = taxonomy.joinToString(" / "),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }

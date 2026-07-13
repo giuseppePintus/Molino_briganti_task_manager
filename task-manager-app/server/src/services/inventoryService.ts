@@ -6,7 +6,18 @@ type ConsumeDiagnosticContext = {
   orderId?: number | null;
   tripId?: number | null;
   source?: string | null;
+  orderType?: string | null;
+  strictLocation?: boolean;
+  expectedPositionCode?: string | null;
+  expectedBatch?: string | null;
 };
+
+function buildOrderMovementReason(orderType?: string | null): string {
+  const normalized = (orderType || '').toLowerCase();
+  if (normalized === 'consegnato' || normalized === 'delivery') return 'ORDINE_CONSEGNA';
+  if (normalized === 'ritira' || normalized === 'pickup') return 'ORDINE_RITIRO';
+  return 'ORDINE';
+}
 
 export class InventoryService {
   /**
@@ -477,12 +488,41 @@ export class InventoryService {
       const colliToConsume = Math.ceil(quantityKg / weightPerUnit);
 
       const inv = article.inventory;
+      const expectedPositionCode = typeof context.expectedPositionCode === 'string'
+        ? context.expectedPositionCode.trim()
+        : '';
+      const expectedBatch = typeof context.expectedBatch === 'string'
+        ? context.expectedBatch.trim()
+        : '';
+      const strictLocation = context.strictLocation === true;
+      const shouldTrackOrderMovement = Number.isInteger(context.orderId as number);
+
+      if (shouldTrackOrderMovement && !Number.isInteger(context.userId as number)) {
+        throw new Error(`Impossibile registrare movimento per ${articleCode}: userId mancante`);
+      }
+
+      if (strictLocation && !expectedPositionCode) {
+        throw new Error(`Mancano riferimenti di prenotazione per ${articleCode}: posizione non indicata`);
+      }
+
       const realShelfStock = article.shelfEntries.reduce((sum, entry) => sum + (entry.quantity || 0), 0);
       const shelfBefore = article.shelfEntries.map((entry) => ({
         shelfEntryId: entry.id,
         positionCode: entry.positionCode,
         quantity: entry.quantity,
+        batch: entry.batch || null,
       }));
+
+      const candidateEntries = strictLocation
+        ? article.shelfEntries.filter((entry) => {
+            const samePosition = entry.positionCode === expectedPositionCode;
+            if (!samePosition) return false;
+            if (!expectedBatch) return true;
+            return (entry.batch || '') === expectedBatch;
+          })
+        : article.shelfEntries;
+
+      const candidateStock = candidateEntries.reduce((sum, entry) => sum + (entry.quantity || 0), 0);
 
       console.log('🔎 [DIAG][CONSUME_START]', {
         flowId: context.flowId ?? null,
@@ -490,12 +530,16 @@ export class InventoryService {
         orderId: context.orderId ?? null,
         tripId: context.tripId ?? null,
         source: context.source ?? null,
+        strictLocation,
+        expectedPositionCode: expectedPositionCode || null,
+        expectedBatch: expectedBatch || null,
         articleId: article.id,
         articleCode,
         articleName: article.name,
         quantityKg,
         weightPerUnit,
         colliToConsume,
+        candidateStock,
         inventoryBefore: {
           inventoryId: inv.id,
           currentStock: inv.currentStock || 0,
@@ -509,6 +553,12 @@ export class InventoryService {
       if (realShelfStock < colliToConsume) {
         throw new Error(
           `Stock insufficiente per ${articleCode}: scaffale=${realShelfStock} colli, richiesti=${colliToConsume}`
+        );
+      }
+
+      if (strictLocation && candidateStock < colliToConsume) {
+        throw new Error(
+          `Mismatch prenotazione per ${articleCode}: posizione=${expectedPositionCode}, lotto=${expectedBatch || 'N/D'}, disponibili=${candidateStock} colli, richiesti=${colliToConsume}`
         );
       }
 
@@ -530,32 +580,54 @@ export class InventoryService {
       // currentStock è in COLLI
       const newCurrentStock = realShelfStock - colliToConsume;
 
-      await prisma.inventory.update({
-        where: { id: inv.id },
-        data: { reserved: reservedKg, currentStock: newCurrentStock }
-      });
+      const movementReason = buildOrderMovementReason(context.orderType ?? null);
 
-      // Riduci le ShelfEntry in ordine (svuota la prima, poi la seconda, ecc.)
+      // Riduci stock e shelf entries in una transazione unica.
       let remaining = colliToConsume;
       const shelfMovements: Array<{ shelfEntryId: number; positionCode: string; before: number; after: number; subtracted: number }> = [];
-      for (const entry of article.shelfEntries) {
-        if (remaining <= 0) break;
-        const toSubtract = Math.min(entry.quantity, remaining);
-        const newQty = entry.quantity - toSubtract;
-        await prisma.shelfEntry.update({
-          where: { id: entry.id },
-          data: { quantity: newQty }
+      await prisma.$transaction(async (tx) => {
+        await tx.inventory.update({
+          where: { id: inv.id },
+          data: { reserved: reservedKg, currentStock: newCurrentStock }
         });
-        remaining -= toSubtract;
-        shelfMovements.push({
-          shelfEntryId: entry.id,
-          positionCode: entry.positionCode,
-          before: entry.quantity,
-          after: newQty,
-          subtracted: toSubtract,
-        });
-        console.log(`📦 [consume] ShelfEntry ${entry.id} (${entry.positionCode}): ${entry.quantity} → ${newQty} colli`);
-      }
+
+        for (const entry of candidateEntries) {
+          if (remaining <= 0) break;
+          const toSubtract = Math.min(entry.quantity, remaining);
+          if (toSubtract <= 0) continue;
+
+          const newQty = entry.quantity - toSubtract;
+          await tx.shelfEntry.update({
+            where: { id: entry.id },
+            data: { quantity: newQty }
+          });
+
+          if (shouldTrackOrderMovement) {
+            const lotLabel = entry.batch ? ` · Lotto: ${entry.batch}` : '';
+            await tx.stockMovement.create({
+              data: {
+                inventoryId: inv.id,
+                type: 'OUT',
+                quantity: toSubtract,
+                reason: movementReason,
+                orderId: context.orderId ?? null,
+                notes: `Posizione: ${entry.positionCode}${lotLabel} · Source: ${context.source || 'consumeReservedInventory'}`,
+                createdBy: context.userId as number,
+              }
+            });
+          }
+
+          remaining -= toSubtract;
+          shelfMovements.push({
+            shelfEntryId: entry.id,
+            positionCode: entry.positionCode,
+            before: entry.quantity,
+            after: newQty,
+            subtracted: toSubtract,
+          });
+          console.log(`📦 [consume] ShelfEntry ${entry.id} (${entry.positionCode}): ${entry.quantity} → ${newQty} colli`);
+        }
+      });
 
       if (remaining > 0) {
         throw new Error(
@@ -599,16 +671,21 @@ export class InventoryService {
     }
   }
 
-  static async createArticle(data: { code: string; name: string; description?: string; category?: string; subcategory?: string; unit?: string; weightPerUnit?: number; barcode?: string }) {
+  static async createArticle(data: { code: string; name: string; description?: string; category?: string; subcategory?: string | null; productGroup?: string | null; unit?: string; weightPerUnit?: number; barcode?: string }) {
     try {
+      const category = data.category || null;
       const subRaw = (data.subcategory || '').trim();
+      const groupRaw = (data.productGroup || '').trim();
+      const subcategory = category && subRaw ? subRaw.toUpperCase() : null;
+      const productGroup = subcategory && groupRaw ? groupRaw.toUpperCase() : null;
       const article = await prisma.article.create({
         data: {
           code: data.code,
           name: data.name,
           description: data.description || null,
-          category: data.category || null,
-          subcategory: subRaw ? subRaw.toUpperCase() : null,
+          category,
+          subcategory,
+          productGroup,
           unit: data.unit || 'kg',
           weightPerUnit: data.weightPerUnit || 1,
           barcode: data.barcode || null,
@@ -623,21 +700,46 @@ export class InventoryService {
     }
   }
 
-  static async updateArticle(articleId: number, data: { code?: string; name?: string; description?: string; category?: string; subcategory?: string | null; unit?: string; weightPerUnit?: number; barcode?: string }) {
+  static async updateArticle(articleId: number, data: { code?: string; name?: string; description?: string; category?: string | null; subcategory?: string | null; productGroup?: string | null; unit?: string; weightPerUnit?: number; barcode?: string }) {
     try {
+      const existing = await prisma.article.findUnique({
+        where: { id: articleId },
+        select: { category: true, subcategory: true, productGroup: true }
+      });
+      if (!existing) throw new Error('Articolo non trovato');
+
+      const nextCategory = data.category !== undefined ? (data.category || null) : existing.category;
+      const categoryChanged = data.category !== undefined && nextCategory !== existing.category;
       const subNormalized = data.subcategory === undefined
         ? undefined
         : (data.subcategory && String(data.subcategory).trim()
             ? String(data.subcategory).trim().toUpperCase()
             : null);
+      const nextSubcategoryCandidate = categoryChanged
+        ? (subNormalized !== undefined ? subNormalized : null)
+        : (subNormalized !== undefined ? subNormalized : existing.subcategory);
+      const nextSubcategory = nextCategory ? nextSubcategoryCandidate : null;
+
+      const groupNormalized = data.productGroup === undefined
+        ? undefined
+        : (data.productGroup && String(data.productGroup).trim()
+            ? String(data.productGroup).trim().toUpperCase()
+            : null);
+      const subcategoryChanged = nextSubcategory !== existing.subcategory;
+      const nextProductGroupCandidate = (categoryChanged || subcategoryChanged)
+        ? (groupNormalized !== undefined ? groupNormalized : null)
+        : (groupNormalized !== undefined ? groupNormalized : existing.productGroup);
+      const nextProductGroup = nextSubcategory ? nextProductGroupCandidate : null;
+      const hierarchyChanged = data.category !== undefined || data.subcategory !== undefined || data.productGroup !== undefined;
+
       const article = await prisma.article.update({
         where: { id: articleId },
         data: {
           ...(data.code !== undefined && { code: data.code }),
           ...(data.name !== undefined && { name: data.name }),
           ...(data.description !== undefined && { description: data.description || null }),
-          ...(data.category !== undefined && { category: data.category || null }),
-          ...(subNormalized !== undefined && { subcategory: subNormalized }),
+          ...(data.category !== undefined && { category: nextCategory }),
+          ...(hierarchyChanged && { subcategory: nextSubcategory, productGroup: nextProductGroup }),
           ...(data.unit !== undefined && { unit: data.unit }),
           ...(data.weightPerUnit !== undefined && { weightPerUnit: data.weightPerUnit }),
           ...(data.barcode !== undefined && { barcode: data.barcode || null }),
@@ -675,10 +777,10 @@ export class InventoryService {
   // SHELF POSITIONS
   // =============================================
 
-  static async getShelfPositions(): Promise<any[]> {
+  static async getShelfPositions(includeInactive: boolean = false): Promise<any[]> {
     try {
       return await prisma.shelfPosition.findMany({
-        where: { isActive: true },
+        where: includeInactive ? undefined : { isActive: true },
         orderBy: { code: 'asc' }
       });
     } catch (error) {

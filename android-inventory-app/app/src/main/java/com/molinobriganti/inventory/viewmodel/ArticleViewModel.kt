@@ -203,7 +203,9 @@ class ArticleViewModel @Inject constructor(
             val matchesQuery = query.isBlank() ||
                 article.name.contains(query, ignoreCase = true) ||
                 article.code.contains(query, ignoreCase = true) ||
-                (article.category?.contains(query, ignoreCase = true) == true)
+                (article.category?.contains(query, ignoreCase = true) == true) ||
+                (article.subcategory?.contains(query, ignoreCase = true) == true) ||
+                (article.productGroup?.contains(query, ignoreCase = true) == true)
 
             val matchesCategory = category == null ||
                 article.category?.trim()?.equals(category, ignoreCase = true) == true

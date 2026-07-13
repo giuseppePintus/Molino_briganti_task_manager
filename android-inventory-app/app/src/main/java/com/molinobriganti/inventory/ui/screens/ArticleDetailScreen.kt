@@ -104,6 +104,18 @@ fun ArticleDetailScreen(
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
+                    if (!article.subcategory.isNullOrBlank()) {
+                        Text(
+                            text = "Sotto-categoria: ${article.subcategory}",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                    if (!article.productGroup.isNullOrBlank()) {
+                        Text(
+                            text = "Gruppo: ${article.productGroup}",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
                     Text(
                         text = "Unità: ${article.unit}",
                         style = MaterialTheme.typography.bodyMedium

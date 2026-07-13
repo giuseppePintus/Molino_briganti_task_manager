@@ -336,7 +336,7 @@ export class InventoryController {
    */
   static async createArticle(req: Request, res: Response) {
     try {
-      const { code: rawCode, name, description, category, subcategory, unit, weightPerUnit, barcode } = req.body;
+      const { code: rawCode, name, description, category, subcategory, productGroup, unit, weightPerUnit, barcode } = req.body;
       if (!rawCode || !name) {
         return res.status(400).json({ success: false, error: 'Codice e nome sono obbligatori' });
       }
@@ -345,7 +345,7 @@ export class InventoryController {
       if (!code) {
         return res.status(400).json({ success: false, error: 'Il codice non può essere composto solo da spazi' });
       }
-      const article = await InventoryService.createArticle({ code, name, description, category, subcategory, unit, weightPerUnit: weightPerUnit ? parseFloat(weightPerUnit) : undefined, barcode });
+      const article = await InventoryService.createArticle({ code, name, description, category, subcategory, productGroup, unit, weightPerUnit: weightPerUnit ? parseFloat(weightPerUnit) : undefined, barcode });
       res.json({ success: true, data: article });
     } catch (error: any) {
       console.error('❌ Create article error:', error);
@@ -359,13 +359,13 @@ export class InventoryController {
   static async updateArticle(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const { code: rawCode, name, description, category, subcategory, unit, weightPerUnit, barcode } = req.body;
+      const { code: rawCode, name, description, category, subcategory, productGroup, unit, weightPerUnit, barcode } = req.body;
       // Rimuove tutti gli spazi dal codice se presente
       const code = rawCode !== undefined ? (rawCode as string).replace(/\s+/g, '') : undefined;
       if (code !== undefined && !code) {
         return res.status(400).json({ success: false, error: 'Il codice non può essere vuoto o composto solo da spazi' });
       }
-      const article = await InventoryService.updateArticle(parseInt(id), { code, name, description, category, subcategory, unit, weightPerUnit: weightPerUnit !== undefined ? parseFloat(weightPerUnit) : undefined, barcode });
+      const article = await InventoryService.updateArticle(parseInt(id), { code, name, description, category, subcategory, productGroup, unit, weightPerUnit: weightPerUnit !== undefined ? parseFloat(weightPerUnit) : undefined, barcode });
       res.json({ success: true, data: article });
     } catch (error: any) {
       console.error('❌ Update article error:', error);
@@ -399,7 +399,8 @@ export class InventoryController {
 
   static async getShelfPositions(req: Request, res: Response) {
     try {
-      const positions = await InventoryService.getShelfPositions();
+      const includeInactive = String(req.query.includeInactive || '').toLowerCase() === 'true' || String(req.query.includeInactive || '') === '1';
+      const positions = await InventoryService.getShelfPositions(includeInactive);
       res.json(positions);
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message });

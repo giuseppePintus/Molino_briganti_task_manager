@@ -60,6 +60,7 @@
                     <input type="text" id="searchInput" class="search-input" placeholder="🔍 Filtra..." oninput="onSearch()">
                 </div>
                 <div class="subcategory-bar io-hidden" id="subcategoryBar"></div>
+                <div class="subcategory-bar io-hidden" id="groupBar"></div>
                 <div class="product-grid" id="productGrid">
                     <div class="empty-state">⏳ Caricamento prodotti...</div>
                 </div>
@@ -174,6 +175,7 @@ let companyInfo = null;
 
 let selectedCategory = null;
 let selectedSubcategory = null;
+let selectedGroup = null;
 let searchTerm = '';
 let orderLines = []; // [{articleId, articleName, articleCode, weightPerUnit, positionCode, shelfEntryId, batch, quantity}]
 
@@ -362,6 +364,7 @@ function renderCategoryBar() {
 function selectCategory(cat) {
     selectedCategory = cat;
     selectedSubcategory = null;
+    selectedGroup = null;
     searchTerm = '';
     const si = document.getElementById('searchInput');
     if (si) si.value = '';
@@ -374,6 +377,7 @@ function selectCategory(cat) {
 function backToCategories() {
     selectedCategory = null;
     selectedSubcategory = null;
+    selectedGroup = null;
     document.getElementById('productsView').classList.add('io-hidden');
     document.getElementById('categoriesView').classList.remove('io-hidden');
     // Rinfresca per riflettere eventuali variazioni di stock
@@ -400,7 +404,7 @@ function onGlobalSearch() {
     catGrid.classList.add('io-hidden');
     grid.classList.remove('io-hidden');
     let list = allArticles.filter(a => !a.code?.startsWith('EMPTY-'));
-    list = list.filter(a => `${a.name || ''} ${a.code || ''}`.toLowerCase().includes(term));
+    list = list.filter(a => `${a.name || ''} ${a.code || ''} ${getArticleCategory(a) || ''} ${getArticleSubcategory(a) || ''} ${getArticleProductGroup(a) || ''}`.toLowerCase().includes(term));
     list.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'it'));
     renderProductCardsInto(grid, list, term);
 }
@@ -410,6 +414,10 @@ function onGlobalSearch() {
 // ===================================================================
 function getArticleSubcategory(art) {
     return (art && art.subcategory ? String(art.subcategory).trim().toUpperCase() : '');
+}
+
+function getArticleProductGroup(art) {
+    return (art && art.productGroup ? String(art.productGroup).trim().toUpperCase() : '');
 }
 
 function renderSubcategoryBar() {
@@ -441,7 +449,41 @@ function renderSubcategoryBar() {
 
 function selectSubcategory(sub) {
     selectedSubcategory = sub || null;
+    selectedGroup = null;
     renderSubcategoryBar();
+    renderGroupBar();
+    renderProductGrid();
+}
+
+function renderGroupBar() {
+    const bar = document.getElementById('groupBar');
+    if (!bar) return;
+    if (!selectedCategory || !selectedSubcategory) {
+        bar.innerHTML = '';
+        bar.classList.add('io-hidden');
+        return;
+    }
+    const inScope = allArticles.filter(a =>
+        !a.code?.startsWith('EMPTY-') &&
+        getArticleCategory(a) === selectedCategory &&
+        getArticleSubcategory(a) === selectedSubcategory
+    );
+    const groups = Array.from(new Set(inScope.map(a => getArticleProductGroup(a)).filter(Boolean)))
+        .sort((x, y) => x.localeCompare(y, 'it', { sensitivity: 'base' }));
+    if (groups.length === 0) {
+        bar.innerHTML = '';
+        bar.classList.add('io-hidden');
+        return;
+    }
+    bar.classList.remove('io-hidden');
+    const chip = (label, value, active) =>
+        `<button type="button" class="sub-chip${active ? ' active' : ''}" onclick="selectGroup(${value === null ? 'null' : `'${value.replace(/'/g, "\\'").replace(/"/g, '&quot;')}'`})">${escapeHtml(label)}</button>`;
+    bar.innerHTML = chip('Tutti i gruppi', null, !selectedGroup) + groups.map(g => chip(g, g, selectedGroup === g)).join('');
+}
+
+function selectGroup(group) {
+    selectedGroup = group || null;
+    renderGroupBar();
     renderProductGrid();
 }
 
@@ -455,9 +497,10 @@ function renderProductGrid() {
     let list = allArticles.filter(a => !a.code?.startsWith('EMPTY-'));
     if (selectedCategory) list = list.filter(a => getArticleCategory(a) === selectedCategory);
     if (selectedSubcategory) list = list.filter(a => getArticleSubcategory(a) === selectedSubcategory);
+    if (selectedGroup) list = list.filter(a => getArticleProductGroup(a) === selectedGroup);
     if (searchTerm) {
         list = list.filter(a => {
-            const txt = `${a.name || ''} ${a.code || ''}`.toLowerCase();
+            const txt = `${a.name || ''} ${a.code || ''} ${getArticleCategory(a) || ''} ${getArticleSubcategory(a) || ''} ${getArticleProductGroup(a) || ''}`.toLowerCase();
             return txt.includes(searchTerm);
         });
     }
@@ -465,10 +508,12 @@ function renderProductGrid() {
 
     const meta = selectedCategory ? getCategoryMeta(selectedCategory) : null;
     const subSuffix = selectedSubcategory ? ` <span style="color:#9ca3af;font-weight:500;">› ${escapeHtml(selectedSubcategory)}</span>` : '';
+    const groupSuffix = selectedGroup ? ` <span style="color:#9ca3af;font-weight:500;">› ${escapeHtml(selectedGroup)}</span>` : '';
     header.innerHTML = selectedCategory
-        ? `${iconHtml(meta.icon)} ${selectedCategory}${subSuffix} <span style="color:#9ca3af;font-weight:400;">(${list.length})</span>`
+        ? `${iconHtml(meta.icon)} ${selectedCategory}${subSuffix}${groupSuffix} <span style="color:#9ca3af;font-weight:400;">(${list.length})</span>`
         : `📦 Tutti i prodotti <span style="color:#9ca3af;font-weight:400;">(${list.length})</span>`;
 
+    renderGroupBar();
     renderProductCardsInto(grid, list, searchTerm);
 }
 

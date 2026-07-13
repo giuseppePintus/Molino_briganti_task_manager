@@ -6,25 +6,9 @@
     <title>Operatore - Molino Briganti</title>
     <link rel="stylesheet" href="css/common-styles.css">
     <link rel="stylesheet" href="css/operator-lite-custom.css">
-<script src="js/settings-utils.js"></script>
-    <!-- Socket.io Client per aggiornamenti in tempo reale -->
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="js/socket-client.js"></script>
-    <script src="js/thermal-print.js"></script>
-    <script src="js/scroll-preserve.js"></script>
 </head>
 <body>
-    
-    <!-- Fullscreen Overlay - Tocca per iniziare -->
-    <div id="fullscreenOverlay" class="fullscreen-overlay" onclick="enterFullscreen()">
-        <div class="tap-icon">👆</div>
-        <div class="tap-text">Tocca per iniziare</div>
-        <div class="tap-subtext">La schermata si aprirà a tutto schermo</div>
-    </div>
-    
-    <!-- Pulsante per tornare in fullscreen -->
-    <button id="fullscreenBtn" class="fullscreen-btn" onclick="enterFullscreen()" title="Schermo intero">⛶</button>
-    
+
     <!-- Login Section -->
     <div id="loginSection">
         <div class="login-container">
@@ -35,6 +19,18 @@
             <div id="operatorGrid" class="operator-grid">
                 <div class="loading-operators">Caricamento operatori...</div>
             </div>
+            <div class="admin-login-panel" id="adminLoginPanel">
+                <div class="admin-login-title">Accesso Admin</div>
+                <div class="admin-login-row">
+                    <select id="adminUserSelect" class="admin-select" title="Seleziona admin">
+                        <option value="">-- Seleziona admin --</option>
+                    </select>
+                </div>
+                <div class="admin-login-row">
+                    <input id="adminPasswordInput" class="admin-password" type="password" placeholder="Password admin" title="Password admin">
+                </div>
+                <button id="adminLoginBtn" class="admin-login-btn" onclick="adminLogin()">🔐 Accedi come Admin</button>
+            </div>
         </div>
     </div>
     
@@ -44,13 +40,20 @@
             <span class="header-logo"><img id="dashboardLogo" src="images/logo INSEGNA.png" alt="Logo"></span>
             <span id="currentDateTime"></span>
             <div class="user-info user-info-flex">
+                <div class="user-info-center header-operator-info" id="headerOperatorInfo">
+                    <div class="header-operator-name"><span class="header-operator-icon">👷</span> <span id="userDisplayHeader">-</span></div>
+                </div>
                 <div class="user-info-center">
                     <button class="refresh-btn" onclick="loadTasks()">🔄 Aggiorna</button>
-                    <div class="update-time">Agg: <span id="lastUpdate">--:--</span></div>
+                    <span class="update-time header-meta-hidden">Agg: <span id="lastUpdate">--:--</span></span>
+                </div>
+                <div class="user-info-center admin-tools-hidden" id="adminTools">
+                    <button class="refresh-btn" onclick="openPrinterSettings()">🖨️ Stampanti</button>
+                    <span class="update-time header-meta-hidden">Solo admin</span>
                 </div>
                 <div class="logout-section">
                     <button class="logout-btn" onclick="handleLogout()">🚪 Esci</button>
-                    <div id="logoutCountdown">Logout: 1:40</div>
+                    <span id="logoutCountdown" class="header-meta-hidden">Logout: 1:40</span>
                 </div>
             </div>
             <div class="clear"></div>
@@ -58,16 +61,65 @@
         
         <!-- OPERATORE LOGGATO - GRANDE E CENTRATO -->
         <div class="user-display-large">
-            <div class="left-section">📅 Task di Oggi</div>
-            <div class="center-section">
-                <span class="user-icon">👷</span>
-                <span id="userDisplay"></span>
-                <span id="connectionStatus" class="online">● Online</span>
+            <div class="module-hub module-hub-top">
+                <button class="module-btn module-btn-task" onclick="goToModule('tasks')">📅 Task</button>
+                <button class="module-btn module-btn-instant" onclick="goToModule('instant')">⚡ Ordine Istantaneo</button>
+                <button class="module-btn module-btn-warehouse" onclick="goToModule('warehouse')">📦 Gestione Magazzino</button>
             </div>
-            <div class="header-spacer"></div>
         </div>
         
         <div class="container">
+            <div id="instantSection" class="instant-section instant-hidden">
+                <div class="instant-body">
+                    <div class="instant-left">
+                        <div id="instantSubcategoryHeader" class="instant-products-header instant-hidden">
+                            <button class="instant-back-btn" onclick="showInstantCategoryScreen()">CATEGORIE</button>
+                            <span id="instantSubcategoryTitle" class="instant-products-title">Sottocategorie</span>
+                        </div>
+
+                        <div id="instantSubcategoryRow" class="instant-category-row instant-hidden"></div>
+
+                        <div id="instantProductsHeader" class="instant-products-header instant-hidden">
+                            <button class="instant-back-btn" onclick="showInstantSubcategoryScreen()">SOTTOCATEGORIE</button>
+                            <span id="instantProductsTitle" class="instant-products-title">Prodotti</span>
+                        </div>
+
+                        <div id="instantCategoryRow" class="instant-category-row"></div>
+
+                        <div id="instantProductsGrid" class="instant-products-grid">
+                            <div class="loading">Caricamento prodotti istantanei...</div>
+                        </div>
+                    </div>
+
+                    <div class="instant-right">
+                        <div class="instant-lines-title">Righe Ordine</div>
+                        <div id="instantLines" class="instant-lines">
+                            <div class="empty-state">Nessuna riga selezionata</div>
+                        </div>
+                        <div class="instant-order-actions">
+                            <button class="instant-confirm-btn" onclick="confirmInstantOrder()">CONFERMA ORD.</button>
+                            <button class="instant-clear-btn" onclick="clearInstantLines()">SVUOTA</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="warehouseSection" class="warehouse-section instant-hidden">
+                <div class="warehouse-top-row">
+                    <div class="warehouse-title">📦 Magazzino Scaffali</div>
+                    <div id="warehouseRoleHint" class="warehouse-role-hint">Permessi operatore: Carico + Spostamento</div>
+                </div>
+
+                <div class="warehouse-tabs" id="warehouseTabs">
+                    <button class="warehouse-tab active" onclick="setWarehouseSection('A')">Sezione A</button>
+                    <button class="warehouse-tab" onclick="setWarehouseSection('B')">Sezione B</button>
+                    <button class="warehouse-tab" onclick="setWarehouseSection('C')">Sezione C</button>
+                </div>
+
+                <div id="warehouseShelfRow" class="warehouse-shelf-row">
+                    <div class="loading">Caricamento scaffali...</div>
+                </div>
+            </div>
             
             <div id="tasksList">
                 <div class="loading">Caricamento...</div>
@@ -82,69 +134,67 @@
             </div>
         </div>
     </div>
+
+    <div id="instantAddModal" class="instant-add-modal instant-hidden" hidden onclick="closeInstantAddModal(event)">
+        <div class="instant-add-card">
+            <div class="instant-add-header">
+                <div class="instant-add-header-left">
+                    <div class="instant-add-title">Aggiungi prodotto</div>
+                    <div id="instantAddProduct" class="instant-add-product">-</div>
+                    <div id="instantAddCode" class="instant-add-code">-</div>
+                </div>
+                <div class="instant-add-header-center">
+                    <div class="instant-add-actions instant-add-actions-top">
+                        <button class="instant-add-cancel" onclick="closeInstantAddModal()">Annulla</button>
+                        <button class="instant-add-confirm" onclick="confirmInstantAddLine()">Aggiungi</button>
+                    </div>
+                </div>
+                <div class="instant-add-header-right">
+                    <div class="instant-add-label instant-add-label-top">Quantita (colli)</div>
+                    <div id="instantAddQtyRow" class="instant-add-qty-row">
+                        <button class="instant-add-qty-btn" onclick="setInstantAddQty(1)">1</button>
+                        <button class="instant-add-qty-btn" onclick="setInstantAddQty(2)">2</button>
+                        <button class="instant-add-qty-btn" onclick="setInstantAddQty(5)">5</button>
+                        <button class="instant-add-qty-btn" onclick="setInstantAddQty(10)">10</button>
+                    </div>
+                </div>
+            </div>
+            <div id="instantAddTotals" class="instant-add-totals">Target: 0 colli • Selezionati: 0 colli • Mancano: 0 colli</div>
+
+            <div id="instantEntryWrap" class="instant-entry-wrap">
+                <div class="instant-add-label">Posizione scaffale</div>
+                <div id="instantEntryButtons" class="instant-entry-buttons"></div>
+                <div id="instantEntryInfo" class="instant-entry-info"></div>
+            </div>
+
+            <div class="instant-add-label">Colli selezionati</div>
+            <div id="instantAllocationList" class="instant-allocation-list">Nessun prelievo selezionato</div>
+        </div>
+    </div>
+
+    <div id="printerSettingsModal" class="printer-settings-modal" onclick="closePrinterSettingsOnOverlay(event)">
+        <div class="printer-settings-card">
+            <div class="printer-settings-title">Configurazione Stampanti (Tablet)</div>
+            <div class="printer-settings-section-title">Stampante Locale</div>
+            <div class="printer-row">
+                <input id="printerLocalName" class="printer-input" placeholder="Nome locale" title="Nome locale">
+                <input id="printerLocalHost" class="printer-input" placeholder="Host/IP locale" title="Host o IP locale">
+                <input id="printerLocalPort" class="printer-input" placeholder="Porta" title="Porta locale">
+            </div>
+            <div class="printer-settings-section-title">Stampante Remota</div>
+            <div class="printer-row">
+                <input id="printerRemoteName" class="printer-input" placeholder="Nome remota" title="Nome remota">
+                <input id="printerRemoteHost" class="printer-input" placeholder="Host/IP remota" title="Host o IP remota">
+                <input id="printerRemotePort" class="printer-input" placeholder="Porta" title="Porta remota">
+            </div>
+            <div class="printer-actions">
+                <button class="printer-btn printer-btn-cancel" onclick="closePrinterSettings()">Annulla</button>
+                <button class="printer-btn printer-btn-save" onclick="savePrinterSettings()">Salva</button>
+            </div>
+        </div>
+    </div>
     
     <script>
-        // ==================== FULLSCREEN FUNCTIONS ====================
-        function enterFullscreen() {
-            var elem = document.documentElement;
-            
-            if (elem.requestFullscreen) {
-                elem.requestFullscreen();
-            } else if (elem.webkitRequestFullscreen) { /* Safari */
-                elem.webkitRequestFullscreen();
-            } else if (elem.msRequestFullscreen) { /* IE11 */
-                elem.msRequestFullscreen();
-            } else if (elem.mozRequestFullScreen) { /* Firefox */
-                elem.mozRequestFullScreen();
-            }
-            
-            // Nascondi overlay
-            var overlay = document.getElementById('fullscreenOverlay');
-            if (overlay) {
-                overlay.style.display = 'none';
-            }
-        }
-        
-        function exitFullscreen() {
-            if (document.exitFullscreen) {
-                document.exitFullscreen();
-            } else if (document.webkitExitFullscreen) {
-                document.webkitExitFullscreen();
-            } else if (document.msExitFullscreen) {
-                document.msExitFullscreen();
-            } else if (document.mozCancelFullScreen) {
-                document.mozCancelFullScreen();
-            }
-        }
-        
-        function isFullscreen() {
-            return !!(document.fullscreenElement || document.webkitFullscreenElement || 
-                     document.msFullscreenElement || document.mozFullScreenElement);
-        }
-        
-        // Mostra/nascondi pulsante fullscreen quando si esce/entra
-        function handleFullscreenChange() {
-            var btn = document.getElementById('fullscreenBtn');
-            if (btn) {
-                btn.style.display = isFullscreen() ? 'none' : 'block';
-            }
-        }
-        
-        // Listeners per cambio fullscreen
-        document.addEventListener('fullscreenchange', handleFullscreenChange);
-        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-        document.addEventListener('msfullscreenchange', handleFullscreenChange);
-        document.addEventListener('mozfullscreenchange', handleFullscreenChange);
-        
-        // Se già in fullscreen (es. PWA), nascondi overlay
-        // window.matchMedia potrebbe non esistere su Android 4.x (Jelly Bean)
-        var _inPwaMode = false;
-        try { _inPwaMode = window.matchMedia && window.matchMedia('(display-mode: fullscreen)').matches; } catch(e) {}
-        if (isFullscreen() || window.navigator.standalone || _inPwaMode) {
-            var overlay = document.getElementById('fullscreenOverlay');
-            if (overlay) overlay.style.display = 'none';
-        }
-        
         // ==================== CONFIGURAZIONE ====================
         var API_URL = window.location.protocol + '//' + window.location.hostname + ':' + (window.location.port || 5000) + '/api';
         var token = null;
@@ -152,6 +202,29 @@
         var tasks = [];
         var orders = [];
         var trips = [];
+        var allPublicUsers = [];
+        var activeModule = 'tasks';
+        var instantQty = 1;
+        var instantCategory = 'ALL';
+        var instantSubcategory = null;
+        var instantView = 'categories';
+        var instantArticles = [];
+        var instantShelfEntries = [];
+        var instantProductRows = [];
+        var instantLines = [];
+        var instantAddState = null;
+        var instantLastActivate = { index: -1, ts: 0, source: '' };
+        var instantProductDelegatedBound = false;
+        var instantDataLoaded = false;
+        var warehouseSectionCode = 'A';
+        var warehousePositions = [];
+        var warehouseEntries = [];
+        var warehouseArticles = [];
+        var warehouseDataLoaded = false;
+        var printerSettings = {
+            local: { name: '', host: '', port: '' },
+            remote: { name: '', host: '', port: '' }
+        };
         var refreshInterval = null;
         var inactivityTimeout = null;
         var countdownInterval = null;
@@ -352,6 +425,9 @@
         function init() {
             // Carica subito le impostazioni aziendali
             loadCompanySettings();
+
+            enableTabletInteractionGuards();
+            document.addEventListener('keydown', onGlobalKeyDown, true);
             
             // Avvia aggiornamento data/ora
             updateDateTime();
@@ -373,6 +449,7 @@
                 startAutoRefresh();
                 startInactivityTimer();
                 initLiveUpdates();
+                loadPrinterSettings();
             } else {
                 showLogin();
                 loadOperators();
@@ -418,7 +495,9 @@
                 if (xhr.readyState === 4) {
                     if (xhr.status === 200) {
                         var operators = JSON.parse(xhr.responseText);
+                        allPublicUsers = operators || [];
                         renderOperatorButtons(operators);
+                        renderAdminUsers(operators);
                     } else {
                         document.getElementById('operatorGrid').innerHTML = '<div class="loading-operators">Errore caricamento operatori</div>';
                     }
@@ -435,21 +514,41 @@
         // Mostra pulsanti operatore
         function renderOperatorButtons(operators) {
             var grid = document.getElementById('operatorGrid');
+            var onlyOperators = [];
+            for (var x = 0; x < operators.length; x++) {
+                var r = (operators[x].role || '').toLowerCase();
+                if (r === 'operator' || r === 'slave' || r === 'utente') {
+                    onlyOperators.push(operators[x]);
+                }
+            }
             
-            if (operators.length === 0) {
+            if (onlyOperators.length === 0) {
                 grid.innerHTML = '<div class="loading-operators">Nessun operatore trovato</div>';
                 return;
             }
             
             var html = '';
-            for (var i = 0; i < operators.length; i++) {
-                var op = operators[i];
+            for (var i = 0; i < onlyOperators.length; i++) {
+                var op = onlyOperators[i];
                 var colorClass = 'color-' + (i % 8);
                 html += '<button class="operator-btn ' + colorClass + '" onclick="quickLogin(' + op.id + ', \'' + op.username + '\')">' +
                         '👷 ' + op.username +
                         '</button>';
             }
             grid.innerHTML = html;
+        }
+
+        function renderAdminUsers(users) {
+            var sel = document.getElementById('adminUserSelect');
+            if (!sel) return;
+            var html = '<option value="">-- Seleziona admin --</option>';
+            for (var i = 0; i < users.length; i++) {
+                var role = (users[i].role || '').toLowerCase();
+                if (role === 'admin' || role === 'master') {
+                    html += '<option value="' + escapeHtml(users[i].username || '') + '">' + escapeHtml(users[i].username || '') + '</option>';
+                }
+            }
+            sel.innerHTML = html;
         }
         
         // Login veloce senza password
@@ -462,14 +561,7 @@
                 if (xhr.readyState === 4) {
                     if (xhr.status === 200) {
                         var response = JSON.parse(xhr.responseText);
-                        token = response.token;
-                        currentUser = response.user;
-                        localStorage.setItem('token', token);
-                        localStorage.setItem('currentUser', JSON.stringify(currentUser));
-                        showDashboard();
-                        loadTasks();
-                        startAutoRefresh();
-                        startInactivityTimer();
+                        onAuthenticated(response);
                     } else {
                         alert('Errore di accesso');
                     }
@@ -477,6 +569,52 @@
             };
             
             xhr.send(JSON.stringify({ operatorId: operatorId }));
+        }
+
+        function adminLogin() {
+            var username = document.getElementById('adminUserSelect').value;
+            var password = document.getElementById('adminPasswordInput').value;
+            if (!username) {
+                alert('Seleziona un admin');
+                return;
+            }
+            if (!password) {
+                alert('Inserisci la password admin');
+                return;
+            }
+
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', API_URL + '/auth/login', true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState !== 4) return;
+                if (xhr.status === 200) {
+                    var response = JSON.parse(xhr.responseText);
+                    var role = ((response.user && response.user.role) || '').toLowerCase();
+                    if (role !== 'admin' && role !== 'master') {
+                        alert('Utente non autorizzato come admin');
+                        return;
+                    }
+                    onAuthenticated(response);
+                    document.getElementById('adminPasswordInput').value = '';
+                } else {
+                    alert('Credenziali admin non valide');
+                }
+            };
+            xhr.send(JSON.stringify({ username: username, password: password }));
+        }
+
+        function onAuthenticated(response) {
+            token = response.token;
+            currentUser = response.user;
+            localStorage.setItem('token', token);
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
+            loadPrinterSettings();
+            showDashboard();
+            loadTasks();
+            startAutoRefresh();
+            startInactivityTimer();
+            initLiveUpdates();
         }
         
         function showLogin() {
@@ -492,7 +630,1372 @@
         function showDashboard() {
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('dashboardSection').style.display = 'block';
-            document.getElementById('userDisplay').textContent = currentUser ? currentUser.username : '';
+            var headerUser = document.getElementById('userDisplayHeader');
+            if (headerUser) headerUser.textContent = currentUser ? currentUser.username : '';
+            var tools = document.getElementById('adminTools');
+            if (tools) tools.style.display = isAdminCurrentUser() ? 'inline-block' : 'none';
+            goToModule('tasks');
+        }
+
+        function isAdminCurrentUser() {
+            if (!currentUser) return false;
+            var role = (currentUser.role || '').toLowerCase();
+            return role === 'admin' || role === 'master';
+        }
+
+        function goToModule(module) {
+            activeModule = module;
+            var tasksList = document.getElementById('tasksList');
+            var ordersList = document.getElementById('ordersList');
+            var tripsList = document.getElementById('tripsList');
+            var instantSection = document.getElementById('instantSection');
+            var warehouseSection = document.getElementById('warehouseSection');
+
+            if (module === 'tasks') {
+                if (tasksList) tasksList.style.display = 'block';
+                if (ordersList) ordersList.style.display = 'block';
+                if (tripsList) tripsList.style.display = 'block';
+                if (instantSection) instantSection.style.display = 'none';
+                if (warehouseSection) warehouseSection.style.display = 'none';
+                return;
+            }
+            if (module === 'instant') {
+                if (tasksList) tasksList.style.display = 'none';
+                if (ordersList) ordersList.style.display = 'none';
+                if (tripsList) tripsList.style.display = 'none';
+                if (instantSection) instantSection.style.display = 'block';
+                if (warehouseSection) warehouseSection.style.display = 'none';
+                showInstantCategoryScreen();
+                loadInstantData();
+                return;
+            }
+            if (module === 'warehouse') {
+                if (tasksList) tasksList.style.display = 'none';
+                if (ordersList) ordersList.style.display = 'none';
+                if (tripsList) tripsList.style.display = 'none';
+                if (instantSection) instantSection.style.display = 'none';
+                if (warehouseSection) warehouseSection.style.display = 'block';
+                updateWarehouseRoleHint();
+                loadWarehouseData();
+            }
+        }
+
+        function loadInstantData() {
+            if (!token) return;
+            if (instantDataLoaded) {
+                renderInstantProducts();
+                return;
+            }
+
+            var pending = 2;
+            function done() {
+                pending--;
+                if (pending <= 0) {
+                    instantDataLoaded = true;
+                    renderInstantProducts();
+                }
+            }
+
+            var xhrArticles = new XMLHttpRequest();
+            xhrArticles.open('GET', API_URL + '/inventory/articles', true);
+            xhrArticles.setRequestHeader('Authorization', 'Bearer ' + token);
+            xhrArticles.onreadystatechange = function() {
+                if (xhrArticles.readyState !== 4) return;
+                if (xhrArticles.status === 200) {
+                    try {
+                        instantArticles = JSON.parse(xhrArticles.responseText) || [];
+                        for (var i = 0; i < instantArticles.length; i++) {
+                            if (instantArticles[i] && instantArticles[i].id == null && instantArticles[i].articleId != null) {
+                                instantArticles[i].id = instantArticles[i].articleId;
+                            }
+                        }
+                    } catch (e) { instantArticles = []; }
+                }
+                done();
+            };
+            xhrArticles.onerror = done;
+            xhrArticles.send();
+
+            var xhrEntries = new XMLHttpRequest();
+            xhrEntries.open('GET', API_URL + '/inventory/shelf-entries', true);
+            xhrEntries.setRequestHeader('Authorization', 'Bearer ' + token);
+            xhrEntries.onreadystatechange = function() {
+                if (xhrEntries.readyState !== 4) return;
+                if (xhrEntries.status === 200) {
+                    try {
+                        instantShelfEntries = JSON.parse(xhrEntries.responseText) || [];
+                        for (var j = 0; j < instantShelfEntries.length; j++) {
+                            if (instantShelfEntries[j] && instantShelfEntries[j].articleId == null && instantShelfEntries[j].article_id != null) {
+                                instantShelfEntries[j].articleId = instantShelfEntries[j].article_id;
+                            }
+                        }
+                    } catch (e2) { instantShelfEntries = []; }
+                }
+                done();
+            };
+            xhrEntries.onerror = done;
+            xhrEntries.send();
+        }
+
+        function aggregateInstantProducts() {
+            var map = {};
+            for (var i = 0; i < instantShelfEntries.length; i++) {
+                var en = instantShelfEntries[i];
+                var q = Number(en.quantity || 0);
+                if (q <= 0) continue;
+                if (!map[en.articleId]) {
+                    map[en.articleId] = {
+                        articleId: en.articleId,
+                        total: 0,
+                        firstEntryId: en.id,
+                        firstPosition: en.positionCode || '',
+                        firstBatch: en.batch || ''
+                    };
+                }
+                map[en.articleId].total += q;
+            }
+
+            var rows = [];
+            for (var a = 0; a < instantArticles.length; a++) {
+                var ar = instantArticles[a];
+                var agg = map[ar.id];
+                if (!agg) continue;
+                rows.push({
+                    articleId: ar.id,
+                    code: ar.code || '',
+                    name: ar.name || ('Articolo ' + ar.id),
+                    weightPerCollo: getInstantWeightPerCollo(ar),
+                    category: instantArticleCategory(ar),
+                    subcategory: instantArticleSubcategory(ar),
+                    productGroup: instantArticleProductGroup(ar),
+                    total: agg.total,
+                    entryId: agg.firstEntryId,
+                    positionCode: agg.firstPosition,
+                    batch: agg.firstBatch
+                });
+            }
+            rows.sort(function(x, y) {
+                var wx = Number(x.weightPerCollo || 9999);
+                var wy = Number(y.weightPerCollo || 9999);
+                if (wx !== wy) return wx - wy;
+                return String(x.name).localeCompare(String(y.name));
+            });
+            return rows;
+        }
+
+        function getInstantWeightPerCollo(article) {
+            if (article && Number(article.weightPerUnit || 0) > 0) {
+                return Number(article.weightPerUnit);
+            }
+            var source = '';
+            if (article && article.code) source = String(article.code);
+            if (!source && article && article.name) source = String(article.name);
+
+            var match = source.match(/-(\d+(?:[\.,]\d+)?)\s*(?:KG)?\s*$/i);
+            if (!match) match = source.match(/(\d+(?:[\.,]\d+)?)\s*KG/i);
+            var val = match ? parseFloat(String(match[1]).replace(',', '.')) : 9999;
+            if (!val || val <= 0 || isNaN(val)) return 9999;
+            return val;
+        }
+
+        function onGlobalKeyDown(ev) {
+            var key = ev && ev.key ? ev.key : '';
+            var code = ev && (ev.keyCode || ev.which) ? (ev.keyCode || ev.which) : 0;
+            if (key === 'Escape' || key === 'Esc' || code === 27) {
+                var modal = document.getElementById('instantAddModal');
+                if (modal && !modal.hidden && modal.style.display !== 'none') {
+                    closeInstantAddModal();
+                    if (ev && ev.preventDefault) ev.preventDefault();
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function enableTabletInteractionGuards() {
+            document.addEventListener('dblclick', function(e) {
+                if (e && e.preventDefault) e.preventDefault();
+            }, true);
+
+            // Blocca solo gesture multi-touch: non interferisce coi tap singoli sui prodotti.
+            var onTouchStart = function(e) {
+                if (e && e.touches && e.touches.length > 1) {
+                    if (e.preventDefault) e.preventDefault();
+                }
+            };
+
+            var onGesture = function(e) {
+                if (e && e.preventDefault) e.preventDefault();
+            };
+
+            try {
+                document.addEventListener('touchstart', onTouchStart, { passive: false, capture: true });
+                document.addEventListener('gesturestart', onGesture, { passive: false, capture: true });
+                document.addEventListener('gesturechange', onGesture, { passive: false, capture: true });
+                document.addEventListener('gestureend', onGesture, { passive: false, capture: true });
+            } catch (err) {
+                document.addEventListener('touchstart', onTouchStart, true);
+                document.addEventListener('gesturestart', onGesture, true);
+                document.addEventListener('gesturechange', onGesture, true);
+                document.addEventListener('gestureend', onGesture, true);
+            }
+        }
+
+        function instantArticleCategory(article) {
+            var raw = (article && article.category ? String(article.category) : '').trim();
+            if (raw) return raw.toUpperCase();
+            var code = (article && article.code ? String(article.code) : '').toUpperCase();
+            if (code.indexOf('F-') === 0) return 'FARINE';
+            if (code.indexOf('FM-') === 0) return 'MIX FARINE';
+            if (code.indexOf('GD-') === 0) return 'SEMOLE';
+            if (code.indexOf('MG-') === 0) return 'MANGIMI';
+            if (code.indexOf('CP-') === 0) return 'CEREALI PERLATI';
+            if (code.indexOf('Z-') === 0) return 'CEREALI';
+            return 'ALTRO';
+        }
+
+        function instantArticleSubcategory(article) {
+            return (article && article.subcategory ? String(article.subcategory).trim().toUpperCase() : '');
+        }
+
+        function instantArticleProductGroup(article) {
+            return (article && article.productGroup ? String(article.productGroup).trim().toUpperCase() : '');
+        }
+
+        function getInstantCategoryMeta(name) {
+            var key = String(name || '').toUpperCase();
+            var map = {
+                'ALL': { icon: 'images/category-icons/all.svg', short: 'TT', color: '#475569' },
+                'FARINE': { icon: 'images/category-icons/farine.svg', short: 'FA', color: '#f59e0b' },
+                'MIX FARINE': { icon: 'images/category-icons/mix-farine.svg', short: 'MF', color: '#d97706' },
+                'SEMOLE': { icon: 'images/category-icons/semole.svg', short: 'SE', color: '#84cc16' },
+                'CEREALI': { icon: 'images/category-icons/cereali.svg', short: 'CE', color: '#10b981' },
+                'CEREALI PERLATI': { icon: 'images/category-icons/cereali-perlati.svg', short: 'CP', color: '#06b6d4' },
+                'MANGIMI': { icon: 'images/category-icons/mangimi.svg', short: 'MG', color: '#8b5cf6' },
+                'ALTRO': { icon: 'images/category-icons/altro.svg', short: 'AL', color: '#6b7280' }
+            };
+            return map[key] || map['ALTRO'];
+        }
+
+        function encodeInstantParam(value) {
+            return encodeURIComponent(String(value || ''));
+        }
+
+        function renderInstantCategories(rows) {
+            var box = document.getElementById('instantCategoryRow');
+            if (!box) return;
+
+            var categories = { ALL: true };
+            var availableCounts = { ALL: rows.length };
+            var totalCounts = { ALL: 0 };
+
+            for (var a = 0; a < instantArticles.length; a++) {
+                var art = instantArticles[a];
+                var code = String(art && art.code ? art.code : '').toUpperCase();
+                if (code.indexOf('EMPTY-') === 0) continue;
+                var catName = instantArticleCategory(art);
+                categories[catName] = true;
+                totalCounts[catName] = (totalCounts[catName] || 0) + 1;
+                totalCounts.ALL++;
+            }
+
+            for (var i = 0; i < rows.length; i++) {
+                categories[rows[i].category] = true;
+                availableCounts[rows[i].category] = (availableCounts[rows[i].category] || 0) + 1;
+            }
+
+            var order = ['ALL', 'FARINE', 'MIX FARINE', 'SEMOLE', 'CEREALI', 'CEREALI PERLATI', 'MANGIMI', 'ALTRO'];
+            var extras = [];
+            for (var k in categories) {
+                if (!categories.hasOwnProperty(k)) continue;
+                if (k === 'ALL') continue;
+                if (order.indexOf(k) === -1) extras.push(k);
+            }
+            extras.sort();
+
+            var html = '';
+            for (var j = 0; j < order.length; j++) {
+                if (!categories[order[j]]) continue;
+                var isActive = instantCategory === order[j] ? ' active' : '';
+                var label = order[j] === 'ALL' ? 'Tutti' : order[j];
+                var meta = getInstantCategoryMeta(order[j]);
+                var available = (order[j] === 'ALL') ? (availableCounts.ALL || 0) : (availableCounts[order[j]] || 0);
+                var total = (order[j] === 'ALL') ? (totalCounts.ALL || 0) : (totalCounts[order[j]] || 0);
+                html += '<button class="instant-cat-btn instant-cat-tile' + isActive + '" style="background:' + meta.color + ';border-color:' + meta.color + '" onclick="setInstantCategory(decodeURIComponent(\'' + encodeInstantParam(order[j]) + '\'))">' +
+                    '<span class="instant-cat-icon"><img class="instant-cat-icon-img" src="' + meta.icon + '" alt="" onerror="this.style.display=\'none\';this.nextSibling.style.display=\'inline-block\';"><span class="instant-cat-icon-fallback">' + meta.short + '</span></span>' +
+                        '<span class="instant-cat-name">' + escapeHtml(label) + '</span>' +
+                        '<span class="instant-cat-count">' + available + ' disp. / ' + total + ' tot</span>' +
+                        '</button>';
+            }
+
+            for (var x = 0; x < extras.length; x++) {
+                var cat = extras[x];
+                var active = instantCategory === cat ? ' active' : '';
+                var exMeta = getInstantCategoryMeta(cat);
+                var exAvailable = availableCounts[cat] || 0;
+                var exTotal = totalCounts[cat] || exAvailable;
+                html += '<button class="instant-cat-btn instant-cat-tile' + active + '" style="background:' + exMeta.color + ';border-color:' + exMeta.color + '" onclick="setInstantCategory(decodeURIComponent(\'' + encodeInstantParam(cat) + '\'))">' +
+                        '<span class="instant-cat-icon"><img class="instant-cat-icon-img" src="' + exMeta.icon + '" alt="" onerror="this.style.display=\'none\';this.nextSibling.style.display=\'inline-block\';"><span class="instant-cat-icon-fallback">' + exMeta.short + '</span></span>' +
+                        '<span class="instant-cat-name">' + escapeHtml(cat) + '</span>' +
+                        '<span class="instant-cat-count">' + exAvailable + ' disp. / ' + exTotal + ' tot</span>' +
+                        '</button>';
+            }
+            box.innerHTML = html;
+        }
+
+        function renderInstantSubcategories(rows) {
+            var box = document.getElementById('instantSubcategoryRow');
+            if (!box) return;
+
+            var available = { 'ALL': 0 };
+            var totals = { 'ALL': 0 };
+            var list = [];
+
+            for (var i = 0; i < rows.length; i++) {
+                var r = rows[i];
+                if (instantCategory !== 'ALL' && r.category !== instantCategory) continue;
+                var sub = r.subcategory || 'NON CLASSIFICATA';
+                if (!available[sub]) {
+                    available[sub] = 0;
+                    list.push(sub);
+                }
+                available[sub] += 1;
+                available.ALL += 1;
+            }
+
+            for (var a = 0; a < instantArticles.length; a++) {
+                var art = instantArticles[a];
+                var code = String(art && art.code ? art.code : '').toUpperCase();
+                if (code.indexOf('EMPTY-') === 0) continue;
+                var catName = instantArticleCategory(art);
+                if (instantCategory !== 'ALL' && catName !== instantCategory) continue;
+                var subName = instantArticleSubcategory(art) || 'NON CLASSIFICATA';
+                totals[subName] = (totals[subName] || 0) + 1;
+                totals.ALL += 1;
+            }
+
+            list.sort();
+            var html = '';
+            var allActive = !instantSubcategory ? ' active' : '';
+            html += '<button class="instant-cat-btn instant-subcat-btn' + allActive + '" onclick="setInstantSubcategory(\'\')">' +
+                    '<span class="instant-cat-name">TUTTE</span>' +
+                    '<span class="instant-cat-count">' + (available.ALL || 0) + ' disp. / ' + (totals.ALL || 0) + ' tot</span>' +
+                    '</button>';
+
+            for (var k = 0; k < list.length; k++) {
+                var subc = list[k];
+                var isActive = instantSubcategory === subc ? ' active' : '';
+                html += '<button class="instant-cat-btn instant-subcat-btn' + isActive + '" onclick="setInstantSubcategory(decodeURIComponent(\'' + encodeInstantParam(subc) + '\'))">' +
+                        '<span class="instant-cat-name">' + escapeHtml(subc) + '</span>' +
+                        '<span class="instant-cat-count">' + (available[subc] || 0) + ' disp. / ' + (totals[subc] || 0) + ' tot</span>' +
+                        '</button>';
+            }
+            box.innerHTML = html;
+        }
+
+        function toggleInstantHidden(el, hidden) {
+            if (!el) return;
+            var cls = String(el.className || '');
+            var has = (' ' + cls + ' ').indexOf(' instant-hidden ') !== -1;
+            if (hidden && !has) {
+                el.className = cls ? (cls + ' instant-hidden') : 'instant-hidden';
+            }
+            if (!hidden && has) {
+                el.className = cls.replace(/\s*instant-hidden\s*/g, ' ').replace(/^\s+|\s+$/g, '');
+            }
+        }
+
+        function showInstantCategoryScreen() {
+            instantSubcategory = null;
+            instantView = 'categories';
+            renderInstantProducts();
+        }
+
+        function showInstantSubcategoryScreen() {
+            instantView = 'subcategories';
+            renderInstantProducts();
+        }
+
+        function setInstantCategory(category) {
+            instantCategory = category || 'ALL';
+            instantSubcategory = null;
+            instantView = 'subcategories';
+            renderInstantProducts();
+        }
+
+        function setInstantSubcategory(subcategory) {
+            instantSubcategory = subcategory ? String(subcategory).toUpperCase() : null;
+            instantView = 'products';
+            renderInstantProducts();
+        }
+
+        function renderInstantProducts() {
+            var box = document.getElementById('instantProductsGrid');
+            if (!box) return;
+            var productsHeader = document.getElementById('instantProductsHeader');
+            var productsTitle = document.getElementById('instantProductsTitle');
+            var subcategoryHeader = document.getElementById('instantSubcategoryHeader');
+            var subcategoryTitle = document.getElementById('instantSubcategoryTitle');
+            var categoryRow = document.getElementById('instantCategoryRow');
+            var subcategoryRow = document.getElementById('instantSubcategoryRow');
+            var qtyRow = document.getElementById('instantQtyRow');
+            var rows = aggregateInstantProducts();
+            renderInstantCategories(rows);
+            renderInstantSubcategories(rows);
+
+            if (instantView === 'categories') {
+                if (categoryRow) {
+                    categoryRow.className = 'instant-category-row instant-category-screen';
+                    categoryRow.style.display = 'block';
+                }
+                if (subcategoryHeader) subcategoryHeader.style.display = 'none';
+                if (subcategoryRow) subcategoryRow.style.display = 'none';
+                if (productsHeader) productsHeader.style.display = 'none';
+                if (qtyRow) qtyRow.style.display = 'none';
+                if (box) box.style.display = 'none';
+                return;
+            }
+
+            if (instantView === 'subcategories') {
+                if (categoryRow) {
+                    categoryRow.className = 'instant-category-row instant-hidden';
+                    categoryRow.style.display = 'none';
+                }
+                if (subcategoryHeader) subcategoryHeader.style.display = 'table';
+                if (subcategoryTitle) {
+                    subcategoryTitle.textContent = instantCategory === 'ALL' ? 'Sottocategorie: Tutte' : ('Sottocategorie: ' + instantCategory);
+                }
+                if (subcategoryRow) {
+                    subcategoryRow.className = 'instant-category-row instant-category-screen instant-subcategory-screen';
+                    subcategoryRow.style.display = 'block';
+                }
+                if (productsHeader) productsHeader.style.display = 'none';
+                if (qtyRow) qtyRow.style.display = 'none';
+                if (box) box.style.display = 'none';
+                return;
+            }
+
+            if (categoryRow) {
+                categoryRow.className = 'instant-category-row instant-hidden';
+                categoryRow.style.display = 'none';
+            }
+            if (subcategoryHeader) subcategoryHeader.style.display = 'none';
+            if (subcategoryRow) {
+                subcategoryRow.className = 'instant-category-row instant-hidden';
+                subcategoryRow.style.display = 'none';
+            }
+            if (productsHeader) productsHeader.style.display = 'table';
+            if (qtyRow) qtyRow.style.display = 'flex';
+            if (box) box.style.display = 'block';
+
+            if (productsTitle) {
+                var title = instantCategory === 'ALL' ? 'Prodotti: Tutti' : ('Prodotti: ' + instantCategory);
+                if (instantSubcategory) title += ' / ' + instantSubcategory;
+                productsTitle.textContent = title;
+            }
+
+            var filtered = [];
+            for (var k = 0; k < rows.length; k++) {
+                if ((instantCategory === 'ALL' || rows[k].category === instantCategory) &&
+                    (!instantSubcategory || (rows[k].subcategory || 'NON CLASSIFICATA') === instantSubcategory)) {
+                    filtered.push(rows[k]);
+                }
+            }
+            if (!filtered.length) {
+                instantProductRows = [];
+                box.innerHTML = '<div class="empty-state">Nessun prodotto con giacenza disponibile</div>';
+                return;
+            }
+
+            instantProductRows = filtered;
+            var html = '';
+            for (var i = 0; i < filtered.length; i++) {
+                var r = filtered[i];
+                var taxonomy = [r.category, r.subcategory, r.productGroup].filter(function(v) { return !!v; }).join(' / ');
+                html += '<button type="button" class="instant-product-btn" data-row-index="' + i + '" onclick="return onInstantProductActivate(event, ' + i + ', \"inline-click\")">' +
+                        '<span class="instant-product-name">' + escapeHtml(r.name) + '</span>' +
+                    '<span class="instant-product-meta">' + escapeHtml(r.code) + (taxonomy ? (' • ' + escapeHtml(taxonomy)) : '') + ' • ' + r.total + ' colli</span>' +
+                        '</button>';
+            }
+            box.innerHTML = html;
+            bindInstantProductDelegatedEvents();
+        }
+
+        function bindInstantProductDelegatedEvents() {
+            if (instantProductDelegatedBound) return;
+            var box = document.getElementById('instantProductsGrid');
+            if (!box) return;
+
+            var findProductButton = function(startNode) {
+                var node = startNode;
+                while (node && node !== box) {
+                    var cls = String(node.className || '');
+                    if ((' ' + cls + ' ').indexOf(' instant-product-btn ') !== -1) return node;
+                    node = node.parentNode;
+                }
+                return null;
+            };
+
+            var activateFromEvent = function(ev, source) {
+                var btn = findProductButton(ev && ev.target ? ev.target : null);
+                if (!btn) return true;
+
+                var idx = Number(btn.getAttribute('data-row-index'));
+                if (isNaN(idx) || idx < 0) return true;
+
+                var now = new Date().getTime();
+
+                // Ignora click fantasma subito dopo touchstart sullo stesso bottone.
+                if (source === 'click' && instantLastActivate.index === idx && instantLastActivate.source === 'touchstart' && (now - instantLastActivate.ts) < 700) {
+                    if (ev && ev.preventDefault) ev.preventDefault();
+                    if (ev && ev.stopPropagation) ev.stopPropagation();
+                    return false;
+                }
+
+                // Evita trigger duplicati ravvicinati sullo stesso bottone.
+                if (instantLastActivate.index === idx && (now - instantLastActivate.ts) < 280) {
+                    if (ev && ev.preventDefault) ev.preventDefault();
+                    if (ev && ev.stopPropagation) ev.stopPropagation();
+                    return false;
+                }
+
+                instantLastActivate.index = idx;
+                instantLastActivate.ts = now;
+                instantLastActivate.source = source;
+
+                openInstantAddModalByIndex(idx);
+
+                if (ev && ev.preventDefault) ev.preventDefault();
+                if (ev && ev.stopPropagation) ev.stopPropagation();
+                return false;
+            };
+
+            box.addEventListener('touchstart', function(ev) {
+                activateFromEvent(ev, 'touchstart');
+            }, true);
+
+            box.addEventListener('click', function(ev) {
+                activateFromEvent(ev, 'click');
+            }, true);
+
+            instantProductDelegatedBound = true;
+        }
+
+        function openInstantAddModalByIndex(index) {
+            var idx = Number(index);
+            if (isNaN(idx) || idx < 0 || idx >= instantProductRows.length) return;
+            var row = instantProductRows[idx];
+            if (!row) return;
+            var articleId = row.articleId != null ? row.articleId : (row.id != null ? row.id : '');
+            if (articleId === '') return;
+            openInstantAddModal(articleId, row);
+        }
+
+        function formatInstantDate(dateText) {
+            if (!dateText) return '-';
+            var str = String(dateText);
+            if (str.length >= 10 && str.charAt(4) === '-' && str.charAt(7) === '-') {
+                return str.substring(8, 10) + '/' + str.substring(5, 7) + '/' + str.substring(0, 4);
+            }
+            return str;
+        }
+
+        function getInstantArticleById(articleId) {
+            var key = String(articleId == null ? '' : articleId);
+            for (var i = 0; i < instantArticles.length; i++) {
+                if (String(instantArticles[i].id) === key) return instantArticles[i];
+            }
+            return null;
+        }
+
+        function openInstantAddModal(articleId, rowData) {
+            articleId = String(articleId == null ? '' : articleId);
+            instantAddState = null;
+            var existingModal = document.getElementById('instantAddModal');
+            if (existingModal) {
+                existingModal.className = 'instant-add-modal instant-hidden';
+                existingModal.hidden = true;
+                existingModal.style.display = 'none';
+                existingModal.style.pointerEvents = 'none';
+            }
+
+            var article = getInstantArticleById(articleId);
+            if (!article && rowData) {
+                article = {
+                    id: articleId,
+                    name: rowData.name || ('Articolo ' + articleId),
+                    code: rowData.code || ''
+                };
+            }
+            if (!article) {
+                showAlert('Articolo non trovato', 'error');
+                return;
+            }
+
+            var entries = [];
+            for (var i = 0; i < instantShelfEntries.length; i++) {
+                var en = instantShelfEntries[i];
+                if (String(en.articleId) !== articleId) continue;
+                var qty = Number(en.quantity || 0);
+                if (qty <= 0) continue;
+                entries.push(en);
+            }
+
+            if (!entries.length) {
+                showAlert('Nessuna posizione disponibile per questo prodotto', 'error');
+                return;
+            }
+
+            entries.sort(function(a, b) {
+                return String(a.positionCode || '').localeCompare(String(b.positionCode || ''));
+            });
+
+            instantAddState = {
+                articleId: articleId,
+                articleName: article.name || ('Articolo ' + articleId),
+                articleCode: article.code || '',
+                targetQuantity: 0,
+                entries: entries,
+                allocations: {}
+            };
+
+            var modal = document.getElementById('instantAddModal');
+            if (modal) {
+                modal.className = 'instant-add-modal';
+                modal.hidden = false;
+                modal.style.display = 'flex';
+                modal.style.pointerEvents = 'auto';
+            }
+
+            var p = document.getElementById('instantAddProduct');
+            if (p) p.textContent = instantAddState.articleName;
+            var c = document.getElementById('instantAddCode');
+            if (c) c.textContent = instantAddState.articleCode;
+
+            renderInstantEntrySelect();
+            updateInstantAddTotals();
+            renderInstantAllocationList();
+        }
+
+        function closeInstantAddModal(event) {
+            if (event && event.target && event.target.id !== 'instantAddModal') return;
+            var modal = document.getElementById('instantAddModal');
+            if (modal) {
+                modal.className = 'instant-add-modal instant-hidden';
+                modal.hidden = true;
+                modal.style.display = 'none';
+                modal.style.pointerEvents = 'none';
+            }
+            instantAddState = null;
+        }
+
+        function setInstantAddQty(qty) {
+            if (!instantAddState) return;
+            instantAddState.targetQuantity += Number(qty || 0);
+            updateInstantAddTotals();
+            renderInstantEntrySelect();
+        }
+
+        function getInstantAllocatedTotal() {
+            if (!instantAddState || !instantAddState.allocations) return 0;
+            var total = 0;
+            for (var key in instantAddState.allocations) {
+                if (!instantAddState.allocations.hasOwnProperty(key)) continue;
+                total += Number(instantAddState.allocations[key].quantity || 0);
+            }
+            return total;
+        }
+
+        function getInstantRemainingTotal() {
+            if (!instantAddState) return 0;
+            return Math.max(0, Number(instantAddState.targetQuantity || 0) - getInstantAllocatedTotal());
+        }
+
+        function updateInstantAddTotals() {
+            var box = document.getElementById('instantAddTotals');
+            if (!box || !instantAddState) return;
+            var target = Number(instantAddState.targetQuantity || 0);
+            var selected = getInstantAllocatedTotal();
+            var remaining = Math.max(0, target - selected);
+            box.textContent = 'Target: ' + target + ' colli • Selezionati: ' + selected + ' colli • Mancano: ' + remaining + ' colli';
+        }
+
+        function getInstantEntryById(entryId) {
+            if (!instantAddState || !instantAddState.entries) return null;
+            for (var i = 0; i < instantAddState.entries.length; i++) {
+                if (instantAddState.entries[i].id === entryId) return instantAddState.entries[i];
+            }
+            return null;
+        }
+
+        function renderInstantEntrySelect() {
+            if (!instantAddState) return;
+            var wrap = document.getElementById('instantEntryWrap');
+            var buttons = document.getElementById('instantEntryButtons');
+            if (!buttons) return;
+
+            var html = '';
+            for (var i = 0; i < instantAddState.entries.length; i++) {
+                var en = instantAddState.entries[i];
+                var allocation = instantAddState.allocations[String(en.id)] || null;
+                var active = allocation ? ' active' : '';
+                var lot = en.batch ? en.batch : '-';
+                var exp = en.expiry ? formatInstantDate(en.expiry) : '-';
+                var selectedQty = allocation ? Number(allocation.quantity || 0) : 0;
+                var availableQty = Math.max(0, Number(en.quantity || 0) - selectedQty);
+                html += '<button type="button" class="instant-entry-btn' + active + '" onclick="selectInstantEntry(' + en.id + ')">' +
+                    '<span class="instant-entry-btn-line1">Pos. ' + escapeHtml(en.positionCode || '-') + ' • Disp: ' + availableQty + ' colli</span>' +
+                        '<span class="instant-entry-btn-line2">Lotto: ' + escapeHtml(lot) + ' • Scad: ' + escapeHtml(exp) + '</span>' +
+                    '<span class="instant-entry-btn-line3">Selezionati da qui: ' + selectedQty + ' colli</span>' +
+                        '</button>';
+            }
+            buttons.innerHTML = html;
+
+            if (wrap) {
+                wrap.style.display = 'block';
+            }
+            onInstantEntryChange();
+        }
+
+        function selectInstantEntry(entryId) {
+            if (!instantAddState) return;
+            var key = String(entryId);
+            if (instantAddState.allocations[key]) {
+                delete instantAddState.allocations[key];
+                updateInstantAddTotals();
+                renderInstantEntrySelect();
+                renderInstantAllocationList();
+                return;
+            }
+
+            var target = Number(instantAddState.targetQuantity || 0);
+            if (target <= 0) {
+                showAlert('Imposta prima i colli da prelevare', 'error');
+                return;
+            }
+
+            var entry = getInstantEntryById(entryId);
+            if (!entry) return;
+            var remaining = getInstantRemainingTotal();
+            if (remaining <= 0) {
+                showAlert('Quantita gia raggiunta', 'success');
+                return;
+            }
+
+            var allocQty = Math.min(remaining, Number(entry.quantity || 0));
+            if (allocQty <= 0) {
+                showAlert('Nessuna disponibilita in questa posizione', 'error');
+                return;
+            }
+
+            instantAddState.allocations[key] = {
+                entryId: entry.id,
+                quantity: allocQty
+            };
+            updateInstantAddTotals();
+            renderInstantEntrySelect();
+            renderInstantAllocationList();
+        }
+
+        function onInstantEntryChange() {
+            if (!instantAddState) return;
+            var info = document.getElementById('instantEntryInfo');
+            if (!info) return;
+            var remaining = getInstantRemainingTotal();
+            info.textContent = remaining > 0
+                ? 'Tocca una o piu posizioni fino a coprire i colli mancanti: ' + remaining
+                : 'Quantita raggiunta. Puoi confermare oppure toccare una posizione selezionata per toglierla.';
+        }
+
+        function renderInstantAllocationList() {
+            var box = document.getElementById('instantAllocationList');
+            if (!box || !instantAddState) return;
+            var parts = [];
+            for (var key in instantAddState.allocations) {
+                if (!instantAddState.allocations.hasOwnProperty(key)) continue;
+                var allocation = instantAddState.allocations[key];
+                var entry = getInstantEntryById(allocation.entryId);
+                if (!entry) continue;
+                var batch = entry.batch ? entry.batch : '-';
+                var expiry = entry.expiry ? formatInstantDate(entry.expiry) : '-';
+                parts.push('<div class="instant-allocation-item">' +
+                    '<div class="instant-allocation-main"><span class="instant-allocation-qty">' + allocation.quantity + ' colli</span> da <strong>' + escapeHtml(entry.positionCode || '-') + '</strong> • Lotto: ' + escapeHtml(batch) + ' • Scad: ' + escapeHtml(expiry) + '</div>' +
+                    '<button type="button" class="instant-allocation-remove" onclick="removeInstantAllocation(' + allocation.entryId + ')">Cancella</button>' +
+                    '</div>');
+            }
+            box.innerHTML = parts.length ? parts.join('') : 'Nessun prelievo selezionato';
+        }
+
+        function removeInstantAllocation(entryId) {
+            if (!instantAddState || !instantAddState.allocations) return;
+            delete instantAddState.allocations[String(entryId)];
+            updateInstantAddTotals();
+            renderInstantEntrySelect();
+            renderInstantAllocationList();
+        }
+
+        function confirmInstantAddLine() {
+            if (!instantAddState) return;
+            var target = Number(instantAddState.targetQuantity || 0);
+            var selected = getInstantAllocatedTotal();
+            if (target <= 0) {
+                showAlert('Imposta i colli da prelevare', 'error');
+                return;
+            }
+            if (selected <= 0) {
+                showAlert('Seleziona almeno una posizione scaffale', 'error');
+                return;
+            }
+            if (selected !== target) {
+                showAlert('Completa il prelievo: mancano ' + Math.max(0, target - selected) + ' colli', 'error');
+                return;
+            }
+
+            for (var key in instantAddState.allocations) {
+                if (!instantAddState.allocations.hasOwnProperty(key)) continue;
+                var allocation = instantAddState.allocations[key];
+                var entry = getInstantEntryById(allocation.entryId);
+                if (!entry) continue;
+                instantLines.push({
+                    articleId: instantAddState.articleId,
+                    articleName: instantAddState.articleName,
+                    articleCode: instantAddState.articleCode,
+                    quantity: allocation.quantity,
+                    shelfEntryId: entry.id,
+                    positionCode: entry.positionCode || '',
+                    batch: entry.batch || '',
+                    expiry: entry.expiry || ''
+                });
+            }
+            renderInstantLines();
+            closeInstantAddModal();
+        }
+
+        function removeInstantLine(idx) {
+            if (idx < 0 || idx >= instantLines.length) return;
+            instantLines.splice(idx, 1);
+            renderInstantLines();
+        }
+
+        function clearInstantLines() {
+            instantLines = [];
+            renderInstantLines();
+        }
+
+        function renderInstantLines() {
+            var box = document.getElementById('instantLines');
+            if (!box) return;
+            if (!instantLines.length) {
+                box.innerHTML = '<div class="empty-state">Nessuna riga selezionata</div>';
+                return;
+            }
+
+            var html = '';
+            for (var i = 0; i < instantLines.length; i++) {
+                var ln = instantLines[i];
+                var lot = ln.batch ? (' • L.' + ln.batch) : '';
+                var exp = ln.expiry ? (' • Sc. ' + formatInstantDate(ln.expiry)) : '';
+                html += '<div class="instant-line">' +
+                    '<div class="instant-line-main">' +
+                        '<div class="instant-line-name">' + escapeHtml(ln.articleName) + '</div>' +
+                        '<div class="instant-line-meta">' + escapeHtml(ln.articleCode) + ' • Pos. ' + escapeHtml(ln.positionCode) + escapeHtml(lot + exp) + '</div>' +
+                    '</div>' +
+                    '<div class="instant-line-actions">' +
+                        '<span class="instant-line-qty">' + ln.quantity + ' colli</span>' +
+                        '<button class="instant-line-remove" onclick="removeInstantLine(' + i + ')">✕</button>' +
+                    '</div>' +
+                '</div>';
+            }
+            box.innerHTML = html;
+        }
+
+        function confirmInstantOrder() {
+            if (!token) return;
+            if (!instantLines.length) {
+                showAlert('Aggiungi almeno una riga', 'error');
+                return;
+            }
+
+            var payload = {
+                clientName: 'Banco',
+                assignedOperatorId: currentUser && currentUser.id ? currentUser.id : null,
+                items: []
+            };
+
+            for (var i = 0; i < instantLines.length; i++) {
+                payload.items.push({
+                    articleId: instantLines[i].articleId,
+                    quantity: instantLines[i].quantity,
+                    positionCode: instantLines[i].positionCode,
+                    shelfEntryId: instantLines[i].shelfEntryId,
+                    batch: instantLines[i].batch || null
+                });
+            }
+
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', API_URL + '/orders/instant-complete', true);
+            xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState !== 4) return;
+                if (xhr.status === 200 || xhr.status === 201) {
+                    showAlert('✅ Ordine istantaneo completato', 'success');
+                    clearInstantLines();
+                    instantDataLoaded = false;
+                    loadInstantData();
+                    loadTasks();
+                    return;
+                }
+                if (xhr.status === 401) {
+                    handleLogout();
+                    return;
+                }
+                var msg = 'Errore conferma ordine';
+                try {
+                    var body = JSON.parse(xhr.responseText);
+                    if (body && body.error) msg = body.error;
+                } catch (e) {}
+                showAlert(msg, 'error');
+            };
+            xhr.send(JSON.stringify(payload));
+        }
+
+        function updateWarehouseRoleHint() {
+            var hint = document.getElementById('warehouseRoleHint');
+            if (!hint) return;
+            if (isAdminCurrentUser()) {
+                hint.textContent = 'Permessi admin: Carico + Spostamento + Scarico + Elimina';
+            } else {
+                hint.textContent = 'Permessi operatore: Carico + Spostamento';
+            }
+        }
+
+        function setWarehouseSection(sectionCode) {
+            warehouseSectionCode = sectionCode;
+            var tabs = document.getElementById('warehouseTabs');
+            if (tabs) {
+                var btns = tabs.getElementsByTagName('button');
+                for (var i = 0; i < btns.length; i++) {
+                    var txt = (btns[i].textContent || '').toUpperCase();
+                    btns[i].className = btns[i].className.replace(' active', '');
+                    if (txt.indexOf('SEZIONE ' + sectionCode) >= 0) {
+                        btns[i].className += ' active';
+                    }
+                }
+            }
+            renderWarehouseShelves();
+        }
+
+        function loadWarehouseData() {
+            if (!token) return;
+            if (warehouseDataLoaded) {
+                renderWarehouseShelves();
+                return;
+            }
+
+            var pending = 3;
+            function done() {
+                pending--;
+                if (pending <= 0) {
+                    warehouseDataLoaded = true;
+                    renderWarehouseShelves();
+                }
+            }
+
+            var xhrArticles = new XMLHttpRequest();
+            xhrArticles.open('GET', API_URL + '/inventory/articles', true);
+            xhrArticles.setRequestHeader('Authorization', 'Bearer ' + token);
+            xhrArticles.onreadystatechange = function() {
+                if (xhrArticles.readyState !== 4) return;
+                if (xhrArticles.status === 200) {
+                    try { warehouseArticles = JSON.parse(xhrArticles.responseText) || []; } catch (e) { warehouseArticles = []; }
+                }
+                done();
+            };
+            xhrArticles.onerror = done;
+            xhrArticles.send();
+
+            var xhrPositions = new XMLHttpRequest();
+            xhrPositions.open('GET', API_URL + '/inventory/shelf-positions', true);
+            xhrPositions.setRequestHeader('Authorization', 'Bearer ' + token);
+            xhrPositions.onreadystatechange = function() {
+                if (xhrPositions.readyState !== 4) return;
+                if (xhrPositions.status === 200) {
+                    try { warehousePositions = JSON.parse(xhrPositions.responseText) || []; } catch (e2) { warehousePositions = []; }
+                }
+                done();
+            };
+            xhrPositions.onerror = done;
+            xhrPositions.send();
+
+            var xhrEntries = new XMLHttpRequest();
+            xhrEntries.open('GET', API_URL + '/inventory/shelf-entries', true);
+            xhrEntries.setRequestHeader('Authorization', 'Bearer ' + token);
+            xhrEntries.onreadystatechange = function() {
+                if (xhrEntries.readyState !== 4) return;
+                if (xhrEntries.status === 200) {
+                    try { warehouseEntries = JSON.parse(xhrEntries.responseText) || []; } catch (e3) { warehouseEntries = []; }
+                }
+                done();
+            };
+            xhrEntries.onerror = done;
+            xhrEntries.send();
+        }
+
+        function refreshWarehouseEntries(callback) {
+            var xhrEntries = new XMLHttpRequest();
+            xhrEntries.open('GET', API_URL + '/inventory/shelf-entries', true);
+            xhrEntries.setRequestHeader('Authorization', 'Bearer ' + token);
+            xhrEntries.onreadystatechange = function() {
+                if (xhrEntries.readyState !== 4) return;
+                if (xhrEntries.status === 200) {
+                    try { warehouseEntries = JSON.parse(xhrEntries.responseText) || []; } catch (e) { warehouseEntries = []; }
+                }
+                renderWarehouseShelves();
+                if (callback) callback();
+            };
+            xhrEntries.onerror = function() {
+                renderWarehouseShelves();
+                if (callback) callback();
+            };
+            xhrEntries.send();
+        }
+
+        function getWarehouseArticle(articleId) {
+            for (var i = 0; i < warehouseArticles.length; i++) {
+                if (warehouseArticles[i].id === articleId) return warehouseArticles[i];
+            }
+            return null;
+        }
+
+        function renderWarehouseShelves() {
+            var row = document.getElementById('warehouseShelfRow');
+            if (!row) return;
+            if (!warehousePositions.length) {
+                row.innerHTML = '<div class="empty-state">Nessuna posizione scaffale disponibile</div>';
+                return;
+            }
+
+            var sectionPositions = [];
+            for (var p = 0; p < warehousePositions.length; p++) {
+                var c = warehousePositions[p].code || '';
+                if (String(c).toUpperCase().indexOf(warehouseSectionCode) === 0) {
+                    sectionPositions.push(warehousePositions[p]);
+                }
+            }
+
+            sectionPositions.sort(function(a, b) {
+                return String(a.code || '').localeCompare(String(b.code || ''));
+            });
+
+            if (!sectionPositions.length) {
+                row.innerHTML = '<div class="empty-state">Nessuna posizione in sezione ' + warehouseSectionCode + '</div>';
+                return;
+            }
+
+            var html = '';
+            for (var i = 0; i < sectionPositions.length; i++) {
+                var pos = sectionPositions[i];
+                var entries = [];
+                for (var e = 0; e < warehouseEntries.length; e++) {
+                    if ((warehouseEntries[e].positionCode || '') === (pos.code || '')) {
+                        entries.push(warehouseEntries[e]);
+                    }
+                }
+
+                html += '<div class="warehouse-shelf-card">';
+                html += '<div class="warehouse-shelf-head">' + escapeHtml(pos.code || '-') + '</div>';
+                if (!entries.length) {
+                    html += '<div class="warehouse-empty">Scaffale vuoto</div>';
+                } else {
+                    for (var j = 0; j < entries.length; j++) {
+                        var en = entries[j];
+                        var art = getWarehouseArticle(en.articleId);
+                        var nm = art && art.name ? art.name : ('Articolo ' + en.articleId);
+                        var cd = art && art.code ? art.code : '';
+                        html += '<div class="warehouse-entry">';
+                        html += '<div class="warehouse-entry-name">' + escapeHtml(nm) + '</div>';
+                        html += '<div class="warehouse-entry-meta">' + escapeHtml(cd) + ' • ' + (en.quantity || 0) + ' colli</div>';
+                        html += '<div class="warehouse-actions">';
+                        html += '<button class="wh-btn wh-btn-load" onclick="warehouseLoad(' + en.id + ')">+ Carico</button>';
+                        html += '<button class="wh-btn wh-btn-move" onclick="warehouseMove(' + en.id + ')">↔ Sposta</button>';
+                        if (isAdminCurrentUser()) {
+                            html += '<button class="wh-btn wh-btn-unload" onclick="warehouseUnload(' + en.id + ')">- Scarico</button>';
+                            html += '<button class="wh-btn wh-btn-delete" onclick="warehouseDelete(' + en.id + ')">🗑 Elimina</button>';
+                        }
+                        html += '</div>';
+                        html += '</div>';
+                    }
+                }
+                html += '</div>';
+            }
+            row.innerHTML = html;
+        }
+
+        function warehouseFindEntry(entryId) {
+            for (var i = 0; i < warehouseEntries.length; i++) {
+                if (warehouseEntries[i].id === entryId) return warehouseEntries[i];
+            }
+            return null;
+        }
+
+        function warehouseLoad(entryId) {
+            var en = warehouseFindEntry(entryId);
+            if (!en) return;
+            var q = window.prompt('Quanti colli vuoi caricare?', '1');
+            var qty = parseInt(q, 10);
+            if (!qty || qty <= 0) return;
+            warehouseUpdateEntryQuantity(en, (en.quantity || 0) + qty, 'Carico completato');
+        }
+
+        function warehouseUnload(entryId) {
+            if (!isAdminCurrentUser()) {
+                showAlert('Solo admin puo fare scarico', 'error');
+                return;
+            }
+            var en = warehouseFindEntry(entryId);
+            if (!en) return;
+            var q = window.prompt('Quanti colli vuoi scaricare?', '1');
+            var qty = parseInt(q, 10);
+            if (!qty || qty <= 0) return;
+            var next = (en.quantity || 0) - qty;
+            if (next < 0) {
+                showAlert('Quantita insufficiente', 'error');
+                return;
+            }
+            warehouseUpdateEntryQuantity(en, next, 'Scarico completato');
+        }
+
+        function warehouseDelete(entryId) {
+            if (!isAdminCurrentUser()) {
+                showAlert('Solo admin puo eliminare', 'error');
+                return;
+            }
+            if (!window.confirm('Eliminare questa riga scaffale?')) return;
+            var xhr = new XMLHttpRequest();
+            xhr.open('DELETE', API_URL + '/inventory/shelf-entries/' + entryId, true);
+            xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState !== 4) return;
+                if (xhr.status === 200) {
+                    showAlert('Riga eliminata', 'success');
+                    refreshWarehouseEntries();
+                } else {
+                    showAlert('Errore eliminazione riga', 'error');
+                }
+            };
+            xhr.send();
+        }
+
+        function warehouseMove(entryId) {
+            var en = warehouseFindEntry(entryId);
+            if (!en) return;
+            var target = window.prompt('Sposta verso posizione (es. A1.3):', en.positionCode || '');
+            if (!target) return;
+            target = String(target).trim().toUpperCase();
+            if (!target) return;
+
+            var qtyInput = window.prompt('Quanti colli spostare?', String(en.quantity || 0));
+            var qty = parseInt(qtyInput, 10);
+            if (!qty || qty <= 0) return;
+            if (qty > (en.quantity || 0)) {
+                showAlert('Quantita insufficiente', 'error');
+                return;
+            }
+
+            // Cerca entry compatibile in destinazione (stesso articolo + lotto)
+            var targetEntry = null;
+            for (var i = 0; i < warehouseEntries.length; i++) {
+                var te = warehouseEntries[i];
+                if (te.articleId === en.articleId && (te.positionCode || '') === target && String(te.batch || '') === String(en.batch || '')) {
+                    targetEntry = te;
+                    break;
+                }
+            }
+
+            if (targetEntry) {
+                warehousePutEntry(targetEntry.id, {
+                    quantity: (targetEntry.quantity || 0) + qty,
+                    positionCode: target,
+                    batch: targetEntry.batch || null,
+                    expiry: targetEntry.expiry || null,
+                    notes: targetEntry.notes || null
+                }, function(ok) {
+                    if (!ok) return;
+                    var left = (en.quantity || 0) - qty;
+                    if (left <= 0) {
+                        warehouseDeleteAfterMove(en.id);
+                    } else {
+                        warehousePutEntry(en.id, {
+                            quantity: left,
+                            positionCode: en.positionCode,
+                            batch: en.batch || null,
+                            expiry: en.expiry || null,
+                            notes: en.notes || null
+                        }, function(ok2) {
+                            if (ok2) {
+                                showAlert('Spostamento completato', 'success');
+                                refreshWarehouseEntries();
+                            }
+                        });
+                    }
+                });
+            } else {
+                var createPayload = {
+                    articleId: en.articleId,
+                    positionCode: target,
+                    quantity: qty,
+                    batch: en.batch || null,
+                    expiry: en.expiry || null,
+                    notes: en.notes || null
+                };
+                var xhrCreate = new XMLHttpRequest();
+                xhrCreate.open('POST', API_URL + '/inventory/shelf-entries', true);
+                xhrCreate.setRequestHeader('Authorization', 'Bearer ' + token);
+                xhrCreate.setRequestHeader('Content-Type', 'application/json');
+                xhrCreate.onreadystatechange = function() {
+                    if (xhrCreate.readyState !== 4) return;
+                    if (xhrCreate.status !== 200 && xhrCreate.status !== 201) {
+                        showAlert('Errore creazione posizione destinazione', 'error');
+                        return;
+                    }
+                    var left = (en.quantity || 0) - qty;
+                    if (left <= 0) {
+                        warehouseDeleteAfterMove(en.id);
+                    } else {
+                        warehousePutEntry(en.id, {
+                            quantity: left,
+                            positionCode: en.positionCode,
+                            batch: en.batch || null,
+                            expiry: en.expiry || null,
+                            notes: en.notes || null
+                        }, function(ok3) {
+                            if (ok3) {
+                                showAlert('Spostamento completato', 'success');
+                                refreshWarehouseEntries();
+                            }
+                        });
+                    }
+                };
+                xhrCreate.send(JSON.stringify(createPayload));
+            }
+        }
+
+        function warehouseDeleteAfterMove(entryId) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('DELETE', API_URL + '/inventory/shelf-entries/' + entryId, true);
+            xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState !== 4) return;
+                if (xhr.status === 200) {
+                    showAlert('Spostamento completato', 'success');
+                    refreshWarehouseEntries();
+                } else {
+                    showAlert('Spostamento parziale: errore aggiornando origine', 'error');
+                }
+            };
+            xhr.send();
+        }
+
+        function warehouseUpdateEntryQuantity(en, newQuantity, successMessage) {
+            warehousePutEntry(en.id, {
+                quantity: newQuantity,
+                positionCode: en.positionCode,
+                batch: en.batch || null,
+                expiry: en.expiry || null,
+                notes: en.notes || null
+            }, function(ok) {
+                if (ok) {
+                    showAlert(successMessage, 'success');
+                    refreshWarehouseEntries();
+                }
+            });
+        }
+
+        function warehousePutEntry(entryId, payload, callback) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('PUT', API_URL + '/inventory/shelf-entries/' + entryId, true);
+            xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState !== 4) return;
+                if (xhr.status === 200) {
+                    if (callback) callback(true);
+                } else {
+                    showAlert('Errore aggiornamento riga scaffale', 'error');
+                    if (callback) callback(false);
+                }
+            };
+            xhr.send(JSON.stringify(payload));
+        }
+
+        function loadPrinterSettings() {
+            try {
+                var saved = localStorage.getItem('operatorLitePrinterSettings');
+                if (saved) {
+                    var parsed = JSON.parse(saved);
+                    if (parsed && parsed.local && parsed.remote) {
+                        printerSettings = parsed;
+                    }
+                }
+            } catch (e) {
+                console.warn('Printer settings parse error', e);
+            }
+            syncPrinterSettingsToForm();
+        }
+
+        function syncPrinterSettingsToForm() {
+            var ids = [
+                ['printerLocalName', printerSettings.local.name],
+                ['printerLocalHost', printerSettings.local.host],
+                ['printerLocalPort', printerSettings.local.port],
+                ['printerRemoteName', printerSettings.remote.name],
+                ['printerRemoteHost', printerSettings.remote.host],
+                ['printerRemotePort', printerSettings.remote.port]
+            ];
+            for (var i = 0; i < ids.length; i++) {
+                var el = document.getElementById(ids[i][0]);
+                if (el) el.value = ids[i][1] || '';
+            }
+        }
+
+        function openPrinterSettings() {
+            if (!isAdminCurrentUser()) {
+                alert('Solo admin puo configurare le stampanti');
+                return;
+            }
+            syncPrinterSettingsToForm();
+            var modal = document.getElementById('printerSettingsModal');
+            if (modal) modal.style.display = 'flex';
+        }
+
+        function closePrinterSettings() {
+            var modal = document.getElementById('printerSettingsModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        function closePrinterSettingsOnOverlay(ev) {
+            if (ev.target && ev.target.id === 'printerSettingsModal') {
+                closePrinterSettings();
+            }
+        }
+
+        function savePrinterSettings() {
+            if (!isAdminCurrentUser()) {
+                alert('Solo admin puo salvare le stampanti');
+                return;
+            }
+
+            printerSettings.local.name = (document.getElementById('printerLocalName').value || '').trim();
+            printerSettings.local.host = (document.getElementById('printerLocalHost').value || '').trim();
+            printerSettings.local.port = (document.getElementById('printerLocalPort').value || '').trim();
+            printerSettings.remote.name = (document.getElementById('printerRemoteName').value || '').trim();
+            printerSettings.remote.host = (document.getElementById('printerRemoteHost').value || '').trim();
+            printerSettings.remote.port = (document.getElementById('printerRemotePort').value || '').trim();
+
+            localStorage.setItem('operatorLitePrinterSettings', JSON.stringify(printerSettings));
+            showAlert('✅ Configurazione stampanti salvata su questo tablet', 'success');
+            closePrinterSettings();
         }
         
         // Aggiorna countdown visibile nell'header
@@ -604,6 +2107,7 @@
             currentUser = null;
             stopAutoRefresh();
             stopInactivityTimer();
+            closePrinterSettings();
             showLogin();
         }
         
@@ -767,10 +2271,16 @@
             }
             timeline += '</div>';
             
-            var html = '<div class="task-card ' + cardClass + '">';
-            html += '<div class="task-title">' + escapeHtml(task.title) + '</div>';
+            var html = '<div class="task-card task-card-collapsed ' + cardClass + '">';
+            html += '<div class="task-head-row" onclick="toggleTaskDetails(' + task.id + ')">';
+            html += '<div class="task-title task-title-inline">' + escapeHtml(task.title) + '</div>';
+            html += '<div class="task-right-inline">';
             html += '<span class="task-status ' + statusClass + '">' + statusText + '</span>';
-            
+            html += '<span id="taskChevron' + task.id + '" class="task-chevron">▼</span>';
+            html += '</div>';
+            html += '</div>';
+
+            html += '<div id="taskDetails' + task.id + '" class="task-details-collapsed">';
             if (task.description) {
                 html += '<div class="task-meta">📝 ' + escapeHtml(task.description) + '</div>';
             }
@@ -778,16 +2288,24 @@
                 html += '<div class="task-meta">⏱️ ' + task.estimatedMinutes + ' min</div>';
             }
             html += '<div class="task-meta ' + priorityClass + '">' + priorityText + '</div>';
-            
             html += timeline;
-            
             if (buttons) {
                 html += '<div class="btn-container">' + buttons + '</div>';
             }
-            
+            html += '</div>';
+
             html += '</div>';
             
             return html;
+        }
+
+        function toggleTaskDetails(taskId) {
+            var panel = document.getElementById('taskDetails' + taskId);
+            var chev = document.getElementById('taskChevron' + taskId);
+            if (!panel) return;
+            var isOpen = panel.style.display === 'block';
+            panel.style.display = isOpen ? 'none' : 'block';
+            if (chev) chev.textContent = isOpen ? '▼' : '▲';
         }
         
         // Task actions
@@ -912,6 +2430,7 @@
         
         function setConnectionStatus(online) {
             var elem = document.getElementById('connectionStatus');
+            if (!elem) return;
             if (online) {
                 elem.className = 'online';
                 elem.textContent = '● Online';
@@ -1511,6 +3030,5 @@
         // Start app
         init();
     </script>
-    <script src="js/ui-confirm.js"></script>
 </body>
 </html>

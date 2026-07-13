@@ -16,6 +16,8 @@ data class Article(
     val name: String,
     val description: String? = null,
     val category: String? = null,
+    val subcategory: String? = null,
+    val productGroup: String? = null,
     val unit: String = "kg",
     val weightPerUnit: Float = 1f,
     val barcode: String? = null,

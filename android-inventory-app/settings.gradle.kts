@@ -25,3 +25,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "MolinoInventory"
 include(":app")
+include(":operatorlite")

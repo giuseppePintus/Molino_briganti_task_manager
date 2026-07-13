@@ -418,6 +418,13 @@
                     <input type="text" id="editPosDesc" placeholder="es. zona fredda...">
                 </div>
             </div>
+            <div class="cargo-field" style="margin-top:8px;">
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#fca5a5;">
+                    <input type="checkbox" id="editPosBlocked" style="width:16px;height:16px;accent-color:#dc2626;">
+                    Posizione inutilizzabile (bloccata)
+                </label>
+                <small style="display:block;margin-top:4px;color:#9ca3af;font-size:11px;">Le posizioni bloccate non saranno selezionabili per nuovi inserimenti o spostamenti.</small>
+            </div>
             <div id="editPosError" style="display:none;color:#f87171;font-size:13px;margin-bottom:8px;"></div>
             <div class="cargo-modal-actions" style="margin-bottom:16px;">
                 <button class="btn btn-gray" onclick="document.getElementById('editPosOverlay').classList.remove('open')">✕ Chiudi</button>
@@ -460,10 +467,17 @@
                 </div>
                 <div class="cargo-field">
                     <label>Sottocategoria</label>
-                    <select id="artSubcategory">
+                    <select id="artSubcategory" onchange="onArtSubcategoryChange()">
                         <option value="">— nessuna —</option>
                     </select>
                     <small id="artSubcategoryHint" style="display:block;margin-top:4px;font-size:11px;color:#9ca3af;">Le sotto-categorie si gestiscono in <a href="#" onclick="event.preventDefault();openCategoryManager();" style="color:#60a5fa;">🏷️ Categorie</a></small>
+                </div>
+                <div class="cargo-field">
+                    <label>Gruppo</label>
+                    <select id="artProductGroup">
+                        <option value="">— nessuno —</option>
+                    </select>
+                    <small id="artProductGroupHint" style="display:block;margin-top:4px;font-size:11px;color:#9ca3af;">I gruppi si gestiscono dentro ogni sotto-categoria in <a href="#" onclick="event.preventDefault();openCategoryManager();" style="color:#60a5fa;">🏷️ Categorie</a></small>
                 </div>
                 <div class="cargo-field">
                     <label>Unità di misura</label>
@@ -516,6 +530,21 @@
             </div>
             <div class="cargo-modal-actions" style="margin-top:16px;">
                 <button class="btn btn-gray" onclick="document.getElementById('categoryManagerOverlay').classList.remove('open')">✕ Chiudi</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== RINOMINA CATEGORIA MODAL ===== -->
+    <div class="cargo-modal-overlay" id="categoryRenameOverlay" onclick="closeCategoryRenameModal(event)" style="z-index:10001;">
+        <div class="cargo-modal" style="width:420px;max-height:85vh;overflow-y:auto;">
+            <h3 id="categoryRenameTitle">✏️ Rinomina categoria</h3>
+            <div style="background:#1e293b;border-radius:8px;padding:12px;border:1px solid #374151;margin-bottom:16px;">
+                <label id="categoryRenameLabel" style="font-size:12px;color:#9ca3af;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px;">Nuovo nome categoria</label>
+                <input type="text" id="categoryRenameInput" placeholder="es. FARINE SPECIALI" style="width:100%;background:#111827;border:1px solid #374151;border-radius:6px;color:#e0e0e0;padding:8px 10px;font-size:13px;text-transform:uppercase;" onkeydown="if(event.key==='Enter'){event.preventDefault();confirmCategoryRename();} else if(event.key==='Escape'){event.preventDefault();closeCategoryRenameModal();}" oninput="this.value=this.value.replace(/[\x22\x27\x60]/g,'')">
+            </div>
+            <div class="cargo-modal-actions">
+                <button class="btn btn-gray" onclick="closeCategoryRenameModal()">✕ Annulla</button>
+                <button class="btn btn-carico-confirm" onclick="confirmCategoryRename()">✓ Rinomina</button>
             </div>
         </div>
     </div>
@@ -616,6 +645,7 @@
         let currentSortBy = 'position'; // Default sort by position
         let currentSortAsc = true; // true = crescente (▲), false = decrescente (▼)
         let selectedWarehouseCategory = null;
+        let pendingCategoryRename = null;
 
         // ===== GESTIONE CATEGORIE =====
         const DEFAULT_CATEGORIES = ['FARINE', 'MIX FARINE', 'SEMOLE', 'CEREALI', 'CEREALI PERLATI', 'MANGIMI', 'ALTRO'];
@@ -701,6 +731,44 @@
             document.getElementById('categoryManagerOverlay').classList.remove('open');
         }
 
+        function openCategoryRenameModal(target) {
+            pendingCategoryRename = target;
+            const overlay = document.getElementById('categoryRenameOverlay');
+            const input = document.getElementById('categoryRenameInput');
+            const title = document.getElementById('categoryRenameTitle');
+            const label = document.getElementById('categoryRenameLabel');
+            if (!overlay || !input || !title || !label || !target) return;
+
+            if (target.type === 'subcategory') {
+                title.textContent = `✏️ Rinomina sotto-categoria "${target.name}"`;
+                label.textContent = 'Nuovo nome sotto-categoria';
+                input.placeholder = 'es. TIPO 00 SPECIAL';
+                input.value = target.name;
+            } else if (target.type === 'group') {
+                title.textContent = `✏️ Rinomina gruppo "${target.name}"`;
+                label.textContent = 'Nuovo nome gruppo';
+                input.placeholder = 'es. PIZZE';
+                input.value = target.name;
+            } else {
+                title.textContent = `✏️ Rinomina "${target.name}"`;
+                label.textContent = 'Nuovo nome categoria';
+                input.placeholder = 'es. FARINE SPECIALI';
+                input.value = target.name;
+            }
+            overlay.classList.add('open');
+            setTimeout(() => {
+                input.focus();
+                input.select();
+            }, 0);
+        }
+
+        function closeCategoryRenameModal(event) {
+            const overlay = document.getElementById('categoryRenameOverlay');
+            if (event && event.target !== overlay) return;
+            if (overlay) overlay.classList.remove('open');
+            pendingCategoryRename = null;
+        }
+
         function renderCategoryManagerList() {
             const list = document.getElementById('categoryManagerList');
             list.innerHTML = productCategories.map((cat, idx) => {
@@ -751,16 +819,42 @@
                 container.innerHTML = '<span style="font-size:12px;color:#6b7280;font-style:italic;">Nessuna sotto-categoria</span>';
                 return;
             }
-            container.innerHTML = subs.map((s, i) => {
-                const idx = `rsub-${cssEscape(cat)}-${i}`;
-                const esc = t => t.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-                return `<span style="display:inline-flex;align-items:center;gap:4px;background:#111827;border:1px solid #374151;border-radius:999px;padding:3px 4px 3px 10px;font-size:12px;color:#e0e0e0;">
-                    ${esc(s)}
-                    <button title="Rimuovi" data-cat="${esc(cat)}" data-sub="${esc(s)}" class="sub-remove-btn" style="background:#7f1d1d;color:#fca5a5;border:none;border-radius:50%;width:18px;height:18px;cursor:pointer;font-size:11px;line-height:1;padding:0;">✕</button>
-                </span>`;
+            const esc = t => t.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            const entries = await Promise.all(subs.map(async sub => ({ sub, groups: await fetchProductGroups(cat, sub) })));
+            container.innerHTML = entries.map(({ sub, groups }) => {
+                const subId = `${cssEscape(cat)}-${cssEscape(sub)}`;
+                const groupHtml = groups.length
+                    ? groups.map(group => `<span style="display:inline-flex;align-items:center;gap:4px;background:#0f172a;border:1px solid #334155;border-radius:999px;padding:3px 4px 3px 10px;font-size:11px;color:#cbd5e1;">
+                        ${esc(group)}
+                        <button title="Rinomina gruppo" data-cat="${esc(cat)}" data-sub="${esc(sub)}" data-group="${esc(group)}" class="group-rename-btn" style="background:#1e3a8a;color:#bfdbfe;border:none;border-radius:50%;width:18px;height:18px;cursor:pointer;font-size:11px;line-height:1;padding:0;">✏️</button>
+                        <button title="Rimuovi gruppo" data-cat="${esc(cat)}" data-sub="${esc(sub)}" data-group="${esc(group)}" class="group-remove-btn" style="background:#7f1d1d;color:#fca5a5;border:none;border-radius:50%;width:18px;height:18px;cursor:pointer;font-size:11px;line-height:1;padding:0;">✕</button>
+                    </span>`).join('')
+                    : '<span style="font-size:11px;color:#64748b;font-style:italic;">Nessun gruppo</span>';
+                return `<div style="background:#111827;border:1px solid #374151;border-radius:8px;padding:8px;display:flex;flex-direction:column;gap:8px;min-width:240px;">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span style="flex:1;font-size:12px;font-weight:700;color:#e5e7eb;">${esc(sub)}</span>
+                        <button title="Rinomina sotto-categoria" data-cat="${esc(cat)}" data-sub="${esc(sub)}" class="sub-rename-btn" style="background:#1e3a8a;color:#bfdbfe;border:none;border-radius:999px;padding:3px 8px;cursor:pointer;font-size:11px;">✏️</button>
+                        <button title="Rimuovi sotto-categoria" data-cat="${esc(cat)}" data-sub="${esc(sub)}" class="sub-remove-btn" style="background:#7f1d1d;color:#fca5a5;border:none;border-radius:999px;padding:3px 8px;cursor:pointer;font-size:11px;">✕</button>
+                    </div>
+                    <div style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.4px;">Gruppi</div>
+                    <div style="display:flex;flex-wrap:wrap;gap:6px;min-height:22px;">${groupHtml}</div>
+                    <div style="display:flex;gap:6px;">
+                        <input type="text" id="newGroup-${subId}" placeholder="es. PIZZA" style="flex:1;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#e0e0e0;padding:6px 8px;font-size:12px;text-transform:uppercase;" onkeydown="if(event.key==='Enter'){event.preventDefault();addProductGroupFromInput('${cat.replace(/'/g, "\\'")}', '${sub.replace(/'/g, "\\'")}');}" oninput="this.value=this.value.replace(/[\x22\x27\x60]/g,'')">
+                        <button class="btn btn-small" style="background:#1d4ed8;color:#fff;padding:0 12px;font-size:12px;" onclick="addProductGroupFromInput('${cat.replace(/'/g, "\\'")}', '${sub.replace(/'/g, "\\'")}')">➕</button>
+                    </div>
+                </div>`;
             }).join('');
             container.querySelectorAll('.sub-remove-btn').forEach(btn => {
                 btn.addEventListener('click', () => removeSubcategory(btn.dataset.cat, btn.dataset.sub));
+            });
+            container.querySelectorAll('.sub-rename-btn').forEach(btn => {
+                btn.addEventListener('click', () => renameSubcategoryItem(btn.dataset.cat, btn.dataset.sub));
+            });
+            container.querySelectorAll('.group-remove-btn').forEach(btn => {
+                btn.addEventListener('click', () => removeProductGroup(btn.dataset.cat, btn.dataset.sub, btn.dataset.group));
+            });
+            container.querySelectorAll('.group-rename-btn').forEach(btn => {
+                btn.addEventListener('click', () => renameProductGroupItem(btn.dataset.cat, btn.dataset.sub, btn.dataset.group));
             });
         }
 
@@ -782,6 +876,7 @@
                 }
                 input.value = '';
                 invalidateSubcategoriesCache(cat);
+                invalidateProductGroupsCache(cat);
                 await renderSubsForCategory(cat);
             } catch (e) {
                 showAlert(`❌ ${e.message}`, 'error');
@@ -811,6 +906,7 @@
                     throw new Error(e.error || `HTTP ${r.status}`);
                 }
                 invalidateSubcategoriesCache(cat);
+                invalidateProductGroupsCache(cat, sub);
                 await renderSubsForCategory(cat);
                 if (force) { await loadWarehouseStatus(); renderProdottiList(); }
             } catch (e) {
@@ -818,16 +914,72 @@
             }
         }
 
-        function deleteCategoryItem(cat) {
-            const usedCount = allArticles.filter(a => (a.category || '').toUpperCase() === cat).length;
-            if (usedCount > 0) {
-                showAlert(`⚠️ La categoria "${cat}" è usata da ${usedCount} prodotti. Cambia prima la categoria dei prodotti.`, 'error');
-                return;
+        async function addProductGroupFromInput(cat, sub) {
+            const input = document.getElementById(`newGroup-${cssEscape(cat)}-${cssEscape(sub)}`);
+            if (!input) return;
+            const raw = (input.value || '').trim();
+            if (!raw) return;
+            if (/["'`]/.test(raw)) { showAlert('❌ Il nome non può contenere virgolette, apici o backtick', 'error'); return; }
+            try {
+                const r = await fetch(`${API_URL}/categories/${encodeURIComponent(cat)}/subcategories/${encodeURIComponent(sub)}/groups`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ name: raw })
+                });
+                if (!r.ok) {
+                    const e = await r.json().catch(()=>({}));
+                    throw new Error(e.error || `HTTP ${r.status}`);
+                }
+                input.value = '';
+                invalidateProductGroupsCache(cat, sub);
+                await renderSubsForCategory(cat);
+            } catch (e) {
+                showAlert(`❌ ${e.message}`, 'error');
             }
+        }
+
+        async function removeProductGroup(cat, sub, group) {
+            const inUse = allArticles.filter(a =>
+                (a.category || '').toUpperCase() === cat.toUpperCase() &&
+                (a.subcategory || '').toUpperCase() === sub.toUpperCase() &&
+                (a.productGroup || '').toUpperCase() === group.toUpperCase()
+            ).length;
+            let force = false;
+            if (inUse > 0) {
+                if (!confirm(`Il gruppo "${group}" è usato da ${inUse} articoli.\nVuoi rimuoverlo comunque (gli articoli resteranno senza gruppo)?`)) return;
+                force = true;
+            } else {
+                if (!confirm(`Rimuovere il gruppo "${group}"?`)) return;
+            }
+            try {
+                const url = `${API_URL}/categories/${encodeURIComponent(cat)}/subcategories/${encodeURIComponent(sub)}/groups/${encodeURIComponent(group)}${force ? '?force=1' : ''}`;
+                const r = await fetch(url, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!r.ok) {
+                    const e = await r.json().catch(()=>({}));
+                    throw new Error(e.error || `HTTP ${r.status}`);
+                }
+                invalidateProductGroupsCache(cat, sub);
+                await renderSubsForCategory(cat);
+                if (force) { await loadWarehouseStatus(); renderProdottiList(); }
+            } catch (e) {
+                showAlert(`❌ ${e.message}`, 'error');
+            }
+        }
+
+        async function deleteCategoryItem(cat) {
+            const usedCount = allArticles.filter(a => (a.category || '').toUpperCase() === cat).length;
+            const force = usedCount > 0;
             const isDefault = DEFAULT_CATEGORIES.includes(cat);
             const msg = isDefault
-                ? `Eliminare la categoria predefinita "${cat}"? Potrai ripristinarla resettando il browser.`
-                : `Eliminare la categoria "${cat}"?`;
+                ? (force
+                    ? `Eliminare la categoria predefinita "${cat}"? Verrà rimossa anche dagli articoli che la usano.`
+                    : `Eliminare la categoria predefinita "${cat}"? Potrai ripristinarla resettando il browser.`)
+                : (force
+                    ? `La categoria "${cat}" è usata da ${usedCount} prodotti. Eliminandola, quei prodotti resteranno senza categoria. Procedere?`
+                    : `Eliminare la categoria "${cat}"?`);
             if (!confirm(msg)) return;
             productCategories = productCategories.filter(c => c !== cat);
             // rimuovi anche meta override se presente
@@ -835,53 +987,167 @@
             saveCategories();
             renderCategoryManagerList();
             refreshCategoryConsumers();
+            try {
+                const token = localStorage.getItem('authToken') || localStorage.getItem('token') || '';
+                const url = `${API_URL}/categories/${encodeURIComponent(cat)}${force ? '?force=1' : ''}`;
+                const r = await fetch(url, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': token ? `Bearer ${token}` : '' }
+                });
+                if (!r.ok) {
+                    const e = await r.json().catch(()=>({}));
+                    throw new Error(e.error || `HTTP ${r.status}`);
+                }
+                if (force) {
+                    await loadWarehouseStatus();
+                }
+            } catch (e) {
+                showAlert(`❌ ${e.message}`, 'error');
+            }
         }
 
         function renameCategoryItem(cat) {
-            const newName = prompt(`Nuovo nome per "${cat}":`, cat);
-            if (!newName) return;
-            const val = newName.trim().toUpperCase();
-            if (!val || val === cat) return;
-            if (productCategories.includes(val)) {
-                showAlert(`⚠️ La categoria "${val}" esiste già`, 'error');
+            openCategoryRenameModal({ type: 'category', name: cat });
+        }
+
+        function renameSubcategoryItem(cat, sub) {
+            openCategoryRenameModal({ type: 'subcategory', category: cat, name: sub });
+        }
+
+        function renameProductGroupItem(cat, sub, group) {
+            openCategoryRenameModal({ type: 'group', category: cat, subcategory: sub, name: group });
+        }
+
+        function confirmCategoryRename() {
+            const target = pendingCategoryRename;
+            if (!target) return;
+            const input = document.getElementById('categoryRenameInput');
+            const newName = (input?.value || '').trim();
+            const val = newName.toUpperCase();
+            if (!val || val === target.name) return;
+
+            if (target.type === 'category') {
+                const cat = target.name;
+                if (productCategories.includes(val)) {
+                    showAlert(`⚠️ La categoria "${val}" esiste già`, 'error');
+                    return;
+                }
+                productCategories = productCategories.map(c => c === cat ? val : c);
+                const meta = getCategoryMeta(cat);
+                categoriesMetaOverrides[val] = { icon: meta.icon, color: meta.color };
+                if (categoriesMetaOverrides[cat]) delete categoriesMetaOverrides[cat];
+                let updatedProducts = 0;
+                allArticles.forEach(a => {
+                    if ((a.category || '').toUpperCase() === cat) {
+                        a.category = val;
+                        updatedProducts++;
+                    }
+                });
+                saveCategories();
+                saveCategoriesMeta();
+                renderCategoryManagerList();
+                refreshCategoryConsumers();
+                closeCategoryRenameModal();
+                (async () => {
+                    try {
+                        const token = localStorage.getItem('authToken') || localStorage.getItem('token') || '';
+                        const r = await fetch('/api/categories/rename', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': token ? `Bearer ${token}` : '' },
+                            body: JSON.stringify({ from: cat, to: val })
+                        });
+                        if (r.ok) {
+                            const data = await r.json();
+                            if (data.articlesUpdated) {
+                                showAlert(`🔁 Sincronizzati ${data.articlesUpdated} articoli sul server`, 'success');
+                            }
+                        }
+                    } catch (_) {}
+                })();
+                showAlert(`✅ Categoria rinominata in "${val}"${updatedProducts ? ` (${updatedProducts} prodotti aggiornati localmente)` : ''}`, 'success');
                 return;
             }
-            // Rinomina nella lista
-            productCategories = productCategories.map(c => c === cat ? val : c);
-            // Sposta il meta override (se c'è) sul nuovo nome
-            const meta = getCategoryMeta(cat);
-            categoriesMetaOverrides[val] = { icon: meta.icon, color: meta.color };
-            if (categoriesMetaOverrides[cat]) delete categoriesMetaOverrides[cat];
-            // Aggiorna i prodotti che usano la vecchia categoria
-            let updatedProducts = 0;
-            allArticles.forEach(a => {
-                if ((a.category || '').toUpperCase() === cat) {
-                    a.category = val;
-                    updatedProducts++;
+
+            if (target.type === 'subcategory') {
+                const cat = String(target.category || '').toUpperCase();
+                const sub = target.name;
+                const exists = (_subcategoriesCache.get(cat) || []).some(s => (s || '').toUpperCase() === val);
+                if (exists) {
+                    showAlert(`⚠️ La sotto-categoria "${val}" esiste già`, 'error');
+                    return;
                 }
-            });
-            saveCategories();
-            saveCategoriesMeta();
-            renderCategoryManagerList();
-            refreshCategoryConsumers();
-            // Propaga la rinomina sul server (aggiorna articoli + lista persistente)
-            (async () => {
-                try {
-                    const token = localStorage.getItem('authToken') || localStorage.getItem('token') || '';
-                    const r = await fetch('/api/categories/rename', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Authorization': token ? `Bearer ${token}` : '' },
-                        body: JSON.stringify({ from: cat, to: val })
-                    });
-                    if (r.ok) {
-                        const data = await r.json();
-                        if (data.articlesUpdated) {
-                            showAlert(`🔁 Sincronizzati ${data.articlesUpdated} articoli sul server`, 'success');
-                        }
+                let updatedProducts = 0;
+                allArticles.forEach(a => {
+                    if ((a.category || '').toUpperCase() === cat && (a.subcategory || '').toUpperCase() === sub) {
+                        a.subcategory = val;
+                        updatedProducts++;
                     }
-                } catch (_) {}
-            })();
-            showAlert(`✅ Categoria rinominata in "${val}"${updatedProducts ? ` (${updatedProducts} prodotti aggiornati localmente)` : ''}`, 'success');
+                });
+                invalidateSubcategoriesCache(cat);
+                invalidateProductGroupsCache(cat, sub);
+                invalidateProductGroupsCache(cat, val);
+                renderCategoryManagerList();
+                refreshCategoryConsumers();
+                closeCategoryRenameModal();
+                (async () => {
+                    try {
+                        const token = localStorage.getItem('authToken') || localStorage.getItem('token') || '';
+                        const r = await fetch(`${API_URL}/categories/${encodeURIComponent(cat)}/subcategories/rename`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': token ? `Bearer ${token}` : '' },
+                            body: JSON.stringify({ from: sub, to: val })
+                        });
+                        if (!r.ok) {
+                            const e = await r.json().catch(()=>({}));
+                            throw new Error(e.error || `HTTP ${r.status}`);
+                        }
+                        const data = await r.json();
+                        if (data.articlesUpdated) showAlert(`🔁 Sincronizzati ${data.articlesUpdated} articoli sul server`, 'success');
+                    } catch (e) { showAlert(`❌ ${e.message}`, 'error'); }
+                })();
+                showAlert(`✅ Sotto-categoria rinominata in "${val}"${updatedProducts ? ` (${updatedProducts} prodotti aggiornati localmente)` : ''}`, 'success');
+                return;
+            }
+
+            if (target.type === 'group') {
+                const cat = String(target.category || '').toUpperCase();
+                const sub = String(target.subcategory || '').toUpperCase();
+                const grp = target.name;
+                const groups = _productGroupsCache.get(getProductGroupsCacheKey(cat, sub)) || [];
+                const exists = groups.some(g => (g || '').toUpperCase() === val);
+                if (exists) {
+                    showAlert(`⚠️ Il gruppo "${val}" esiste già`, 'error');
+                    return;
+                }
+                let updatedProducts = 0;
+                allArticles.forEach(a => {
+                    if ((a.category || '').toUpperCase() === cat && (a.subcategory || '').toUpperCase() === sub && (a.productGroup || '').toUpperCase() === grp) {
+                        a.productGroup = val;
+                        updatedProducts++;
+                    }
+                });
+                invalidateProductGroupsCache(cat, sub);
+                renderCategoryManagerList();
+                refreshCategoryConsumers();
+                closeCategoryRenameModal();
+                (async () => {
+                    try {
+                        const token = localStorage.getItem('authToken') || localStorage.getItem('token') || '';
+                        const r = await fetch(`${API_URL}/categories/${encodeURIComponent(cat)}/subcategories/${encodeURIComponent(sub)}/groups/rename`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': token ? `Bearer ${token}` : '' },
+                            body: JSON.stringify({ from: grp, to: val })
+                        });
+                        if (!r.ok) {
+                            const e = await r.json().catch(()=>({}));
+                            throw new Error(e.error || `HTTP ${r.status}`);
+                        }
+                        const data = await r.json();
+                        if (data.articlesUpdated) showAlert(`🔁 Sincronizzati ${data.articlesUpdated} articoli sul server`, 'success');
+                    } catch (e) { showAlert(`❌ ${e.message}`, 'error'); }
+                })();
+                showAlert(`✅ Gruppo rinominato in "${val}"${updatedProducts ? ` (${updatedProducts} prodotti aggiornati localmente)` : ''}`, 'success');
+            }
         }
 
         // ===== ICON PICKER =====
@@ -1012,7 +1278,7 @@
             document.getElementById('iconPickerOverlay').classList.remove('open');
         }
 
-        function pickIcon(icon) {
+        async function pickIcon(icon) {
             if (!_iconPickerCurrentCat) return;
             const cat = _iconPickerCurrentCat;
             const meta = getCategoryMeta(cat);
@@ -1021,6 +1287,12 @@
             document.getElementById('iconPickerOverlay').classList.remove('open');
             renderCategoryManagerList();
             refreshCategoryConsumers();
+            try {
+                await syncCategoriesToServer();
+            } catch (e) {
+                console.warn('pickIcon syncCategoriesToServer', e);
+                showAlert('⚠️ Icona aggiornata localmente, ma il salvataggio sul server non è riuscito', 'error');
+            }
         }
 
         function addNewCategory() {
@@ -1992,7 +2264,7 @@
         async function loadShelfData() {
             try {
                 const [posResp, entriesResp] = await Promise.all([
-                    fetch(`${API_URL}/inventory/shelf-positions`, { headers: { 'Authorization': `Bearer ${token}` } }),
+                    fetch(`${API_URL}/inventory/shelf-positions?includeInactive=1`, { headers: { 'Authorization': `Bearer ${token}` } }),
                     fetch(`${API_URL}/inventory/shelf-entries`, { headers: { 'Authorization': `Bearer ${token}` } })
                 ]);
                 if (posResp.ok) allShelfPositions = await posResp.json();
@@ -2000,6 +2272,11 @@
             } catch (e) {
                 console.warn('Shelf data not available:', e);
             }
+        }
+
+        function isPositionBlocked(positionCode) {
+            const pos = allShelfPositions.find(p => p.code === positionCode);
+            return !!(pos && pos.isActive === false);
         }
 
         function renderShelfMap(articles, positions) {
@@ -2022,6 +2299,7 @@
                         id: pos.id,
                         code: pos.code,
                         description: pos.description || null,
+                        isActive: pos.isActive !== false,
                         entries: allShelfEntries.filter(e => e.positionCode === pos.code)
                     });
                 });
@@ -2035,6 +2313,7 @@
                         id: allShelfPositions.find(p => p.code === code)?.id || null,
                         code,
                         description: null,
+                        isActive: true,
                         entries: allShelfEntries.filter(e => e.positionCode === code)
                     });
                 });
@@ -2052,21 +2331,34 @@
 
             Object.keys(sectors).sort(naturalCmp).forEach(sector => {
                 const sectorPositions = sectors[sector];
-                const occupied = sectorPositions.filter(p => p.entries.length > 0).length;
+                const occupied = sectorPositions.filter(p => p.isActive !== false && p.entries.length > 0).length;
+                const blockedCount = sectorPositions.filter(p => p.isActive === false).length;
 
                 html += `
                 <div class="shelf-sector-card">
                     <div class="shelf-sector-header collapsed" onclick="toggleSector('${sector}')" id="sector-header-${sector}">
                         <span class="sector-icon">🏗️</span>
                         <span class="sector-name">Settore ${sector}</span>
-                        <span class="sector-count">${occupied}/${sectorPositions.length} occupati</span>
+                        <span class="sector-count">${occupied}/${sectorPositions.length} occupati${blockedCount > 0 ? ` • ${blockedCount} bloccati` : ''}</span>
                         <span class="sector-chevron">▼</span>
                     </div>
                     <div class="shelf-positions-grid" id="sector-grid-${sector}" style="display:none;">
                 `;
 
                 sectorPositions.forEach(pos => {
+                    const isBlocked = pos.isActive === false;
                     const hasEntries = pos.entries.length > 0;
+                    if (isBlocked) {
+                        html += `
+                        <div class="shelf-pos-card blocked" title="Posizione inutilizzabile">
+                            <div class="pos-badge blocked">${pos.code}</div>
+                            ${pos.description ? `<div style="font-size:10px;color:#fca5a5;margin-top:2px;">${pos.description}</div>` : ''}
+                            <div class="pos-empty-label blocked">⛔ INUTILIZZABILE</div>
+                            <div style="font-size:11px;color:#fca5a5;margin-top:4px;">Posizione bloccata</div>
+                        </div>`;
+                        return;
+                    }
+
                     if (!hasEntries) {
                         html += `
                         <div class="shelf-pos-card empty" onclick="openShelfEntryModal('${pos.code}', null)" ondragover="onPosDragOver(event)" ondragleave="onPosDragLeave(event)" ondrop="onPosDrop(event, '${pos.code}')">
@@ -2184,6 +2476,10 @@
             if (card) card.classList.remove('drag-over');
 
             if (!draggedEntryId || targetPosCode === draggedFromPos) return;
+            if (isPositionBlocked(targetPosCode)) {
+                showAlert(`⛔ Posizione ${targetPosCode} bloccata (inutilizzabile)`, 'error');
+                return;
+            }
 
             const entry = allShelfEntries.find(en => en.id === draggedEntryId);
             if (!entry) return;
@@ -2255,6 +2551,7 @@
             sel.innerHTML = '<option value="">-- Seleziona destinazione --</option>';
             allShelfPositions.slice().sort((a,b) => a.code.localeCompare(b.code, undefined, { numeric: true, sensitivity: 'base' })).forEach(p => {
                 if (p.code === entry.positionCode) return;
+                if (p.isActive === false) return;
                 sel.innerHTML += `<option value="${p.code}">${p.code}${p.description ? ' — ' + p.description : ''}</option>`;
             });
             if (preselectedPos) sel.value = preselectedPos;
@@ -2283,6 +2580,7 @@
             const errEl = document.getElementById('copyEntryError');
 
             if (!positionCode) { errEl.textContent = 'Seleziona una posizione di destinazione'; errEl.style.display = 'block'; return; }
+            if (isPositionBlocked(positionCode)) { errEl.textContent = `La posizione ${positionCode} è bloccata`; errEl.style.display = 'block'; return; }
             if (qty <= 0) { errEl.textContent = 'La quantità deve essere > 0'; errEl.style.display = 'block'; return; }
 
             errEl.style.display = 'none';
@@ -2589,6 +2887,10 @@
         let shelfEntryTargetPos = null;
 
         function openShelfEntryModal(positionCode, entryId, preselectedArticleId) {
+            if (positionCode && isPositionBlocked(positionCode)) {
+                showAlert(`⛔ Posizione ${positionCode} bloccata (inutilizzabile)`, 'error');
+                return;
+            }
             shelfEntryTargetPos = positionCode;
             document.getElementById('shelfEntryPosCode').textContent = positionCode || '';
             document.getElementById('shelfEntryId').value = entryId || '';
@@ -2601,6 +2903,7 @@
             const posSelect = document.getElementById('shelfEntryPosSelect');
             posSelect.innerHTML = '<option value="">-- Seleziona posizione --</option>';
             allShelfPositions.slice().sort((a,b) => a.code.localeCompare(b.code, undefined, { numeric: true, sensitivity: 'base' })).forEach(pos => {
+                if (pos.isActive === false) return;
                 const opt = document.createElement('option');
                 opt.value = pos.code;
                 opt.textContent = pos.description ? `${pos.code} — ${pos.description}` : pos.code;
@@ -2676,6 +2979,7 @@
             const btn = document.getElementById('shelfEntryConfirmBtn');
 
             if (!positionCode) { errEl.textContent = 'Seleziona una posizione'; errEl.style.display = 'block'; return; }
+            if (isPositionBlocked(positionCode)) { errEl.textContent = `La posizione ${positionCode} è bloccata`; errEl.style.display = 'block'; return; }
 
             btn.disabled = true;
             const prevText = stayOpen ? '+ Aggiungi altro' : '✓ Salva e chiudi';
@@ -2793,6 +3097,7 @@
                         <th style="text-align:center;padding:6px 8px;">kg/collo</th>
                         <th style="text-align:left;padding:6px 8px;">Categoria</th>
                         <th style="text-align:left;padding:6px 8px;">Sotto-cat.</th>
+                        <th style="text-align:left;padding:6px 8px;">Gruppo</th>
                         <th style="text-align:center;padding:6px 8px;color:#fb923c;" title="Soglia avviso (in colli): scatta lo stato 'In esaurimento'">⚠️ Avviso</th>
                         <th style="text-align:center;padding:6px 8px;color:#ef4444;" title="Soglia critica (in colli): scatta lo stato 'Critico'">🚨 Critica</th>
                         <th style="text-align:right;padding:6px 8px;">Azioni</th>
@@ -2806,7 +3111,8 @@
                         <td style="padding:4px 8px;"><input id="pin-name-${a.id}" value="${(a.name||'').replace(/"/g,'&quot;')}" style="background:#1f2937;border:1px solid #374151;border-radius:5px;color:#e0e0e0;padding:4px 8px;width:100%;font-size:13px;" onkeydown="if(event.key==='Enter')saveInlineArticle(${a.id});else if(event.key==='Escape')renderProdottiList();"></td>
                         <td style="padding:4px 8px;text-align:center;"><input id="pin-wpu-${a.id}" type="number" value="${getWeightPerUnit(a)}" min="0.01" step="0.01" style="background:#1f2937;border:1px solid #374151;border-radius:5px;color:#4ade80;padding:4px 6px;width:64px;font-size:13px;text-align:center;" onkeydown="if(event.key==='Enter')saveInlineArticle(${a.id});else if(event.key==='Escape')renderProdottiList();"></td>
                         <td style="padding:4px 8px;"><select id="pin-cat-${a.id}" onchange="onInlineCatChange(${a.id})" style="background:#1f2937;border:1px solid #374151;border-radius:5px;color:#9ca3af;padding:4px 8px;width:100%;font-size:13px;">${getCategorySelectHtml(a.category)}</select></td>
-                        <td style="padding:4px 8px;"><select id="pin-sub-${a.id}" style="background:#1f2937;border:1px solid #374151;border-radius:5px;color:#9ca3af;padding:4px 6px;width:100%;font-size:12px;"><option value="">— nessuna —</option>${a.subcategory ? `<option value="${(a.subcategory||'').replace(/"/g,'&quot;')}" selected>${a.subcategory}</option>` : ''}</select></td>
+                        <td style="padding:4px 8px;"><select id="pin-sub-${a.id}" onchange="onInlineSubChange(${a.id})" style="background:#1f2937;border:1px solid #374151;border-radius:5px;color:#9ca3af;padding:4px 6px;width:100%;font-size:12px;"><option value="">— nessuna —</option>${a.subcategory ? `<option value="${(a.subcategory||'').replace(/"/g,'&quot;')}" selected>${a.subcategory}</option>` : ''}</select></td>
+                        <td style="padding:4px 8px;"><select id="pin-group-${a.id}" style="background:#1f2937;border:1px solid #374151;border-radius:5px;color:#9ca3af;padding:4px 6px;width:100%;font-size:12px;"><option value="">— nessuno —</option>${a.productGroup ? `<option value="${(a.productGroup||'').replace(/"/g,'&quot;')}" selected>${a.productGroup}</option>` : ''}</select></td>
                         <td style="padding:4px 8px;text-align:center;"><input id="pin-min-${a.id}" type="number" value="${minS}" min="0" step="1" placeholder="0" style="background:#1f2937;border:1px solid #fb923c33;border-radius:5px;color:#fb923c;padding:4px 6px;width:64px;font-size:13px;text-align:center;font-weight:700;" onkeydown="if(event.key==='Enter')saveInlineArticle(${a.id});else if(event.key==='Escape')renderProdottiList();"></td>
                         <td style="padding:4px 8px;text-align:center;"><input id="pin-crit-${a.id}" type="number" value="${critS}" min="0" step="1" placeholder="0" style="background:#1f2937;border:1px solid #ef444433;border-radius:5px;color:#ef4444;padding:4px 6px;width:64px;font-size:13px;text-align:center;font-weight:700;" onkeydown="if(event.key==='Enter')saveInlineArticle(${a.id});else if(event.key==='Escape')renderProdottiList();"></td>
                         <td style="padding:4px 8px;text-align:right;white-space:nowrap;">
@@ -2823,8 +3129,10 @@
         async function onInlineCatChange(id) {
             const catSel = document.getElementById(`pin-cat-${id}`);
             const subSel = document.getElementById(`pin-sub-${id}`);
-            if (!catSel || !subSel) return;
+            const groupSel = document.getElementById(`pin-group-${id}`);
+            if (!catSel || !subSel || !groupSel) return;
             subSel.innerHTML = '<option value="">— nessuna —</option>';
+            groupSel.innerHTML = '<option value="">— nessuno —</option>';
             const cat = catSel.value.trim();
             if (cat) {
                 const subs = await fetchSubcategories(cat);
@@ -2836,12 +3144,40 @@
             }
         }
 
+        async function onInlineSubChange(id) {
+            const catSel = document.getElementById(`pin-cat-${id}`);
+            const subSel = document.getElementById(`pin-sub-${id}`);
+            const groupSel = document.getElementById(`pin-group-${id}`);
+            if (!catSel || !subSel || !groupSel) return;
+            groupSel.innerHTML = '<option value="">— nessuno —</option>';
+            const cat = catSel.value.trim();
+            const sub = subSel.value.trim();
+            if (cat && sub) {
+                const groups = await fetchProductGroups(cat, sub);
+                for (const group of groups) {
+                    const opt = document.createElement('option');
+                    opt.value = group;
+                    opt.textContent = group;
+                    groupSel.appendChild(opt);
+                }
+            }
+        }
+
         async function populateInlineSubSelects(articles) {
             const cats = [...new Set(articles.map(a => (a.category||'').trim().toUpperCase()).filter(c => c))];
             await Promise.all(cats.map(c => fetchSubcategories(c)));
+            const groupKeys = [...new Set(articles
+                .map(a => `${(a.category || '').trim().toUpperCase()}::${(a.subcategory || '').trim().toUpperCase()}`)
+                .filter(key => key !== '::' && !key.endsWith('::'))
+            )];
+            await Promise.all(groupKeys.map(key => {
+                const [cat, sub] = key.split('::');
+                return fetchProductGroups(cat, sub);
+            }));
             for (const a of articles) {
                 const subSel = document.getElementById(`pin-sub-${a.id}`);
-                if (!subSel) continue;
+                const groupSel = document.getElementById(`pin-group-${a.id}`);
+                if (!subSel || !groupSel) continue;
                 const cat = (a.category||'').trim().toUpperCase();
                 const subs = _subcategoriesCache.get(cat) || [];
                 const cur = (a.subcategory||'').trim().toUpperCase();
@@ -2854,6 +3190,18 @@
                     opts.push(`<option value="${cur.replace(/"/g,'&quot;')}" selected>${cur} (legacy)</option>`);
                 }
                 subSel.innerHTML = opts.join('');
+
+                const groups = cur ? (_productGroupsCache.get(getProductGroupsCacheKey(cat, cur)) || []) : [];
+                const curGroup = (a.productGroup || '').trim().toUpperCase();
+                const groupOpts = ['<option value="">— nessuno —</option>'];
+                for (const group of groups) {
+                    const value = group.replace(/"/g, '&quot;');
+                    groupOpts.push(`<option value="${value}"${curGroup && curGroup === group.toUpperCase() ? ' selected' : ''}>${value}</option>`);
+                }
+                if (curGroup && !groups.some(group => group.toUpperCase() === curGroup)) {
+                    groupOpts.push(`<option value="${curGroup.replace(/"/g,'&quot;')}" selected>${curGroup} (legacy)</option>`);
+                }
+                groupSel.innerHTML = groupOpts.join('');
             }
         }
 
@@ -2865,6 +3213,7 @@
             const wpu  = parseFloat(document.getElementById(`pin-wpu-${id}`)?.value) || 1;
             const cat  = document.getElementById(`pin-cat-${id}`)?.value.trim();
             const sub  = document.getElementById(`pin-sub-${id}`)?.value.trim() || null;
+            const group = document.getElementById(`pin-group-${id}`)?.value.trim() || null;
             const minS = parseInt(document.getElementById(`pin-min-${id}`)?.value) || 0;
             const critS = parseInt(document.getElementById(`pin-crit-${id}`)?.value) || 0;
             if (!code) { showAlert('❌ Il codice è obbligatorio', 'error'); return; }
@@ -2876,7 +3225,7 @@
                 const resp = await fetch(`${API_URL}/inventory/articles/${id}`, {
                     method: 'PUT',
                     headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ code, name, category: cat || null, subcategory: sub, unit: a.unit || 'kg', weightPerUnit: wpu, barcode: a.barcode || null, description: a.description || null })
+                    body: JSON.stringify({ code, name, category: cat || null, subcategory: sub, productGroup: group, unit: a.unit || 'kg', weightPerUnit: wpu, barcode: a.barcode || null, description: a.description || null })
                 });
                 if (!resp.ok) { const e = await resp.json().catch(()=>{}); throw new Error(e?.error || `HTTP ${resp.status}`); }
                 // Aggiorna soglie (sempre, anche se 0 per disattivare)
@@ -2896,7 +3245,7 @@
             }
         }
 
-        function openArticleModal(articleId) {
+        async function openArticleModal(articleId) {
             const isNew = !articleId;
             document.getElementById('articleModalTitle').textContent = isNew ? '📦 Nuovo Articolo' : '✏️ Modifica Articolo';
             document.getElementById('articleModalId').value = articleId || '';
@@ -2912,6 +3261,7 @@
                 document.getElementById('artName').value = '';
                 catSel.value = '';
                 document.getElementById('artSubcategory').innerHTML = '<option value="">— nessuna —</option>';
+                document.getElementById('artProductGroup').innerHTML = '<option value="">— nessuno —</option>';
                 document.getElementById('artUnit').value = 'kg';
                 document.getElementById('artWeightPerUnit').value = '1';
                 document.getElementById('artBarcode').value = '';
@@ -2928,6 +3278,9 @@
                 document.getElementById('artSubcategory').innerHTML =
                     '<option value="">— nessuna —</option>' +
                     (a.subcategory ? `<option value="${(a.subcategory||'').replace(/"/g,'&quot;')}" selected>${a.subcategory}</option>` : '');
+                document.getElementById('artProductGroup').innerHTML =
+                    '<option value="">— nessuno —</option>' +
+                    (a.productGroup ? `<option value="${(a.productGroup||'').replace(/"/g,'&quot;')}" selected>${a.productGroup}</option>` : '');
                 document.getElementById('artUnit').value = a.unit || 'kg';
                 document.getElementById('artWeightPerUnit').value = getWeightPerUnit(a);
                 document.getElementById('artBarcode').value = a.barcode || '';
@@ -2937,7 +3290,9 @@
             }
             // popola select sottocategorie per la categoria scelta (preserva sub corrente se in lista)
             const currentSub = (allArticles.find(x => x.id === articleId)?.subcategory) || '';
-            loadSubcategoriesForArt(catSel.value, currentSub);
+            const currentGroup = (allArticles.find(x => x.id === articleId)?.productGroup) || '';
+            await loadSubcategoriesForArt(catSel.value, currentSub);
+            await loadProductGroupsForArt(catSel.value, currentSub, currentGroup);
             document.getElementById('articleModalOverlay').classList.add('open');
         }
 
@@ -2961,6 +3316,38 @@
             const key = (categoryName || '').trim().toUpperCase();
             if (key) _subcategoriesCache.delete(key);
         }
+        function getProductGroupsCacheKey(categoryName, subcategoryName) {
+            return `${(categoryName || '').trim().toUpperCase()}::${(subcategoryName || '').trim().toUpperCase()}`;
+        }
+        const _productGroupsCache = new Map();
+        async function fetchProductGroups(categoryName, subcategoryName) {
+            const catKey = (categoryName || '').trim().toUpperCase();
+            const subKey = (subcategoryName || '').trim().toUpperCase();
+            if (!catKey || !subKey) return [];
+            const cacheKey = getProductGroupsCacheKey(catKey, subKey);
+            if (_productGroupsCache.has(cacheKey)) return _productGroupsCache.get(cacheKey);
+            let groups = [];
+            try {
+                const resp = await fetch(`${API_URL}/categories/${encodeURIComponent(catKey)}/subcategories/${encodeURIComponent(subKey)}/groups`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                groups = resp.ok ? await resp.json() : [];
+            } catch { groups = []; }
+            _productGroupsCache.set(cacheKey, groups);
+            return groups;
+        }
+        function invalidateProductGroupsCache(categoryName, subcategoryName) {
+            const catKey = (categoryName || '').trim().toUpperCase();
+            const subKey = (subcategoryName || '').trim().toUpperCase();
+            if (!catKey) return;
+            if (!subKey) {
+                for (const key of [..._productGroupsCache.keys()]) {
+                    if (key.startsWith(`${catKey}::`)) _productGroupsCache.delete(key);
+                }
+                return;
+            }
+            _productGroupsCache.delete(getProductGroupsCacheKey(catKey, subKey));
+        }
         async function loadSubcategoriesForArt(categoryName, currentValue) {
             const sel = document.getElementById('artSubcategory');
             if (!sel) return;
@@ -2979,10 +3366,39 @@
             sel.innerHTML = opts.join('');
         }
 
-        function onArtCategoryChange() {
+        async function loadProductGroupsForArt(categoryName, subcategoryName, currentValue) {
+            const sel = document.getElementById('artProductGroup');
+            if (!sel) return;
+            const cur = (currentValue != null ? currentValue : sel.value || '').toString().trim().toUpperCase();
+            const catKey = (categoryName || '').trim().toUpperCase();
+            const subKey = (subcategoryName || '').trim().toUpperCase();
+            if (!catKey || !subKey) {
+                sel.innerHTML = '<option value="">— nessuno —</option>';
+                return;
+            }
+            const groups = await fetchProductGroups(catKey, subKey);
+            const opts = ['<option value="">— nessuno —</option>'];
+            for (const group of groups) {
+                const value = group.replace(/"/g, '&quot;');
+                opts.push(`<option value="${value}"${cur === group.toUpperCase() ? ' selected' : ''}>${value}</option>`);
+            }
+            if (cur && !groups.some(group => group.toUpperCase() === cur)) {
+                opts.push(`<option value="${cur}" selected>${cur} (legacy)</option>`);
+            }
+            sel.innerHTML = opts.join('');
+        }
+
+        async function onArtCategoryChange() {
             const cat = document.getElementById('artCategory').value;
             // azzera sub quando cambio categoria
-            loadSubcategoriesForArt(cat, '');
+            await loadSubcategoriesForArt(cat, '');
+            await loadProductGroupsForArt(cat, '', '');
+        }
+
+        async function onArtSubcategoryChange() {
+            const cat = document.getElementById('artCategory').value;
+            const sub = document.getElementById('artSubcategory').value;
+            await loadProductGroupsForArt(cat, sub, '');
         }
 
         function closeArticleModal(event) {
@@ -3013,6 +3429,7 @@
                 description: document.getElementById('artDescription').value.trim() || null,
                 category: document.getElementById('artCategory').value.trim() || null,
                 subcategory: document.getElementById('artSubcategory').value.trim() || null,
+                productGroup: document.getElementById('artProductGroup').value.trim() || null,
                 unit: document.getElementById('artUnit').value.trim() || 'kg',
                 weightPerUnit: parseFloat(document.getElementById('artWeightPerUnit').value) || 1,
                 barcode: document.getElementById('artBarcode').value.trim() || null
@@ -3100,9 +3517,10 @@
             container.innerHTML = `
                 <div style="display:flex;flex-wrap:wrap;gap:8px;">
                     ${sorted.map(p => `
-                    <div style="display:flex;align-items:center;gap:6px;background:#1e293b;border-radius:8px;padding:6px 10px;border:1px solid #334155;">
-                        <span class="pos-badge" style="margin:0;cursor:pointer;" onclick="openEditPosModal(${p.id})" title="Clicca per modificare">${p.code}</span>
+                    <div style="display:flex;align-items:center;gap:6px;background:#1e293b;border-radius:8px;padding:6px 10px;border:1px solid ${p.isActive === false ? '#7f1d1d' : '#334155'};">
+                        <span class="pos-badge" style="margin:0;cursor:pointer;${p.isActive === false ? 'background:rgba(220,38,38,0.2);color:#fca5a5;' : ''}" onclick="openEditPosModal(${p.id})" title="Clicca per modificare">${p.code}</span>
                         ${p.description ? `<span style="font-size:12px;color:#9ca3af;cursor:pointer;" onclick="openEditPosModal(${p.id})">${p.description}</span>` : ''}
+                        ${p.isActive === false ? `<span style="font-size:11px;color:#fca5a5;background:rgba(220,38,38,0.15);border:1px solid rgba(220,38,38,0.35);padding:1px 6px;border-radius:999px;">inutilizzabile</span>` : ''}
                         <button onclick="deletePosConfirm(${p.id},'${(p.code||'').replace(/'/g,"\\'")}') " style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:14px;padding:0 2px;">✕</button>
                     </div>`).join('')}
                 </div>`;
@@ -3169,6 +3587,7 @@
                 .join('');
 
             document.getElementById('editPosDesc').value = pos.description || '';
+            document.getElementById('editPosBlocked').checked = pos.isActive === false;
             const errEl = document.getElementById('editPosError');
             if (errEl) errEl.style.display = 'none';
             document.getElementById('editPosConfirmBtn').disabled = false;
@@ -3182,6 +3601,11 @@
 
         function _renderEditPosEntries(posCode) {
             const list = document.getElementById('editPosEntriesList');
+            const isBlocked = isPositionBlocked(posCode);
+            if (isBlocked) {
+                list.innerHTML = '<div style="color:#fca5a5;font-size:13px;padding:8px 0;">⛔ Posizione bloccata: non è possibile aggiungere o modificare prodotti.</div>';
+                return;
+            }
             const entries = allShelfEntries.filter(e => e.positionCode === posCode);
             if (!entries.length) {
                 list.innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:8px 0;">Nessun prodotto in questa posizione</div>';
@@ -3240,6 +3664,10 @@
             // Close editPos modal and open shelfEntry modal for this position (create mode)
             const sel = document.getElementById('editPosCode');
             const posCode = sel.options[sel.selectedIndex]?.dataset.code || sel.value;
+            if (isPositionBlocked(posCode)) {
+                showAlert(`⛔ Posizione ${posCode} bloccata (inutilizzabile)`, 'error');
+                return;
+            }
             document.getElementById('editPosOverlay').classList.remove('open');
             openShelfEntryModal(posCode, null);
         }
@@ -3260,6 +3688,7 @@
             const sel = document.getElementById('editPosCode');
             const code = sel.options[sel.selectedIndex]?.dataset.code || '';
             const description = document.getElementById('editPosDesc').value.trim() || null;
+            const isBlocked = !!document.getElementById('editPosBlocked').checked;
             const errEl = document.getElementById('editPosError');
             if (!code) { errEl.textContent = 'Il codice posizione è obbligatorio'; errEl.style.display = 'block'; return; }
             const btn = document.getElementById('editPosConfirmBtn');
@@ -3271,11 +3700,11 @@
                 const resp = await fetch(`${API_URL}/inventory/shelf-positions/${id}`, {
                     method: 'PUT',
                     headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ code, description })
+                    body: JSON.stringify({ code, description, isActive: !isBlocked })
                 });
                 if (!resp.ok) { const e = await resp.json().catch(()=>{}); throw new Error(e?.error || `HTTP ${resp.status}`); }
                 document.getElementById('editPosOverlay').classList.remove('open');
-                showAlert(`✅ Posizione ${code} aggiornata`, 'success');
+                showAlert(`✅ Posizione ${code} ${isBlocked ? 'bloccata (inutilizzabile)' : 'aggiornata'}`, 'success');
                 await loadShelfData();
                 document.getElementById('posizioniCount').textContent = allShelfPositions.length;
                 if (posizioniExpanded) renderPosizioniList();
@@ -3355,7 +3784,7 @@
             const list = avCurrentAlerts.filter(a => {
                 if (lvl && a.level !== lvl) return false;
                 if (!q) return true;
-                return [a.name, a.code, a.category].filter(Boolean).join(' ').toLowerCase().includes(q);
+                return [a.name, a.code, a.category, a.subcategory, a.productGroup].filter(Boolean).join(' ').toLowerCase().includes(q);
             });
             if (list.length === 0) {
                 wrap.innerHTML = '<div class="av-empty"><div class="big-icon">✅</div>Nessun avviso</div>';
@@ -3385,7 +3814,12 @@
                     </td>
                     <td data-label="Articolo">
                         <div style="font-weight:600;">${avEscapeHtml(a.name || '–')}</div>
-                        <div style="font-size:12px;color:#9ca3af;">${avEscapeHtml(a.code || '')} ${a.category ? '· '+avEscapeHtml(a.category) : ''}</div>
+                        <div style="font-size:12px;color:#9ca3af;">${[
+                            avEscapeHtml(a.code || ''),
+                            a.category ? avEscapeHtml(a.category) : '',
+                            a.subcategory ? avEscapeHtml(a.subcategory) : '',
+                            a.productGroup ? avEscapeHtml(a.productGroup) : ''
+                        ].filter(Boolean).join(' · ')}</div>
                     </td>
                     <td data-label="Giacenza">
                         <div><span class="av-stock-now ${available === 0 ? 'zero' : ''}">${available}</span><span style="color:#9ca3af;font-size:12px;"> disp.</span></div>
@@ -3474,6 +3908,8 @@
                 `Articolo: ${a.name}\n` +
                 `Codice: ${a.code}\n` +
                 `Categoria: ${a.category || '–'}\n` +
+                `Sotto-categoria: ${a.subcategory || '–'}\n` +
+                `Gruppo: ${a.productGroup || '–'}\n` +
                 `Quantità da riordinare: ${qty} colli\n` +
                 `Giacenza attuale: ${a.currentStock} colli\n` +
                 `Soglia avviso: ${a.minimumStock || 0} · Soglia critica: ${a.criticalStock || 0}` +
@@ -3724,7 +4160,7 @@
                 const art = allArticles.find(a => a.id === e.articleId) || {};
                 return {
                     position: e.positionCode, code: art.code || '', name: art.name || '–',
-                    category: art.category || '–', quantity: e.quantity, unit: art.unit || 'pz',
+                    category: art.category || '–', subcategory: art.subcategory || '–', productGroup: art.productGroup || '–', quantity: e.quantity, unit: art.unit || 'pz',
                     batch: e.batch || '', expiry: e.expiry || '', notes: e.notes || ''
                 };
             });
@@ -3743,7 +4179,7 @@
                 const entries = allShelfEntries.filter(e => e.articleId === a.id);
                 return {
                     position: entries.map(e => e.positionCode).join(', ') || '–',
-                    code: a.code || '', name: a.name || '–', category: a.category || '–',
+                    code: a.code || '', name: a.name || '–', category: a.category || '–', subcategory: a.subcategory || '–', productGroup: a.productGroup || '–',
                     quantity: a.inventory?.currentStock || 0, unit: a.unit || 'pz',
                     batch: a.inventory?.batch || '', expiry: a.inventory?.expiry || '', notes: a.inventory?.notes || ''
                 };
@@ -3766,7 +4202,7 @@
         const mainTitle    = titleInput || 'Inventario Magazzino';
 
         const tableRows = rows.map(r => `<tr>
-            <td>${r.position}</td><td>${r.code}</td><td>${r.name}</td><td>${r.category}</td>
+            <td>${r.position}</td><td>${r.code}</td><td>${r.name}</td><td>${r.category}</td><td>${r.subcategory}</td><td>${r.productGroup}</td>
             <td style="text-align:right;font-weight:600;">${r.quantity} ${r.unit}</td>
             <td>${r.batch}</td><td>${r.expiry}</td><td>${r.notes}</td>
         </tr>`).join('');
@@ -3776,7 +4212,7 @@
         <h1>🏭 ${mainTitle}</h1>
         <div class="sub">Data: ${today} &nbsp;|&nbsp; Filtro: ${filterLabels[filter]} &nbsp;|&nbsp; Ordine: ${sortLabels[sort]} &nbsp;|&nbsp; Formato: ${format === 'per_position' ? 'per posizione' : 'per articolo'} &nbsp;|&nbsp; ${rows.length} righe</div>
         <table><thead><tr>
-            <th>Posizione</th><th>Codice</th><th>Nome Articolo</th><th>Categoria</th>
+            <th>Posizione</th><th>Codice</th><th>Nome Articolo</th><th>Categoria</th><th>Sotto-cat.</th><th>Gruppo</th>
             <th>Quantità</th><th>Lotto</th><th>Scadenza</th><th>Note</th>
         </tr></thead><tbody>${tableRows}</tbody></table>
         <div class="foot">Molino Briganti – ${today} – ${rows.length} voci</div>

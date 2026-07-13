@@ -371,7 +371,7 @@
         // Filter by search
         let filtered = searchTerm
             ? valid.filter(a => {
-                const text = `${a.name} ${a.code} ${a.category || ''}`.toLowerCase();
+                const text = `${a.name} ${a.code} ${a.category || ''} ${a.subcategory || ''} ${a.productGroup || ''}`.toLowerCase();
                 const entries = allShelfEntries.filter(e => e.articleId === a.id);
                 const posText = entries.map(e => e.positionCode).join(' ').toLowerCase();
                 return text.includes(searchTerm) || posText.includes(searchTerm);
@@ -419,6 +419,7 @@
                 const totalQty = entries.reduce((s, e) => s + (e.quantity || 0), 0);
                 const totalKg = calcKg(totalQty, art);
                 const positions = entries.map(e => e.positionCode).join(', ') || '—';
+                const taxonomy = [getArticleCategory(art), art.subcategory, art.productGroup].filter(Boolean).join(' · ');
                 const minS = (art.inventory && art.inventory.minimumStock) || 0;
                 const critS = (art.inventory && art.inventory.criticalStock) || 0;
                 let qtyClass;
@@ -436,6 +437,7 @@
                     <div class="product-info">
                         <div class="product-name">${art.name || '—'}</div>
                         <div class="product-code">${art.code || '—'} · 📍 ${positions}</div>
+                        ${taxonomy ? `<div class="product-code" style="font-size:11px;color:#93c5fd;">🏷️ ${taxonomy}</div>` : ''}
                         ${sogliaInfo}
                     </div>
                     <div class="product-stock">

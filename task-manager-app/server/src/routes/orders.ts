@@ -227,8 +227,20 @@ router.post('/:id/complete', async (req: Request, res: Response) => {
     for (const product of products) {
       const code = product?.code || product?.product;
       const quantityKg = Number(product?.quantity || 0);
+      const expectedPositionCode = String(product?.shelfPosition || product?.positionCode || '').trim();
+      const expectedBatch = String(product?.batch || '').trim();
       if (!code || !Number.isFinite(quantityKg) || quantityKg <= 0) {
         continue;
+      }
+
+      if (!expectedPositionCode) {
+        return res.status(409).json({
+          error: `Mismatch prenotazione per ${code}: posizione non presente nella riga ordine`,
+          flowId,
+          orderId,
+          code,
+          quantityKg,
+        });
       }
 
       const article = await prisma.article.findFirst({
@@ -250,6 +262,9 @@ router.post('/:id/complete', async (req: Request, res: Response) => {
       const weightPerUnit = article.weightPerUnit || 1;
       const colliDemand = Math.ceil(quantityKg / weightPerUnit);
       const realShelfStock = article.shelfEntries.reduce((sum, entry) => sum + (entry.quantity || 0), 0);
+      const strictShelfStock = article.shelfEntries
+        .filter((entry) => entry.positionCode === expectedPositionCode && (!expectedBatch || (entry.batch || '') === expectedBatch))
+        .reduce((sum, entry) => sum + (entry.quantity || 0), 0);
       if (realShelfStock < colliDemand) {
         return res.status(409).json({
           error: `Stock insufficiente per ${code}: scaffale=${realShelfStock}, richiesti=${colliDemand}`,
@@ -259,6 +274,20 @@ router.post('/:id/complete', async (req: Request, res: Response) => {
           quantityKg,
           colliDemand,
           realShelfStock,
+        });
+      }
+
+      if (strictShelfStock < colliDemand) {
+        return res.status(409).json({
+          error: `Mismatch prenotazione per ${code}: posizione=${expectedPositionCode}, lotto=${expectedBatch || 'N/D'}, disponibili=${strictShelfStock}, richiesti=${colliDemand}`,
+          flowId,
+          orderId,
+          code,
+          quantityKg,
+          colliDemand,
+          expectedPositionCode,
+          expectedBatch: expectedBatch || null,
+          strictShelfStock,
         });
       }
 
@@ -285,6 +314,8 @@ router.post('/:id/complete', async (req: Request, res: Response) => {
     for (const product of products) {
       const code = product?.code || product?.product;
       const quantityKg = Number(product?.quantity || 0);
+      const expectedPositionCode = String(product?.shelfPosition || product?.positionCode || '').trim();
+      const expectedBatch = String(product?.batch || '').trim();
       if (!code || !Number.isFinite(quantityKg) || quantityKg <= 0) {
         continue;
       }
@@ -295,6 +326,10 @@ router.post('/:id/complete', async (req: Request, res: Response) => {
         orderId,
         tripId: order.tripId ?? null,
         source: 'order.complete',
+        orderType: order.type ?? null,
+        strictLocation: true,
+        expectedPositionCode,
+        expectedBatch: expectedBatch || null,
       });
       consumeOk++;
     }

@@ -474,87 +474,107 @@ router.post('/:id/complete', async (req: Request, res: Response) => {
       });
     }
 
-    const aggregateDemand = new Map<string, { quantityKg: number; colliDemand: number; orderIds: number[] }>();
+    const validationRows: Array<{
+      orderId: number;
+      code: string;
+      quantityKg: number;
+      colliDemand: number;
+      expectedPositionCode: string;
+      expectedBatch: string | null;
+      strictShelfStock: number;
+      realShelfStock: number;
+      inventoryStock: number;
+      reservedKg: number;
+    }> = [];
 
     for (const order of pendingOrders) {
       const products = parseTripOrderProducts(order.products);
       for (const product of products) {
         const code = product?.code || product?.product;
         const quantityKg = Number(product?.quantity || 0);
+        const expectedPositionCode = String(product?.shelfPosition || product?.positionCode || '').trim();
+        const expectedBatch = String(product?.batch || '').trim();
         if (!code || !Number.isFinite(quantityKg) || quantityKg <= 0) {
           continue;
         }
 
-        const article = await prisma.article.findFirst({ where: { code } });
-        const weightPerUnit = article?.weightPerUnit || 1;
-        const colliDemand = Math.ceil(quantityKg / weightPerUnit);
-        const existing = aggregateDemand.get(code);
-        if (existing) {
-          existing.quantityKg += quantityKg;
-          existing.colliDemand += colliDemand;
-          existing.orderIds.push(order.id);
-        } else {
-          aggregateDemand.set(code, {
+        if (!expectedPositionCode) {
+          return res.status(409).json({
+            error: `Mismatch prenotazione per ${code}: posizione non presente nella riga ordine`,
+            flowId,
+            tripId,
+            orderId: order.id,
+            code,
             quantityKg,
-            colliDemand,
-            orderIds: [order.id]
           });
         }
-      }
-    }
 
-    const validationRows: Array<{
-      code: string;
-      quantityKg: number;
-      colliDemand: number;
-      realShelfStock: number;
-      inventoryStock: number;
-      reservedKg: number;
-      orderIds: number[];
-    }> = [];
+        const article = await prisma.article.findFirst({
+          where: { code },
+          include: {
+            inventory: true,
+            shelfEntries: { orderBy: { id: 'asc' } }
+          }
+        });
 
-    for (const [code, demand] of aggregateDemand.entries()) {
-      const article = await prisma.article.findFirst({
-        where: { code },
-        include: {
-          inventory: true,
-          shelfEntries: { orderBy: { id: 'asc' } }
+        if (!article || !article.inventory) {
+          return res.status(409).json({
+            error: `Articolo ${code} non trovato o senza inventario`,
+            flowId,
+            tripId,
+            orderId: order.id,
+            code,
+          });
         }
-      });
 
-      if (!article || !article.inventory) {
-        return res.status(409).json({
-          error: `Articolo ${code} non trovato o senza inventario`,
-          flowId,
-          tripId,
-          code,
-          orderIds: demand.orderIds,
-        });
-      }
+        const weightPerUnit = article.weightPerUnit || 1;
+        const colliDemand = Math.ceil(quantityKg / weightPerUnit);
+        const realShelfStock = article.shelfEntries.reduce((sum, entry) => sum + (entry.quantity || 0), 0);
+        const strictShelfStock = article.shelfEntries
+          .filter((entry) => entry.positionCode === expectedPositionCode && (!expectedBatch || (entry.batch || '') === expectedBatch))
+          .reduce((sum, entry) => sum + (entry.quantity || 0), 0);
 
-      const realShelfStock = article.shelfEntries.reduce((sum, entry) => sum + (entry.quantity || 0), 0);
-      if (realShelfStock < demand.colliDemand) {
-        return res.status(409).json({
-          error: `Stock insufficiente per ${code}: scaffale=${realShelfStock}, richiesti=${demand.colliDemand}`,
-          flowId,
-          tripId,
+        if (realShelfStock < colliDemand) {
+          return res.status(409).json({
+            error: `Stock insufficiente per ${code}: scaffale=${realShelfStock}, richiesti=${colliDemand}`,
+            flowId,
+            tripId,
+            orderId: order.id,
+            code,
+            quantityKg,
+            colliDemand,
+            realShelfStock,
+          });
+        }
+
+        if (strictShelfStock < colliDemand) {
+          return res.status(409).json({
+            error: `Mismatch prenotazione per ${code}: posizione=${expectedPositionCode}, lotto=${expectedBatch || 'N/D'}, disponibili=${strictShelfStock}, richiesti=${colliDemand}`,
+            flowId,
+            tripId,
+            orderId: order.id,
+            code,
+            quantityKg,
+            colliDemand,
+            expectedPositionCode,
+            expectedBatch: expectedBatch || null,
+            strictShelfStock,
+          });
+        }
+
+        validationRows.push({
+          orderId: order.id,
           code,
-          quantityKg: demand.quantityKg,
-          colliDemand: demand.colliDemand,
+          quantityKg,
+          colliDemand,
+          expectedPositionCode,
+          expectedBatch: expectedBatch || null,
+          strictShelfStock,
           realShelfStock,
-          orderIds: demand.orderIds,
+          inventoryStock: article.inventory.currentStock || 0,
+          reservedKg: article.inventory.reserved || 0,
         });
       }
-
-      validationRows.push({
-        code,
-        quantityKg: demand.quantityKg,
-        colliDemand: demand.colliDemand,
-        realShelfStock,
-        inventoryStock: article.inventory.currentStock || 0,
-        reservedKg: article.inventory.reserved || 0,
-        orderIds: demand.orderIds,
-      });
     }
 
     console.log('🔎 [DIAG][TRIP_COMPLETE_VALIDATE]', {
@@ -581,6 +601,10 @@ router.post('/:id/complete', async (req: Request, res: Response) => {
           orderId: order.id,
           tripId,
           source: 'trip.complete',
+          orderType: order.type ?? null,
+          strictLocation: true,
+          expectedPositionCode: String(product?.shelfPosition || product?.positionCode || '').trim(),
+          expectedBatch: String(product?.batch || '').trim() || null,
         });
         consumeOk++;
       }

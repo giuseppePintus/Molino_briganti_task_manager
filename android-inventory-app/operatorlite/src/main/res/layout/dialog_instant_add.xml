@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="12dp"
+    android:background="#0f172a">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:paddingRight="8dp">
+
+            <TextView
+                android:id="@+id/txtDialogProduct"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="#ffffff"
+                android:textStyle="bold"
+                android:textSize="22sp"
+                android:text="Prodotto" />
+
+            <TextView
+                android:id="@+id/txtDialogCode"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textColor="#f59e0b"
+                android:textSize="17sp"
+                android:text="Codice" />
+
+            <TextView
+                android:id="@+id/txtSelectedQty"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:textColor="#ffffff"
+                android:textStyle="bold"
+                android:textSize="17sp"
+                android:text="Target: 0 colli • Selezionati: 0 colli • Mancano: 0 colli" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="220dp"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#1f2937"
+            android:padding="8dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="#d1d5db"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:text="Quantità (colli)" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btnQty1"
+                    android:layout_width="0dp"
+                    android:layout_height="64dp"
+                    android:layout_weight="1"
+                    android:text="1"
+                    android:textColor="#ffffff"
+                    android:textSize="20sp"
+                    android:background="@drawable/bg_toolbar_button_dark" />
+
+                <Button
+                    android:id="@+id/btnQty2"
+                    android:layout_width="0dp"
+                    android:layout_height="64dp"
+                    android:layout_weight="1"
+                    android:layout_marginLeft="6dp"
+                    android:text="2"
+                    android:textColor="#ffffff"
+                    android:textSize="20sp"
+                    android:background="@drawable/bg_toolbar_button_dark" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btnQty5"
+                    android:layout_width="0dp"
+                    android:layout_height="64dp"
+                    android:layout_weight="1"
+                    android:text="5"
+                    android:textColor="#ffffff"
+                    android:textSize="20sp"
+                    android:background="@drawable/bg_toolbar_button_dark" />
+
+                <Button
+                    android:id="@+id/btnQty10"
+                    android:layout_width="0dp"
+                    android:layout_height="64dp"
+                    android:layout_weight="1"
+                    android:layout_marginLeft="6dp"
+                    android:text="10"
+                    android:textColor="#ffffff"
+                    android:textSize="20sp"
+                    android:background="@drawable/bg_toolbar_button_dark" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:textColor="#d1d5db"
+        android:textSize="17sp"
+        android:text="Posizione scaffale" />
+
+    <ListView
+        android:id="@+id/listDialogEntries"
+        android:layout_width="match_parent"
+        android:layout_height="260dp"
+        android:layout_marginTop="6dp"
+        android:divider="#3d3d3d"
+        android:dividerHeight="1dp"
+        android:background="#1f2937"
+        android:listSelector="#334155" />
+
+    <TextView
+        android:id="@+id/txtAllocationList"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:textColor="#d1d5db"
+        android:textSize="17sp"
+        android:text="Nessun prelievo selezionato" />
+</LinearLayout>
