@@ -5,6 +5,7 @@
     return {
       businessName: 'Molino Briganti',
       logoUrl: 'images/logo INSEGNA.png',
+      operatorAutoLogoutMinutes: 15,
       openingDays: [1,2,3,4,5,6],
       openMorningStart: '08:00', openMorningEnd: '13:00',
       openAfternoonStart: '15:00', openAfternoonEnd: '18:00',

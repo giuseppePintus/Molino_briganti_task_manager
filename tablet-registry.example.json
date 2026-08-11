@@ -1,0 +1,18 @@
+{
+  "tablets": [
+    {
+      "name": "tablet-1",
+      "mac": "AA:BB:CC:DD:EE:01",
+      "shadowIp": "192.168.1.101",
+      "prodIp": "192.168.1.201",
+      "enabled": true
+    },
+    {
+      "name": "tablet-2",
+      "mac": "AA:BB:CC:DD:EE:02",
+      "shadowIp": "192.168.1.102",
+      "prodIp": "192.168.1.202",
+      "enabled": true
+    }
+  ]
+}

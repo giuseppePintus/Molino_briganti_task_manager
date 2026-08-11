@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y \
     python3-pip \
     make \
     g++ \
+  adb \
     libcairo2-dev \
     libpango1.0-dev \
     libjpeg-dev \

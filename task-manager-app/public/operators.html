@@ -32,6 +32,20 @@
         <!-- Alert -->
         <div id="alert" class="alert"></div>
 
+        <div class="card">
+            <h2>⏱ Auto Logout Operatori</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="operatorAutoLogoutMinutes">Timeout inattività (minuti)</label>
+                    <input type="number" id="operatorAutoLogoutMinutes" min="1" step="1" placeholder="es. 15">
+                </div>
+                <div class="form-group" style="display:flex;align-items:flex-end;">
+                    <button type="button" class="btn btn-success" data-icon="💾" onclick="saveOperatorAutoLogout()"><span>Salva<br>Timeout</span></button>
+                </div>
+            </div>
+            <div style="font-size:12px;color:#9ca3af;line-height:1.4;">Il valore viene salvato nelle company settings e letto da Operator Lite su shadow 5001.</div>
+        </div>
+
         <!-- Create Operator/Admin Section -->
         <div class="card">
             <h2>➕ Crea Nuovo Operatore / Admin</h2>
@@ -152,10 +166,44 @@
             
             // Load branding
             if (window.SettingsUtils && window.SettingsUtils.loadAndApplyBranding) {
-                await window.SettingsUtils.loadAndApplyBranding();
+                const settings = await window.SettingsUtils.loadAndApplyBranding();
+                var minutes = parseInt((settings && (settings.operatorAutoLogoutMinutes ?? settings.autoLogoutMinutes)) || '15', 10);
+                if (!minutes || minutes < 1) minutes = 15;
+                document.getElementById('operatorAutoLogoutMinutes').value = minutes;
             }
             loadOperators();
         });
+
+        async function saveOperatorAutoLogout() {
+            var input = document.getElementById('operatorAutoLogoutMinutes');
+            var minutes = parseInt((input && input.value) || '15', 10);
+            if (!minutes || minutes < 1) {
+                showAlert('Inserisci un timeout valido in minuti', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/settings/company`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ operatorAutoLogoutMinutes: minutes })
+                });
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message || 'Errore nel salvataggio');
+
+                const cached = JSON.parse(localStorage.getItem('companySettings') || '{}');
+                cached.operatorAutoLogoutMinutes = minutes;
+                localStorage.setItem('companySettings', JSON.stringify(cached));
+
+                showAlert('Timeout auto logout salvato con successo', 'success');
+            } catch (error) {
+                showAlert('Errore: ' + error.message, 'error');
+            }
+        }
 
         async function loadOperators() {
             try {

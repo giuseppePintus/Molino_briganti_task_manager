@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestione Aggiornamenti Tablet - Molino Briganti</title>
+    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/common-styles.css">
+    <link rel="stylesheet" href="css/tablet-deploy-management.css">
+    <script src="js/settings-utils.js"></script>
+    <script src="js/auth-guard.js"></script>
+    <script src="js/scroll-preserve.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-left">
+                <div class="header-logo">
+                    <img src="images/logo INSEGNA.png" alt="Molino Briganti Logo">
+                </div>
+                <div class="header-title">
+                    <h1>📲 Gestione Aggiornamenti Tablet</h1>
+                    <div class="user-info" id="userInfo"></div>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-settings" onclick="window.location.href='admin-dashboard.html'">🏠 Home</button>
+            </div>
+        </div>
+
+        <div id="alert" class="alert"></div>
+
+        <div class="card">
+            <h2>🧩 Registro Tablet</h2>
+            <div class="grid-three">
+                <div class="form-group">
+                    <label for="tabletName">Nome tablet *</label>
+                    <input type="text" id="tabletName" placeholder="es. reparto-a-01">
+                </div>
+                <div class="form-group">
+                    <label for="tabletMac">MAC address</label>
+                    <input type="text" id="tabletMac" placeholder="AA:BB:CC:DD:EE:FF">
+                </div>
+                <div class="form-group">
+                    <label for="tabletEnabled">Abilitato</label>
+                    <div>
+                        <input type="checkbox" id="tabletEnabled" checked>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid-two">
+                <div class="form-group">
+                    <label for="tabletShadowIp">IP shadow (5001)</label>
+                    <input type="text" id="tabletShadowIp" placeholder="192.168.1.101">
+                </div>
+                <div class="form-group">
+                    <label for="tabletProdIp">IP prod (5000)</label>
+                    <input type="text" id="tabletProdIp" placeholder="192.168.1.201">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="tabletNote">Note</label>
+                <input type="text" id="tabletNote" placeholder="es. linea impasti, lato nord">
+            </div>
+
+            <div class="deploy-toolbar">
+                <button class="btn btn-primary" id="saveTabletBtn">Aggiungi Tablet</button>
+                <button class="btn btn-secondary" id="clearTabletBtn">Pulisci Form</button>
+                <button class="btn btn-secondary" id="exportRegistryBtn">Esporta JSON</button>
+                <label class="btn btn-secondary" for="importRegistryInput">Importa JSON</label>
+                <input id="importRegistryInput" type="file" accept="application/json" style="display:none;">
+                <button class="btn btn-secondary" id="refreshRuntimeBtn">Aggiorna Stato Reale</button>
+            </div>
+
+            <p class="small-note">Suggerito: blocca gli IP dal router con prenotazione DHCP su MAC per evitare cambi continui.</p>
+
+            <div class="table-wrapper">
+                <table class="tablets-table">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>MAC</th>
+                            <th>IP Shadow</th>
+                            <th>IP Prod</th>
+                            <th>Stato</th>
+                            <th>Note</th>
+                            <th>Deploy</th>
+                            <th>Modifica</th>
+                            <th>Rimuovi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabletsTbody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>📦 Upload APK Operator Lite</h2>
+            <div class="grid-two">
+                <div class="form-group">
+                    <label for="apkUploadFile">Seleziona APK</label>
+                    <input type="file" id="apkUploadFile" accept=".apk,application/vnd.android.package-archive">
+                </div>
+                <div class="form-group">
+                    <label for="apkServerUrl">URL APK sul server</label>
+                    <input type="text" id="apkServerUrl" readonly placeholder="/uploads/apk-...apk">
+                </div>
+            </div>
+
+            <div class="action-row">
+                <button class="btn btn-primary" id="uploadApkBtn">Carica APK</button>
+            </div>
+
+            <h3>APK caricati</h3>
+            <ul id="apkList"></ul>
+
+            <div class="form-group">
+                <label for="apkDeployFileSelect">APK per installazione rapida</label>
+                <select id="apkDeployFileSelect"></select>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>🚀 Comandi Deploy suggeriti</h2>
+            <div class="grid-two">
+                <div class="form-group">
+                    <label for="targetEnvironment">Ambiente target</label>
+                    <select id="targetEnvironment">
+                        <option value="shadow">shadow (test su 5001)</option>
+                        <option value="prod">prod (produzione su 5000)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="apkPathInput">Path APK locale (script PS1)</label>
+                    <input type="text" id="apkPathInput" value=".\\android-inventory-app\\operatorlite\\build\\outputs\\apk\\debug\\OperatorLite-v1.0.0-debug.apk">
+                </div>
+            </div>
+
+            <textarea class="command-box" id="commandsBox" readonly></textarea>
+
+            <div class="action-row">
+                <button class="btn btn-secondary" id="copyCommandsBtn">Copia comandi</button>
+            </div>
+
+            <p class="small-note">Questa pagina genera i comandi. L'esecuzione avviene dal terminale PowerShell locale.</p>
+        </div>
+    </div>
+
+    <script src="js/user-info-badge.js"></script>
+    <script src="js/tablet-deploy-management.js"></script>
+</body>
+</html>

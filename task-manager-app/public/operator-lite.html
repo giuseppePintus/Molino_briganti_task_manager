@@ -53,7 +53,7 @@
                 </div>
                 <div class="logout-section">
                     <button class="logout-btn" onclick="handleLogout()">🚪 Esci</button>
-                    <span id="logoutCountdown" class="header-meta-hidden">Logout: 1:40</span>
+                    <span id="logoutCountdown">Logout: 15:00</span>
                 </div>
             </div>
             <div class="clear"></div>
@@ -229,10 +229,23 @@
         var inactivityTimeout = null;
         var countdownInterval = null;
         var visibleCountdownInterval = null;
-        var logoutTimeRemaining = 100; // secondi totali (90s inattività + 10s countdown)
-        var isCountdownActive = false;
-        var INACTIVITY_TIME = 90000; // 1.5 minuti di inattività
-        var COUNTDOWN_TIME = 10; // 10 secondi di countdown prima del logout
+        var autoLogoutMinutes = 15;
+        var autoLogoutTotalSeconds = 900;
+        var logoutTimeRemaining = autoLogoutTotalSeconds;
+
+        function applyAutoLogoutSettings(settings) {
+            var configuredMinutes = 15;
+            if (settings && settings.operatorAutoLogoutMinutes !== undefined && settings.operatorAutoLogoutMinutes !== null && settings.operatorAutoLogoutMinutes !== '') {
+                configuredMinutes = parseInt(settings.operatorAutoLogoutMinutes, 10);
+            } else if (settings && settings.autoLogoutMinutes !== undefined && settings.autoLogoutMinutes !== null && settings.autoLogoutMinutes !== '') {
+                configuredMinutes = parseInt(settings.autoLogoutMinutes, 10);
+            }
+            if (!configuredMinutes || configuredMinutes < 1) configuredMinutes = 15;
+            autoLogoutMinutes = configuredMinutes;
+            autoLogoutTotalSeconds = Math.max(60, autoLogoutMinutes * 60);
+            logoutTimeRemaining = autoLogoutTotalSeconds;
+            updateVisibleCountdown();
+        }
         
         // Carica impostazioni aziendali (logo e nome) - OTTIMIZZATO con cache base64
         function loadCompanySettings() {
@@ -259,6 +272,10 @@
                             // Salva in localStorage per prossimo caricamento veloce
                             localStorage.setItem('companySettings', JSON.stringify(settings));
                             applyCompanyBranding(settings);
+                            applyAutoLogoutSettings(settings);
+                            if (token && currentUser && document.getElementById('dashboardSection') && document.getElementById('dashboardSection').style.display === 'block') {
+                                startInactivityTimer();
+                            }
                             // Cache il logo come base64 per caricamento istantaneo
                             cacheLogoAsBase64(settings);
                         } catch(e) {
@@ -2019,12 +2036,11 @@
         
         // Inactivity timer
         function startInactivityTimer() {
-            isCountdownActive = false;
-            logoutTimeRemaining = 100; // Reset a 1:40 (90s + 10s)
+            stopInactivityTimer();
+            logoutTimeRemaining = autoLogoutTotalSeconds;
             updateVisibleCountdown();
             
             // Avvia countdown visibile ogni secondo
-            if (visibleCountdownInterval) clearInterval(visibleCountdownInterval);
             visibleCountdownInterval = setInterval(function() {
                 if (logoutTimeRemaining > 0) {
                     logoutTimeRemaining--;
@@ -2048,7 +2064,6 @@
             if (inactivityTimeout) clearTimeout(inactivityTimeout);
             if (countdownInterval) clearInterval(countdownInterval);
             if (visibleCountdownInterval) clearInterval(visibleCountdownInterval);
-            isCountdownActive = false;
             document.removeEventListener('touchstart', onUserActivity, true);
             document.removeEventListener('touchmove', onUserActivity, true);
             document.removeEventListener('click', onUserActivity, true);
@@ -2058,7 +2073,7 @@
         
         function onUserActivity() {
             // Reset countdown al tocco
-            logoutTimeRemaining = 100; // Reset a 1:40
+            logoutTimeRemaining = autoLogoutTotalSeconds;
             updateVisibleCountdown();
         }
         

@@ -10,6 +10,10 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.InputType;
+import android.text.SpannableStringBuilder;
+import android.text.Spanned;
+import android.text.style.RelativeSizeSpan;
+import android.text.style.StyleSpan;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -22,6 +26,7 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.GridLayout;
+import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.ScrollView;
@@ -86,6 +91,22 @@ public class MainActivity extends Activity {
             }
         }
     };
+    private final Runnable autoLogoutRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (token == null || token.trim().isEmpty() || dashboardSection == null || dashboardSection.getVisibility() != View.VISIBLE) {
+                return;
+            }
+
+            if (logoutTimeRemaining > 0) {
+                logoutTimeRemaining--;
+                updateVisibleCountdown();
+                uiHandler.postDelayed(this, 1000L);
+            } else {
+                handleLogout();
+            }
+        }
+    };
 
     private View loginSection;
     private View dashboardSection;
@@ -105,6 +126,8 @@ public class MainActivity extends Activity {
     private Button btnLogout;
     private Button btnWarehouseProductsView;
     private Button btnWarehouseShelvesView;
+    private Button btnWarehouseShelvesTestView;
+    private TextView txtLogoutCountdown;
     private Button btnSectorA;
     private Button btnSectorB;
     private Button btnSectorC;
@@ -169,6 +192,8 @@ public class MainActivity extends Activity {
     private volatile String lastTasksFingerprint = "";
     private volatile boolean forceInstantRefresh = true;
     private volatile boolean forceTasksRefresh = true;
+    private int logoutTimeRemaining = 15 * 60;
+    private volatile int configuredLogoutMinutes = 15;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -181,6 +206,7 @@ public class MainActivity extends Activity {
         loadApiTargetPreference();
         bindViews();
         bindActions();
+        loadCompanySettings();
         showLoginScreen();
         hideKeyboard();
         loadOperators();
@@ -217,6 +243,12 @@ public class MainActivity extends Activity {
         stopAutoRefresh();
     }
 
+    @Override
+    public void onUserInteraction() {
+        super.onUserInteraction();
+        onUserActivity();
+    }
+
     private void bindViews() {
         loginSection = findViewById(R.id.loginSection);
         dashboardSection = findViewById(R.id.dashboardSection);
@@ -230,12 +262,14 @@ public class MainActivity extends Activity {
         btnLoginRefresh = (Button) findViewById(R.id.btnLoginRefresh);
         txtLoginStatus = (TextView) findViewById(R.id.txtLoginStatus);
         txtCurrentOperator = (TextView) findViewById(R.id.txtCurrentOperator);
+        txtLogoutCountdown = (TextView) findViewById(R.id.txtLogoutCountdown);
         btnTasks = (Button) findViewById(R.id.btnTasks);
         btnInstant = (Button) findViewById(R.id.btnInstant);
         btnWarehouse = (Button) findViewById(R.id.btnWarehouse);
         btnLogout = (Button) findViewById(R.id.btnLogout);
         btnWarehouseProductsView = (Button) findViewById(R.id.btnWarehouseProductsView);
         btnWarehouseShelvesView = (Button) findViewById(R.id.btnWarehouseShelvesView);
+        btnWarehouseShelvesTestView = (Button) findViewById(R.id.btnWarehouseShelvesTestView);
         btnSectorA = (Button) findViewById(R.id.btnSectorA);
         btnSectorB = (Button) findViewById(R.id.btnSectorB);
         btnSectorC = (Button) findViewById(R.id.btnSectorC);
@@ -287,6 +321,7 @@ public class MainActivity extends Activity {
         warehouseProductsList.setAdapter(warehouseProductsAdapter);
 
         updateApiTargetToggleLabel();
+        updateVisibleCountdown();
     }
 
     private void bindActions() {
@@ -375,6 +410,17 @@ public class MainActivity extends Activity {
                 renderWarehouseSection();
             }
         });
+
+        if (btnWarehouseShelvesTestView != null) {
+            btnWarehouseShelvesTestView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    warehouseViewMode = "shelves_test";
+                    expandedWarehouseSector = null;
+                    renderWarehouseSection();
+                }
+            });
+        }
 
         btnSectorA.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -678,10 +724,12 @@ public class MainActivity extends Activity {
 
     private void showLoginScreen() {
         stopAutoRefresh();
+        stopAutoLogoutTimer();
         if (loginSection != null) loginSection.setVisibility(View.VISIBLE);
         if (dashboardSection != null) dashboardSection.setVisibility(View.GONE);
         updateApiTargetToggleLabel();
         if (txtCurrentOperator != null) txtCurrentOperator.setText("Operatore");
+        updateVisibleCountdown();
         if (adminPasswordInput != null) adminPasswordInput.clearFocus();
         if (loginSection != null) loginSection.requestFocus();
         hideKeyboard();
@@ -694,8 +742,9 @@ public class MainActivity extends Activity {
     private void loadApiTargetPreference() {
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         String savedPort = prefs.getString(PREF_API_PORT, API_PORT_SHADOW);
-        if (!API_PORT_PROD.equals(savedPort) && !API_PORT_SHADOW.equals(savedPort)) {
+        if (!API_PORT_SHADOW.equals(savedPort)) {
             savedPort = API_PORT_SHADOW;
+            prefs.edit().putString(PREF_API_PORT, savedPort).apply();
         }
         apiPort = savedPort;
         API_URL = buildApiUrl();
@@ -736,6 +785,8 @@ public class MainActivity extends Activity {
         applyModuleLayout();
         setStatus("");
         refreshProductsUi();
+        loadCompanySettings();
+        startAutoLogoutTimer();
         startAutoRefresh();
     }
 
@@ -762,6 +813,9 @@ public class MainActivity extends Activity {
         }
         if (btnWarehouseShelvesView != null) {
             btnWarehouseShelvesView.setBackgroundResource("shelves".equals(warehouseViewMode) ? R.drawable.bg_toolbar_button_orange : R.drawable.bg_toolbar_button_dark);
+        }
+        if (btnWarehouseShelvesTestView != null) {
+            btnWarehouseShelvesTestView.setBackgroundResource("shelves_test".equals(warehouseViewMode) ? R.drawable.bg_toolbar_button_orange : R.drawable.bg_toolbar_button_dark);
         }
         if (btnSectorA != null) btnSectorA.setBackgroundResource("A".equals(warehouseSectionCode) ? R.drawable.bg_toolbar_button_orange : R.drawable.bg_toolbar_button_dark);
         if (btnSectorB != null) btnSectorB.setBackgroundResource("B".equals(warehouseSectionCode) ? R.drawable.bg_toolbar_button_orange : R.drawable.bg_toolbar_button_dark);
@@ -792,6 +846,7 @@ public class MainActivity extends Activity {
     }
 
     private void handleLogout() {
+        stopAutoLogoutTimer();
         stopAutoRefresh();
         token = null;
         currentUserId = -1;
@@ -819,6 +874,74 @@ public class MainActivity extends Activity {
         refreshProductsUi();
         showLoginScreen();
         loadOperators();
+    }
+
+    private void startAutoLogoutTimer() {
+        stopAutoLogoutTimer();
+        logoutTimeRemaining = Math.max(1, configuredLogoutMinutes) * 60;
+        updateVisibleCountdown();
+        uiHandler.postDelayed(autoLogoutRunnable, 1000L);
+    }
+
+    private void stopAutoLogoutTimer() {
+        uiHandler.removeCallbacks(autoLogoutRunnable);
+    }
+
+    private void updateVisibleCountdown() {
+        if (txtLogoutCountdown == null) return;
+        int mins = Math.max(0, logoutTimeRemaining / 60);
+        int secs = Math.max(0, logoutTimeRemaining % 60);
+        txtLogoutCountdown.setText(String.format(Locale.ROOT, "Logout: %d:%02d", mins, secs));
+
+        if (logoutTimeRemaining <= 10) {
+            txtLogoutCountdown.setTextColor(0xFFDC2626);
+        } else if (logoutTimeRemaining <= 30) {
+            txtLogoutCountdown.setTextColor(0xFFF59E0B);
+        } else {
+            txtLogoutCountdown.setTextColor(0xFF22C55E);
+        }
+    }
+
+    private void onUserActivity() {
+        if (token == null || token.trim().isEmpty()) return;
+        if (dashboardSection == null || dashboardSection.getVisibility() != View.VISIBLE) return;
+        logoutTimeRemaining = Math.max(1, configuredLogoutMinutes) * 60;
+        updateVisibleCountdown();
+    }
+
+    private void loadCompanySettings() {
+        runInBackground(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    String content = httpRequest(API_URL + "/settings/company", "GET", null, null);
+                    JSONObject settings = new JSONObject(content);
+                    int minutes = settings.optInt("operatorAutoLogoutMinutes", settings.optInt("autoLogoutMinutes", 15));
+                    if (minutes < 1) minutes = 15;
+
+                    final int resolvedMinutes = minutes;
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            configuredLogoutMinutes = resolvedMinutes;
+                            if (dashboardSection != null && dashboardSection.getVisibility() == View.VISIBLE && token != null && !token.trim().isEmpty()) {
+                                startAutoLogoutTimer();
+                            }
+                        }
+                    });
+                } catch (final Exception ex) {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            configuredLogoutMinutes = 15;
+                            if (dashboardSection != null && dashboardSection.getVisibility() == View.VISIBLE && token != null && !token.trim().isEmpty()) {
+                                updateVisibleCountdown();
+                            }
+                        }
+                    });
+                }
+            }
+        });
     }
 
     private void loadInstantData() {
@@ -1432,7 +1555,7 @@ public class MainActivity extends Activity {
                 productBtn.setMinHeight(dp(82));
                 productBtn.setMinimumHeight(dp(82));
                 productBtn.setPadding(dp(16), dp(12), dp(16), dp(12));
-                productBtn.setText(getCategoryIcon(row.category) + " " + row.name + "\n" + row.code + " • " + row.total + " colli");
+                productBtn.setText(buildInstantProductButtonText(row));
 
                 productBtn.setOnClickListener(new View.OnClickListener() {
                     @Override
@@ -1446,6 +1569,19 @@ public class MainActivity extends Activity {
         }
 
         instantProductsScroll.setVisibility(View.VISIBLE);
+    }
+
+    private CharSequence buildInstantProductButtonText(ProductRow row) {
+        String nameLine = getCategoryIcon(row.category) + " " + row.name;
+        String detailsLine = row.code + " • " + row.total + " colli";
+
+        SpannableStringBuilder text = new SpannableStringBuilder();
+        text.append(nameLine);
+        text.setSpan(new StyleSpan(Typeface.BOLD), 0, nameLine.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        text.setSpan(new RelativeSizeSpan(1.22f), 0, nameLine.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        text.append("\n");
+        text.append(detailsLine);
+        return text;
     }
 
     private void hideKeyboard() {
@@ -1839,6 +1975,466 @@ public class MainActivity extends Activity {
         return card;
     }
 
+    private View buildWarehouseShelfTestCell(final String posCode, final String description, final List<WarehouseEntryItem> items) {
+        final int cellWidth = dp(347);
+        final int cellHeight = dp(297);
+
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(14), dp(18), dp(14), dp(16));
+
+        boolean occupied = items != null && !items.isEmpty();
+        card.setBackgroundDrawable(roundedDrawable(0xFF1F2937, occupied ? 0xFF22C55E : 0xFF64748B, 2, 7));
+        card.setMinimumWidth(cellWidth);
+        card.setMinimumHeight(cellHeight);
+        card.setWeightSum(3f);
+
+        TextView code = new TextView(this);
+        code.setText(posCode == null ? "-" : posCode);
+        code.setTextColor(0xFFBFDBFE);
+        code.setTextSize(27f);
+        code.setTypeface(Typeface.DEFAULT_BOLD);
+        code.setPadding(0, 0, 0, dp(6));
+        LinearLayout.LayoutParams codeLp = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            0,
+            1.0f
+        );
+        code.setLayoutParams(codeLp);
+        card.addView(code);
+
+        LinearLayout centerBlock = new LinearLayout(this);
+        centerBlock.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams centerLp = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            0,
+            2.2f
+        );
+        centerBlock.setLayoutParams(centerLp);
+
+        if (!occupied) {
+            TextView empty = new TextView(this);
+            empty.setText("Posizione vuota");
+            empty.setTextColor(0xFF94A3B8);
+            empty.setTextSize(18f);
+            empty.setPadding(0, dp(10), 0, dp(6));
+            centerBlock.addView(empty);
+        } else {
+            if (items.size() >= 3) {
+                ScrollView productScroll = new ScrollView(this);
+                productScroll.setVerticalScrollBarEnabled(false);
+                productScroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
+                LinearLayout.LayoutParams scrollLp = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    0,
+                    1.0f
+                );
+                scrollLp.setMargins(0, dp(4), 0, dp(0));
+                productScroll.setLayoutParams(scrollLp);
+
+                final LinearLayout productList = new LinearLayout(this);
+                productList.setOrientation(LinearLayout.VERTICAL);
+                productList.setPadding(0, 0, 0, dp(2));
+                productScroll.addView(productList, new ScrollView.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                ));
+
+                for (int i = 0; i < items.size(); i++) {
+                    WarehouseEntryItem it = items.get(i);
+                    productList.addView(buildShelfTestProductRow(it));
+                }
+
+                productScroll.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
+                    @Override
+                    public void onViewAttachedToWindow(View v) {
+                        startShelfTestVerticalAutoScroll(productScroll);
+                    }
+
+                    @Override
+                    public void onViewDetachedFromWindow(View v) {
+                        uiHandler.removeCallbacks((Runnable) productScroll.getTag());
+                        productScroll.setTag(null);
+                    }
+                });
+
+                centerBlock.addView(productScroll);
+            } else {
+                for (int i = 0; i < items.size(); i++) {
+                    centerBlock.addView(buildShelfTestProductRow(items.get(i)));
+                }
+            }
+        }
+
+        card.addView(centerBlock);
+
+        card.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showWarehouseShelfTestDetailsDialog(posCode, description, items);
+            }
+        });
+
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(330), dp(198));
+        lp.setMargins(0, 0, dp(8), dp(8));
+        card.setLayoutParams(lp);
+        return card;
+    }
+
+    private View buildShelfTestProductRow(WarehouseEntryItem it) {
+        LinearLayout productRow = new LinearLayout(this);
+        productRow.setOrientation(LinearLayout.HORIZONTAL);
+        productRow.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams productRowLp = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        productRowLp.setMargins(0, 0, 0, dp(6));
+        productRow.setLayoutParams(productRowLp);
+
+        TextView line = new TextView(this);
+        line.setText(it == null || it.articleName == null ? "Articolo" : it.articleName);
+        line.setTextColor(0xFFFFFFFF);
+        line.setTextSize(18f);
+        line.setTypeface(Typeface.DEFAULT_BOLD);
+        line.setSingleLine(true);
+        line.setEllipsize(android.text.TextUtils.TruncateAt.MARQUEE);
+        line.setMarqueeRepeatLimit(-1);
+        line.setHorizontallyScrolling(true);
+        line.setSelected(true);
+        LinearLayout.LayoutParams lineLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        line.setLayoutParams(lineLp);
+        productRow.addView(line);
+
+        TextView amount = new TextView(this);
+        amount.setText(String.valueOf(Math.max(0, it == null ? 0 : it.availableQuantity)));
+        amount.setTextColor(0xFFF8FAFC);
+        amount.setTextSize(17f);
+        amount.setTypeface(Typeface.DEFAULT_BOLD);
+        amount.setGravity(Gravity.CENTER);
+        amount.setPadding(dp(12), dp(6), dp(12), dp(6));
+        amount.setBackgroundDrawable(roundedDrawable(0xFF0F766E, 0x00000000, 0, 5));
+        productRow.addView(amount);
+
+        return productRow;
+    }
+
+    private void startShelfTestVerticalAutoScroll(final ScrollView productScroll) {
+        if (productScroll == null) return;
+
+        final Runnable[] ticker = new Runnable[1];
+        ticker[0] = new Runnable() {
+            private boolean movingDown = true;
+
+            @Override
+            public void run() {
+                if (productScroll.getParent() == null) return;
+
+                View child = productScroll.getChildAt(0);
+                if (child == null) return;
+
+                int maxScroll = Math.max(0, child.getHeight() - productScroll.getHeight());
+                if (maxScroll <= 0) return;
+
+                int currentY = productScroll.getScrollY();
+                if (movingDown) {
+                    currentY += dp(18);
+                    if (currentY >= maxScroll) {
+                        currentY = maxScroll;
+                        movingDown = false;
+                    }
+                } else {
+                    currentY -= dp(18);
+                    if (currentY <= 0) {
+                        currentY = 0;
+                        movingDown = true;
+                    }
+                }
+
+                productScroll.smoothScrollTo(0, currentY);
+                uiHandler.postDelayed(this, 1200L);
+            }
+        };
+
+        productScroll.setTag(ticker[0]);
+        uiHandler.removeCallbacks(ticker[0]);
+        uiHandler.postDelayed(ticker[0], 1500L);
+    }
+
+    private void showWarehouseShelfTestDetailsDialog(final String posCode, String description, final List<WarehouseEntryItem> items) {
+        final List<WarehouseEntryItem> safeItems = items == null ? new ArrayList<WarehouseEntryItem>() : items;
+
+        ScrollView rootScroll = new ScrollView(this);
+        rootScroll.setFillViewport(true);
+
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(dp(12), dp(10), dp(12), dp(8));
+        rootScroll.addView(layout, new ScrollView.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        ));
+
+        TextView code = new TextView(this);
+        code.setText(posCode == null ? "Posizione" : ("Posizione " + posCode));
+        code.setTextColor(0xFFE2E8F0);
+        code.setTextSize(28f);
+        code.setTypeface(Typeface.DEFAULT_BOLD);
+        code.setPadding(0, 0, 0, dp(8));
+        layout.addView(code);
+
+        String cleanDescription = normalizeOptionalText(description);
+        if (!cleanDescription.isEmpty()) {
+            TextView desc = new TextView(this);
+            desc.setText(cleanDescription);
+            desc.setTextColor(0xFF9CA3AF);
+            desc.setTextSize(19f);
+            desc.setPadding(0, 0, 0, dp(10));
+            layout.addView(desc);
+        }
+
+        if (safeItems.isEmpty()) {
+            TextView empty = new TextView(this);
+            empty.setText("Posizione vuota");
+            empty.setTextColor(0xFF94A3B8);
+            empty.setTextSize(20f);
+            empty.setPadding(0, dp(8), 0, dp(12));
+            layout.addView(empty);
+        } else {
+            LinearLayout grid = new LinearLayout(this);
+            grid.setOrientation(LinearLayout.VERTICAL);
+            layout.addView(grid);
+
+            for (int i = 0; i < safeItems.size(); i += 2) {
+                LinearLayout row = new LinearLayout(this);
+                row.setOrientation(LinearLayout.HORIZONTAL);
+                LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                );
+                rowLp.setMargins(0, 0, 0, dp(10));
+                row.setLayoutParams(rowLp);
+
+                View left = buildWarehouseEntryCard(safeItems.get(i));
+                LinearLayout.LayoutParams leftLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+                leftLp.setMargins(0, 0, dp(6), 0);
+                left.setLayoutParams(leftLp);
+                row.addView(left);
+
+                if (i + 1 < safeItems.size()) {
+                    View right = buildWarehouseEntryCard(safeItems.get(i + 1));
+                    LinearLayout.LayoutParams rightLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+                    rightLp.setMargins(dp(6), 0, 0, 0);
+                    right.setLayoutParams(rightLp);
+                    row.addView(right);
+                } else {
+                    View spacer = new View(this);
+                    LinearLayout.LayoutParams spacerLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+                    spacer.setLayoutParams(spacerLp);
+                    row.addView(spacer);
+                }
+
+                grid.addView(row);
+            }
+        }
+
+        Button addBtn = new Button(this);
+        addBtn.setAllCaps(false);
+        addBtn.setText("+ Aggiungi prodotto");
+        addBtn.setTextColor(0xFFFFFFFF);
+        addBtn.setTextSize(20f);
+        addBtn.setTypeface(Typeface.DEFAULT_BOLD);
+        addBtn.setBackgroundDrawable(roundedDrawable(0xFF16A34A, 0x00000000, 0, 5));
+        LinearLayout.LayoutParams addLp = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            dp(50)
+        );
+        addLp.setMargins(0, dp(4), 0, 0);
+        addBtn.setLayoutParams(addLp);
+        addBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showWarehouseAddProductDialog(posCode);
+            }
+        });
+        layout.addView(addBtn);
+
+        AlertDialog dlg = new AlertDialog.Builder(this)
+            .setTitle("Dettagli posizione")
+            .setView(rootScroll)
+            .setNegativeButton(R.string.cancel, null)
+            .create();
+        dlg.show();
+        styleDialogButtons(dlg);
+        styleDialogWindowTop(dlg, 700, 520);
+    }
+
+    private void renderWarehouseShelvesTestView(Map<String, List<WarehouseEntryItem>> byPosition, Map<String, String> positionDescriptionByCode) {
+        warehousePositionsContainer.removeAllViews();
+
+        if (byPosition == null || byPosition.isEmpty()) {
+            TextView empty = new TextView(this);
+            empty.setText("Nessuna posizione scaffale disponibile");
+            empty.setTextColor(0xFFD1D5DB);
+            empty.setTextSize(18f);
+            empty.setPadding(dp(10), dp(10), dp(10), dp(10));
+            warehousePositionsContainer.addView(empty);
+            return;
+        }
+
+        final Pattern shelfPattern = Pattern.compile("^([A-Za-z])(\\d+)\\.(\\d+)$");
+        Map<String, List<String>> sectorPositions = new HashMap<String, List<String>>();
+        List<String> fallbackPositions = new ArrayList<String>();
+
+        for (String posCode : byPosition.keySet()) {
+            if (posCode == null || posCode.trim().isEmpty()) continue;
+            String code = posCode.trim();
+            Matcher m = shelfPattern.matcher(code);
+            if (!m.matches()) {
+                fallbackPositions.add(code);
+                continue;
+            }
+            String sector = m.group(1).toUpperCase(Locale.ROOT);
+            List<String> list = sectorPositions.get(sector);
+            if (list == null) {
+                list = new ArrayList<String>();
+                sectorPositions.put(sector, list);
+            }
+            list.add(code);
+        }
+
+        List<String> sectors = new ArrayList<String>(sectorPositions.keySet());
+        Collections.sort(sectors);
+
+        for (String sector : sectors) {
+            final List<String> positions = sectorPositions.get(sector);
+            if (positions == null || positions.isEmpty()) continue;
+
+            Collections.sort(positions, new Comparator<String>() {
+                @Override
+                public int compare(String a, String b) {
+                    Matcher ma = shelfPattern.matcher(a == null ? "" : a);
+                    Matcher mb = shelfPattern.matcher(b == null ? "" : b);
+                    if (!ma.matches() || !mb.matches()) return (a == null ? "" : a).compareToIgnoreCase(b == null ? "" : b);
+                    int ca = Integer.parseInt(ma.group(2));
+                    int cb = Integer.parseInt(mb.group(2));
+                    if (ca != cb) return Integer.compare(ca, cb);
+                    int la = Integer.parseInt(ma.group(3));
+                    int lb = Integer.parseInt(mb.group(3));
+                    return Integer.compare(lb, la);
+                }
+            });
+
+            int occupied = 0;
+            for (String pos : positions) {
+                List<WarehouseEntryItem> items = byPosition.get(pos);
+                if (items != null && !items.isEmpty()) occupied++;
+            }
+
+            TextView sectorLabel = new TextView(this);
+            sectorLabel.setText("Settore " + sector + "  " + occupied + "/" + positions.size() + " occupate");
+            sectorLabel.setTextColor(0xFF93C5FD);
+            sectorLabel.setTextSize(19f);
+            sectorLabel.setTypeface(Typeface.DEFAULT_BOLD);
+            sectorLabel.setPadding(dp(2), dp(8), dp(2), dp(6));
+            warehousePositionsContainer.addView(sectorLabel);
+
+            Map<Integer, Map<Integer, String>> byColumnByLevel = new HashMap<Integer, Map<Integer, String>>();
+            List<Integer> columns = new ArrayList<Integer>();
+            List<Integer> levels = new ArrayList<Integer>();
+
+            for (String pos : positions) {
+                Matcher m = shelfPattern.matcher(pos);
+                if (!m.matches()) continue;
+                int columnNumber = Integer.parseInt(m.group(2));
+                int levelNumber = Integer.parseInt(m.group(3));
+
+                if (!columns.contains(columnNumber)) columns.add(columnNumber);
+                if (!levels.contains(levelNumber)) levels.add(levelNumber);
+
+                Map<Integer, String> byLevel = byColumnByLevel.get(columnNumber);
+                if (byLevel == null) {
+                    byLevel = new HashMap<Integer, String>();
+                    byColumnByLevel.put(columnNumber, byLevel);
+                }
+                byLevel.put(levelNumber, pos);
+            }
+
+            Collections.sort(columns);
+            Collections.sort(levels, Collections.reverseOrder());
+
+            HorizontalScrollView horizontal = new HorizontalScrollView(this);
+            horizontal.setHorizontalScrollBarEnabled(true);
+            horizontal.setFillViewport(false);
+            LinearLayout.LayoutParams hLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            );
+            hLp.setMargins(0, 0, 0, dp(10));
+            horizontal.setLayoutParams(hLp);
+
+            LinearLayout columnsRow = new LinearLayout(this);
+            columnsRow.setOrientation(LinearLayout.HORIZONTAL);
+            columnsRow.setGravity(Gravity.BOTTOM);
+            columnsRow.setPadding(0, 0, dp(6), 0);
+
+            for (Integer col : columns) {
+                LinearLayout stack = new LinearLayout(this);
+                stack.setOrientation(LinearLayout.VERTICAL);
+                stack.setGravity(Gravity.BOTTOM);
+                LinearLayout.LayoutParams stackLp = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                );
+                stackLp.setMargins(0, 0, dp(4), 0);
+                stack.setLayoutParams(stackLp);
+
+                for (Integer level : levels) {
+                    Map<Integer, String> byLevel = byColumnByLevel.get(col);
+                    String code = byLevel == null ? null : byLevel.get(level);
+                    if (code == null) {
+                        View spacer = new View(this);
+                        LinearLayout.LayoutParams spLp = new LinearLayout.LayoutParams(dp(330), dp(198));
+                        spLp.setMargins(0, 0, dp(8), dp(8));
+                        spacer.setLayoutParams(spLp);
+                        continue;
+                    }
+                    List<WarehouseEntryItem> items = byPosition.get(code);
+                    stack.addView(buildWarehouseShelfTestCell(code, positionDescriptionByCode.get(code), items));
+                }
+
+                columnsRow.addView(stack);
+            }
+
+            horizontal.addView(columnsRow);
+            warehousePositionsContainer.addView(horizontal);
+        }
+
+        if (!fallbackPositions.isEmpty()) {
+            Collections.sort(fallbackPositions);
+            TextView fallbackLabel = new TextView(this);
+            fallbackLabel.setText("Altre posizioni");
+            fallbackLabel.setTextColor(0xFF93C5FD);
+            fallbackLabel.setTextSize(18f);
+            fallbackLabel.setTypeface(Typeface.DEFAULT_BOLD);
+            fallbackLabel.setPadding(dp(2), dp(6), dp(2), dp(6));
+            warehousePositionsContainer.addView(fallbackLabel);
+
+            LinearLayout fallbackRow = new LinearLayout(this);
+            fallbackRow.setOrientation(LinearLayout.HORIZONTAL);
+            fallbackRow.setGravity(Gravity.BOTTOM);
+            HorizontalScrollView fallbackHorizontal = new HorizontalScrollView(this);
+            fallbackHorizontal.setHorizontalScrollBarEnabled(true);
+            fallbackHorizontal.addView(fallbackRow);
+
+            for (String code : fallbackPositions) {
+                fallbackRow.addView(buildWarehouseShelfTestCell(code, positionDescriptionByCode.get(code), byPosition.get(code)));
+            }
+
+            warehousePositionsContainer.addView(fallbackHorizontal);
+        }
+    }
+
     private String buildWarehousePositionLabel(String posCode, String description, List<WarehouseEntryItem> items) {
         StringBuilder sb = new StringBuilder();
         sb.append(posCode == null ? "-" : posCode);
@@ -1930,6 +2526,14 @@ public class MainActivity extends Activity {
             return;
         }
 
+        final List<String> positionCodes = getActiveWarehousePositionCodes(null);
+        final String currentPositionCode = normalizeOptionalText(item.positionCode);
+        if (!currentPositionCode.isEmpty() && !positionCodes.contains(currentPositionCode)) {
+            positionCodes.add(currentPositionCode);
+            Collections.sort(positionCodes);
+        }
+        final String[] selectedPositionCode = new String[] { currentPositionCode };
+
         ScrollView rootScroll = new ScrollView(this);
         rootScroll.setFillViewport(true);
 
@@ -1950,7 +2554,7 @@ public class MainActivity extends Activity {
 
         LinearLayout fieldsRow = new LinearLayout(this);
         fieldsRow.setOrientation(LinearLayout.HORIZONTAL);
-        fieldsRow.setWeightSum(3f);
+        fieldsRow.setWeightSum(4f);
         LinearLayout.LayoutParams fieldsRowLp = new LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
@@ -1958,6 +2562,67 @@ public class MainActivity extends Activity {
         fieldsRowLp.setMargins(0, 0, 0, dp(8));
         fieldsRow.setLayoutParams(fieldsRowLp);
         layout.addView(fieldsRow);
+
+        final List<String> positionChoices = new ArrayList<String>();
+        if (!currentPositionCode.isEmpty()) {
+            positionChoices.add(currentPositionCode + " (attuale)");
+        }
+        for (String code : positionCodes) {
+            if (code == null || code.equals(currentPositionCode)) continue;
+            positionChoices.add(code);
+        }
+        if (selectedPositionCode[0].isEmpty() && !positionCodes.isEmpty()) {
+            selectedPositionCode[0] = positionCodes.get(0);
+        }
+
+        LinearLayout positionCard = new LinearLayout(this);
+        positionCard.setOrientation(LinearLayout.VERTICAL);
+        positionCard.setPadding(dp(10), dp(10), dp(10), dp(10));
+        positionCard.setBackgroundDrawable(roundedDrawable(0xFF111827, 0xFF22D3EE, 1, 7));
+        LinearLayout.LayoutParams positionCardLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        positionCardLp.setMargins(0, 0, dp(6), 0);
+        positionCard.setLayoutParams(positionCardLp);
+        fieldsRow.addView(positionCard);
+
+        TextView positionLabel = new TextView(this);
+        positionLabel.setText("POSIZIONE");
+        positionLabel.setTextColor(0xFF67E8F9);
+        positionLabel.setTextSize(15f);
+        positionLabel.setTypeface(Typeface.DEFAULT_BOLD);
+        positionLabel.setPadding(0, 0, 0, dp(6));
+        positionCard.addView(positionLabel);
+
+        final Spinner positionSpinner = new Spinner(this);
+        styleDialogSpinner(positionSpinner);
+        final ArrayAdapter<String> positionAdapter = new ArrayAdapter<String>(
+            this,
+            android.R.layout.simple_spinner_item,
+            positionChoices
+        );
+        positionAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        positionSpinner.setAdapter(positionAdapter);
+        positionSpinner.setSelection(0);
+        if (!currentPositionCode.isEmpty()) {
+            selectedPositionCode[0] = currentPositionCode;
+        }
+        positionSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (position < 0 || position >= positionChoices.size()) return;
+                String value = positionChoices.get(position);
+                if (value.endsWith(" (attuale)")) {
+                    selectedPositionCode[0] = currentPositionCode;
+                } else {
+                    selectedPositionCode[0] = value;
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                // Mantiene l'ultimo valore valido selezionato.
+            }
+        });
+        positionCard.addView(positionSpinner);
 
         LinearLayout quantityCard = new LinearLayout(this);
         quantityCard.setOrientation(LinearLayout.VERTICAL);
@@ -2074,6 +2739,11 @@ public class MainActivity extends Activity {
                     final int qtyFinal = qty;
                     final String batch = batchInput.getText() == null ? "" : batchInput.getText().toString().trim();
                     final String expiry = expiryInput.getText() == null ? "" : expiryInput.getText().toString().trim();
+                    final String positionCodeFinal = normalizeOptionalText(selectedPositionCode[0]);
+                    if (positionCodeFinal.isEmpty()) {
+                        toast("Seleziona una posizione valida");
+                        return;
+                    }
 
                     runInBackground(new Runnable() {
                         @Override
@@ -2084,13 +2754,13 @@ public class MainActivity extends Activity {
                                 body.put("batch", batch.isEmpty() ? JSONObject.NULL : batch);
                                 body.put("expiry", expiry.isEmpty() ? JSONObject.NULL : expiry);
                                 body.put("notes", JSONObject.NULL);
-                                body.put("positionCode", item.positionCode);
+                                body.put("positionCode", positionCodeFinal);
                                 httpRequest(API_URL + "/inventory/shelf-entries/" + item.shelfEntryId, "PUT", body.toString(), token);
                                 runOnUiThread(new Runnable() {
                                     @Override
                                     public void run() {
                                         dlg.dismiss();
-                                        toast("Posizione aggiornata");
+                                        toast("Prodotto aggiornato");
                                         loadInstantData();
                                     }
                                 });
@@ -3715,7 +4385,7 @@ public class MainActivity extends Activity {
 
         if (warehouseSectorRow != null) warehouseSectorRow.setVisibility(View.GONE);
         if (warehouseProductsPanel != null) warehouseProductsPanel.setVisibility("products".equals(warehouseViewMode) ? View.VISIBLE : View.GONE);
-        if (warehouseShelvesPanel != null) warehouseShelvesPanel.setVisibility("shelves".equals(warehouseViewMode) ? View.VISIBLE : View.GONE);
+        if (warehouseShelvesPanel != null) warehouseShelvesPanel.setVisibility(("shelves".equals(warehouseViewMode) || "shelves_test".equals(warehouseViewMode)) ? View.VISIBLE : View.GONE);
 
         Map<String, List<WarehouseEntryItem>> byPosition = new HashMap<String, List<WarehouseEntryItem>>();
         Map<String, String> positionDescriptionByCode = new HashMap<String, String>();
@@ -3769,7 +4439,12 @@ public class MainActivity extends Activity {
 
         renderWarehouseProductsView();
 
-        if (!"shelves".equals(warehouseViewMode)) {
+        if (!"shelves".equals(warehouseViewMode) && !"shelves_test".equals(warehouseViewMode)) {
+            return;
+        }
+
+        if ("shelves_test".equals(warehouseViewMode)) {
+            renderWarehouseShelvesTestView(byPosition, positionDescriptionByCode);
             return;
         }
 

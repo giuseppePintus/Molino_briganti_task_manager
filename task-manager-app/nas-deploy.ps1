@@ -304,6 +304,7 @@ IMG_NEW=${IMG}:${TAG_NEW}
 ENVS=`$(`$DOCKER inspect `$CT_OLD --format '{{range .Config.Env}}-e {{.}} {{end}}')
 `$DOCKER run -d --name `$SHADOW \
   -p ${SHADOW_PORT}:5000 \
+    -e APK_UPLOAD_DIR=/app/uploads/apks \
   -v /share/Container/data/molino:/data/nas \
   -v /share/Public/molino-data/uploads:/app/uploads \
   -v /share/Public/molino-data/backups:/app/backups \
@@ -366,6 +367,7 @@ ENVS=`$(`$DOCKER inspect `$CT --format '{{range .Config.Env}}-e {{.}} {{end}}')
 `$DOCKER run -d --name `$CT \
   --restart unless-stopped \
   -p ${PROD_PORT}:5000 \
+    -e APK_UPLOAD_DIR=/app/uploads/apks \
   -v /share/Container/data/molino:/data/nas \
   -v /share/Public/molino-data/uploads:/app/uploads \
   -v /share/Public/molino-data/backups:/app/backups \
@@ -384,7 +386,7 @@ sleep 25
         Write-Host $swapOut
         if (($swapOut | Out-String) -notmatch "$CT_PROD\s+Up") {
             Write-Host "[ERR] Swap fallito! Tentativo rollback..." -ForegroundColor Red
-            ssh "$($NAS_USER)@$($NAS_IP)" "$DOCKER tag ${IMG}:${TAG_PREV} ${IMG}:${TAG_CUR}; $DOCKER run -d --name $CT_PROD --restart unless-stopped -p ${PROD_PORT}:5000 -v /share/Container/data/molino:/data/nas -v /share/Public/molino-data/uploads:/app/uploads -v /share/Public/molino-data/backups:/app/backups -v /share/Public/molino-data/data:/app/data -v /share/Container/wireguard/config:/wireguard:rw ${IMG}:${TAG_CUR}"
+            ssh "$($NAS_USER)@$($NAS_IP)" "$DOCKER tag ${IMG}:${TAG_PREV} ${IMG}:${TAG_CUR}; $DOCKER run -d --name $CT_PROD --restart unless-stopped -p ${PROD_PORT}:5000 -e APK_UPLOAD_DIR=/app/uploads/apks -v /share/Container/data/molino:/data/nas -v /share/Public/molino-data/uploads:/app/uploads -v /share/Public/molino-data/backups:/app/backups -v /share/Public/molino-data/data:/app/data -v /share/Container/wireguard/config:/wireguard:rw ${IMG}:${TAG_CUR}"
             throw "Swap fallito - rollback eseguito (immagine prev ripristinata)"
         }
         Write-Host "[OK] Swap completato" -ForegroundColor Green

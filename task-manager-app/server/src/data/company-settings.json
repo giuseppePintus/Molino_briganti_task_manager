@@ -1,6 +1,7 @@
 {
   "businessName": "Molino Briganti",
   "logoUrl": "images/logo INSEGNA.png",
+  "operatorAutoLogoutMinutes": 15,
   "openingDays": [
     1,
     2,

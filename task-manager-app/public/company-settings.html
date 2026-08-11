@@ -150,6 +150,16 @@
     </div>
 
     <div class="card">
+      <h2>⏱ Auto Logout Operatori</h2>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="operatorAutoLogoutMinutes">Timeout inattività (minuti)</label>
+          <input type="number" id="operatorAutoLogoutMinutes" min="1" step="1" placeholder="es. 15">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
       <h2>🎉 Giorni Festivi</h2>
       <div class="section">
         <div class="holidays">
@@ -308,6 +318,7 @@
         businessName: 'Molino Briganti',
         logoUrl: 'images/logo INSEGNA.png',
         logoThermalUrl: '',
+        operatorAutoLogoutMinutes: 15,
         openingDays: [1,2,3,4,5,6], // lun-sab
         openMorningStart: '08:00', openMorningEnd: '13:00',
         openAfternoonStart: '15:00', openAfternoonEnd: '18:00',
@@ -405,6 +416,7 @@
         businessName: document.getElementById('businessName').value.trim(),
         logoUrl: document.getElementById('logoUrl').value.trim(),
         logoThermalUrl: document.getElementById('logoThermalUrl').value.trim(),
+        operatorAutoLogoutMinutes: Math.max(1, parseInt(document.getElementById('operatorAutoLogoutMinutes').value || '15', 10) || 15),
         openingDays,
         openMorningStart: document.getElementById('openMorningStart').value,
         openMorningEnd: document.getElementById('openMorningEnd').value,
@@ -602,6 +614,11 @@
       } else {
         thermalPreview.src = '';
         thermalPreview.style.display = 'none';
+      }
+
+      const autoLogoutInput = document.getElementById('operatorAutoLogoutMinutes');
+      if (autoLogoutInput) {
+        autoLogoutInput.value = Math.max(1, parseInt(s.operatorAutoLogoutMinutes || '15', 10) || 15);
       }
       
       renderDays('openingDays', s.openingDays || []);

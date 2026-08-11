@@ -16,6 +16,8 @@ const UPLOAD_DIR = process.env.UPLOAD_DIR || (
     : path.join(process.cwd(), 'uploads')
 );
 
+const APK_UPLOAD_DIR = process.env.APK_UPLOAD_DIR || path.join(UPLOAD_DIR, 'apks');
+
 // Configura multer per upload file
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -29,7 +31,9 @@ const storage = multer.diskStorage({
     // Genera nome univoco con timestamp
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     const ext = path.extname(file.originalname);
-    const prefix = file.fieldname === 'avatar' ? 'avatar' : 'logo';
+    let prefix = 'logo';
+    if (file.fieldname === 'avatar') prefix = 'avatar';
+    if (file.fieldname === 'apk') prefix = 'apk';
     cb(null, `${prefix}-${uniqueSuffix}${ext}`);
   }
 });
@@ -46,6 +50,37 @@ const upload = multer({
       cb(null, true);
     } else {
       cb(new Error('Tipo file non supportato. Usa JPEG, PNG, GIF, WebP o SVG.'));
+    }
+  }
+});
+
+const uploadApk = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      if (!fs.existsSync(APK_UPLOAD_DIR)) {
+        fs.mkdirSync(APK_UPLOAD_DIR, { recursive: true });
+      }
+      cb(null, APK_UPLOAD_DIR);
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      const ext = path.extname(file.originalname);
+      cb(null, `apk-${uniqueSuffix}${ext}`);
+    }
+  }),
+  limits: {
+    fileSize: 300 * 1024 * 1024,
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = [
+      'application/vnd.android.package-archive',
+      'application/octet-stream'
+    ];
+    const isApkExt = /\.apk$/i.test(file.originalname || '');
+    if (allowedTypes.includes(file.mimetype) || isApkExt) {
+      cb(null, true);
+    } else {
+      cb(new Error('Tipo file non supportato. Carica un file APK.'));
     }
   }
 });
@@ -126,6 +161,62 @@ router.post('/avatar', authMiddleware, upload.single('avatar'), async (req: Requ
     });
   } catch (error: any) {
     console.error('❌ Errore upload avatar:', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * POST /api/upload/apk
+ * Upload APK Operator Lite / Android
+ */
+router.post('/apk', authMiddleware, uploadApk.single('apk'), async (req: Request, res: Response) => {
+  try {
+    if (!req.user || req.user.role !== 'master') {
+      return res.status(403).json({ success: false, message: 'Only master can upload APK files' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'Nessun file caricato' });
+    }
+
+    const relativePath = `uploads/apks/${req.file.filename}`;
+    console.log(`✅ APK caricato: ${req.file.filename} in ${APK_UPLOAD_DIR}`);
+
+    res.json({
+      success: true,
+      url: relativePath,
+      filename: req.file.filename,
+      size: req.file.size
+    });
+  } catch (error: any) {
+    console.error('❌ Errore upload APK:', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/upload/apks
+ * Lista APK caricati
+ */
+router.get('/apks', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    if (!fs.existsSync(APK_UPLOAD_DIR)) {
+      return res.json({ success: true, apks: [] });
+    }
+
+    const files = fs.readdirSync(APK_UPLOAD_DIR)
+      .filter(f => /\.apk$/i.test(f))
+      .map(filename => ({
+        filename,
+        url: `uploads/apks/${filename}`,
+        size: fs.statSync(path.join(APK_UPLOAD_DIR, filename)).size,
+        mtime: fs.statSync(path.join(APK_UPLOAD_DIR, filename)).mtimeMs
+      }))
+      .sort((a, b) => b.mtime - a.mtime)
+      .map(({ mtime, ...rest }) => rest);
+
+    res.json({ success: true, apks: files });
+  } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
 });

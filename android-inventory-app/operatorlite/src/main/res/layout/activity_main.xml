@@ -163,15 +163,32 @@
             android:paddingRight="8dp"
             android:paddingBottom="8dp">
 
-            <TextView
-                android:id="@+id/txtCurrentOperator"
+            <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Operatore"
-                android:textColor="#ffffff"
-                android:textSize="20sp"
-                android:textStyle="bold" />
+                android:orientation="vertical"
+                android:paddingRight="6dp">
+
+                <TextView
+                    android:id="@+id/txtCurrentOperator"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Operatore"
+                    android:textColor="#ffffff"
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/txtLogoutCountdown"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Logout: 15:00"
+                    android:textColor="#f59e0b"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
 
             <Button
                 android:id="@+id/btnTasks"
@@ -340,6 +357,17 @@
                             android:textAllCaps="false"
                             android:textColor="#ffffff"
                             android:background="@drawable/bg_toolbar_button_orange" />
+
+                        <Button
+                            android:id="@+id/btnWarehouseShelvesTestView"
+                            android:layout_width="0dp"
+                            android:layout_height="52dp"
+                            android:layout_weight="1"
+                            android:layout_marginLeft="8dp"
+                            android:text="🧪 Scaffali Test"
+                            android:textAllCaps="false"
+                            android:textColor="#ffffff"
+                            android:background="@drawable/bg_toolbar_button_dark" />
                     </LinearLayout>
 
                     <LinearLayout

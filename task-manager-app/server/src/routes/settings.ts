@@ -2,14 +2,42 @@ import { Router } from 'express';
 import { Request, Response } from 'express';
 import { authMiddleware } from '../middleware/auth';
 import prisma from '../lib/prisma';
+import {
+  getTabletRuntimeStatus,
+  resolveTabletEndpoint,
+  runTabletAction
+} from '../services/tabletDeployService';
 
 const router = Router();
+const TABLET_REGISTRY_KEY = 'tabletDeployRegistry';
+const defaultTabletRegistry = {
+  tablets: []
+};
+
+type TabletEnvironment = 'shadow' | 'prod';
+
+function parseTabletRegistry(rawValue?: string | null) {
+  if (!rawValue) {
+    return defaultTabletRegistry;
+  }
+
+  try {
+    const parsed = JSON.parse(rawValue);
+    if (!parsed || !Array.isArray(parsed.tablets)) {
+      return defaultTabletRegistry;
+    }
+    return parsed;
+  } catch {
+    return defaultTabletRegistry;
+  }
+}
 
 // Default company settings
 const defaultSettings = {
   businessName: 'Molino Briganti',
   logoUrl: 'images/logo INSEGNA.png',
   logoThermalUrl: '',
+  operatorAutoLogoutMinutes: 15,
   openingDays: [1,2,3,4,5,6],
   openMorningStart: '08:00',
   openMorningEnd: '13:00',
@@ -82,6 +110,7 @@ router.put('/company', authMiddleware, async (req: Request, res: Response) => {
     
     const { 
       businessName, logoUrl, logoThermalUrl,
+      operatorAutoLogoutMinutes,
       openingDays, openMorningStart, openMorningEnd, openAfternoonStart, openAfternoonEnd,
       openSatMorningStart, openSatMorningEnd, openSatAfternoonStart, openSatAfternoonEnd,
       deliveryDays, deliveryMorningStart, deliveryMorningEnd, deliveryAfternoonStart, deliveryAfternoonEnd,
@@ -94,6 +123,7 @@ router.put('/company', authMiddleware, async (req: Request, res: Response) => {
       { key: 'businessName', value: JSON.stringify(businessName) },
       { key: 'logoUrl', value: JSON.stringify(logoUrl) },
       { key: 'logoThermalUrl', value: JSON.stringify(logoThermalUrl) },
+      { key: 'operatorAutoLogoutMinutes', value: JSON.stringify(operatorAutoLogoutMinutes) },
       { key: 'openingDays', value: JSON.stringify(openingDays) },
       { key: 'openMorningStart', value: JSON.stringify(openMorningStart) },
       { key: 'openMorningEnd', value: JSON.stringify(openMorningEnd) },
@@ -229,6 +259,7 @@ router.put('/', authMiddleware, async (req: Request, res: Response) => {
     
     const { 
       businessName, logoUrl, logoThermalUrl,
+      operatorAutoLogoutMinutes,
       openingDays, openMorningStart, openMorningEnd, openAfternoonStart, openAfternoonEnd,
       openSatMorningStart, openSatMorningEnd, openSatAfternoonStart, openSatAfternoonEnd,
       deliveryDays, deliveryMorningStart, deliveryMorningEnd, deliveryAfternoonStart, deliveryAfternoonEnd,
@@ -242,6 +273,7 @@ router.put('/', authMiddleware, async (req: Request, res: Response) => {
     if (businessName !== undefined) settingsToSave.push({ key: 'businessName', value: JSON.stringify(businessName) });
     if (logoUrl !== undefined) settingsToSave.push({ key: 'logoUrl', value: JSON.stringify(logoUrl) });
     if (logoThermalUrl !== undefined) settingsToSave.push({ key: 'logoThermalUrl', value: JSON.stringify(logoThermalUrl) });
+    if (operatorAutoLogoutMinutes !== undefined) settingsToSave.push({ key: 'operatorAutoLogoutMinutes', value: JSON.stringify(operatorAutoLogoutMinutes) });
     if (openingDays !== undefined) settingsToSave.push({ key: 'openingDays', value: JSON.stringify(openingDays) });
     if (openMorningStart !== undefined) settingsToSave.push({ key: 'openMorningStart', value: JSON.stringify(openMorningStart) });
     if (openMorningEnd !== undefined) settingsToSave.push({ key: 'openMorningEnd', value: JSON.stringify(openMorningEnd) });
@@ -460,6 +492,202 @@ router.delete('/holidays/:id', authMiddleware, async (req: Request, res: Respons
     res.json({ success: true });
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : 'Internal server error';
+    res.status(500).json({ message: errorMsg });
+  }
+});
+
+/**
+ * GET /api/settings/tablet-registry
+ * Registro tablet deploy (shared)
+ */
+router.get('/tablet-registry', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const setting = await prisma.companySettings.findUnique({
+      where: { key: TABLET_REGISTRY_KEY }
+    });
+
+    return res.json(parseTabletRegistry(setting?.value));
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : 'Internal server error';
+    res.status(500).json({ message: errorMsg });
+  }
+});
+
+/**
+ * PUT /api/settings/tablet-registry
+ * Salva registro tablet deploy (shared)
+ */
+router.put('/tablet-registry', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    if (!req.user || req.user.role !== 'master') {
+      return res.status(403).json({ message: 'Only master can update tablet registry' });
+    }
+
+    const payload = req.body;
+    if (!payload || !Array.isArray(payload.tablets)) {
+      return res.status(400).json({ message: 'Invalid payload: tablets array is required' });
+    }
+
+    await prisma.companySettings.upsert({
+      where: { key: TABLET_REGISTRY_KEY },
+      update: { value: JSON.stringify(payload) },
+      create: { key: TABLET_REGISTRY_KEY, value: JSON.stringify(payload) }
+    });
+
+    res.json({ message: 'Tablet registry saved successfully' });
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : 'Internal server error';
+    res.status(500).json({ message: errorMsg });
+  }
+});
+
+/**
+ * GET /api/settings/tablet-registry/runtime-status
+ * Stato reale tablet via ADB (raggiungibile/configurabile)
+ */
+router.get('/tablet-registry/runtime-status', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    if (!req.user || req.user.role !== 'master') {
+      return res.status(403).json({ message: 'Only master can check runtime status' });
+    }
+
+    const environment = (req.query.environment === 'prod' ? 'prod' : 'shadow') as TabletEnvironment;
+    const adbPort = Number(req.query.adbPort) || 5555;
+
+    const setting = await prisma.companySettings.findUnique({
+      where: { key: TABLET_REGISTRY_KEY }
+    });
+
+    const registry = parseTabletRegistry(setting?.value);
+    const tablets = Array.isArray(registry.tablets) ? registry.tablets : [];
+
+    const statuses = [] as any[];
+    for (const tablet of tablets) {
+      const endpoint = resolveTabletEndpoint(tablet, environment, adbPort);
+
+      if (tablet.enabled === false) {
+        statuses.push({
+          tabletId: tablet.id,
+          name: tablet.name || '',
+          endpoint,
+          reachable: false,
+          configurable: false,
+          installed: false,
+          state: 'disabled',
+          message: 'Tablet disabilitato nel registro'
+        });
+        continue;
+      }
+
+      if (!endpoint) {
+        statuses.push({
+          tabletId: tablet.id,
+          name: tablet.name || '',
+          endpoint: null,
+          reachable: false,
+          configurable: false,
+          installed: false,
+          state: 'missing-ip',
+          message: 'IP non configurato per questo ambiente'
+        });
+        continue;
+      }
+
+      const status = await getTabletRuntimeStatus(endpoint);
+      statuses.push({
+        tabletId: tablet.id,
+        name: tablet.name || '',
+        endpoint,
+        reachable: status.reachable,
+        configurable: status.configurable,
+        installed: status.installed,
+        state: status.state,
+        message: status.message || null
+      });
+    }
+
+    res.json({
+      environment,
+      statuses
+    });
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : 'Internal server error';
+    res.status(500).json({ message: errorMsg });
+  }
+});
+
+/**
+ * POST /api/settings/tablet-registry/device-action
+ * Azioni ADB su singolo tablet (install/uninstall)
+ */
+router.post('/tablet-registry/device-action', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    if (!req.user || req.user.role !== 'master') {
+      return res.status(403).json({ message: 'Only master can deploy to tablet' });
+    }
+
+    const tabletId = typeof req.body?.tabletId === 'string' ? req.body.tabletId : '';
+    const action = req.body?.action;
+    const apkFilename = typeof req.body?.apkFilename === 'string' ? req.body.apkFilename : undefined;
+    const environment = (req.body?.environment === 'prod' ? 'prod' : 'shadow') as TabletEnvironment;
+    const adbPort = Number(req.body?.adbPort) || 5555;
+
+    if (!tabletId) {
+      return res.status(400).json({ message: 'tabletId is required' });
+    }
+
+    if (action !== 'install' && action !== 'uninstall') {
+      return res.status(400).json({ message: 'action must be install or uninstall' });
+    }
+
+    const setting = await prisma.companySettings.findUnique({
+      where: { key: TABLET_REGISTRY_KEY }
+    });
+    const registry = parseTabletRegistry(setting?.value);
+    const tablets = Array.isArray(registry.tablets) ? registry.tablets : [];
+    const tablet = tablets.find((item: any) => item.id === tabletId);
+
+    if (!tablet) {
+      return res.status(404).json({ message: 'Tablet not found in registry' });
+    }
+
+    if (tablet.enabled === false) {
+      return res.status(400).json({ message: 'Tablet is disabled in registry' });
+    }
+
+    const endpoint = resolveTabletEndpoint(tablet, environment, adbPort);
+    if (!endpoint) {
+      return res.status(400).json({ message: 'Tablet IP not configured for selected environment' });
+    }
+
+    const result = await runTabletAction(endpoint, action, apkFilename);
+
+    res.json({
+      success: true,
+      tabletId,
+      endpoint,
+      action,
+      output: result.output
+    });
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : 'Internal server error';
+    const knownClientErrors = [
+      'Nessun APK disponibile sul server',
+      'APK selezionato non trovato sul server',
+      'Il file selezionato non è un APK valido',
+      'Tablet IP not configured for selected environment',
+      'Tablet is disabled in registry',
+      'Tablet not found in registry'
+    ];
+
+    if (knownClientErrors.some((msg) => errorMsg.includes(msg))) {
+      return res.status(400).json({ message: errorMsg });
+    }
+
+    if (errorMsg.includes('Connessione ADB non riuscita') || errorMsg.includes('Dispositivo non pronto')) {
+      return res.status(503).json({ message: errorMsg });
+    }
+
     res.status(500).json({ message: errorMsg });
   }
 });
