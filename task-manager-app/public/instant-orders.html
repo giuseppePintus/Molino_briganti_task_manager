@@ -106,10 +106,9 @@
 
                 <!-- Azioni -->
                 <div class="action-buttons">
-                    <button class="btn btn-secondary" id="btnPrintA4" onclick="printOrder('a4')" disabled>🖨 Stampa A4</button>
-                    <button class="btn btn-secondary" id="btnPrintThermal" onclick="printOrder('thermal')" disabled>🧾 Stampa 80mm</button>
-                    <button class="btn btn-warning" id="btnComplete" onclick="completeOrder(false)" disabled>✅ Solo completa</button>
-                    <button class="btn btn-success" id="btnPrintComplete" onclick="completeOrder(true)" disabled>🖨✅ Stampa &amp; completa</button>
+                        <button class="btn btn-success" id="btnCompleteA4" onclick="completeOrder('a4')" disabled>🖨✅ Stampa e completa A4</button>
+                        <button class="btn btn-success" id="btnCompleteThermal" onclick="completeOrder('thermal')" disabled>🧾✅ Stampa e completa 80mm</button>
+                        <button class="btn btn-warning" id="btnComplete" onclick="completeOrder()" disabled>✅ Solo completa</button>
                 </div>
             </div>
         </div>
@@ -721,10 +720,9 @@ function updateTotals() {
     document.getElementById('totKg').textContent = Math.round(kg * 100) / 100;
 
     const has = lines > 0;
-    document.getElementById('btnPrintA4').disabled = !has;
-    document.getElementById('btnPrintThermal').disabled = !has;
+    document.getElementById('btnCompleteA4').disabled = !has;
+    document.getElementById('btnCompleteThermal').disabled = !has;
     document.getElementById('btnComplete').disabled = !has;
-    document.getElementById('btnPrintComplete').disabled = !has;
 }
 
 // ===================================================================
@@ -978,11 +976,12 @@ function printOrder(mode, orderId = null) {
 // ===================================================================
 // COMPLETE ORDER (transazione atomica lato server)
 // ===================================================================
-async function completeOrder(withPrint) {
+async function completeOrder(printMode = null) {
     if (!orderLines.length) return;
     const btnA = document.getElementById('btnComplete');
-    const btnB = document.getElementById('btnPrintComplete');
-    btnA.disabled = true; btnB.disabled = true;
+    const btnB = document.getElementById('btnCompleteA4');
+    const btnC = document.getElementById('btnCompleteThermal');
+    btnA.disabled = true; btnB.disabled = true; btnC.disabled = true;
 
     const payload = {
         clientName: (document.getElementById('clientNameInput').value || '').trim() || 'Banco',
@@ -1006,7 +1005,8 @@ async function completeOrder(withPrint) {
             operatorId: payload.assignedOperatorId ?? null,
             notes: payload.notes || null,
             lines: payload.items,
-            withPrint: !!withPrint,
+            withPrint: !!printMode,
+            printMode: printMode || null,
         });
 
         const resp = await fetch(`${API_URL}/orders/instant-complete`, {
@@ -1023,7 +1023,8 @@ async function completeOrder(withPrint) {
         await sendInstantOrderAudit('complete-end', {
             clientName: payload.clientName,
             operatorId: payload.assignedOperatorId ?? null,
-            withPrint: !!withPrint,
+            withPrint: !!printMode,
+            printMode: printMode || null,
             orderId: data.order?.id ?? null,
             lines: payload.items,
         });
@@ -1031,9 +1032,8 @@ async function completeOrder(withPrint) {
         const orderId = data.order?.id;
         showToast(`Ordine ${orderId ? '#' + orderId : ''} completato e magazzino aggiornato`, 'success');
 
-        if (withPrint) {
-            // Stampa A4 di default; se serve termica modificare qui
-            printOrder('a4', orderId);
+        if (printMode) {
+            printOrder(printMode, orderId);
         }
 
         // Reset form

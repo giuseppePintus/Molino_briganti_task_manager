@@ -104,9 +104,9 @@
                     <h3>Gestione Magazzino</h3>
                 </div>
                 <div class="feature-card alerts-feature-card" id="fcAvvisi" data-alerts-card onclick="showAvvisi()" style="cursor:pointer;">
-                    <div class="fc-tooltip">Notifiche e riordini per articoli in esaurimento</div>
+                            <div class="fc-tooltip">Avvisi scorte e riordini interni, anche per articoli non in esaurimento</div>
                     <div class="icon alerts-feature-icon">⚠️</div>
-                    <h3>Avvisi giacenze</h3>
+                            <h3>Avvisi scorte e riordini</h3>
                 </div>
                 <div class="feature-card" onclick="window.location.href='warehouse-management-lite.html'" style="cursor:pointer; border-left:4px solid #16a34a;">
                     <div class="fc-tooltip">Operazioni rapide di carico e scarico magazzino</div>
@@ -202,9 +202,9 @@
         <!-- ===== AVVISI GIACENZA CARD ===== -->
         <div class="card" id="avvisiCard" style="display:none;">
             <div class="warehouse-header-section">
-                <h2>⚠️ Avvisi di Giacenza</h2>
+                    <h2>⚠️ Avvisi Scorte e Riordini</h2>
             </div>
-            <p class="overview-description">Articoli sotto soglia o in esaurimento — crea ordini interni di riassortimento</p>
+                <p class="overview-description">Controlla gli articoli sotto soglia e crea riordini interni anche per prodotti non ancora in esaurimento</p>
 
             <div class="av-stats">
                 <div class="av-stat-card critical"><div class="label">Critici</div><div class="value" id="avStatCritical">–</div></div>
@@ -212,6 +212,36 @@
                 <div class="av-stat-card" style="border-color:#34d399;"><div class="label">Ordini in corso</div><div class="value" id="avStatOrders" style="color:#34d399;">–</div></div>
                 <div class="av-stat-card"><div class="label">Totale</div><div class="value" id="avStatTotal">–</div></div>
             </div>
+
+                <div class="av-manual-order-box">
+                    <div class="av-manual-order-header">
+                        <div>
+                            <label class="av-manual-order-label">Riordino manuale</label>
+                            <div class="av-manual-order-note">Usa questa area per creare un ordine interno anche se l'articolo non ha ancora un avviso.</div>
+                        </div>
+                        <button type="button" class="btn av-manual-toggle-btn" id="avManualToggleBtn" onclick="avToggleManualReorder()">▼ Apri</button>
+                    </div>
+                    <div class="av-manual-order-body" id="avManualOrderBody">
+                        <div class="av-manual-hierarchy-row">
+                            <div class="av-manual-filter-block">
+                                <div class="av-manual-filter-title">Categoria</div>
+                                <div id="avManualCategoryBar" class="av-manual-filter-bar"></div>
+                            </div>
+                            <div class="av-manual-filter-block" id="avManualSubcategoryWrap">
+                                <div class="av-manual-filter-title">Sotto-cat.</div>
+                                <div id="avManualSubcategoryBar" class="av-manual-filter-bar"></div>
+                            </div>
+                            <div class="av-manual-filter-block" id="avManualGroupWrap">
+                                <div class="av-manual-filter-title">Gruppo</div>
+                                <div id="avManualGroupBar" class="av-manual-filter-bar"></div>
+                            </div>
+                        </div>
+                        <div class="av-manual-filter-block">
+                            <div class="av-manual-filter-title">Prodotto</div>
+                            <div id="avManualProducts" class="av-manual-products"></div>
+                        </div>
+                    </div>
+                </div>
 
             <div class="av-filters">
                 <input id="avFilterText" placeholder="Cerca per nome, codice o categoria…" oninput="avRenderAlerts()">
@@ -1723,6 +1753,7 @@
 
                 allArticles = await articlesResp.json();
                 renderWarehouseStatus(allArticles);
+                avRenderManualReorder();
                 // Update management panel counts
                 const validCount = allArticles.filter(a => !a.code?.startsWith('EMPTY-')).length;
                 document.getElementById('prodottiCount').textContent = validCount;
@@ -3726,6 +3757,157 @@
         let avOperatorsList = [];
         let avPendingAlert = null;
         let avLoaded = false;
+        let avManualCollapsed = true;
+        let avManualSelectedCategory = null;
+        let avManualSelectedSubcategory = null;
+        let avManualSelectedGroup = null;
+        let avManualSelectedArticleId = null;
+
+        function avSetManualCollapsed(collapsed) {
+            avManualCollapsed = !!collapsed;
+            const box = document.querySelector('.av-manual-order-box');
+            const body = document.getElementById('avManualOrderBody');
+            const btn = document.getElementById('avManualToggleBtn');
+            if (box) box.classList.toggle('collapsed', avManualCollapsed);
+            if (body) body.style.display = avManualCollapsed ? 'none' : '';
+            if (btn) btn.textContent = avManualCollapsed ? '▼ Apri' : '▲ Chiudi';
+        }
+
+        function avToggleManualReorder() {
+            avSetManualCollapsed(!avManualCollapsed);
+        }
+        window.avToggleManualReorder = avToggleManualReorder;
+
+        function avGetManualReorderArticles() {
+            return allArticles
+                .filter(a => a && !a.code?.startsWith('EMPTY-'))
+                .sort((a, b) => {
+                    const codeCmp = (a.code || '').localeCompare((b.code || ''));
+                    if (codeCmp !== 0) return codeCmp;
+                    return (a.name || '').localeCompare((b.name || ''));
+                });
+        }
+
+        function avNormalizeFilterValue(value) {
+            return String(value || '').trim().toUpperCase();
+        }
+
+        function avGetManualCategoryList() {
+            const categories = [...new Set(avGetManualReorderArticles().map(a => getArticleCategory(a)).filter(Boolean))];
+            const ordered = productCategories.filter(c => categories.includes(c));
+            const extras = categories.filter(c => !ordered.includes(c)).sort((a, b) => a.localeCompare(b));
+            return [...ordered, ...extras];
+        }
+
+        function avGetManualSubcategoryList() {
+            if (!avManualSelectedCategory) return [];
+            return [...new Set(
+                avGetManualReorderArticles()
+                    .filter(a => getArticleCategory(a) === avManualSelectedCategory)
+                    .map(a => avNormalizeFilterValue(a.subcategory))
+                    .filter(Boolean)
+            )].sort((a, b) => a.localeCompare(b));
+        }
+
+        function avGetManualGroupList() {
+            if (!avManualSelectedCategory || !avManualSelectedSubcategory) return [];
+            return [...new Set(
+                avGetManualReorderArticles()
+                    .filter(a => getArticleCategory(a) === avManualSelectedCategory)
+                    .filter(a => avNormalizeFilterValue(a.subcategory) === avManualSelectedSubcategory)
+                    .map(a => avNormalizeFilterValue(a.productGroup))
+                    .filter(Boolean)
+            )].sort((a, b) => a.localeCompare(b));
+        }
+
+        function avGetManualFilteredArticles() {
+            const filtered = avGetManualReorderArticles().filter(a => {
+                if (avManualSelectedCategory && getArticleCategory(a) !== avManualSelectedCategory) return false;
+                if (avManualSelectedSubcategory && avNormalizeFilterValue(a.subcategory) !== avManualSelectedSubcategory) return false;
+                if (avManualSelectedGroup && avNormalizeFilterValue(a.productGroup) !== avManualSelectedGroup) return false;
+                return true;
+            });
+            filtered.sort((a, b) => {
+                const wa = Number(getWeightPerUnit(a)) || 0;
+                const wb = Number(getWeightPerUnit(b)) || 0;
+                if (wa !== wb) return wa - wb;
+                const codeCmp = (a.code || '').localeCompare((b.code || ''), undefined, { numeric: true, sensitivity: 'base' });
+                if (codeCmp !== 0) return codeCmp;
+                return (a.name || '').localeCompare((b.name || ''), undefined, { sensitivity: 'base' });
+            });
+            return filtered;
+        }
+
+        function avRenderManualFilterButtons(targetId, items, selectedValue, clickHandlerName, options = {}) {
+            const target = document.getElementById(targetId);
+            if (!target) return;
+            const { includeAll = false, allLabel = 'Tutti', counts = null, rowMode = '' } = options;
+            target.classList.toggle('single-row-fill', rowMode === 'fill');
+            const html = [];
+            if (includeAll) {
+                html.push(`<button type="button" class="av-manual-filter-btn ${selectedValue ? '' : 'active'}" onclick='${clickHandlerName}(null)'>${avEscapeHtml(allLabel)}</button>`);
+            }
+            for (const item of items) {
+                const countHtml = counts && counts[item] ? `<span class="av-manual-filter-count">${counts[item]}</span>` : '';
+                html.push(`<button type="button" class="av-manual-filter-btn ${selectedValue === item ? 'active' : ''}" onclick='${clickHandlerName}(${JSON.stringify(item)})'>${avEscapeHtml(item)}${countHtml}</button>`);
+            }
+            target.innerHTML = html.join('');
+        }
+
+        function avRenderManualReorder() {
+            const categories = avGetManualCategoryList();
+            const subcategories = avGetManualSubcategoryList();
+            const groups = avGetManualGroupList();
+            const filteredArticles = avGetManualFilteredArticles();
+            const subWrap = document.getElementById('avManualSubcategoryWrap');
+            const groupWrap = document.getElementById('avManualGroupWrap');
+            const productsEl = document.getElementById('avManualProducts');
+
+            const categoryCounts = Object.fromEntries(categories.map(cat => [cat, avGetManualReorderArticles().filter(a => getArticleCategory(a) === cat).length]));
+            const shownCategories = avManualSelectedCategory ? [avManualSelectedCategory] : categories;
+            avRenderManualFilterButtons('avManualCategoryBar', shownCategories, avManualSelectedCategory, 'avSelectManualCategory', { counts: categoryCounts, rowMode: 'fill' });
+
+            if (avManualSelectedCategory && subcategories.length) {
+                const subCounts = Object.fromEntries(subcategories.map(sub => [sub, avGetManualReorderArticles().filter(a => getArticleCategory(a) === avManualSelectedCategory && avNormalizeFilterValue(a.subcategory) === sub).length]));
+                const shownSubcategories = avManualSelectedSubcategory ? [avManualSelectedSubcategory] : subcategories;
+                if (subWrap) subWrap.style.display = 'block';
+                avRenderManualFilterButtons('avManualSubcategoryBar', shownSubcategories, avManualSelectedSubcategory, 'avSelectManualSubcategory', { counts: subCounts, rowMode: 'fill' });
+            } else {
+                const subBar = document.getElementById('avManualSubcategoryBar');
+                if (subWrap) subWrap.style.display = 'none';
+                if (subBar) subBar.innerHTML = '';
+            }
+
+            if (avManualSelectedSubcategory && groups.length) {
+                const groupCounts = Object.fromEntries(groups.map(group => [group, avGetManualReorderArticles().filter(a => getArticleCategory(a) === avManualSelectedCategory && avNormalizeFilterValue(a.subcategory) === avManualSelectedSubcategory && avNormalizeFilterValue(a.productGroup) === group).length]));
+                const shownGroups = avManualSelectedGroup ? [avManualSelectedGroup] : groups;
+                if (groupWrap) groupWrap.style.display = 'block';
+                avRenderManualFilterButtons('avManualGroupBar', shownGroups, avManualSelectedGroup, 'avSelectManualGroup', { counts: groupCounts, rowMode: 'fill' });
+            } else {
+                const groupBar = document.getElementById('avManualGroupBar');
+                if (groupWrap) groupWrap.style.display = 'none';
+                if (groupBar) groupBar.innerHTML = '';
+            }
+
+            if (!filteredArticles.some(a => a.id === avManualSelectedArticleId)) {
+                avManualSelectedArticleId = null;
+            }
+
+            if (!productsEl) return;
+            if (!avManualSelectedCategory) {
+                productsEl.innerHTML = '<div class="av-manual-empty">Seleziona prima una categoria</div>';
+            } else if (!filteredArticles.length) {
+                productsEl.innerHTML = '<div class="av-manual-empty">Nessun prodotto per i filtri selezionati</div>';
+            } else {
+                productsEl.innerHTML = filteredArticles.map(a => {
+                    const isActive = avManualSelectedArticleId === a.id;
+                    const stock = a.inventory?.currentStock ?? 0;
+                    const minimum = a.inventory?.minimumStock ?? 0;
+                    return `<button type="button" class="av-manual-product-btn ${isActive ? 'active' : ''}" onclick="avSelectManualArticle(${a.id})" ondblclick="avOpenManualOrderFromArticle(${a.id})" title="Doppio click per aprire subito il popup di riordino"><span class="name">${avEscapeHtml(a.name || 'Senza nome')}</span><span class="meta">${avEscapeHtml(a.code || '—')}</span><span class="stock">${getWeightPerUnit(a)} kg/collo · Disp. ${stock}${minimum > 0 ? ` · Soglia ${minimum}` : ''}</span></button>`;
+                }).join('');
+            }
+
+        }
 
         function avEscapeHtml(s) {
             return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -3861,11 +4043,89 @@
             } catch (_) { avOperatorsList = []; }
         }
 
+        function avBuildOrderContext(article) {
+            const physicalStock = article.inventory?.currentStock ?? 0;
+            const minimumStock = article.inventory?.minimumStock ?? 0;
+            const criticalStock = article.inventory?.criticalStock ?? 0;
+            const availableStock = article.inventory?.availableStock ?? physicalStock;
+            return {
+                articleId: article.id,
+                code: article.code,
+                name: article.name,
+                category: article.category,
+                subcategory: article.subcategory,
+                productGroup: article.productGroup,
+                currentStock: physicalStock,
+                availableStock,
+                minimumStock,
+                criticalStock,
+                level: null,
+                reason: 'MANUAL',
+                snoozed: false,
+                isManual: true
+            };
+        }
+
+        function avSelectManualCategory(category) {
+            const nextCategory = category ? avNormalizeFilterValue(category) : null;
+            avManualSelectedCategory = (nextCategory && nextCategory === avManualSelectedCategory) ? null : nextCategory;
+            avManualSelectedSubcategory = null;
+            avManualSelectedGroup = null;
+            avManualSelectedArticleId = null;
+            avRenderManualReorder();
+        }
+        window.avSelectManualCategory = avSelectManualCategory;
+
+        function avSelectManualSubcategory(subcategory) {
+            const nextSubcategory = subcategory ? avNormalizeFilterValue(subcategory) : null;
+            avManualSelectedSubcategory = (nextSubcategory && nextSubcategory === avManualSelectedSubcategory) ? null : nextSubcategory;
+            avManualSelectedGroup = null;
+            avManualSelectedArticleId = null;
+            avRenderManualReorder();
+        }
+        window.avSelectManualSubcategory = avSelectManualSubcategory;
+
+        function avSelectManualGroup(group) {
+            const nextGroup = group ? avNormalizeFilterValue(group) : null;
+            avManualSelectedGroup = (nextGroup && nextGroup === avManualSelectedGroup) ? null : nextGroup;
+            avManualSelectedArticleId = null;
+            avRenderManualReorder();
+        }
+        window.avSelectManualGroup = avSelectManualGroup;
+
+        function avSelectManualArticle(articleId) {
+            avManualSelectedArticleId = Number(articleId) || null;
+            avRenderManualReorder();
+        }
+        window.avSelectManualArticle = avSelectManualArticle;
+
+        function avOpenManualOrderFromArticle(articleId) {
+            avSelectManualArticle(articleId);
+            avStartManualOrder();
+        }
+        window.avOpenManualOrderFromArticle = avOpenManualOrderFromArticle;
+
+        function avStartManualOrder() {
+            const articleId = Number(avManualSelectedArticleId || 0);
+            if (!articleId) {
+                alert('Seleziona prima un prodotto da riordinare');
+                return;
+            }
+            const article = allArticles.find(a => a.id === articleId && !a.code?.startsWith('EMPTY-'));
+            if (!article) {
+                alert('Prodotto non trovato. Aggiorna la pagina e riprova.');
+                return;
+            }
+            avOpenOrderModal(avBuildOrderContext(article));
+        }
+        window.avStartManualOrder = avStartManualOrder;
+
         function avOpenOrderModal(alertObj) {
             avPendingAlert = alertObj;
             document.getElementById('avOmArticle').value = `${alertObj.name} (${alertObj.code})`;
-            document.getElementById('avOrderModalSub').textContent =
-                `Giacenza attuale: ${alertObj.currentStock} colli · Soglia: ${alertObj.minimumStock || 0}`;
+            document.getElementById('avOrderModalSub').textContent = alertObj.isManual
+                ? `Riordino manuale · Giacenza attuale: ${alertObj.currentStock} colli · Soglia: ${alertObj.minimumStock || 0}`
+                : `Giacenza attuale: ${alertObj.currentStock} colli · Soglia: ${alertObj.minimumStock || 0}`;
             const suggested = Math.max(10, ((alertObj.minimumStock || 0) * 2) - (alertObj.availableStock != null ? alertObj.availableStock : (alertObj.currentStock || 0)));
             document.getElementById('avOmQty').value = suggested > 0 ? suggested : 10;
             const now = new Date();
@@ -3913,6 +4173,7 @@
                 `Quantità da riordinare: ${qty} colli\n` +
                 `Giacenza attuale: ${a.currentStock} colli\n` +
                 `Soglia avviso: ${a.minimumStock || 0} · Soglia critica: ${a.criticalStock || 0}` +
+                (a.isManual ? `\nOrigine richiesta: riordino manuale` : '') +
                 (notes ? `\n\nNote: ${notes}` : '');
             const btn = document.getElementById('avOmSubmitBtn');
             btn.disabled = true; btn.textContent = '⏳ Creazione…';
@@ -3950,6 +4211,8 @@
         async function showAvvisi() {
             _setActiveCard('fcAvvisi');
             showOnlySection('avvisiCard');
+            avRenderManualReorder();
+            avSetManualCollapsed(true);
             if (!avLoaded) {
                 avLoaded = true;
                 await avLoadOperators();

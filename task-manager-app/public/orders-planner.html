@@ -4928,7 +4928,7 @@
                                         ${productsHTML}
                                         <p style="margin-top: 10px;"><strong>Colli Totali:</strong> ${colli} colli • <strong style="color: #38bdf8;">${kg} kg</strong></p>
                                         <p><strong>Data/Ora:</strong> ${new Date(order.dateTime).toLocaleString('it-IT')}</p>
-                                        <p><strong>Note:</strong> ${order.notes || '—'}</p>
+                                        ${order.notes ? `<p style="margin-top:8px;padding:8px 10px;background:#fffbeb;border-left:4px solid #f59e0b;border-radius:3px;"><strong style="color:#b45309;">📝 Note:</strong> ${order.notes}</p>` : ''}
                                     </div>
                                     `;
                                 }).join('')}

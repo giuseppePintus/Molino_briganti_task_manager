@@ -312,6 +312,189 @@
         #avvisiCard .av-stat-card.low { border-color: #f59e0b; }
         #avvisiCard .av-stat-card .label { font-size: 11px; text-transform: uppercase; color: #9ca3af; letter-spacing: 0.4px; }
         #avvisiCard .av-stat-card .value { font-size: 22px; font-weight: 700; color: #e0e0e0; }
+        .av-manual-order-box {
+            margin: 18px 0;
+            padding: 16px;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #0f172a 0%, #111827 100%);
+        }
+        .av-manual-order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+        .av-manual-toggle-btn {
+            background: #1e3a8a;
+            color: #dbeafe;
+            border: 1px solid #3b82f6;
+            padding: 8px 12px;
+            min-height: 0;
+            font-size: 12px;
+            line-height: 1;
+            white-space: nowrap;
+        }
+        .av-manual-order-body {
+            margin-top: 6px;
+        }
+        .av-manual-order-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 700;
+            color: #cbd5e1;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .av-manual-order-note {
+            font-size: 12px;
+            color: #94a3b8;
+        }
+        .av-manual-filter-block {
+            margin-top: 12px;
+        }
+        .av-manual-hierarchy-row {
+            display: flex;
+            flex-direction: row;
+            align-items: flex-start;
+            gap: 12px;
+            flex-wrap: nowrap;
+            width: 100%;
+        }
+        .av-manual-hierarchy-row .av-manual-filter-block {
+            flex: 1 1 0;
+            min-width: 0;
+            margin-top: 0;
+        }
+        .av-manual-filter-title {
+            font-size: 12px;
+            color: #cbd5e1;
+            font-weight: 700;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .av-manual-action-hint {
+            margin-bottom: 8px;
+            font-size: 12px;
+            color: #93c5fd;
+        }
+        .av-manual-filter-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 8px;
+            width: 100%;
+        }
+        .av-manual-filter-bar.single-row-fill {
+            display: flex;
+            flex-wrap: nowrap;
+            align-items: stretch;
+            gap: 8px;
+        }
+        .av-manual-filter-bar.single-row-fill .av-manual-filter-btn {
+            flex: 1 1 0;
+            min-width: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            text-align: center;
+        }
+        .av-manual-filter-btn {
+            background: #1f2937;
+            border: 1px solid #475569;
+            border-radius: 999px;
+            color: #cbd5e1;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            justify-content: center;
+            width: 100%;
+            transition: border-color 0.15s, background 0.15s, color 0.15s;
+        }
+        .av-manual-filter-btn:hover {
+            border-color: #38bdf8;
+            background: #1e293b;
+            color: #fff;
+        }
+        .av-manual-filter-btn.active {
+            background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+            border-color: #60a5fa;
+            color: #fff;
+        }
+        .av-manual-filter-count {
+            background: rgba(255,255,255,0.12);
+            border-radius: 999px;
+            padding: 1px 7px;
+            font-size: 11px;
+        }
+        .av-manual-products {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 10px;
+        }
+        .av-manual-product-btn {
+            background: #111827;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            padding: 12px;
+            color: #e5e7eb;
+            text-align: left;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            transition: border-color 0.15s, background 0.15s, transform 0.15s;
+        }
+        .av-manual-product-btn:hover {
+            border-color: #38bdf8;
+            background: #172033;
+            transform: translateY(-1px);
+        }
+        .av-manual-product-btn.active {
+            border-color: #22c55e;
+            background: rgba(22,163,74,0.12);
+            box-shadow: 0 0 0 1px rgba(34,197,94,0.25);
+        }
+        .av-manual-product-btn .name {
+            font-size: 14px;
+            font-weight: 700;
+        }
+        .av-manual-product-btn .meta {
+            font-size: 12px;
+            color: #93c5fd;
+            font-family: monospace;
+        }
+        .av-manual-product-btn .stock {
+            font-size: 12px;
+            color: #86efac;
+        }
+        .av-manual-empty {
+            padding: 16px;
+            border: 1px dashed #475569;
+            border-radius: 10px;
+            color: #94a3b8;
+            text-align: center;
+        }
+        .av-manual-selected {
+            margin-top: 12px;
+            padding: 12px;
+            border-radius: 10px;
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid #334155;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            color: #cbd5e1;
+        }
+        .av-manual-selected strong {
+            color: #fff;
+        }
         .av-modal-overlay {
             position: fixed; inset: 0; background: rgba(0,0,0,0.65); display: none;
             align-items: center; justify-content: center; z-index: 1000;
@@ -333,6 +516,18 @@
         .av-modal .field-row .field { flex: 1; }
         .av-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
         @media (max-width: 700px) {
+            .av-manual-order-header {
+                flex-direction: column;
+            }
+            .av-manual-toggle-btn {
+                width: 100%;
+            }
+            .av-manual-hierarchy-row {
+                grid-template-columns: 1fr;
+            }
+            .av-manual-products {
+                grid-template-columns: 1fr;
+            }
             #avvisiCard thead { display: none; }
             #avvisiCard tbody tr { display: block; padding: 12px; border-bottom: 1px solid #374151; }
             #avvisiCard tbody td { display: flex; justify-content: space-between; padding: 6px 0; border: none; }
