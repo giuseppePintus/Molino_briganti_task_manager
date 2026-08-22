@@ -267,34 +267,34 @@
 
             <div class="field">
                 <label>Articolo</label>
-                <input id="avOmArticle" type="text" disabled>
+                <input id="avOmArticle" type="text" title="Articolo" disabled>
             </div>
 
             <div class="field-row">
                 <div class="field">
                     <label>Quantità (colli)</label>
-                    <input id="avOmQty" type="number" min="1" step="1" value="10">
+                    <input id="avOmQty" type="number" min="1" step="1" value="10" title="Quantità in colli">
                 </div>
                 <div class="field">
                     <label>Operatore assegnato</label>
-                    <select id="avOmOperator"></select>
+                    <select id="avOmOperator" title="Operatore assegnato"></select>
                 </div>
             </div>
 
             <div class="field-row">
                 <div class="field">
                     <label>Data</label>
-                    <input id="avOmDate" type="date">
+                    <input id="avOmDate" type="date" title="Data">
                 </div>
                 <div class="field">
                     <label>Ora</label>
-                    <input id="avOmTime" type="time" value="09:00">
+                    <input id="avOmTime" type="time" value="09:00" title="Ora">
                 </div>
             </div>
 
             <div class="field">
                 <label>Priorità</label>
-                <select id="avOmPriority">
+                <select id="avOmPriority" title="Priorità">
                     <option value="MEDIUM">Media</option>
                     <option value="HIGH" selected>Alta</option>
                     <option value="URGENT">Urgente</option>
@@ -325,7 +325,7 @@
             </div>
             <div class="cargo-field">
                 <label>Articolo da assegnare</label>
-                <select id="assignShelfArticleSelect">
+                <select id="assignShelfArticleSelect" title="Articolo da assegnare">
                     <option value="">-- Seleziona articolo --</option>
                 </select>
             </div>
@@ -351,20 +351,20 @@
             <div id="shelfEntryFormSection">
                 <div class="cargo-field" id="shelfEntryArticleField">
                     <label>Articolo</label>
-                    <select id="shelfEntryArticleSelect">
+                    <select id="shelfEntryArticleSelect" title="Articolo">
                         <option value="">-- Seleziona articolo --</option>
                     </select>
                 </div>
                 <div class="cargo-field">
                     <label>Posizione scaffale</label>
-                    <select id="shelfEntryPosSelect">
+                    <select id="shelfEntryPosSelect" title="Posizione scaffale">
                         <option value="">-- Seleziona posizione --</option>
                     </select>
                 </div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
                     <div class="cargo-field">
                         <label>Quantità (colli)</label>
-                        <input type="number" id="shelfEntryQty" min="0" value="0">
+                        <input type="number" id="shelfEntryQty" min="0" value="0" title="Quantità in colli">
                     </div>
                     <div class="cargo-field">
                         <label>Lotto</label>
@@ -404,12 +404,12 @@
             </div>
             <div class="cargo-field">
                 <label>Posizione di destinazione</label>
-                <select id="copyEntryPosSelect" style="background:#1f2937;border:1px solid #374151;border-radius:6px;color:#e0e0e0;padding:6px 10px;width:100%;font-size:14px;"></select>
+                <select id="copyEntryPosSelect" title="Posizione di destinazione" style="background:#1f2937;border:1px solid #374151;border-radius:6px;color:#e0e0e0;padding:6px 10px;width:100%;font-size:14px;"></select>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
                 <div class="cargo-field">
                     <label>Quantità (colli)</label>
-                    <input type="number" id="copyEntryQty" min="0" value="0">
+                    <input type="number" id="copyEntryQty" min="0" value="0" title="Quantità in colli">
                 </div>
                 <div class="cargo-field">
                     <label>Lotto</label>
@@ -441,7 +441,7 @@
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
                 <div class="cargo-field">
                     <label>Codice posizione</label>
-                    <select id="editPosCode" onchange="switchEditPosition()" style="background:#1f2937;border:1px solid #374151;border-radius:6px;color:#e0e0e0;padding:6px 10px;width:100%;font-size:14px;"></select>
+                    <select id="editPosCode" onchange="switchEditPosition()" title="Codice posizione" style="background:#1f2937;border:1px solid #374151;border-radius:6px;color:#e0e0e0;padding:6px 10px;width:100%;font-size:14px;"></select>
                 </div>
                 <div class="cargo-field">
                     <label>Descrizione / Nota</label>
@@ -491,20 +491,20 @@
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                 <div class="cargo-field">
                     <label>Categoria</label>
-                    <select id="artCategory" onchange="onArtCategoryChange()">
+                    <select id="artCategory" onchange="onArtCategoryChange()" title="Categoria">
                         <option value="">-- Seleziona categoria --</option>
                     </select>
                 </div>
                 <div class="cargo-field">
                     <label>Sottocategoria</label>
-                    <select id="artSubcategory" onchange="onArtSubcategoryChange()">
+                    <select id="artSubcategory" onchange="onArtSubcategoryChange()" title="Sottocategoria">
                         <option value="">— nessuna —</option>
                     </select>
                     <small id="artSubcategoryHint" style="display:block;margin-top:4px;font-size:11px;color:#9ca3af;">Le sotto-categorie si gestiscono in <a href="#" onclick="event.preventDefault();openCategoryManager();" style="color:#60a5fa;">🏷️ Categorie</a></small>
                 </div>
                 <div class="cargo-field">
                     <label>Gruppo</label>
-                    <select id="artProductGroup">
+                    <select id="artProductGroup" title="Gruppo">
                         <option value="">— nessuno —</option>
                     </select>
                     <small id="artProductGroupHint" style="display:block;margin-top:4px;font-size:11px;color:#9ca3af;">I gruppi si gestiscono dentro ogni sotto-categoria in <a href="#" onclick="event.preventDefault();openCategoryManager();" style="color:#60a5fa;">🏷️ Categorie</a></small>
@@ -606,7 +606,7 @@
 
             <div class="cargo-field">
                 <label>Articolo</label>
-                <select id="cargoArticleSelect" onchange="onCargoArticleChange()">
+                <select id="cargoArticleSelect" onchange="onCargoArticleChange()" title="Articolo">
                     <option value="">-- Seleziona articolo --</option>
                 </select>
             </div>
@@ -619,7 +619,7 @@
                 <label id="cargoQtyLabel">Quantità da caricare (colli)</label>
                 <div class="qty-control">
                     <button class="qty-btn" onclick="adjustQty(-1)">−</button>
-                    <input type="number" id="cargoQtyInput" value="1" min="0" step="1" placeholder="0" oninput="updateCargoKgPreview()">
+                    <input type="number" id="cargoQtyInput" value="1" min="0" step="1" placeholder="0" title="Quantità da caricare" oninput="updateCargoKgPreview()">
                     <button class="qty-btn" onclick="adjustQty(+1)">+</button>
                 </div>
                 <div id="cargoKgPreview" style="margin-top:6px;font-size:12px;color:#93c5fd;"></div>
@@ -4309,7 +4309,7 @@
             <div class="print-opt-row">
                 <div class="print-opt-group">
                     <label>Filtra per</label>
-                    <select id="printFilter">
+                    <select id="printFilter" title="Filtra per">
                         <option value="all">Tutto l'inventario</option>
                         <option value="sector">Settore scaffale (A, B…)</option>
                         <option value="category">Categoria articolo</option>

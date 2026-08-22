@@ -181,7 +181,7 @@
                         
                         <div class="grid-1fr-auto mb-12">
                             <div>
-                                <select id="orderProduct" class="form-select-full p-10 font-size-14" onchange="loadAvailableBatches(); updateConversionInfo()">
+                                <select id="orderProduct" class="form-select-full p-10 font-size-14" title="Seleziona articolo" onchange="loadAvailableBatches(); updateConversionInfo()">
                                     <option value="">-- Seleziona Articolo --</option>
                                 </select>
                             </div>
@@ -394,7 +394,7 @@
             <div class="modal-body">
                 <div class="form-box-dark">
                     <label class="form-label mb-10">Articolo:</label>
-                    <select id="editProductName" class="form-select-full p-8" onchange="updateEditConversionInfo(); renderEditProductBatches(this.value)">
+                    <select id="editProductName" class="form-select-full p-8" title="Articolo" onchange="updateEditConversionInfo(); renderEditProductBatches(this.value)">
                         <!-- Opzioni caricate dinamicamente -->
                     </select>
                 </div>
@@ -404,11 +404,11 @@
                     <div class="grid-1fr-1fr mb-10">
                         <div>
                             <label class="form-label-gray font-size-12 mb-5">Colli</label>
-                            <input type="number" class="form-input-full p-8" id="editProductColli" step="1" min="0" oninput="editColliToKgAuto()">
+                            <input type="number" class="form-input-full p-8" id="editProductColli" step="1" min="0" title="Colli" oninput="editColliToKgAuto()">
                         </div>
                         <div>
                             <label class="form-label-gray font-size-12 mb-5">Peso (kg)</label>
-                            <input type="number" class="form-input-full p-8" id="editProductQuantity" step="1" min="0" oninput="editKgToColliAuto()">
+                            <input type="number" class="form-input-full p-8" id="editProductQuantity" step="1" min="0" title="Peso in kg" oninput="editKgToColliAuto()">
                         </div>
                     </div>
                     <span id="editConversionInfo" class="info-text-gray">Seleziona un articolo per la conversione</span>

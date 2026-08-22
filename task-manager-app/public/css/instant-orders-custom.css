@@ -309,9 +309,9 @@ body {
     box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.15);
 }
 .client-row select {
-    appearance: none;
     -webkit-appearance: none;
     -moz-appearance: none;
+    appearance: none;
     cursor: pointer;
     padding-right: 32px;
     background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path fill='%239ca3af' d='M6 8L2 4h8z'/></svg>");
