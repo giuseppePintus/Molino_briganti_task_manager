@@ -50,31 +50,7 @@
 
         <!-- Quick Actions -->
         <div class="quick-actions">
-            <div class="dropdown-menu-admin">
-                <button class="btn btn-settings" data-icon="⚙️" onclick="toggleAdminMenu()"><span>Gestione</span></button>
-                <div id="adminMenuDropdown" class="admin-menu-dropdown">
-                    <button class="admin-menu-item" onclick="window.location.href='company-settings.html'; toggleAdminMenu();">
-                        <span class="menu-icon">🏢</span>
-                        <span>Impostazioni Azienda</span>
-                    </button>
-                    <button class="admin-menu-item" onclick="window.location.href='operators.html'; toggleAdminMenu();">
-                        <span class="menu-icon">👥</span>
-                        <span>Gestione Admin / Operatori</span>
-                    </button>
-                    <button class="admin-menu-item" onclick="window.location.href='backup-management.html'; toggleAdminMenu();">
-                        <span class="menu-icon">💾</span>
-                        <span>Gestione Backup</span>
-                    </button>
-                    <button class="admin-menu-item" onclick="window.location.href='customers-management.html'; toggleAdminMenu();">
-                        <span class="menu-icon">👨‍💼</span>
-                        <span>Gestione Clienti</span>
-                    </button>
-                    <button class="admin-menu-item" onclick="openIndiceModal(); toggleAdminMenu();">
-                        <span class="menu-icon">🗂️</span>
-                        <span>Indice</span>
-                    </button>
-                </div>
-            </div>
+            <button class="btn btn-settings" data-icon="⚙️" onclick="window.location.href='gestione-hub.html?from=orders-planner'"><span>Gestione</span></button>
             <button class="btn btn-tasks" data-icon="✅" onclick="window.location.href='admin-dashboard.html'"><span>Planner Task</span></button>
             <button class="btn btn-planner active" data-icon="📦" onclick="window.location.href='orders-planner.html'"><span>Planner Ordini</span></button>
             <button class="btn btn-warehouse" data-icon="🏭" onclick="window.location.href='warehouse-management.html'"><span>Gestione Magazzino</span></button>

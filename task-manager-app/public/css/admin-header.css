@@ -188,6 +188,25 @@
 }
 .quick-actions .btn.active:hover { transform: translateY(-3px); }
 
+/* Pulsanti non attivi: leggermente spenti per evidenziare quello selezionato */
+.quick-actions .btn:not(.active) {
+    filter: brightness(0.6);
+    opacity: 0.88;
+}
+.quick-actions .btn:not(.active):hover {
+    filter: brightness(0.85);
+    opacity: 1;
+}
+/* Testo e icona al 100% nonostante il dim sul contenitore */
+.quick-actions .btn:not(.active) span,
+.quick-actions .btn:not(.active)::before {
+    filter: brightness(1.667);
+}
+.quick-actions .btn:not(.active):hover span,
+.quick-actions .btn:not(.active):hover::before {
+    filter: brightness(1.176);
+}
+
 /* Sticky top bar */
 .sticky-top-bar {
     position: sticky;

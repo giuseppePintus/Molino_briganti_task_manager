@@ -19,6 +19,7 @@
     'company-settings':       { icon: '🏢', label: 'Impostazioni Azienda' },
     'operators':              { icon: '👥', label: 'Gestione Operatori' },
     'backup-management':      { icon: '💾', label: 'Gestione Backup' },
+    'gestione-hub':           { icon: '⚙️', label: 'Hub Gestione' },
     'index':                  { icon: '🏠', label: 'Home / Login' },
   };
 

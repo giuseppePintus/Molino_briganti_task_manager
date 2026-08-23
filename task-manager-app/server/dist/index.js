@@ -113,6 +113,7 @@ const trips_1 = __importDefault(require("./routes/trips"));
 const customers_1 = __importDefault(require("./routes/customers"));
 const wireguard_1 = __importDefault(require("./routes/wireguard"));
 const debug_1 = __importDefault(require("./routes/debug"));
+const printers_1 = __importDefault(require("./routes/printers"));
 const backupMiddleware_1 = __importDefault(require("./middleware/backupMiddleware"));
 const auth_2 = require("./middleware/auth");
 const backupService_1 = __importDefault(require("./services/backupService"));
@@ -164,6 +165,7 @@ app.use('/api/trips', auth_2.authMiddleware, trips_1.default);
 app.use('/api/customers', customers_1.default);
 app.use('/api/wireguard', wireguard_1.default);
 app.use('/api/debug', debug_1.default);
+app.use('/api/printers', printers_1.default);
 // Inline endpoint - List all HTML pages in public dir (for Indice feature)
 app.get('/api/pages', (req, res) => {
     try {

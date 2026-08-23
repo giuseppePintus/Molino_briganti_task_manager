@@ -309,6 +309,23 @@
             transform: translateY(-3px);
         }
 
+        .quick-actions .btn:not(.active) {
+            filter: brightness(0.6);
+            opacity: 0.88;
+        }
+        .quick-actions .btn:not(.active):hover {
+            filter: brightness(0.85);
+            opacity: 1;
+        }
+        .quick-actions .btn:not(.active) span,
+        .quick-actions .btn:not(.active)::before {
+            filter: brightness(1.667);
+        }
+        .quick-actions .btn:not(.active):hover span,
+        .quick-actions .btn:not(.active):hover::before {
+            filter: brightness(1.176);
+        }
+
         .dropdown-menu-admin {
             position: relative;
             display: block;

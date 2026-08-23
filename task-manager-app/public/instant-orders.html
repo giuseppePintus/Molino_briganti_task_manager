@@ -107,7 +107,7 @@
                 <!-- Azioni -->
                 <div class="action-buttons">
                         <button class="btn btn-success" id="btnCompleteA4" onclick="completeOrder('a4')" disabled>🖨✅ Stampa e completa A4</button>
-                        <button class="btn btn-success" id="btnCompleteThermal" onclick="completeOrder('thermal')" disabled>🧾✅ Stampa e completa 80mm</button>
+                        <button class="btn btn-success" id="btnCompleteThermal" onclick="previewThermalOrder()" disabled>🧾✅ Stampa e completa 80mm</button>
                         <button class="btn btn-warning" id="btnComplete" onclick="completeOrder()" disabled>✅ Solo completa</button>
                 </div>
             </div>
@@ -908,6 +908,98 @@ function printOrderA4(orderId) {
     printWindow.document.close();
 }
 
+// Mostra preview scontrino PRIMA di creare l'ordine (inventario intatto fino a conferma)
+function previewThermalOrder() {
+    if (!orderLines.length) return;
+    if (!window.thermalPrintAPI) { completeOrder('thermal'); return; }
+    const api = window.thermalPrintAPI;
+
+    // Snapshot del payload al momento del click (non dopo eventuali modifiche)
+    const snapshot = {
+        clientName: (document.getElementById('clientNameInput').value || '').trim() || 'Banco',
+        notes: document.getElementById('orderNotes').value.trim() || null,
+        assignedOperatorId: (() => { const v = document.getElementById('operatorSelect')?.value; return v ? parseInt(v, 10) : null; })(),
+        items: orderLines.map(l => ({ articleId: l.articleId, quantity: l.quantity, positionCode: l.positionCode, shelfEntryId: l.shelfEntryId, batch: l.batch || undefined })),
+    };
+
+    // Costruisce HTML anteprima dagli stessi dati di printOrderThermal ma senza orderId
+    const order = buildOrderPayload(null);
+    const totColli = order.lines.reduce((s, l) => s + l.quantity, 0);
+    const totKg    = order.lines.reduce((s, l) => s + l.kg, 0);
+    let html = '';
+    html += api.brandHeaderHtml();
+    html += '<div class="rcpt-title">ORDINE</div>';
+    html += '<div class="rcpt-sub">' + api.escapeHtml(order.clientName) + '</div>';
+    html += api.infoBoxHtml([
+        ['Data', order.date.toLocaleDateString('it-IT')],
+        ['Ora',  order.date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })],
+        ['Operatore', order.operator || '-'],
+        ['Tipo', 'Vendita banco'],
+    ]);
+    html += '<div class="rcpt-section">PRODOTTI</div>';
+    order.lines.forEach(l => {
+        const esc = api.escapeHtml;
+        const pos = l.positionCode ? '<span class="rcpt-prod-shelf">' + esc(l.positionCode) + '</span>' : '';
+        const r3items = [];
+        if (l.batch)  r3items.push('<span class="r3-item">L.\u00A0' + esc(l.batch) + '</span>');
+        if (l.expiry) r3items.push('<span class="r3-item">Sc.\u00A0' + esc(l.expiry) + '</span>');
+        const r3 = r3items.length ? '<div class="rcpt-prod-row3">' + r3items.join('') + '</div>' : '';
+        html += '<div class="rcpt-prod"><span class="rcpt-prod-name">' + esc(l.articleName) + '</span>' +
+            '<div class="rcpt-prod-row2">' + pos +
+            '<span class="rcpt-prod-colli">' + l.quantity + '\u00A0Colli</span>' +
+            '<span class="rcpt-prod-kg">' + l.kg.toFixed(1) + '\u00A0kg</span>' +
+            '</div>' + r3 + '</div>';
+    });
+    if (order.notes) html += '<div class="rcpt-notes"><span class="lbl">Note</span>' + api.escapeHtml(order.notes) + '</div>';
+    html += api.totalBoxHtml(totColli, totKg);
+    html += api.footerHtml();
+
+    const rcptTitle = 'Ordine ' + order.clientName;
+    window.showReceiptPreview(rcptTitle, html, async function() {
+        // Solo ora crea l'ordine e scala il magazzino
+        const btnA = document.getElementById('btnComplete');
+        const btnB = document.getElementById('btnCompleteA4');
+        const btnC = document.getElementById('btnCompleteThermal');
+        if (btnA) btnA.disabled = true;
+        if (btnB) btnB.disabled = true;
+        if (btnC) btnC.disabled = true;
+
+        try {
+            await sendInstantOrderAudit('complete-start', { clientName: snapshot.clientName, lines: snapshot.items, withPrint: true, printMode: 'thermal' });
+
+            const resp = await fetch(`${API_URL}/orders/instant-complete`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify(snapshot),
+            });
+            const data = await resp.json();
+            if (!resp.ok) throw new Error(data.error || 'Errore creazione ordine');
+
+            const orderId = data.order?.id;
+            await sendInstantOrderAudit('complete-end', { clientName: snapshot.clientName, orderId: orderId ?? null, lines: snapshot.items, printMode: 'thermal' });
+            showToast(`Ordine ${orderId ? '#' + orderId : ''} completato`, 'success');
+
+            // Invia stampa RAW
+            if (orderId && window.sendPrintJobPublic) {
+                const result = await window.sendPrintJobPublic('receipt_80mm_ufficio', 'pickup_order', { orderId: Number(orderId) });
+                if (result === true) showToast('✅ Scontrino inviato alla stampante', 'success');
+                else showToast('❌ Stampante non raggiungibile', 'error');
+            }
+
+            // Reset form
+            orderLines = [];
+            document.getElementById('orderNotes').value = '';
+            document.getElementById('clientNameInput').value = '';
+            renderOrderLines();
+            await loadAll();
+        } catch (e) {
+            console.error('previewThermalOrder confirm error:', e);
+            showToast(e.message || 'Errore durante il completamento', 'error');
+            updateTotals();
+        }
+    });
+}
+
 // === Termica 72mm: usa thermalPrintAPI di thermal-print.js ===
 function printOrderThermal(orderId) {
     if (!orderLines.length) return;
@@ -964,7 +1056,17 @@ function printOrderThermal(orderId) {
     html += api.totalBoxHtml(totColli, totKg);
     html += api.footerHtml();
 
-    api.openReceipt('Ordine ' + (order.clientName || orderId || ''), html);
+    // Preview prima di inviare alla stampante RAW
+    const rcptTitle = 'Ordine ' + (order.clientName || orderId || '');
+    if (window.showReceiptPreview) {
+        window.showReceiptPreview(rcptTitle, html, async function() {
+            var result = await window.sendPrintJobPublic('receipt_80mm_ufficio', 'pickup_order', { orderId: Number(orderId) });
+            if (result === true) { showToast('✅ Scontrino inviato alla stampante', 'success'); }
+            else { showToast('❌ Stampante non raggiungibile: ' + (result && result.message ? result.message : 'timeout'), 'error'); }
+        });
+    } else {
+        api.openReceipt(rcptTitle, html);
+    }
 }
 
 // Wrapper unico chiamato dai bottoni

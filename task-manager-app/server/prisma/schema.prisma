@@ -415,3 +415,15 @@ model Warehouse {
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 }
+
+model Printer {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(100)           // Nome display, es. "Termica 80mm Magazzino"
+  role      String   @unique @db.VarChar(50)    // Ruolo funzionale, es. "receipt_80mm", "label_4x6"
+  ip        String   @db.VarChar(45)
+  port      Int      @default(9100)
+  protocol  String   @db.VarChar(10)            // "ESCPOS" | "TSPL"
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

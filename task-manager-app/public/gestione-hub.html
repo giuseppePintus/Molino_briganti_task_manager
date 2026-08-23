@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestione - Molino Briganti</title>
+    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/common-styles.css">
+    <script src="js/settings-utils.js"></script>
+    <script src="js/auth-guard.js"></script>
+    <script src="js/pages-indice.js"></script>
+    <script src="js/user-info-badge.js"></script>
+    <script src="js/alerts-badge.js" defer></script>
+    <style>
+        :root {
+            --primary: #38bdf8;
+        }
+        body {
+            background: #1a1a1a;
+            color: #e0e0e0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        .hub-section {
+            background: #2d2d2d;
+            border-radius: 10px;
+            padding: 20px 24px;
+            margin-bottom: 20px;
+        }
+        .hub-section-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin: 0 0 14px 0;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #3d3d3d;
+        }
+        .hub-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 12px;
+        }
+        .hub-card {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            background: #1a1a1a;
+            border: 1px solid #3d3d3d;
+            border-radius: 8px;
+            padding: 14px 16px;
+            cursor: pointer;
+            text-decoration: none;
+            color: #e0e0e0;
+            transition: background 0.15s, border-color 0.15s, transform 0.1s;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .hub-card:hover {
+            background: #2a3a4a;
+            border-color: #38bdf8;
+            transform: translateY(-1px);
+        }
+        .hub-card.hub-card-danger {
+            border-color: #7f1d1d;
+        }
+        .hub-card.hub-card-danger:hover {
+            background: #3a1e1e;
+            border-color: #f87171;
+        }
+        .hub-card.hub-card-danger .hub-card-label {
+            color: #f87171;
+        }
+        .hub-card-icon {
+            font-size: 1.6rem;
+            flex-shrink: 0;
+            line-height: 1;
+        }
+        .hub-card-label {
+            line-height: 1.3;
+        }
+        .hub-card-sublabel {
+            font-size: 11px;
+            color: #64748b;
+            margin-top: 2px;
+            font-weight: 400;
+        }
+
+        /* Highlight the active page card */
+        .hub-card.hub-card-active {
+            background: #1e3a5f;
+            border-color: #38bdf8;
+        }
+
+        @media (max-width: 600px) {
+            .hub-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        @media (max-width: 380px) {
+            .hub-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- Header -->
+    <div class="header">
+        <div class="header-left">
+            <div class="header-logo">
+                <img id="headerLogoImg" src="images/logo INSEGNA.png" alt="Molino Briganti Logo" class="logo-hidden">
+            </div>
+            <div class="header-title">
+                <h1>⚙️ Gestione</h1>
+                <div class="user-info" id="userInfo"></div>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-secondary btn-small" onclick="history.back()">← Indietro</button>
+            <button class="btn btn-danger" data-icon="🚪" onclick="handleLogout()"><span>Logout</span></button>
+        </div>
+    </div>
+
+    <!-- Alert -->
+    <div id="alert" class="alert"></div>
+
+    <!-- ===== MODULI PRINCIPALI ===== -->
+    <div class="hub-section">
+        <div class="hub-section-title">Moduli principali</div>
+        <div class="hub-grid">
+            <a class="hub-card" href="admin-dashboard.html" id="card-admin-dashboard">
+                <span class="hub-card-icon">✅</span>
+                <div><div class="hub-card-label">Planner Task</div></div>
+            </a>
+            <a class="hub-card" href="orders-planner.html" id="card-orders-planner">
+                <span class="hub-card-icon">📦</span>
+                <div><div class="hub-card-label">Planner Ordini</div></div>
+            </a>
+            <a class="hub-card" href="warehouse-management.html" id="card-warehouse-management">
+                <span class="hub-card-icon">🏭</span>
+                <div><div class="hub-card-label">Gestione Magazzino</div></div>
+            </a>
+            <a class="hub-card" href="instant-orders.html" id="card-instant-orders">
+                <span class="hub-card-icon">⚡</span>
+                <div><div class="hub-card-label">Ordini Istantanei</div><div class="hub-card-sublabel">Vendita banco / scarico immediato</div></div>
+            </a>
+            <a class="hub-card" href="customers-management.html" id="card-customers-management">
+                <span class="hub-card-icon">👨‍💼</span>
+                <div><div class="hub-card-label">Gestione Clienti</div></div>
+            </a>
+            <a class="hub-card" href="trips-management.html" id="card-trips-management">
+                <span class="hub-card-icon">🚚</span>
+                <div><div class="hub-card-label">Gestione Viaggi</div></div>
+            </a>
+        </div>
+    </div>
+
+    <!-- ===== AMMINISTRAZIONE ===== -->
+    <div class="hub-section">
+        <div class="hub-section-title">Amministrazione sistema</div>
+        <div class="hub-grid">
+            <a class="hub-card" href="company-settings.html">
+                <span class="hub-card-icon">🏢</span>
+                <div><div class="hub-card-label">Impostazioni Azienda</div></div>
+            </a>
+            <a class="hub-card" href="operators.html">
+                <span class="hub-card-icon">👥</span>
+                <div><div class="hub-card-label">Gestione Operatori</div></div>
+            </a>
+            <a class="hub-card" href="backup-management.html">
+                <span class="hub-card-icon">💾</span>
+                <div><div class="hub-card-label">Gestione Backup</div></div>
+            </a>
+            <a class="hub-card" href="wireguard-management.html">
+                <span class="hub-card-icon">🔐</span>
+                <div><div class="hub-card-label">VPN WireGuard</div></div>
+            </a>
+            <a class="hub-card" href="tablet-deploy-management.html">
+                <span class="hub-card-icon">📲</span>
+                <div><div class="hub-card-label">Aggiornamenti Tablet</div></div>
+            </a>
+            <a class="hub-card" href="printer-config.html">
+                <span class="hub-card-icon">🖨️</span>
+                <div><div class="hub-card-label">Stampanti</div><div class="hub-card-sublabel">Stampanti di rete RAW</div></div>
+            </a>
+        </div>
+    </div>
+
+    <!-- ===== STRUMENTI ===== -->
+    <div class="hub-section">
+        <div class="hub-section-title">Strumenti</div>
+        <div class="hub-grid">
+            <button class="hub-card" onclick="openIndiceModal()">
+                <span class="hub-card-icon">🗂️</span>
+                <div><div class="hub-card-label">Indice Pagine</div><div class="hub-card-sublabel">Mappa di tutte le pagine</div></div>
+            </button>
+            <a class="hub-card" href="/MolinoInventory.apk" download="MolinoInventory.apk">
+                <span class="hub-card-icon">📱</span>
+                <div><div class="hub-card-label">Scarica APK Inventario</div><div class="hub-card-sublabel">App Android magazzino</div></div>
+            </a>
+            <a class="hub-card" href="/uploads/apks/OperatorLite.apk" download="OperatorLite.apk">
+                <span class="hub-card-icon">📲</span>
+                <div><div class="hub-card-label">Scarica APK OperatorLite</div><div class="hub-card-sublabel">App Android operatori</div></div>
+            </a>
+        </div>
+    </div>
+
+    <!-- ===== AZIONI RAPIDE ===== -->
+    <div class="hub-section">
+        <div class="hub-section-title">Azioni rapide</div>
+        <div class="hub-grid">
+            <a class="hub-card" href="customers-management.html?action=newCustomer">
+                <span class="hub-card-icon">➕</span>
+                <div><div class="hub-card-label">Nuovo Cliente</div><div class="hub-card-sublabel">Apre il form di creazione</div></div>
+            </a>
+            <a class="hub-card hub-card-danger" href="warehouse-management.html?action=resetReservations">
+                <span class="hub-card-icon">🔓</span>
+                <div><div class="hub-card-label">Azzera Prenotazioni</div><div class="hub-card-sublabel">Magazzino · richiede conferma</div></div>
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+
+    function handleLogout() {
+        localStorage.removeItem('token');
+        localStorage.removeItem('currentUser');
+        window.location.href = '/index.html';
+    }
+
+    // Evidenzia la card della pagina di provenienza
+    (function highlightFromPage() {
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const from = params.get('from');
+            if (from) {
+                // Rimuove il leading slash e .html per ottenere l'id della card
+                const key = from.replace(/^\//, '').replace(/\.html$/, '');
+                const card = document.getElementById('card-' + key);
+                if (card) card.classList.add('hub-card-active');
+            }
+        } catch (_) {}
+    })();
+
+    window.addEventListener('load', async () => {
+        renderUserInfoBadge('userInfo', currentUser);
+        if (window.SettingsUtils && window.SettingsUtils.loadAndApplyBranding) {
+            await window.SettingsUtils.loadAndApplyBranding();
+        }
+    });
+</script>
+</body>
+</html>

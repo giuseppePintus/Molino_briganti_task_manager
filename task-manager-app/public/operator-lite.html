@@ -1541,7 +1541,7 @@
 
             for (var i = 0; i < instantLines.length; i++) {
                 payload.items.push({
-                    articleId: instantLines[i].articleId,
+                    articleId: Number(instantLines[i].articleId),
                     quantity: instantLines[i].quantity,
                     positionCode: instantLines[i].positionCode,
                     shelfEntryId: instantLines[i].shelfEntryId,

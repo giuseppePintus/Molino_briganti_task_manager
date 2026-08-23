@@ -74,6 +74,7 @@ import tripsRoutes from './routes/trips';
 import customersRoutes from './routes/customers';
 import wireguardRoutes from './routes/wireguard';
 import debugRoutes from './routes/debug';
+import printersRoutes from './routes/printers';
 import setupBackupMiddleware from './middleware/backupMiddleware';
 import { authMiddleware } from './middleware/auth';
 import BackupService from './services/backupService';
@@ -133,6 +134,7 @@ app.use('/api/trips', authMiddleware, tripsRoutes);
 app.use('/api/customers', customersRoutes);
 app.use('/api/wireguard', wireguardRoutes);
 app.use('/api/debug', debugRoutes);
+app.use('/api/printers', printersRoutes);
 
 // Inline endpoint - List all HTML pages in public dir (for Indice feature)
 app.get('/api/pages', (req, res) => {

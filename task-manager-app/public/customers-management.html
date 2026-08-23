@@ -51,31 +51,7 @@
 
         <!-- Quick Actions -->
         <div class="quick-actions">
-            <div class="dropdown-menu-admin">
-                <button class="btn btn-settings" data-icon="⚙️" onclick="toggleAdminMenu()"><span>Gestione</span></button>
-                <div id="adminMenuDropdown" class="admin-menu-dropdown">
-                    <button class="admin-menu-item" onclick="openCustomerModal(); toggleAdminMenu();">
-                        <span class="menu-icon">➕</span>
-                        <span>Nuovo Cliente</span>
-                    </button>
-                    <button class="admin-menu-item" onclick="window.location.href='company-settings.html'; toggleAdminMenu();">
-                        <span class="menu-icon">🏢</span>
-                        <span>Impostazioni Azienda</span>
-                    </button>
-                    <button class="admin-menu-item" onclick="window.location.href='operators.html'; toggleAdminMenu();">
-                        <span class="menu-icon">👥</span>
-                        <span>Gestione Admin / Operatori</span>
-                    </button>
-                    <button class="admin-menu-item" onclick="window.location.href='backup-management.html'; toggleAdminMenu();">
-                        <span class="menu-icon">💾</span>
-                        <span>Gestione Backup</span>
-                    </button>
-                    <button class="admin-menu-item" onclick="openIndiceModal(); toggleAdminMenu();">
-                        <span class="menu-icon">🗂️</span>
-                        <span>Indice</span>
-                    </button>
-                </div>
-            </div>
+            <button class="btn btn-settings" data-icon="⚙️" onclick="window.location.href='gestione-hub.html?from=customers-management'"><span>Gestione</span></button>
             <button class="btn btn-customers active" data-icon="👨‍💼" onclick="window.location.href='customers-management.html'"><span>Gestione Clienti</span></button>
             <button class="btn btn-tasks" data-icon="✅" onclick="window.location.href='admin-dashboard.html'"><span>Planner Task</span></button>
             <button class="btn btn-planner" data-icon="📦" onclick="window.location.href='orders-planner.html'"><span>Planner Ordini</span></button>
@@ -85,7 +61,10 @@
 
         <!-- Customers List -->
         <div class="card">
-            <h2>📋 Clienti</h2>
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+                <h2 style="margin:0;">📋 Clienti</h2>
+                <button class="btn btn-success" onclick="openCustomerModal()">➕ Nuovo Cliente</button>
+            </div>
             <div class="customers-grid" id="customersGrid">
                 <!-- Customers will be populated here -->
             </div>
@@ -586,6 +565,18 @@
                 renderCustomers();
             }
         });
+
+        // Azione automatica via query string ?action=newCustomer (da gestione-hub)
+        (function actionFromHub() {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                if (params.get('action') === 'newCustomer') {
+                    window.addEventListener('load', () => {
+                        setTimeout(() => { openCustomerModal(); history.replaceState(null, '', location.pathname); }, 300);
+                    });
+                }
+            } catch (_) {}
+        })();
 
         // Global ESC key handler
         document.addEventListener('keydown', function(e) {

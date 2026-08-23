@@ -1728,6 +1728,22 @@
             transform: translateY(-1px) !important;
         }
         .quick-actions .btn.active:hover { transform: translateY(-3px) !important; }
+        .quick-actions .btn:not(.active) {
+            filter: brightness(0.6) !important;
+            opacity: 0.88 !important;
+        }
+        .quick-actions .btn:not(.active):hover {
+            filter: brightness(0.85) !important;
+            opacity: 1 !important;
+        }
+        .quick-actions .btn:not(.active) span,
+        .quick-actions .btn:not(.active)::before {
+            filter: brightness(1.667) !important;
+        }
+        .quick-actions .btn:not(.active):hover span,
+        .quick-actions .btn:not(.active):hover::before {
+            filter: brightness(1.176) !important;
+        }
         @media (max-width: 600px) {
             .quick-actions { grid-template-columns: repeat(3, 1fr) !important; }
         }

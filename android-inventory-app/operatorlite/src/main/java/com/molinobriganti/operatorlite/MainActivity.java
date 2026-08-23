@@ -489,7 +489,7 @@ public class MainActivity extends Activity {
         btnConfirmOrder.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                confirmInstantOrder();
+                showDraftPreview();
             }
         });
     }
@@ -5113,6 +5113,211 @@ public class MainActivity extends Activity {
         return Math.max(0, remaining);
     }
 
+    private void showOrderPreviewDialog() {
+        if (orderLines.isEmpty()) {
+            toast(R.string.no_lines);
+            return;
+        }
+        showDraftPreview();
+    }
+
+    // Mostra WebView con anteprima draft (nessuna modifica al DB), poi crea ordine su conferma
+    private void showDraftPreview() {
+        if (token == null || token.trim().isEmpty()) { toast(R.string.login_required); return; }
+        if (orderLines.isEmpty()) { toast(R.string.no_lines); return; }
+
+        setStatus("Caricamento anteprima...");
+
+        runInBackground(new Runnable() {
+            @Override public void run() {
+                try {
+                    // Costruisce JSON delle righe per il draft endpoint
+                    JSONObject body = new JSONObject();
+                    body.put("clientName", "Banco");
+                    JSONArray lines = new JSONArray();
+                    for (OrderLine line : orderLines) {
+                        JSONObject l = new JSONObject();
+                        l.put("articleName", line.articleName != null ? line.articleName : "");
+                        l.put("articleCode", line.articleCode != null ? line.articleCode : "");
+                        l.put("quantity",    line.quantity);
+                        l.put("positionCode", line.positionCode != null ? line.positionCode : "");
+                        l.put("batch",        line.batch != null ? line.batch : "");
+                        lines.put(l);
+                    }
+                    body.put("lines", lines);
+
+                    // Chiama draft endpoint (POST con token in header)
+                    String draftUrl = API_URL + "/printers/receipt-preview/draft";
+                    String htmlContent = httpRequest(draftUrl, "POST", body.toString(), token);
+
+                    final String finalHtml = htmlContent;
+                    final String baseUrl = API_URL.replace("/api", "");
+
+                    runOnUiThread(new Runnable() {
+                        @Override public void run() {
+                            setStatus("");
+                            showDraftWebViewDialog(finalHtml, baseUrl);
+                        }
+                    });
+                } catch (final Exception e) {
+                    runOnUiThread(new Runnable() {
+                        @Override public void run() {
+                            setStatus("");
+                            // Fallback: dialog testuale se il server non risponde
+                            showTextPreviewDialog(null);
+                        }
+                    });
+                }
+            }
+        });
+    }
+
+    private void showDraftWebViewDialog(String htmlContent, String baseUrl) {
+        android.webkit.WebView webView = new android.webkit.WebView(this);
+        webView.getSettings().setJavaScriptEnabled(false);
+        webView.getSettings().setBuiltInZoomControls(false);
+        webView.getSettings().setLoadWithOverviewMode(true);
+        webView.getSettings().setUseWideViewPort(true);
+        webView.getSettings().setDefaultTextEncodingName("UTF-8");
+        webView.loadDataWithBaseURL(baseUrl, htmlContent, "text/html", "UTF-8", null);
+
+        final android.app.AlertDialog[] dlg = new android.app.AlertDialog[1];
+        dlg[0] = new android.app.AlertDialog.Builder(this)
+            .setTitle("Anteprima scontrino")
+            .setView(webView)
+            .setPositiveButton("Stampa", new android.content.DialogInterface.OnClickListener() {
+                @Override public void onClick(android.content.DialogInterface d, int w) {
+                    // Solo ora crea l'ordine e scala il magazzino
+                    confirmInstantOrder();
+                }
+            })
+            .setNegativeButton("Annulla", null)
+            .create();
+
+        dlg[0].setOnShowListener(new android.content.DialogInterface.OnShowListener() {
+            @Override public void onShow(android.content.DialogInterface d) {
+                android.view.Window win = dlg[0].getWindow();
+                if (win != null) {
+                    android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
+                    getWindowManager().getDefaultDisplay().getMetrics(dm);
+                    win.setLayout((int)(dm.widthPixels * 0.92), (int)(dm.heightPixels * 0.80));
+                }
+            }
+        });
+        dlg[0].show();
+    }
+
+    // Dialog WebView con l'HTML dal server (chiamato con orderId dopo la creazione ordine)
+    private void showWebViewPreview(final int orderId, final Runnable onPrint) {
+        android.webkit.WebView webView = new android.webkit.WebView(this);
+        webView.getSettings().setJavaScriptEnabled(false);
+        webView.getSettings().setBuiltInZoomControls(false);
+        webView.getSettings().setLoadWithOverviewMode(true);
+        webView.getSettings().setUseWideViewPort(true);
+        // Android 4.x: forza testo leggibile senza zoom obbligatorio
+        webView.getSettings().setDefaultTextEncodingName("UTF-8");
+
+        String previewUrl = API_URL.replace("/api", "") +
+                "/api/printers/receipt-preview/order/" + orderId + "?t=" + token;
+        webView.loadUrl(previewUrl);
+
+        final android.app.AlertDialog[] dlg = new android.app.AlertDialog[1];
+        dlg[0] = new android.app.AlertDialog.Builder(this)
+            .setTitle("Anteprima scontrino")
+            .setView(webView)
+            .setPositiveButton("Stampa", new android.content.DialogInterface.OnClickListener() {
+                @Override public void onClick(android.content.DialogInterface d, int w) {
+                    if (onPrint != null) onPrint.run();
+                }
+            })
+            .setNegativeButton("Annulla", null)
+            .create();
+
+        // Dimensiona il dialog a 90% dello schermo
+        dlg[0].setOnShowListener(new android.content.DialogInterface.OnShowListener() {
+            @Override public void onShow(android.content.DialogInterface d) {
+                android.view.Window win = dlg[0].getWindow();
+                if (win != null) {
+                    android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
+                    getWindowManager().getDefaultDisplay().getMetrics(dm);
+                    win.setLayout(
+                        (int)(dm.widthPixels * 0.92),
+                        (int)(dm.heightPixels * 0.80)
+                    );
+                }
+            }
+        });
+        dlg[0].show();
+    }
+
+    // Anteprima testuale (fallback quando orderId non è ancora disponibile)
+    private void showTextPreviewDialog(final Integer orderId) {
+        if (orderLines.isEmpty()) { toast(R.string.no_lines); return; }
+        final int LW = 32;
+        StringBuilder sb = new StringBuilder();
+        sb.append(repeatChar('-', LW)).append('\n');
+        String brand = "MOLINO BRIGANTI";
+        int pad = (LW - brand.length()) / 2;
+        for (int i = 0; i < pad; i++) sb.append(' ');
+        sb.append(brand).append('\n');
+        sb.append(repeatChar('-', LW)).append('\n');
+        sb.append("ORDINE RAPIDO - Banco").append('\n');
+        sb.append(new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm",
+                java.util.Locale.ITALY).format(new java.util.Date())).append('\n');
+        sb.append(repeatChar('-', LW)).append('\n');
+        int totalColli = 0;
+        for (OrderLine line : orderLines) {
+            String name = (line.articleName != null && !line.articleName.isEmpty())
+                    ? line.articleName : (line.articleCode != null ? line.articleCode : "?");
+            if (name.length() > LW) name = name.substring(0, LW - 1) + ".";
+            sb.append(name).append('\n');
+            String posStr = (line.positionCode != null && !line.positionCode.isEmpty())
+                    ? "[" + line.positionCode + "]" : "";
+            String colliStr = "x" + line.quantity + " colli";
+            sb.append(padLeftRight("  " + posStr, colliStr, LW)).append('\n');
+            if (line.batch != null && !line.batch.isEmpty())
+                sb.append("  Lotto: ").append(line.batch).append('\n');
+            sb.append('\n');
+            totalColli += line.quantity;
+        }
+        sb.append(repeatChar('-', LW)).append('\n');
+        sb.append(padLeftRight("TOTALE", totalColli + " colli", LW)).append('\n');
+        sb.append(repeatChar('-', LW));
+        android.widget.ScrollView scroll = new android.widget.ScrollView(this);
+        android.widget.TextView tv = new android.widget.TextView(this);
+        tv.setText(sb.toString());
+        tv.setTypeface(android.graphics.Typeface.MONOSPACE);
+        tv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 12f);
+        tv.setBackgroundColor(android.graphics.Color.WHITE);
+        tv.setTextColor(android.graphics.Color.BLACK);
+        tv.setPadding(24, 24, 24, 24);
+        scroll.addView(tv);
+        new android.app.AlertDialog.Builder(this)
+            .setTitle("Anteprima ordine")
+            .setView(scroll)
+            .setPositiveButton("Stampa", new android.content.DialogInterface.OnClickListener() {
+                @Override public void onClick(android.content.DialogInterface d, int w) {
+                    confirmInstantOrder();
+                }
+            })
+            .setNegativeButton("Annulla", null)
+            .show();
+    }
+    private static String repeatChar(char c, int n) {
+        StringBuilder sb = new StringBuilder(n);
+        for (int i = 0; i < n; i++) sb.append(c);
+        return sb.toString();
+    }
+
+    private static String padLeftRight(String left, String right, int width) {
+        int space = width - left.length() - right.length();
+        if (space < 1) space = 1;
+        StringBuilder sb = new StringBuilder(left);
+        for (int i = 0; i < space; i++) sb.append(' ');
+        sb.append(right);
+        return sb.toString();
+    }
+
     private void confirmInstantOrder() {
         if (token == null || token.trim().isEmpty()) {
             toast(R.string.login_required);
@@ -5140,7 +5345,7 @@ public class MainActivity extends Activity {
                     JSONArray items = new JSONArray();
                     for (OrderLine line : orderLines) {
                         JSONObject item = new JSONObject();
-                        item.put("articleId", line.articleId);
+                        item.put("articleId", Integer.parseInt(line.articleId));
                         item.put("quantity", line.quantity);
                         item.put("positionCode", line.positionCode);
                         item.put("shelfEntryId", line.shelfEntryId);
@@ -5153,7 +5358,29 @@ public class MainActivity extends Activity {
                     }
                     payload.put("items", items);
 
-                    httpPostJson(API_URL + "/orders/instant-complete", payload, token);
+                    JSONObject result = httpPostJson(API_URL + "/orders/instant-complete", payload, token);
+
+                    int orderIdTmp = 0;
+                    try { orderIdTmp = result.getJSONObject("order").getInt("id"); } catch (Exception ignored) {}
+                    final int orderId = orderIdTmp;
+
+                    // Stampa best-effort dopo la conferma
+                    if (orderId > 0) {
+                        try {
+                            JSONObject printPayload = new JSONObject();
+                            printPayload.put("role", "receipt_80mm_ufficio");
+                            printPayload.put("jobType", "pickup_order");
+                            JSONObject data = new JSONObject();
+                            data.put("orderId", orderId);
+                            printPayload.put("data", data);
+                            httpPostJson(API_URL + "/printers/job", printPayload, token);
+                        } catch (Exception printEx) {
+                            final String msg = printEx.getMessage();
+                            runOnUiThread(new Runnable() {
+                                @Override public void run() { toast("Stampa non riuscita: " + msg); }
+                            });
+                        }
+                    }
 
                     runOnUiThread(new Runnable() {
                         @Override

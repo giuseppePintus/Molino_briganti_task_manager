@@ -8,15 +8,9 @@
  *   - Background graphics: ON
  *
  * Public API (window-scoped):
- *   - printTripThermal(tripId)
- *   - printPickupOrderThermal(orderId)
- *
- * Required globals (already defined in admin-dashboard.html / orders-planner.html):
- *   trips, orders, allOperators, clienti
- *   getTripOrders(tripId), calculateTripTotals(tripId)
- *   getClientName(order), getOrderProductName(order)
- *   getOrderTotalQuantity(order), getOrderTotalColli(order)
- *   extractWeightPerCollo(productCode)
+ *   - printTripThermal(tripId)         ← RAW via server (preferito) con fallback browser
+ *   - printPickupOrderThermal(orderId) ← RAW via server (preferito) con fallback browser
+ *   - printArticleLabel(articleId, quantity, lot, expiry)  ← TSPL RAW via server
  */
 (function () {
     'use strict';
@@ -253,6 +247,14 @@
             line-height: 1.2;
             overflow-wrap: anywhere;
             margin-bottom: 0.5mm;
+        }
+        .rcpt-prod-code {
+            display: block;
+            font-size: 9pt;
+            font-weight: 700;
+            color: #444;
+            margin-bottom: 0.8mm;
+            letter-spacing: 0.5px;
         }
         /* riga 2: scaffale + colli + peso */
         .rcpt-prod-row2 {
@@ -576,7 +578,31 @@
     }
 
     function productHtml(p) {
-        const name = String(p.product || '').trim() || '-';
+        const rawKey = String(p.product || p.name || p.articleName || p.code || '').trim() || '-';
+        // Risolve il codice articolo in nome leggibile se allArticles è disponibile nella pagina
+        var resolvedName = rawKey;
+        var resolvedCode = '';
+        try {
+            // Prova window.allArticles (warehouse-management, admin-dashboard: code/name)
+            var arts = window.allArticles;
+            if (Array.isArray(arts)) {
+                var found = arts.find(function(a) { return a.code === rawKey; });
+                if (found && found.name) { resolvedName = found.name; resolvedCode = found.code; }
+            }
+            // Prova window.articoli (orders-planner, operator-lite: codice/nome)
+            if (!resolvedCode) {
+                var arts2 = window.articoli;
+                if (Array.isArray(arts2)) {
+                    var found2 = arts2.find(function(a) { return a.codice === rawKey; });
+                    if (found2 && found2.nome) { resolvedName = found2.nome; resolvedCode = found2.codice; }
+                }
+            }
+        } catch (_) {}
+        // Se non trovato in allArticles, controlla se p ha campi separati nome/codice
+        if (!resolvedCode) {
+            resolvedCode = p.articleCode || p.code || (resolvedName === rawKey ? '' : rawKey);
+        }
+        const name = resolvedName;
         const qtyKg = Number(p.quantity) || 0;
         const wpc = (typeof window.extractWeightPerCollo === 'function')
             ? window.extractWeightPerCollo(name) : 1;
@@ -584,8 +610,9 @@
         const batch = p.batch || (p.batchData && p.batchData.batch) || '';
         const pos = p.shelfPosition || (p.batchData && p.batchData.shelfPosition) || '';
         const exp = p.expiry || (p.batchData && p.batchData.expiry) || '';
-        // Riga 1: solo nome prodotto (evidenziato)
-        const row1 = '<span class="rcpt-prod-name">' + escapeHtml(name) + '</span>';
+        // Riga 1: nome prodotto (evidenziato) + codice sotto
+        const codeSpan = resolvedCode ? '<span class="rcpt-prod-code">' + escapeHtml(resolvedCode) + '</span>' : '';
+        const row1 = '<span class="rcpt-prod-name">' + escapeHtml(name) + '</span>' + codeSpan;
         // Riga 2: scaffale | colli | peso
         const row2 = '<div class="rcpt-prod-row2">' +
             (pos ? '<span class="rcpt-prod-shelf">' + escapeHtml(pos) + '</span>' : '') +
@@ -607,8 +634,14 @@
             const wpc = (typeof window.extractWeightPerCollo === 'function')
                 ? window.extractWeightPerCollo(prod) : 1;
             const c = wpc > 0 ? Math.round(qty / wpc) : 0;
+            // Risolve il codice in nome leggibile anche nei totali viaggio
+            var totLabel = prod;
+            try {
+                var ta = window.articoli; if (Array.isArray(ta)) { var tf = ta.find(function(a){return a.codice===prod;}); if(tf&&tf.nome) totLabel = tf.nome; }
+                if (totLabel === prod) { var ta2 = window.allArticles; if (Array.isArray(ta2)) { var tf2 = ta2.find(function(a){return a.code===prod;}); if(tf2&&tf2.name) totLabel = tf2.name; } }
+            } catch(_){}
             html += '<div class="rcpt-total-row">' +
-                '<span class="name">' + escapeHtml(prod) + '</span>' +
+                '<span class="name">' + escapeHtml(totLabel) + '</span>' +
                 '<span class="qty">' + c + ' c &nbsp; ' + qty.toFixed(1) + ' kg</span>' +
             '</div>';
         });
@@ -779,6 +812,221 @@
     window.printTripThermal = printTripThermal;
     window.printPickupOrderThermal = printPickupOrderThermal;
 
+    // ─── Receipt preview helpers ──────────────────────────────────
+
+    // Restituisce il documento HTML dello scontrino senza auto-print (per iframe)
+    function buildReceiptHtmlDoc(title, contentHtml) {
+        return '<!doctype html><html><head>' +
+            '<meta charset="UTF-8"><title>' + escapeHtml(title) + '</title>' +
+            '<style>' + THERMAL_CSS + '</style>' +
+            '</head><body>' + contentHtml + '</body></html>';
+    }
+
+    // Estrae solo l'HTML interno del viaggio (senza aprire finestre)
+    function buildTripReceiptContent(tripId) {
+        const trip = findById(getTrips(), tripId);
+        if (!trip) return null;
+        const tripOrders = (typeof window.getTripOrders === 'function')
+            ? window.getTripOrders(tripId)
+            : getOrders().filter(function(o) { return String(o.tripId) === String(tripId); });
+        const totals = (typeof window.calculateTripTotals === 'function')
+            ? window.calculateTripTotals(tripId) : {};
+        const operatorName = getOperatorName(trip.assignedOperatorId, trip.assignedOperator);
+        const dt = new Date(trip.dateTime || trip.date || Date.now());
+        let html = '';
+        html += brandHeaderHtml();
+        html += '<div class="rcpt-title">VIAGGIO</div>';
+        if (trip.name) html += '<div class="rcpt-sub">' + escapeHtml(trip.name) + '</div>';
+        html += infoBoxHtml([
+            ['Data', fmtDate(dt)], ['Ora', fmtTime(dt)],
+            ['Operatore', operatorName], ['Mezzo', trip.vehicleName || trip.vehicle || '']
+        ]);
+        html += '<div class="rcpt-section">CONSEGNE (' + tripOrders.length + ')</div>';
+        tripOrders.forEach(function(o, idx) {
+            const cliente = (typeof window.getClientName === 'function')
+                ? window.getClientName(o) : (o.client || o.clientName || '');
+            html += '<div class="rcpt-delivery">';
+            html += '<div class="rcpt-delivery-head"><span class="rcpt-num">' + (idx + 1) +
+                '</span><span class="rcpt-cli">' + escapeHtml(cliente || '-') + '</span>' +
+                (fmtTime(o.dateTime) ? '<span class="rcpt-time">' + fmtTime(o.dateTime) + '</span>' : '') + '</div>';
+            const prods = parseProducts(o.products);
+            if (prods.length) { prods.forEach(function(p) { html += productHtml(p); }); }
+            else {
+                const n = (typeof window.getOrderProductName === 'function') ? window.getOrderProductName(o) : (o.product || '');
+                html += productHtml({ product: n, quantity: (typeof window.getOrderTotalQuantity === 'function') ? window.getOrderTotalQuantity(o) : (o.quantity || 0) });
+            }
+            if (o.notes) html += '<div class="rcpt-notes"><span class="lbl">Note</span>' + escapeHtml(o.notes) + '</div>';
+            html += '</div>';
+        });
+        let totalKg = 0, totalColli = 0;
+        Object.entries(totals).forEach(function(e) {
+            const wpc = (typeof window.extractWeightPerCollo === 'function') ? window.extractWeightPerCollo(e[0]) : 1;
+            totalKg += e[1]; totalColli += wpc > 0 ? Math.round(e[1] / wpc) : 0;
+        });
+        html += '<div class="rcpt-section">TOTALI PRODOTTI</div>';
+        html += totalsListHtml(totals);
+        html += totalBoxHtml(totalColli, totalKg);
+        html += footerHtml();
+        return { title: 'Viaggio ' + (trip.name || tripId), html: html };
+    }
+
+    // Estrae solo l'HTML interno dell'ordine ritiro
+    function buildPickupReceiptContent(orderId) {
+        const order = findById(getOrders(), orderId);
+        if (!order) return null;
+        const cliente = (typeof window.getClientName === 'function')
+            ? window.getClientName(order) : (order.client || order.clientName || '');
+        const dt = order.dateTime ? new Date(order.dateTime) : new Date();
+        const operatorName = getOperatorName(order.assignedOperatorId, order.assignedOperator);
+        let html = '';
+        html += brandHeaderHtml();
+        html += '<div class="rcpt-title">RITIRO</div>';
+        html += '<div class="rcpt-sub">' + escapeHtml(cliente || '-') + '</div>';
+        html += infoBoxHtml([
+            ['Data', fmtDate(dt)], ['Ora', fmtTime(dt)],
+            ['Operatore', operatorName], ['Tipo', 'Ritiro Cliente']
+        ]);
+        html += '<div class="rcpt-section">PRODOTTI</div>';
+        const prods = parseProducts(order.products);
+        let totalKg = 0, totalColli = 0;
+        if (prods.length) {
+            prods.forEach(function(p) {
+                const wpc = (typeof window.extractWeightPerCollo === 'function') ? window.extractWeightPerCollo(p.product || '') : 1;
+                const q = Number(p.quantity) || 0;
+                totalKg += q; totalColli += wpc > 0 ? Math.round(q / wpc) : 0;
+                html += productHtml(p);
+            });
+        } else {
+            const n = (typeof window.getOrderProductName === 'function') ? window.getOrderProductName(order) : (order.product || '');
+            const q = (typeof window.getOrderTotalQuantity === 'function') ? window.getOrderTotalQuantity(order) : (order.quantity || 0);
+            const wpc = (typeof window.extractWeightPerCollo === 'function') ? window.extractWeightPerCollo(n) : 1;
+            totalKg = q; totalColli = wpc > 0 ? Math.round(q / wpc) : 0;
+            html += productHtml({ product: n, quantity: q });
+        }
+        if (order.notes) html += '<div class="rcpt-notes"><span class="lbl">Note</span>' + escapeHtml(order.notes) + '</div>';
+        html += totalBoxHtml(totalColli, totalKg);
+        html += footerHtml();
+        return { title: 'Ritiro ' + (cliente || orderId), html: html };
+    }
+
+    // Modal anteprima scontrino universale (creato una sola volta nel DOM)
+    function ensureReceiptPreviewModal() {
+        var id = '__rcptPreviewOverlay';
+        if (document.getElementById(id)) return id;
+        var ov = document.createElement('div');
+        ov.id = id;
+        ov.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);' +
+            'z-index:99998;align-items:center;justify-content:center;';
+        ov.innerHTML =
+            '<div style="background:#1f2937;border-radius:12px;padding:20px;width:95%;max-width:400px;' +
+            'max-height:92vh;overflow-y:auto;border:1px solid #374151;display:flex;flex-direction:column;gap:14px;">' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;">' +
+            '<h3 id="__rcptPreviewTitle" style="margin:0;color:#e0e0e0;font-size:16px;">👁️ Anteprima scontrino</h3>' +
+            '<span style="font-size:11px;color:#6b7280;">formato 80mm — 1 copia</span></div>' +
+            '<iframe id="__rcptPreviewFrame" style="width:100%;height:480px;border:1px solid #374151;' +
+            'border-radius:4px;background:#fff;" sandbox="allow-same-origin"></iframe>' +
+            '<div style="display:flex;gap:10px;justify-content:flex-end;">' +
+            '<button id="__rcptPreviewCancel" style="background:#374151;color:#e0e0e0;border:none;' +
+            'border-radius:6px;padding:9px 18px;font-size:14px;cursor:pointer;">✕ Annulla</button>' +
+            '<button id="__rcptPreviewConfirm" style="background:#059669;color:#fff;border:none;' +
+            'border-radius:6px;padding:9px 18px;font-size:14px;font-weight:600;cursor:pointer;">' +
+            '🖨️ Conferma e stampa</button></div></div>';
+        document.body.appendChild(ov);
+        document.getElementById('__rcptPreviewCancel').onclick = function() { ov.style.display = 'none'; };
+        ov.addEventListener('click', function(e) { if (e.target === ov) ov.style.display = 'none'; });
+        return id;
+    }
+
+    function showReceiptPreview(title, contentHtml, onConfirm) {
+        var id = ensureReceiptPreviewModal();
+        var ov    = document.getElementById(id);
+        var frame = document.getElementById('__rcptPreviewFrame');
+        var ttl   = document.getElementById('__rcptPreviewTitle');
+        var btn   = document.getElementById('__rcptPreviewConfirm');
+        ttl.textContent = '👁️ ' + title;
+        frame.srcdoc = buildReceiptHtmlDoc(title, contentHtml);
+        btn.onclick = function() { ov.style.display = 'none'; onConfirm(); };
+        ov.style.display = 'flex';
+    }
+
+    // Override: mostra anteprima → conferma → RAW
+    window.printTripThermal = function(tripId) {
+        var data = buildTripReceiptContent(tripId);
+        if (!data) { showPrintToast('❌ Viaggio non trovato', true); return; }
+        showReceiptPreview(data.title, data.html, async function() {
+            var result = await sendPrintJob('receipt_80mm_ufficio', 'trip', { tripId: Number(tripId) });
+            if (result === true) { showPrintToast('✅ Scontrino viaggio inviato alla stampante', false); }
+            else { showPrintToast('❌ Stampante non raggiungibile: ' + (result && result.message ? result.message : 'timeout'), true); }
+        });
+    };
+
+    window.printPickupOrderThermal = function(orderId) {
+        var data = buildPickupReceiptContent(orderId);
+        if (!data) { showPrintToast('❌ Ordine non trovato', true); return; }
+        sendOrderAudit(orderId, 'print-thermal-preview', {});
+        showReceiptPreview(data.title, data.html, async function() {
+            var result = await sendPrintJob('receipt_80mm_ufficio', 'pickup_order', { orderId: Number(orderId) });
+            if (result === true) { showPrintToast('✅ Scontrino ordine inviato alla stampante', false); }
+            else { showPrintToast('❌ Stampante non raggiungibile: ' + (result && result.message ? result.message : 'timeout'), true); }
+        });
+    };
+    // Invia un job al server (POST /api/printers/job).
+    // Timeout client 3s: se non risponde in tempo restituisce false immediatamente.
+    async function sendPrintJob(role, jobType, data) {
+        const ctrl = new AbortController();
+        const tid  = setTimeout(() => ctrl.abort(), 3000);
+        try {
+            const token = localStorage.getItem('authToken') || localStorage.getItem('token') || '';
+            const r = await fetch('/api/printers/job', {
+                method: 'POST',
+                signal: ctrl.signal,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': token ? 'Bearer ' + token : '',
+                },
+                body: JSON.stringify({ role, jobType, data: data || {} }),
+            });
+            clearTimeout(tid);
+            if (!r.ok) {
+                const j = await r.json().catch(() => ({}));
+                throw new Error(j.error || 'HTTP ' + r.status);
+            }
+            return true;
+        } catch (e) {
+            clearTimeout(tid);
+            console.warn('[thermal-print] RAW print failed:', e.message);
+            return e;
+        }
+    }
+
+    // Toast visibile su qualsiasi pagina (non blocca il thread)
+    function showPrintToast(msg, isError) {
+        var d = document.createElement('div');
+        d.textContent = msg;
+        d.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);' +
+            'padding:12px 22px;border-radius:8px;font-size:14px;font-weight:600;z-index:99999;' +
+            'box-shadow:0 4px 16px rgba(0,0,0,0.4);pointer-events:none;' +
+            (isError ? 'background:#dc2626;color:#fff;' : 'background:#16a34a;color:#fff;');
+        document.body.appendChild(d);
+        setTimeout(function() { d.remove(); }, isError ? 5000 : 3000);
+    }
+
+    window.printArticleLabel = async function(articleId, quantity, lot, expiry) {
+        var result = await sendPrintJob('label_4x6', 'article_label', {
+            articleId: Number(articleId),
+            quantity: Number(quantity) || 1,
+            lot: lot || undefined,
+            expiry: expiry || undefined,
+        });
+        if (result === true) {
+            showPrintToast('✅ Etichetta inviata alla stampante', false);
+            return true;
+        } else {
+            showPrintToast('❌ Stampante etichette non raggiungibile: ' + (result && result.message ? result.message : 'timeout'), true);
+            return false;
+        }
+    };
+
     // API generica per costruire scontrini da altre pagine (es. instant-orders)
     window.thermalPrintAPI = {
         openReceipt: openReceipt,
@@ -882,7 +1130,7 @@
 
     async function printInternalOrderThermal(taskId) {
         const task = await fetchTask(taskId);
-        if (!task) { alert('Task non trovato'); return; }
+        if (!task) { showPrintToast('❌ Task non trovato', true); return; }
         const isAdmin = isAdminUser();
         const already = task.internalOrderPrintedAt;
         if (already) {
@@ -893,17 +1141,9 @@
                 if (!ok) return;
             } else {
                 alert('⚠️ Questo ordine interno è già stato stampato il '
-                    + when
-                    + '.\nGli operatori possono stamparlo una sola volta.');
+                    + when + '.\nGli operatori possono stamparlo una sola volta.');
                 return;
             }
-        }
-
-        // Marca come stampato (admin: aggiorna comunque)
-        const mark = await markTaskPrinted(taskId);
-        if (!mark.ok && !isAdmin) {
-            alert('Impossibile stampare: ' + (mark.body && mark.body.error || mark.status));
-            return;
         }
 
         const o = parseInternalOrder(task);
@@ -930,7 +1170,12 @@
             html += '<div class="rcpt-notes"><span class="lbl">Note</span>' + escapeHtml(o.notes) + '</div>';
         }
         html += footerHtml();
-        openReceipt('Ordine interno ' + o.id, html);
+        const title = 'Ordine interno ' + o.id;
+        showReceiptPreview(title, html, function() {
+            // markTaskPrinted fire-and-forget; openReceipt chiamato da click diretto (no popup blocker)
+            markTaskPrinted(taskId).catch(function() {});
+            openReceipt(title, html);
+        });
     }
 
     function printInternalOrderFull(taskId) {
@@ -1096,8 +1341,9 @@
         }
 
         const mark = await markTaskPrinted(taskId);
-        if (!mark.ok && !isAdmin) {
-            alert('Impossibile stampare: ' + (mark.body && mark.body.error || mark.status));
+        // Per operatori: blocca se il server rifiuta (già stampato e non-admin)
+        if (!mark.ok && mark.status === 409 && !isAdmin) {
+            showPrintToast('⚠️ Ordine già stampato, operazione non consentita', true);
             return;
         }
 
@@ -1166,7 +1412,13 @@
             }
             html += totalBoxHtml(totalColli, totalKg);
             html += footerHtml();
-            openReceipt('Ritiro ' + cliente, html);
+            const titleRitiro = 'Ritiro ' + cliente;
+            showReceiptPreview(titleRitiro, html, async function() {
+                markTaskPrinted(taskId).catch(function() {});
+                var result = await sendPrintJob('receipt_80mm_ufficio', 'task_order', { taskId: Number(taskId) });
+                if (result === true) { showPrintToast('\u2705 Scontrino inviato alla stampante', false); }
+                else { showPrintToast('\u274c Stampante non raggiungibile: ' + (result && result.message ? result.message : 'timeout'), true); }
+            });
 
         } else {
             // === Formato generico per altri task ===
@@ -1189,7 +1441,13 @@
                 html += '<div class="rcpt-notes"><span class="lbl">Note</span>' + escapeHtml(task.description) + '</div>';
             }
             html += footerHtml();
-            openReceipt('Compito ' + task.id, html);
+            const titleTask = 'Compito ' + task.id;
+            showReceiptPreview(titleTask, html, async function() {
+                markTaskPrinted(taskId).catch(function() {});
+                var result = await sendPrintJob('receipt_80mm_ufficio', 'task_order', { taskId: Number(taskId) });
+                if (result === true) { showPrintToast('\u2705 Compito inviato alla stampante', false); }
+                else { showPrintToast('\u274c Stampante non raggiungibile: ' + (result && result.message ? result.message : 'timeout'), true); }
+            });
         }
     }
 
@@ -1238,7 +1496,7 @@
 
     async function submitLabelPrint() {
         if (!_labelPrintTaskData) return;
-        const taskData = _labelPrintTaskData;  // salva prima di qualsiasi await
+        const taskData = _labelPrintTaskData;
         const lotto = (document.getElementById('labelPrintLotto')?.value || '').trim();
         const scad  = (document.getElementById('labelPrintScad')?.value  || '').trim();
         const errEl = document.getElementById('labelPrintError');
@@ -1267,7 +1525,15 @@
             const taxonomy = dr.ok ? await dr.json() : [];
 
             closeLabelPrintOverlay();
-            // Apre finestra DOPO i fetch (stesso pattern printInternalOrderThermal / openReceipt)
+
+            // Prova RAW TSPL; fallback a browser print
+            const articleId = article?.id;
+            const qty = taskData.order.qty || 1;
+            if (articleId && window.printArticleLabel) {
+                const ok = await window.printArticleLabel(articleId, qty, lotto, scad);
+                if (ok) return;
+            }
+            // fallback
             doLabelPrint(taskData.order, article, settings, taxonomy, lotto, scad);
         } catch (e) {
             console.error('[labelPrint]', e);
@@ -1276,7 +1542,61 @@
         }
     }
 
+    // Mostra anteprima in un modal inline (non apre nuova finestra).
+    // Il modal è identificato da previewOverlayId (iframe + pulsante conferma).
+    async function showLabelPreview(previewOverlayId, confirmCallback) {
+        if (!_labelPrintTaskData) return;
+        const lotto = (document.getElementById('labelPrintLotto')?.value || '').trim();
+        const scad  = (document.getElementById('labelPrintScad')?.value  || '').trim();
+        const btn = document.getElementById('labelPreviewBtn');
+        if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+
+        try {
+            const apiBase = `http://${window.location.hostname}:${window.location.port || 5000}/api`;
+            const artCode = _labelPrintTaskData.order.code;
+            let article = null;
+            if (artCode) {
+                const r = await fetch(`${apiBase}/inventory/articles`, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
+                });
+                if (r.ok) { const list = await r.json(); article = list.find(a => a.code === artCode) || null; }
+            }
+            const sr = await fetch(`${apiBase}/settings/company`);
+            const settings = sr.ok ? await sr.json() : {};
+            const dr = await fetch(`${apiBase}/categories/descriptions`);
+            const taxonomy = dr.ok ? await dr.json() : [];
+
+            const htmlDoc = buildLabelHtmlDoc(_labelPrintTaskData.order, article, settings, taxonomy, lotto, scad, 1, true);
+
+            const ov = document.getElementById(previewOverlayId);
+            if (!ov) return;
+            const frame = ov.querySelector('iframe');
+            if (frame) frame.srcdoc = htmlDoc;
+            // Aggiorna header quantità
+            const qtySpan = ov.querySelector('[data-preview-qty]');
+            if (qtySpan) qtySpan.textContent = `${_labelPrintTaskData.order.qty || 1} etichet${(_labelPrintTaskData.order.qty || 1) === 1 ? 'ta' : 'te'}`;
+            ov.style.display = 'flex';
+        } catch (e) {
+            alert('Anteprima non disponibile: ' + e.message);
+        } finally {
+            if (btn) { btn.disabled = false; btn.textContent = '👁️ Anteprima'; }
+        }
+    }
+
     function doLabelPrint(order, article, settings, taxonomy, lotto, scad) {
+        const qty = order.qty || 1;
+        const html = buildLabelHtmlDoc(order, article, settings, taxonomy, lotto, scad, qty, false);
+        const w = window.open('', '_blank', 'width=520,height=720');
+        if (!w) { alert('Impossibile aprire la finestra di stampa. Abilita i popup per questo sito.'); return; }
+        w.document.open();
+        w.document.write(html);
+        w.document.close();
+    }
+
+    // Genera il documento HTML completo dell'etichetta.
+    // previewMode=true → 1 copia, senza auto-print, senza pulsanti
+    function buildLabelHtmlDoc(order, article, settings, taxonomy, lotto, scad, qty, previewMode) {
+        qty = (qty != null && qty > 0) ? qty : (order.qty || 1);
         const n    = article?.nutritionalInfo || {};
         const nut  = (key) => n[key] != null ? String(n[key]).replace('.', ',') : null;
         const roundedNut = (key) => n[key] != null && Number.isFinite(Number(n[key])) ? String(Math.round(Number(n[key]))) : null;
@@ -1295,7 +1615,6 @@
         const supplierName = article?.supplierName || '';
         const supplierRea  = article?.supplierRea  || '';
 
-        // Dati azienda
         const companyFull = settings.companyFullName || settings.businessName || 'Molino Briganti';
         const companyAddr = [
             settings.companyAddress,
@@ -1312,20 +1631,16 @@
         const companyContactRows = `${companyPhones ? `<div class="lbl-contacts">${escapeHtml(companyPhones)}</div>` : ''}${settings.companyEmail ? `<div class="lbl-email">${escapeHtml(settings.companyEmail)}</div>` : ''}${settings.companyWebsite ? `<div class="lbl-website">${escapeHtml(settings.companyWebsite)}</div>` : ''}`;
 
         const produttoreRow = supplierRea
-                ? `<div class="lbl-producer-block">
-                      <div class="lbl-producer"><span class="lbl-producer-title">Prodotto dalla ditta:</span><span class="lbl-producer-content">${escapeHtml(supplierName)} — REA ${escapeHtml(supplierRea)}</span></div>
-                      <div class="lbl-producer"><span class="lbl-producer-title">Confezionato da:</span><span class="lbl-producer-content"><strong>${escapeHtml(companyFull)}</strong>${companyDetails}</span></div>
-                      ${companyContactRows}
-                    </div>`
-                  : `<div class="lbl-producer-block"><div class="lbl-producer"><span class="lbl-producer-title">Prodotto e confezionato da:</span><span class="lbl-producer-content"><strong>${escapeHtml(companyFull)}</strong>${companyDetails}</span></div>${companyContactRows}</div>`;
+            ? `<div class="lbl-producer-block">
+                  <div class="lbl-producer"><span class="lbl-producer-title">Prodotto dalla ditta:</span><span class="lbl-producer-content">${escapeHtml(supplierName)} — REA ${escapeHtml(supplierRea)}</span></div>
+                  <div class="lbl-producer"><span class="lbl-producer-title">Confezionato da:</span><span class="lbl-producer-content"><strong>${escapeHtml(companyFull)}</strong>${companyDetails}</span></div>
+                  ${companyContactRows}
+               </div>`
+            : `<div class="lbl-producer-block"><div class="lbl-producer"><span class="lbl-producer-title">Prodotto e confezionato da:</span><span class="lbl-producer-content"><strong>${escapeHtml(companyFull)}</strong>${companyDetails}</span></div>${companyContactRows}</div>`;
 
-        // Logo
         const logoSrc = settings.logoThermalUrl || settings.logoUrl || '';
-        const logoHtml = logoSrc
-            ? `<img src="${logoSrc}" alt="Logo" class="lbl-logo">`
-            : '';
+        const logoHtml = logoSrc ? `<img src="${logoSrc}" alt="Logo" class="lbl-logo">` : '';
 
-        // Valori nutrizionali
         const nutRows = [
             { label: 'Valore energetico', val: roundedNut('energyKcal') && roundedNut('energyKj') ? `${roundedNut('energyKcal')} kcal / ${roundedNut('energyKj')} kJ` : (roundedNut('energyKcal') ? `${roundedNut('energyKcal')} kcal` : null), fullWidth: true },
             { label: 'Grassi', val: nut('fat') ? `${nut('fat')} g` : null, detail: nut('saturatedFat') ? `di cui saturi ${nut('saturatedFat')} g` : null },
@@ -1336,7 +1651,6 @@
             nut('protein') ? `<span>Proteine ${nut('protein')} g</span>` : '',
             nut('sodium') ? `<span>Sodio ${nut('sodium')} g</span>` : ''
         ].filter(Boolean);
-
         const hasNutInfo = nutRows.length > 0 || finalNutrients.length > 0;
         const nutHtml = hasNutInfo
             ? `<div class="lbl-section">DICHIARAZIONE NUTRIZIONALE per 100 g di prodotto</div>
@@ -1348,15 +1662,15 @@
                </tbody></table>`
             : '';
 
-        // Genera N pagine label
-        const qty = order.qty || 1;
+        // In preview: mostra solo 1 copia
+        const printQty = previewMode ? 1 : qty;
         let labelPages = '';
-        for (let i = 0; i < qty; i++) {
-            labelPages += `<div class="label-page"${i < qty - 1 ? ' style="page-break-after:always;"' : ''}>
+        for (let i = 0; i < printQty; i++) {
+            labelPages += `<div class="label-page"${i < printQty - 1 ? ' style="page-break-after:always;"' : ''}>
                 <div class="lbl-header">
                     ${logoHtml}
                     <div class="lbl-name">${escapeHtml(name)}</div>
-                    ${hierarchyDescriptions.map(description => `<div class="lbl-description">${escapeHtml(description)}</div>`).join('')}
+                    ${hierarchyDescriptions.map(d => `<div class="lbl-description">${escapeHtml(d)}</div>`).join('')}
                     ${weight ? `<div class="lbl-weight">${escapeHtml(weight)} <span class="estimated-mark">℮</span></div>` : ''}
                 </div>
                 <div class="lbl-details">
@@ -1372,47 +1686,14 @@
             </div>`;
         }
 
-        const html = `<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8">
-<title>Etichette ${escapeHtml(name)}</title>
-<style>
-  @page { size: 101.6mm 152.4mm; margin: 3mm; }
-  * { box-sizing: border-box; }
-        body { width: 95.6mm; margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; font-size: 8.5pt; color: #000; background: #fff; }
-    .label-page { width: 95.6mm; height: 146.4mm; padding: 2mm; display: flex; flex-direction: column; overflow: hidden; }
-        .lbl-header { text-align: center; }
-        .lbl-logo { display: block; max-height: 25mm; max-width: 82mm; width: auto; height: auto; margin: 0 auto 13mm; }
-    .lbl-name  { font-size: 18pt; font-weight: 900; text-align: center; margin: 1.5mm 0 1mm; text-transform: uppercase; line-height: 1.15; }
-        .lbl-description { font-size: 12pt; font-weight: 700; text-align: center; margin: 0.8mm 0; line-height: 1.2; }
-        .lbl-weight { font-size: 22.5pt; font-weight: 700; text-align: center; margin-top: 11.5mm; line-height: 1; }
-        .estimated-mark { display: inline-block; font-family: Arial, Helvetica, sans-serif; font-size: 28.5pt; font-weight: 700; line-height: 0.65; vertical-align: -0.08em; }
-        .lbl-details { margin-top: auto; }
-    .lbl-section { font-size: 7.5pt; font-weight: 700; text-align: center; border-top: 0.4mm solid #000; border-bottom: 0.4mm solid #000; padding: 0.6mm 0; margin: 1.5mm 0 0.5mm; text-transform: uppercase; letter-spacing: 0.3pt; }
-    .nut-table { width: 100%; border-collapse: collapse; font-size: 8.5pt; margin-bottom: 1.5mm; }
-  .nut-table td { padding: 0.5mm 1mm; border-bottom: 0.2mm solid #ccc; }
-    .nut-table td:first-child { width: 55%; }
-    .nut-table td:last-child { text-align: left; font-weight: 700; }
-        .nut-table .nut-energy { width: 100%; white-space: nowrap; text-align: left; }
-        .nut-three { display: flex; justify-content: space-between; gap: 2mm; white-space: nowrap; }
-    .lbl-allergens { font-size: 8.5pt; border: 0.4mm solid #000; padding: 0.8mm 1mm; margin: 1mm 0; line-height: 1.3; }
-    .lbl-humidity  { font-size: 7.5pt; text-align: center; margin: 1mm 0 0.5mm; color: #222; }
-    .lbl-producer-block { border-top: 0.3mm solid #000; margin-top: 0.8mm; padding-top: 0.8mm; }
-    .lbl-producer { display: grid; grid-template-columns: max-content 1fr; column-gap: 1mm; align-items: start; font-size: 7.5pt; line-height: 1.35; color: #111; margin-bottom: 0.3mm; }
-    .lbl-producer-title { font-weight: 700; white-space: nowrap; }
-    .lbl-producer-content { min-width: 0; }
-    .lbl-address { display: block; }
-    .lbl-contacts, .lbl-email { display: block; width: 100%; margin-top: 0.5mm; font-size: 9pt; font-weight: 800; line-height: 1.25; text-align: center; overflow-wrap: anywhere; }
-    .lbl-website { display: block; width: 100%; margin-top: 0.8mm; font-size: 13pt; font-weight: 900; line-height: 1.15; text-align: center; overflow-wrap: anywhere; }
-    .lbl-lot   { display: flex; justify-content: space-between; margin-top: 1.5mm; border-top: 0.4mm solid #000; padding-top: 1mm; font-size: 11pt; font-weight: 700; }
-  .no-print  { padding: 6px; text-align: center; background: #f0f0f0; margin-bottom: 4px; }
-  @media print { .no-print { display: none !important; } }
-</style></head><body>
+        const noPrintBar = previewMode ? '' : `
 <div class="no-print">
-    <strong>${qty} etichett${qty === 1 ? 'a' : 'e'} 4\u00d76&quot;</strong>
-  &nbsp;&mdash;&nbsp;
-  <button onclick="window.print()" style="padding:4px 12px;cursor:pointer;">\ud83d\udda8\ufe0f Stampa</button>
-  <button onclick="window.close()" style="padding:4px 12px;cursor:pointer;">\u2715 Chiudi</button>
-</div>
-${labelPages}
+    <strong>${qty} etichett${qty === 1 ? 'a' : 'e'} 4×6"</strong>
+  &nbsp;—&nbsp;
+  <button onclick="window.print()" style="padding:4px 12px;cursor:pointer;">🖨️ Stampa</button>
+  <button onclick="window.close()" style="padding:4px 12px;cursor:pointer;">✕ Chiudi</button>
+</div>`;
+        const autoPrintScript = previewMode ? '' : `
 <script>
 (function() {
     var printed = false;
@@ -1425,21 +1706,57 @@ ${labelPages}
         if (img.complete && img.naturalWidth) { onImgDone(); }
         else { img.addEventListener('load', onImgDone); img.addEventListener('error', onImgDone); }
     });
-    setTimeout(doPrint, 4000); // fallback
+    setTimeout(doPrint, 4000);
 })();
-<\/script>
-</body></html>`;
+<\/script>`;
 
-        const w = window.open('', '_blank', 'width=520,height=720');
-        if (!w) { alert('Impossibile aprire la finestra di stampa. Abilita i popup per questo sito.'); return; }
-        w.document.open();
-        w.document.write(html);
-        w.document.close();
+        return `<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8">
+<title>Etichette ${escapeHtml(name)}</title>
+<style>
+  @page { size: 101.6mm 152.4mm; margin: 3mm; }
+  * { box-sizing: border-box; }
+  body { width: 95.6mm; margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; font-size: 8.5pt; color: #000; background: #fff; }
+  .label-page { width: 95.6mm; height: 146.4mm; padding: 2mm; display: flex; flex-direction: column; overflow: hidden; }
+  .lbl-header { text-align: center; }
+  .lbl-logo { display: block; max-height: 25mm; max-width: 82mm; width: auto; height: auto; margin: 0 auto 13mm; }
+  .lbl-name { font-size: 18pt; font-weight: 900; text-align: center; margin: 1.5mm 0 1mm; text-transform: uppercase; line-height: 1.15; }
+  .lbl-description { font-size: 12pt; font-weight: 700; text-align: center; margin: 0.8mm 0; line-height: 1.2; }
+  .lbl-weight { font-size: 22.5pt; font-weight: 700; text-align: center; margin-top: 11.5mm; line-height: 1; }
+  .estimated-mark { display: inline-block; font-family: Arial, Helvetica, sans-serif; font-size: 28.5pt; font-weight: 700; line-height: 0.65; vertical-align: -0.08em; }
+  .lbl-details { margin-top: auto; }
+  .lbl-section { font-size: 7.5pt; font-weight: 700; text-align: center; border-top: 0.4mm solid #000; border-bottom: 0.4mm solid #000; padding: 0.6mm 0; margin: 1.5mm 0 0.5mm; text-transform: uppercase; letter-spacing: 0.3pt; }
+  .nut-table { width: 100%; border-collapse: collapse; font-size: 8.5pt; margin-bottom: 1.5mm; }
+  .nut-table td { padding: 0.5mm 1mm; border-bottom: 0.2mm solid #ccc; }
+  .nut-table td:first-child { width: 55%; }
+  .nut-table td:last-child { text-align: left; font-weight: 700; }
+  .nut-table .nut-energy { width: 100%; white-space: nowrap; text-align: left; }
+  .nut-three { display: flex; justify-content: space-between; gap: 2mm; white-space: nowrap; }
+  .lbl-allergens { font-size: 8.5pt; border: 0.4mm solid #000; padding: 0.8mm 1mm; margin: 1mm 0; line-height: 1.3; }
+  .lbl-humidity { font-size: 7.5pt; text-align: center; margin: 1mm 0 0.5mm; color: #222; }
+  .lbl-producer-block { border-top: 0.3mm solid #000; margin-top: 0.8mm; padding-top: 0.8mm; }
+  .lbl-producer { display: grid; grid-template-columns: max-content 1fr; column-gap: 1mm; align-items: start; font-size: 7.5pt; line-height: 1.35; color: #111; margin-bottom: 0.3mm; }
+  .lbl-producer-title { font-weight: 700; white-space: nowrap; }
+  .lbl-producer-content { min-width: 0; }
+  .lbl-address { display: block; }
+  .lbl-contacts, .lbl-email { display: block; width: 100%; margin-top: 0.5mm; font-size: 9pt; font-weight: 800; line-height: 1.25; text-align: center; overflow-wrap: anywhere; }
+  .lbl-website { display: block; width: 100%; margin-top: 0.8mm; font-size: 13pt; font-weight: 900; line-height: 1.15; text-align: center; overflow-wrap: anywhere; }
+  .lbl-lot { display: flex; justify-content: space-between; margin-top: 1.5mm; border-top: 0.4mm solid #000; padding-top: 1mm; font-size: 11pt; font-weight: 700; }
+  .no-print { padding: 6px; text-align: center; background: #f0f0f0; margin-bottom: 4px; }
+  @media print { .no-print { display: none !important; } }
+</style></head><body>
+${noPrintBar}
+${labelPages}
+${autoPrintScript}
+</body></html>`;
     }
 
-    window.openLabelPrintPopup   = openLabelPrintPopup;
+    window.openLabelPrintPopup    = openLabelPrintPopup;
     window.closeLabelPrintOverlay = closeLabelPrintOverlay;
     window.submitLabelPrint       = submitLabelPrint;
+    window.showLabelPreview       = showLabelPreview;
+    window.buildLabelHtmlDoc      = buildLabelHtmlDoc;
+    window.sendPrintJobPublic     = sendPrintJob;
+    window.showReceiptPreview     = showReceiptPreview;
     const COMPLETE_MODAL_ID = '__completeInternalOrderModal';
     let _completeOnSuccess = null;
     let _completeTaskId = null;
