@@ -95,6 +95,9 @@ model Article {
   unit              String    @default("kg")  // Unità di misura
   weightPerUnit     Float     @default(1)     // Peso singolo collo in kg (es. 10 per sacco da 10kg)
   barcode           String?   // Codice a barre EAN/QR
+  allergens         String?   @db.Text   // Allergeni (JSON: {selected:[...], extra:"..."})
+  supplierName      String?              // Nome ditta fornitore (per REA etichetta)
+  supplierRea       String?              // Numero REA fornitore
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
   
@@ -102,6 +105,25 @@ model Article {
   shelfEntries      ShelfEntry[]
   stockAlerts       StockAlert[]
   orderItems        OrderItem[]
+  nutritionalInfo   NutritionalInfo?     // Valori nutrizionali per etichetta
+}
+
+// Valori nutrizionali per 100g — usati per stampa etichette 4x6"
+model NutritionalInfo {
+  id              Int      @id @default(autoincrement())
+  article         Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  articleId       Int      @unique
+  energyKcal      Float?   // Valore energetico kcal
+  energyKj        Float?   // Valore energetico kJ
+  fat             Float?   // Grassi g
+  saturatedFat    Float?   // di cui saturi g
+  carbohydrates   Float?   // Carboidrati g
+  sugars          Float?   // di cui zuccheri g
+  fiber           Float?   // Fibre g
+  protein         Float?   // Proteine g
+  sodium          Float?   // Sodio g
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 model Inventory {
@@ -253,6 +275,7 @@ model Destination {
 model ProductCategory {
   id            Int                    @id @default(autoincrement())
   name          String                 @unique
+  description   String?                @db.VarChar(500)
   icon          String?
   color         String?
   sortOrder     Int                    @default(0)
@@ -266,6 +289,7 @@ model ProductSubcategory {
   category   ProductCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   categoryId Int
   name       String
+  description String?        @db.VarChar(500)
   sortOrder  Int             @default(0)
   createdAt  DateTime        @default(now())
   updatedAt  DateTime        @updatedAt
@@ -280,6 +304,7 @@ model ProductGroup {
   subcategory   ProductSubcategory @relation(fields: [subcategoryId], references: [id], onDelete: Cascade)
   subcategoryId Int
   name          String
+  description   String?            @db.VarChar(500)
   sortOrder     Int                @default(0)
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt

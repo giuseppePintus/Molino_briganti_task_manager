@@ -336,7 +336,7 @@ export class InventoryController {
    */
   static async createArticle(req: Request, res: Response) {
     try {
-      const { code: rawCode, name, description, category, subcategory, productGroup, unit, weightPerUnit, barcode } = req.body;
+      const { code: rawCode, name, description, category, subcategory, productGroup, unit, weightPerUnit, barcode, allergens, supplierName, supplierRea } = req.body;
       if (!rawCode || !name) {
         return res.status(400).json({ success: false, error: 'Codice e nome sono obbligatori' });
       }
@@ -345,7 +345,7 @@ export class InventoryController {
       if (!code) {
         return res.status(400).json({ success: false, error: 'Il codice non può essere composto solo da spazi' });
       }
-      const article = await InventoryService.createArticle({ code, name, description, category, subcategory, productGroup, unit, weightPerUnit: weightPerUnit ? parseFloat(weightPerUnit) : undefined, barcode });
+      const article = await InventoryService.createArticle({ code, name, description, category, subcategory, productGroup, unit, weightPerUnit: weightPerUnit ? parseFloat(weightPerUnit) : undefined, barcode, allergens, supplierName, supplierRea });
       res.json({ success: true, data: article });
     } catch (error: any) {
       console.error('❌ Create article error:', error);
@@ -359,16 +359,31 @@ export class InventoryController {
   static async updateArticle(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const { code: rawCode, name, description, category, subcategory, productGroup, unit, weightPerUnit, barcode } = req.body;
+      const { code: rawCode, name, description, category, subcategory, productGroup, unit, weightPerUnit, barcode, allergens, supplierName, supplierRea } = req.body;
       // Rimuove tutti gli spazi dal codice se presente
       const code = rawCode !== undefined ? (rawCode as string).replace(/\s+/g, '') : undefined;
       if (code !== undefined && !code) {
         return res.status(400).json({ success: false, error: 'Il codice non può essere vuoto o composto solo da spazi' });
       }
-      const article = await InventoryService.updateArticle(parseInt(id), { code, name, description, category, subcategory, productGroup, unit, weightPerUnit: weightPerUnit !== undefined ? parseFloat(weightPerUnit) : undefined, barcode });
+      const article = await InventoryService.updateArticle(parseInt(id), { code, name, description, category, subcategory, productGroup, unit, weightPerUnit: weightPerUnit !== undefined ? parseFloat(weightPerUnit) : undefined, barcode, allergens, supplierName, supplierRea });
       res.json({ success: true, data: article });
     } catch (error: any) {
       console.error('❌ Update article error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  /**
+   * Upsert valori nutrizionali per un articolo
+   */
+  static async upsertNutritionalInfo(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { energyKcal, energyKj, fat, saturatedFat, carbohydrates, sugars, fiber, protein, sodium } = req.body;
+      const result = await InventoryService.upsertNutritionalInfo(parseInt(id), { energyKcal, energyKj, fat, saturatedFat, carbohydrates, sugars, fiber, protein, sodium });
+      res.json({ success: true, data: result });
+    } catch (error: any) {
+      console.error('❌ Upsert nutritionalInfo error:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   }

@@ -9,6 +9,7 @@ router.get('/articles', InventoryController.getAllArticles);
 router.get('/articles/:id', InventoryController.getArticleDetail);
 router.post('/articles', InventoryController.createArticle);
 router.put('/articles/:id', InventoryController.updateArticle);
+router.put('/articles/:id/nutrition', InventoryController.upsertNutritionalInfo);
 router.delete('/articles/:id', InventoryController.deleteArticle);
 
 // Gestione stock

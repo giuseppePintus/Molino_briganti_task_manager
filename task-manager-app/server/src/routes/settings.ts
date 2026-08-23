@@ -55,7 +55,17 @@ const defaultSettings = {
   deliverySatMorningStart: '08:00',
   deliverySatMorningEnd: '12:00',
   deliverySatAfternoonStart: '',
-  deliverySatAfternoonEnd: ''
+  deliverySatAfternoonEnd: '',
+  // Dati sede legale per stampa etichette
+  companyFullName: '',
+  companyAddress: '',
+  companyCAP: '',
+  companyCity: '',
+  companyProvince: '',
+  companyPhone: '',
+  companyMobile: '',
+  companyEmail: '',
+  companyWebsite: ''
 };
 
 /**
@@ -115,6 +125,8 @@ router.put('/company', authMiddleware, async (req: Request, res: Response) => {
       openSatMorningStart, openSatMorningEnd, openSatAfternoonStart, openSatAfternoonEnd,
       deliveryDays, deliveryMorningStart, deliveryMorningEnd, deliveryAfternoonStart, deliveryAfternoonEnd,
       deliverySatMorningStart, deliverySatMorningEnd, deliverySatAfternoonStart, deliverySatAfternoonEnd,
+      companyFullName, companyAddress, companyCAP, companyCity, companyProvince,
+      companyPhone, companyMobile, companyEmail, companyWebsite,
       holidays, vehicles
     } = req.body;
     
@@ -141,7 +153,16 @@ router.put('/company', authMiddleware, async (req: Request, res: Response) => {
       { key: 'deliverySatMorningStart', value: JSON.stringify(deliverySatMorningStart) },
       { key: 'deliverySatMorningEnd', value: JSON.stringify(deliverySatMorningEnd) },
       { key: 'deliverySatAfternoonStart', value: JSON.stringify(deliverySatAfternoonStart) },
-      { key: 'deliverySatAfternoonEnd', value: JSON.stringify(deliverySatAfternoonEnd) }
+      { key: 'deliverySatAfternoonEnd', value: JSON.stringify(deliverySatAfternoonEnd) },
+      { key: 'companyFullName',  value: JSON.stringify(companyFullName  ?? '') },
+      { key: 'companyAddress',   value: JSON.stringify(companyAddress   ?? '') },
+      { key: 'companyCAP',       value: JSON.stringify(companyCAP       ?? '') },
+      { key: 'companyCity',      value: JSON.stringify(companyCity      ?? '') },
+      { key: 'companyProvince',  value: JSON.stringify(companyProvince  ?? '') },
+      { key: 'companyPhone',     value: JSON.stringify(companyPhone     ?? '') },
+      { key: 'companyMobile',    value: JSON.stringify(companyMobile    ?? '') },
+      { key: 'companyEmail',     value: JSON.stringify(companyEmail     ?? '') },
+      { key: 'companyWebsite',   value: JSON.stringify(companyWebsite   ?? '') }
     ];
     
     // Upsert ogni impostazione

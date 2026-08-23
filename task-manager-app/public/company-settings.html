@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="it">
 <head>
   <meta charset="UTF-8">
@@ -182,12 +182,65 @@
     </div>
 
     <div class="card">
+      <h2>🏷️ Dati Sede Legale (Stampa Etichette)</h2>
+      <p style="color:#9ca3af;font-size:13px;margin-top:-8px;margin-bottom:16px;">Questi dati appaiono sull’etichetta 4×6” degli ordini interni.</p>
+      <div class="form-row">
+        <div class="form-group" style="flex:2">
+          <label for="companyFullName">Ragione Sociale Completa</label>
+          <input type="text" id="companyFullName" placeholder="Es. Molini Briganti di Maldini Manuel S.A.S.">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="flex:3">
+          <label for="companyAddress">Via / Indirizzo</label>
+          <input type="text" id="companyAddress" placeholder="Es. Via Cesenatico n°358">
+        </div>
+        <div class="form-group" style="flex:1">
+          <label for="companyCAP">CAP</label>
+          <input type="text" id="companyCAP" placeholder="Es. 47042" maxlength="10">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="flex:3">
+          <label for="companyCity">Comune</label>
+          <input type="text" id="companyCity" placeholder="Es. Villalta di Cesenatico">
+        </div>
+        <div class="form-group" style="flex:1">
+          <label for="companyProvince">Prov.</label>
+          <input type="text" id="companyProvince" placeholder="FC" maxlength="2" style="text-transform:uppercase;">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="companyPhone">Telefono</label>
+          <input type="tel" id="companyPhone" placeholder="Es. 0547 000000">
+        </div>
+        <div class="form-group">
+          <label for="companyMobile">Cellulare</label>
+          <input type="tel" id="companyMobile" placeholder="Es. 333 0000000">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="companyEmail">Email</label>
+          <input type="email" id="companyEmail" placeholder="Es. info@molini.it">
+        </div>
+        <div class="form-group">
+          <label for="companyWebsite">Sito web</label>
+          <input type="text" id="companyWebsite" placeholder="Es. www.molini.it">
+        </div>
+      </div>
+      <p style="color:#9ca3af;font-size:12px;margin-top:4px;">Esempio etichetta: <em>Prodotto e confezionato da Molini Briganti di Maldini Manuel S.A.S., Via Cesenatico n°358, 47042 Villalta di Cesenatico (FC)</em></p>
+    </div>
+
+    <div class="card">
       <h2>💾 Salvataggio</h2>
       <div class="form-row">
         <button class="btn btn-primary" onclick="saveSettings()">💾 Salva Impostazioni</button>
         <button class="btn btn-secondary" onclick="resetDefaults()">↺ Ripristina Default</button>
       </div>
     </div>
+
 
   <script>
     const DAYS = ['Dom','Lun','Mar','Mer','Gio','Ven','Sab'];
@@ -438,7 +491,17 @@
         deliverySatAfternoonStart: document.getElementById('deliverySatAfternoonStart').value,
         deliverySatAfternoonEnd: document.getElementById('deliverySatAfternoonEnd').value,
         holidays: currentSettings.holidays || [],
-        vehicles: currentSettings.vehicles || []
+        vehicles: currentSettings.vehicles || [],
+        // Dati sede legale
+        companyFullName: (document.getElementById('companyFullName')?.value || '').trim(),
+        companyAddress:  (document.getElementById('companyAddress')?.value  || '').trim(),
+        companyCAP:      (document.getElementById('companyCAP')?.value      || '').trim(),
+        companyCity:     (document.getElementById('companyCity')?.value     || '').trim(),
+        companyProvince: (document.getElementById('companyProvince')?.value || '').trim().toUpperCase(),
+        companyPhone:    (document.getElementById('companyPhone')?.value    || '').trim(),
+        companyMobile:   (document.getElementById('companyMobile')?.value   || '').trim(),
+        companyEmail:    (document.getElementById('companyEmail')?.value    || '').trim(),
+        companyWebsite:  (document.getElementById('companyWebsite')?.value  || '').trim(),
       }
     }
 
@@ -643,6 +706,16 @@
       document.getElementById('deliverySatAfternoonEnd').value = s.deliverySatAfternoonEnd || '';
       renderHolidays(s.holidays || []);
       renderVehicles(s.vehicles || []);
+      // Dati sede legale
+      if (document.getElementById('companyFullName'))  document.getElementById('companyFullName').value  = s.companyFullName  || '';
+      if (document.getElementById('companyAddress'))   document.getElementById('companyAddress').value   = s.companyAddress   || '';
+      if (document.getElementById('companyCAP'))       document.getElementById('companyCAP').value       = s.companyCAP       || '';
+      if (document.getElementById('companyCity'))      document.getElementById('companyCity').value      = s.companyCity      || '';
+      if (document.getElementById('companyProvince'))  document.getElementById('companyProvince').value  = s.companyProvince  || '';
+      if (document.getElementById('companyPhone'))     document.getElementById('companyPhone').value     = s.companyPhone     || '';
+      if (document.getElementById('companyMobile'))    document.getElementById('companyMobile').value    = s.companyMobile    || '';
+      if (document.getElementById('companyEmail'))     document.getElementById('companyEmail').value     = s.companyEmail     || '';
+      if (document.getElementById('companyWebsite'))   document.getElementById('companyWebsite').value   = s.companyWebsite   || '';
     }
 
     function goBack(){ window.location.href = 'admin-dashboard.html'; }

@@ -17,6 +17,7 @@ export const DEFAULT_CATEGORIES = [
 
 interface CategoryItem {
   name: string;
+  description?: string | null;
   icon?: string | null;
   color?: string | null;
 }
@@ -25,7 +26,7 @@ async function loadCategoriesDb(): Promise<CategoryItem[]> {
   const rows = await prisma.productCategory.findMany({
     orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }]
   });
-  return rows.map(r => ({ name: r.name, icon: r.icon, color: r.color }));
+  return rows.map(r => ({ name: r.name, description: r.description, icon: r.icon, color: r.color }));
 }
 
 async function saveCategoriesDb(items: CategoryItem[]): Promise<void> {
@@ -37,10 +38,11 @@ async function saveCategoriesDb(items: CategoryItem[]): Promise<void> {
     // Upsert: mantiene l'id esistente → le sotto-categorie collegate non vengono perse
     for (let i = 0; i < items.length; i++) {
       const it = items[i];
+      const descriptionData = it.description !== undefined ? { description: it.description || null } : {};
       await tx.productCategory.upsert({
         where: { name: it.name },
-        update: { icon: it.icon ?? null, color: it.color ?? null, sortOrder: i },
-        create: { name: it.name, icon: it.icon ?? null, color: it.color ?? null, sortOrder: i }
+        update: { icon: it.icon ?? null, color: it.color ?? null, sortOrder: i, ...descriptionData },
+        create: { name: it.name, icon: it.icon ?? null, color: it.color ?? null, sortOrder: i, ...descriptionData }
       });
     }
   });
@@ -73,6 +75,76 @@ router.get('/', async (_req: Request, res: Response) => {
     return res.json(merged);
   } catch (e: any) {
     console.error('[categories] GET error', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// GET pubblico - descrizioni complete usate dalla gestione categorie e dalle etichette
+router.get('/descriptions', async (_req: Request, res: Response) => {
+  try {
+    const categories = await prisma.productCategory.findMany({
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+      select: {
+        name: true,
+        description: true,
+        subcategories: {
+          orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+          select: {
+            name: true,
+            description: true,
+            groups: {
+              orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+              select: { name: true, description: true }
+            }
+          }
+        }
+      }
+    });
+    return res.json(categories);
+  } catch (e: any) {
+    console.error('[categories] GET descriptions error', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// PUT autenticato - aggiorna la descrizione di categoria, sotto-categoria o gruppo
+router.put('/descriptions', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const level = String(req.body?.level || '').trim().toLowerCase();
+    const category = String(req.body?.category || '').trim().toUpperCase();
+    const subcategory = String(req.body?.subcategory || '').trim().toUpperCase();
+    const group = String(req.body?.group || '').trim().toUpperCase();
+    const description = String(req.body?.description || '').trim();
+    if (!category) return res.status(400).json({ error: 'Categoria obbligatoria' });
+    if (description.length > 500) return res.status(400).json({ error: 'La descrizione non può superare 500 caratteri' });
+
+    if (level === 'category') {
+      const updated = await prisma.productCategory.updateMany({
+        where: { name: category },
+        data: { description: description || null }
+      });
+      if (!updated.count) return res.status(404).json({ error: `Categoria "${category}" non trovata` });
+    } else if (level === 'subcategory') {
+      if (!subcategory) return res.status(400).json({ error: 'Sotto-categoria obbligatoria' });
+      const item = await findSubcategory(category, subcategory);
+      if (!item) return res.status(404).json({ error: `Sotto-categoria "${subcategory}" non trovata` });
+      await prisma.productSubcategory.update({ where: { id: item.id }, data: { description: description || null } });
+    } else if (level === 'group') {
+      if (!subcategory || !group) return res.status(400).json({ error: 'Sotto-categoria e gruppo obbligatori' });
+      const item = await findSubcategory(category, subcategory);
+      if (!item) return res.status(404).json({ error: `Sotto-categoria "${subcategory}" non trovata` });
+      const updated = await prisma.productGroup.updateMany({
+        where: { subcategoryId: item.id, name: group },
+        data: { description: description || null }
+      });
+      if (!updated.count) return res.status(404).json({ error: `Gruppo "${group}" non trovato` });
+    } else {
+      return res.status(400).json({ error: 'Livello non valido' });
+    }
+
+    return res.json({ ok: true, description: description || null });
+  } catch (e: any) {
+    console.error('[categories] PUT description error', e);
     return res.status(500).json({ error: e.message });
   }
 });
@@ -383,6 +455,7 @@ router.put('/', authMiddleware, async (req: Request, res: Response) => {
       .filter(it => it && typeof it.name === 'string' && it.name.trim())
       .map(it => ({
         name: String(it.name).trim().toUpperCase(),
+        description: typeof it.description === 'string' ? it.description.trim().slice(0, 500) || null : undefined,
         icon: typeof it.icon === 'string' ? it.icon : null,
         color: typeof it.color === 'string' ? it.color : null
       }));

@@ -217,7 +217,8 @@ export class InventoryService {
           inventory: {
             include: { alerts: { where: { isResolved: false } } }
           },
-          shelfEntries: true
+          shelfEntries: true,
+          nutritionalInfo: true
         },
         orderBy: { code: 'asc' }
       });
@@ -671,7 +672,7 @@ export class InventoryService {
     }
   }
 
-  static async createArticle(data: { code: string; name: string; description?: string; category?: string; subcategory?: string | null; productGroup?: string | null; unit?: string; weightPerUnit?: number; barcode?: string }) {
+  static async createArticle(data: { code: string; name: string; description?: string; category?: string; subcategory?: string | null; productGroup?: string | null; unit?: string; weightPerUnit?: number; barcode?: string; allergens?: string; supplierName?: string; supplierRea?: string }) {
     try {
       const category = data.category || null;
       const subRaw = (data.subcategory || '').trim();
@@ -689,8 +690,11 @@ export class InventoryService {
           unit: data.unit || 'kg',
           weightPerUnit: data.weightPerUnit || 1,
           barcode: data.barcode || null,
+          allergens: data.allergens !== undefined ? (data.allergens || null) : null,
+          supplierName: data.supplierName !== undefined ? (data.supplierName || null) : null,
+          supplierRea: data.supplierRea !== undefined ? (data.supplierRea || null) : null,
         },
-        include: { inventory: true }
+        include: { inventory: true, nutritionalInfo: true }
       });
       console.log(`✅ Articolo creato: ${article.id} - ${article.code}`);
       return article;
@@ -700,7 +704,7 @@ export class InventoryService {
     }
   }
 
-  static async updateArticle(articleId: number, data: { code?: string; name?: string; description?: string; category?: string | null; subcategory?: string | null; productGroup?: string | null; unit?: string; weightPerUnit?: number; barcode?: string }) {
+  static async updateArticle(articleId: number, data: { code?: string; name?: string; description?: string; category?: string | null; subcategory?: string | null; productGroup?: string | null; unit?: string; weightPerUnit?: number; barcode?: string; allergens?: string; supplierName?: string; supplierRea?: string }) {
     try {
       const existing = await prisma.article.findUnique({
         where: { id: articleId },
@@ -743,8 +747,11 @@ export class InventoryService {
           ...(data.unit !== undefined && { unit: data.unit }),
           ...(data.weightPerUnit !== undefined && { weightPerUnit: data.weightPerUnit }),
           ...(data.barcode !== undefined && { barcode: data.barcode || null }),
+          ...(data.allergens !== undefined && { allergens: data.allergens || null }),
+          ...(data.supplierName !== undefined && { supplierName: data.supplierName || null }),
+          ...(data.supplierRea !== undefined && { supplierRea: data.supplierRea || null }),
         },
-        include: { inventory: true }
+        include: { inventory: true, nutritionalInfo: true }
       });
       console.log(`✅ Articolo aggiornato: ${article.id} - ${article.code}`);
       return article;
@@ -756,7 +763,7 @@ export class InventoryService {
 
   static async deleteArticle(articleId: number) {
     try {
-      // Elimina l'inventario associato
+      // Elimina l'inventario associato (cascade elimina NutritionalInfo via FK)
       await prisma.inventory.deleteMany({
         where: { articleId }
       });
@@ -770,6 +777,45 @@ export class InventoryService {
     } catch (error) {
       console.error(`❌ Errore delete articolo: ${error}`);
       throw error;
+    }
+  }
+
+  /**
+   * Upsert valori nutrizionali per un articolo (per stampa etichette 4x6")
+   */
+  static async upsertNutritionalInfo(articleId: number, data: {
+    energyKcal?: number; energyKj?: number;
+    fat?: number; saturatedFat?: number;
+    carbohydrates?: number; sugars?: number;
+    fiber?: number; protein?: number; sodium?: number;
+  }) {
+    try {
+      const toFloat = (value: unknown): number | null => {
+        if (value === null || value === undefined || value === '') return null;
+        const parsed = Number.parseFloat(String(value));
+        return Number.isFinite(parsed) ? parsed : null;
+      };
+      const payload = {
+        energyKcal:    toFloat(data.energyKcal),
+        energyKj:      toFloat(data.energyKj),
+        fat:           toFloat(data.fat),
+        saturatedFat:  toFloat(data.saturatedFat),
+        carbohydrates: toFloat(data.carbohydrates),
+        sugars:        toFloat(data.sugars),
+        fiber:         toFloat(data.fiber),
+        protein:       toFloat(data.protein),
+        sodium:        toFloat(data.sodium),
+      };
+      const result = await (prisma as any).nutritionalInfo.upsert({
+        where:  { articleId },
+        update: payload,
+        create: { articleId, ...payload }
+      });
+      console.log(`✅ NutritionalInfo upsert per articolo ${articleId}`);
+      return result;
+    } catch (error) {
+      console.error(`❌ Errore upsertNutritionalInfo: ${error}`);
+      throw new Error(`Errore salvataggio valori nutrizionali: ${error}`);
     }
   }
 

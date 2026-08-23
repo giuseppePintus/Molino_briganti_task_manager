@@ -1038,6 +1038,7 @@
             return `
                 <button class="btn btn-secondary btn-small" onclick="printInternalOrderThermal(${task.id})" style="background:#475569;" title="Stampa scontrino su termica 80mm">\ud83e\uddfe Stampa 80mm</button>
                 <button class="btn btn-secondary btn-small" onclick="printInternalOrderFull(${task.id})" style="background:#8b5cf6;" title="Stampa documento completo A4">\ud83d\udda8\ufe0f Stampa A4</button>
+                <button class="btn btn-secondary btn-small" onclick="openLabelPrintPopup(${task.id})" style="background:#059669;color:#fff;" title="Stampa etichette 4x6&quot; per prodotto">\ud83c\udff7\ufe0f Etichette</button>
                 ${note}
             `;
         }
@@ -1200,8 +1201,245 @@
     window.formatInternalOrderTitle = formatInternalOrderTitle;
 
     // ============================================================
-    // COMPLETA ORDINE INTERNO — modal con quantità/lotto/scadenza/posizione
+    // STAMPA ETICHETTE 4x6" — PM-344-WF (browser print)
     // ============================================================
+
+    let _labelPrintTaskData = null;
+
+    async function openLabelPrintPopup(taskId) {
+        const task = await fetchTask(taskId);
+        if (!task) { alert('Task non trovato'); return; }
+        const order = parseInternalOrder(task);
+
+        const overlay = document.getElementById('labelPrintOverlay');
+        if (!overlay) { alert('Overlay etichette non trovato'); return; }
+
+        _labelPrintTaskData = { task, order };
+
+        document.getElementById('labelPrintProductName').textContent = order.name || '–';
+        document.getElementById('labelPrintCopiesNote').textContent =
+            `Verranno stampate ${order.qty} etichette (una per collo)`;
+        document.getElementById('labelPrintLotto').value = '';
+        document.getElementById('labelPrintScad').value = '';
+        const errEl = document.getElementById('labelPrintError');
+        if (errEl) errEl.style.display = 'none';
+        const btn = document.getElementById('labelPrintConfirmBtn');
+        if (btn) { btn.disabled = false; btn.textContent = '🏷️ Stampa'; }
+
+        overlay.style.display = 'flex';
+        setTimeout(() => document.getElementById('labelPrintLotto')?.focus(), 100);
+    }
+
+    function closeLabelPrintOverlay() {
+        const overlay = document.getElementById('labelPrintOverlay');
+        if (overlay) overlay.style.display = 'none';
+        _labelPrintTaskData = null;
+    }
+
+    async function submitLabelPrint() {
+        if (!_labelPrintTaskData) return;
+        const taskData = _labelPrintTaskData;  // salva prima di qualsiasi await
+        const lotto = (document.getElementById('labelPrintLotto')?.value || '').trim();
+        const scad  = (document.getElementById('labelPrintScad')?.value  || '').trim();
+        const errEl = document.getElementById('labelPrintError');
+        if (errEl) errEl.style.display = 'none';
+        const btn = document.getElementById('labelPrintConfirmBtn');
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ Caricamento...'; }
+
+        try {
+            const apiBase = `http://${window.location.hostname}:${window.location.port || 5000}/api`;
+            const artCode = taskData.order.code;
+            let article = null;
+
+            if (artCode) {
+                const r = await fetch(`${apiBase}/inventory/articles`, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
+                });
+                if (r.ok) {
+                    const list = await r.json();
+                    article = list.find(a => a.code === artCode) || null;
+                }
+            }
+
+            const sr = await fetch(`${apiBase}/settings/company`);
+            const settings = sr.ok ? await sr.json() : {};
+            const dr = await fetch(`${apiBase}/categories/descriptions`);
+            const taxonomy = dr.ok ? await dr.json() : [];
+
+            closeLabelPrintOverlay();
+            // Apre finestra DOPO i fetch (stesso pattern printInternalOrderThermal / openReceipt)
+            doLabelPrint(taskData.order, article, settings, taxonomy, lotto, scad);
+        } catch (e) {
+            console.error('[labelPrint]', e);
+            if (errEl) { errEl.textContent = `❌ ${e.message}`; errEl.style.display = 'block'; }
+            if (btn) { btn.disabled = false; btn.textContent = '🏷️ Stampa'; }
+        }
+    }
+
+    function doLabelPrint(order, article, settings, taxonomy, lotto, scad) {
+        const n    = article?.nutritionalInfo || {};
+        const nut  = (key) => n[key] != null ? String(n[key]).replace('.', ',') : null;
+        const roundedNut = (key) => n[key] != null && Number.isFinite(Number(n[key])) ? String(Math.round(Number(n[key]))) : null;
+        const categoryItem = (taxonomy || []).find(item => item.name === article?.category);
+        const subcategoryItem = categoryItem?.subcategories?.find(item => item.name === article?.subcategory);
+        const groupItem = subcategoryItem?.groups?.find(item => item.name === article?.productGroup);
+        const name = groupItem?.description || order.name || '–';
+        const hierarchyDescriptions = [subcategoryItem?.description, categoryItem?.description]
+            .filter((value, index, items) => value && value !== name && items.indexOf(value) === index);
+        const weight = order.weightPerCollo > 0 ? `${order.weightPerCollo} Kg` : '';
+        const allergens = article?.allergens || '';
+        const allergensLabel = allergens
+            .replace(/^\s*Contiene\s*:\s*/i, '')
+            .replace(/\.\s*Può contenere tracce di\s*:\s*/i, ', può contenere tracce di ')
+            .replace(/\s*\.\s*$/, '');
+        const supplierName = article?.supplierName || '';
+        const supplierRea  = article?.supplierRea  || '';
+
+        // Dati azienda
+        const companyFull = settings.companyFullName || settings.businessName || 'Molino Briganti';
+        const companyAddr = [
+            settings.companyAddress,
+            settings.companyCAP && settings.companyCity
+                ? `${settings.companyCAP} ${settings.companyCity}`
+                : (settings.companyCity || ''),
+            settings.companyProvince ? `(${settings.companyProvince})` : ''
+        ].filter(Boolean).join(', ');
+        const companyPhones = [
+            settings.companyPhone ? `Tel. ${settings.companyPhone}` : '',
+            settings.companyMobile ? `Cell. ${settings.companyMobile}` : ''
+        ].filter(Boolean).join(' · ');
+        const companyDetails = companyAddr ? `<span class="lbl-address">${escapeHtml(companyAddr)}</span>` : '';
+        const companyContactRows = `${companyPhones ? `<div class="lbl-contacts">${escapeHtml(companyPhones)}</div>` : ''}${settings.companyEmail ? `<div class="lbl-email">${escapeHtml(settings.companyEmail)}</div>` : ''}${settings.companyWebsite ? `<div class="lbl-website">${escapeHtml(settings.companyWebsite)}</div>` : ''}`;
+
+        const produttoreRow = supplierRea
+                ? `<div class="lbl-producer-block">
+                      <div class="lbl-producer"><span class="lbl-producer-title">Prodotto dalla ditta:</span><span class="lbl-producer-content">${escapeHtml(supplierName)} — REA ${escapeHtml(supplierRea)}</span></div>
+                      <div class="lbl-producer"><span class="lbl-producer-title">Confezionato da:</span><span class="lbl-producer-content"><strong>${escapeHtml(companyFull)}</strong>${companyDetails}</span></div>
+                      ${companyContactRows}
+                    </div>`
+                  : `<div class="lbl-producer-block"><div class="lbl-producer"><span class="lbl-producer-title">Prodotto e confezionato da:</span><span class="lbl-producer-content"><strong>${escapeHtml(companyFull)}</strong>${companyDetails}</span></div>${companyContactRows}</div>`;
+
+        // Logo
+        const logoSrc = settings.logoThermalUrl || settings.logoUrl || '';
+        const logoHtml = logoSrc
+            ? `<img src="${logoSrc}" alt="Logo" class="lbl-logo">`
+            : '';
+
+        // Valori nutrizionali
+        const nutRows = [
+            { label: 'Valore energetico', val: roundedNut('energyKcal') && roundedNut('energyKj') ? `${roundedNut('energyKcal')} kcal / ${roundedNut('energyKj')} kJ` : (roundedNut('energyKcal') ? `${roundedNut('energyKcal')} kcal` : null), fullWidth: true },
+            { label: 'Grassi', val: nut('fat') ? `${nut('fat')} g` : null, detail: nut('saturatedFat') ? `di cui saturi ${nut('saturatedFat')} g` : null },
+            { label: 'Carboidrati', val: nut('carbohydrates') ? `${nut('carbohydrates')} g` : null, detail: nut('sugars') ? `di cui zuccheri ${nut('sugars')} g` : null },
+        ].filter(r => r.val !== null);
+        const finalNutrients = [
+            nut('fiber') ? `<span>Fibre ${nut('fiber')} g</span>` : '',
+            nut('protein') ? `<span>Proteine ${nut('protein')} g</span>` : '',
+            nut('sodium') ? `<span>Sodio ${nut('sodium')} g</span>` : ''
+        ].filter(Boolean);
+
+        const hasNutInfo = nutRows.length > 0 || finalNutrients.length > 0;
+        const nutHtml = hasNutInfo
+            ? `<div class="lbl-section">DICHIARAZIONE NUTRIZIONALE per 100 g di prodotto</div>
+               <table class="nut-table"><tbody>
+                    ${nutRows.map(r => r.fullWidth
+                        ? `<tr><td colspan="2" class="nut-energy"><strong>${r.label}</strong> ${r.val}</td></tr>`
+                        : `<tr><td><strong>${r.label}</strong> ${r.val}</td><td>${r.detail || ''}</td></tr>`).join('')}
+                    ${finalNutrients.length ? `<tr><td colspan="2"><div class="nut-three">${finalNutrients.join('')}</div></td></tr>` : ''}
+               </tbody></table>`
+            : '';
+
+        // Genera N pagine label
+        const qty = order.qty || 1;
+        let labelPages = '';
+        for (let i = 0; i < qty; i++) {
+            labelPages += `<div class="label-page"${i < qty - 1 ? ' style="page-break-after:always;"' : ''}>
+                <div class="lbl-header">
+                    ${logoHtml}
+                    <div class="lbl-name">${escapeHtml(name)}</div>
+                    ${hierarchyDescriptions.map(description => `<div class="lbl-description">${escapeHtml(description)}</div>`).join('')}
+                    ${weight ? `<div class="lbl-weight">${escapeHtml(weight)} <span class="estimated-mark">℮</span></div>` : ''}
+                </div>
+                <div class="lbl-details">
+                    ${nutHtml}
+                    ${allergensLabel ? `<div class="lbl-allergens"><strong>Allergeni:</strong> ${escapeHtml(allergensLabel)}.</div>` : ''}
+                    <div class="lbl-humidity">Umidità: 15% max — Merce soggetta a calo naturale</div>
+                    ${produttoreRow}
+                    <div class="lbl-lot">
+                        ${lotto ? `<span>Lotto: <strong>${escapeHtml(lotto)}</strong></span>` : ''}
+                        ${scad  ? `<span>Scad.: <strong>${escapeHtml(scad)}</strong></span>`  : ''}
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        const html = `<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8">
+<title>Etichette ${escapeHtml(name)}</title>
+<style>
+  @page { size: 101.6mm 152.4mm; margin: 3mm; }
+  * { box-sizing: border-box; }
+        body { width: 95.6mm; margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; font-size: 8.5pt; color: #000; background: #fff; }
+    .label-page { width: 95.6mm; height: 146.4mm; padding: 2mm; display: flex; flex-direction: column; overflow: hidden; }
+        .lbl-header { text-align: center; }
+        .lbl-logo { display: block; max-height: 25mm; max-width: 82mm; width: auto; height: auto; margin: 0 auto 13mm; }
+    .lbl-name  { font-size: 18pt; font-weight: 900; text-align: center; margin: 1.5mm 0 1mm; text-transform: uppercase; line-height: 1.15; }
+        .lbl-description { font-size: 12pt; font-weight: 700; text-align: center; margin: 0.8mm 0; line-height: 1.2; }
+        .lbl-weight { font-size: 22.5pt; font-weight: 700; text-align: center; margin-top: 11.5mm; line-height: 1; }
+        .estimated-mark { display: inline-block; font-family: Arial, Helvetica, sans-serif; font-size: 28.5pt; font-weight: 700; line-height: 0.65; vertical-align: -0.08em; }
+        .lbl-details { margin-top: auto; }
+    .lbl-section { font-size: 7.5pt; font-weight: 700; text-align: center; border-top: 0.4mm solid #000; border-bottom: 0.4mm solid #000; padding: 0.6mm 0; margin: 1.5mm 0 0.5mm; text-transform: uppercase; letter-spacing: 0.3pt; }
+    .nut-table { width: 100%; border-collapse: collapse; font-size: 8.5pt; margin-bottom: 1.5mm; }
+  .nut-table td { padding: 0.5mm 1mm; border-bottom: 0.2mm solid #ccc; }
+    .nut-table td:first-child { width: 55%; }
+    .nut-table td:last-child { text-align: left; font-weight: 700; }
+        .nut-table .nut-energy { width: 100%; white-space: nowrap; text-align: left; }
+        .nut-three { display: flex; justify-content: space-between; gap: 2mm; white-space: nowrap; }
+    .lbl-allergens { font-size: 8.5pt; border: 0.4mm solid #000; padding: 0.8mm 1mm; margin: 1mm 0; line-height: 1.3; }
+    .lbl-humidity  { font-size: 7.5pt; text-align: center; margin: 1mm 0 0.5mm; color: #222; }
+    .lbl-producer-block { border-top: 0.3mm solid #000; margin-top: 0.8mm; padding-top: 0.8mm; }
+    .lbl-producer { display: grid; grid-template-columns: max-content 1fr; column-gap: 1mm; align-items: start; font-size: 7.5pt; line-height: 1.35; color: #111; margin-bottom: 0.3mm; }
+    .lbl-producer-title { font-weight: 700; white-space: nowrap; }
+    .lbl-producer-content { min-width: 0; }
+    .lbl-address { display: block; }
+    .lbl-contacts, .lbl-email { display: block; width: 100%; margin-top: 0.5mm; font-size: 9pt; font-weight: 800; line-height: 1.25; text-align: center; overflow-wrap: anywhere; }
+    .lbl-website { display: block; width: 100%; margin-top: 0.8mm; font-size: 13pt; font-weight: 900; line-height: 1.15; text-align: center; overflow-wrap: anywhere; }
+    .lbl-lot   { display: flex; justify-content: space-between; margin-top: 1.5mm; border-top: 0.4mm solid #000; padding-top: 1mm; font-size: 11pt; font-weight: 700; }
+  .no-print  { padding: 6px; text-align: center; background: #f0f0f0; margin-bottom: 4px; }
+  @media print { .no-print { display: none !important; } }
+</style></head><body>
+<div class="no-print">
+    <strong>${qty} etichett${qty === 1 ? 'a' : 'e'} 4\u00d76&quot;</strong>
+  &nbsp;&mdash;&nbsp;
+  <button onclick="window.print()" style="padding:4px 12px;cursor:pointer;">\ud83d\udda8\ufe0f Stampa</button>
+  <button onclick="window.close()" style="padding:4px 12px;cursor:pointer;">\u2715 Chiudi</button>
+</div>
+${labelPages}
+<script>
+(function() {
+    var printed = false;
+    function doPrint() { if (printed) return; printed = true; try { window.focus(); window.print(); } catch(e) {} }
+    var imgs = Array.prototype.slice.call(document.images || []);
+    if (!imgs.length) { setTimeout(doPrint, 300); return; }
+    var loaded = 0;
+    function onImgDone() { if (++loaded >= imgs.length) setTimeout(doPrint, 300); }
+    imgs.forEach(function(img) {
+        if (img.complete && img.naturalWidth) { onImgDone(); }
+        else { img.addEventListener('load', onImgDone); img.addEventListener('error', onImgDone); }
+    });
+    setTimeout(doPrint, 4000); // fallback
+})();
+<\/script>
+</body></html>`;
+
+        const w = window.open('', '_blank', 'width=520,height=720');
+        if (!w) { alert('Impossibile aprire la finestra di stampa. Abilita i popup per questo sito.'); return; }
+        w.document.open();
+        w.document.write(html);
+        w.document.close();
+    }
+
+    window.openLabelPrintPopup   = openLabelPrintPopup;
+    window.closeLabelPrintOverlay = closeLabelPrintOverlay;
+    window.submitLabelPrint       = submitLabelPrint;
     const COMPLETE_MODAL_ID = '__completeInternalOrderModal';
     let _completeOnSuccess = null;
     let _completeTaskId = null;

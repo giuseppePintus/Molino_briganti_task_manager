@@ -152,7 +152,22 @@ function Build-LocalSources {
 
     if ($DoPrisma) {
         Write-Host "`n[BUILD] Prisma generate locale..." -ForegroundColor Yellow
-        npx prisma generate --schema=server/prisma/schema.prisma | Out-Null
+        # server/.env e task-manager-app/.env condividono le stesse chiavi -> Prisma 5.x
+        # segnala conflitto. Rinomina temporaneamente server/.env durante il generate,
+        # poi lo ripristina (il Dockerfile ne ha bisogno per COPY).
+        $envPath = Join-Path $PSScriptRoot "server\.env"
+        $envBak  = Join-Path $PSScriptRoot "server\.env._bak"
+        $renamed = $false
+        if (Test-Path $envPath) {
+            Rename-Item $envPath $envBak -Force
+            $renamed = $true
+        }
+        try {
+            npx prisma generate --schema=server/prisma/schema.prisma | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw "prisma generate fallito (exit $LASTEXITCODE)" }
+        } finally {
+            if ($renamed) { Rename-Item $envBak $envPath -Force }
+        }
         Write-Host "[OK] Prisma client rigenerato" -ForegroundColor Green
     }
 
@@ -227,6 +242,9 @@ echo "  -> public/ (tutto)"
 `$DOCKER cp `$SRC/public/. `$CT:/app/public/
 echo "  -> package.json"
 `$DOCKER cp `$SRC/package.json `$CT:/app/package.json
+echo "  -> uploads/apks/OperatorLite.apk"
+`$DOCKER exec `$CT mkdir -p /app/uploads/apks
+`$DOCKER cp `$SRC/public/OperatorLite.apk `$CT:/app/uploads/apks/OperatorLite.apk 2>/dev/null || true
 "@
     if ($DoServer) {
         $remote += @"
@@ -315,6 +333,12 @@ ENVS=`$(`$DOCKER inspect `$CT_OLD --format '{{range .Config.Env}}-e {{.}} {{end}
 
 echo "Shadow avviato, attendo 25s..."
 sleep 25
+
+echo "  -> prisma db push (applica schema al DB)"
+`$DOCKER exec `$SHADOW npx prisma@6.19.0 db push --accept-data-loss --schema /app/server/prisma/schema.prisma 2>&1 | tail -5
+`$DOCKER restart `$SHADOW
+echo "  -> Container riavviato dopo db push, attendo 10s..."
+sleep 10
 
 HTTP_CODE=`$(curl -sS -o /tmp/health.txt -w '%{http_code}' http://localhost:${SHADOW_PORT}/api/health || echo "000")
 echo "HTTP /api/health: `$HTTP_CODE"

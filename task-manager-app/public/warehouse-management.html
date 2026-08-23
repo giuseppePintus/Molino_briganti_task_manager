@@ -55,31 +55,7 @@
 
         <!-- Quick Actions -->
         <div class="quick-actions">
-            <div class="dropdown-menu-admin">
-                <button class="btn btn-settings" data-icon="⚙️" onclick="toggleAdminMenu()"><span>Gestione</span></button>
-                <div id="adminMenuDropdown" class="admin-menu-dropdown">
-                    <button class="admin-menu-item" onclick="window.location.href='company-settings.html'; toggleAdminMenu();">
-                        <span class="menu-icon">🏢</span>
-                        <span>Impostazioni Azienda</span>
-                    </button>
-                    <button class="admin-menu-item" onclick="window.location.href='operators.html'; toggleAdminMenu();">
-                        <span class="menu-icon">👥</span>
-                        <span>Gestione Admin / Operatori</span>
-                    </button>
-                    <button class="admin-menu-item" onclick="window.location.href='backup-management.html'; toggleAdminMenu();">
-                        <span class="menu-icon">💾</span>
-                        <span>Gestione Backup</span>
-                    </button>
-                    <button class="admin-menu-item" onclick="openIndiceModal(); toggleAdminMenu();">
-                        <span class="menu-icon">🗂️</span>
-                        <span>Indice</span>
-                    </button>
-                    <button class="admin-menu-item" onclick="resetAllReservations(); toggleAdminMenu();" style="color:#f87171;">
-                        <span class="menu-icon">🔓</span>
-                        <span>Azzera Prenotazioni</span>
-                    </button>
-                </div>
-            </div>
+            <button class="btn btn-settings" data-icon="⚙️" onclick="window.location.href='gestione-hub.html?from=warehouse-management'"><span>Gestione</span></button>
             <button class="btn btn-tasks" data-icon="✅" onclick="window.location.href='admin-dashboard.html'"><span>Planner Task</span></button>
             <button class="btn btn-planner" data-icon="📦" onclick="window.location.href='orders-planner.html'"><span>Planner Ordini</span></button>
             <button class="btn btn-warehouse active" data-icon="🏭" onclick="window.location.href='warehouse-management.html'"><span>Gestione Magazzino</span></button>
@@ -536,6 +512,32 @@
                 <label>Descrizione</label>
                 <input type="text" id="artDescription" placeholder="Descrizione opzionale">
             </div>
+            <!-- ===== DATI ETICHETTA ===== -->
+            <div style="border-top:1px solid #374151;margin:8px 0 4px;padding-top:10px;">
+                <div style="font-size:11px;color:#9ca3af;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">🏷️ Dati Etichetta</div>
+
+                <div style="font-size:12px;color:#9ca3af;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;">Allergeni: Contiene</div>
+                <div id="artAllergenCheckboxesContains" style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px 8px;margin-bottom:10px;font-size:12px;"></div>
+
+                <div style="font-size:12px;color:#9ca3af;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;">Può contenere tracce di</div>
+                <div id="artAllergenCheckboxesTraces" style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px 8px;margin-bottom:8px;font-size:12px;"></div>
+
+                <div class="cargo-field" style="margin-bottom:6px;">
+                    <label style="font-size:11px;color:#6b7280;">Testo allergeni generato (modificabile)</label>
+                    <input type="text" id="artAllergens" placeholder="Es. Contiene: Glutine. Può contenere tracce di: Soia, Latte." oninput="_onAllergenTextChange()">
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                    <div class="cargo-field" style="margin-bottom:0;">
+                        <label>Nome Fornitore <span style="font-size:11px;color:#9ca3af;">(per REA)</span></label>
+                        <input type="text" id="artSupplierName" placeholder="Es. Molino Rossi S.r.l.">
+                    </div>
+                    <div class="cargo-field" style="margin-bottom:0;">
+                        <label>REA Fornitore</label>
+                        <input type="text" id="artSupplierRea" placeholder="Es. FC-123456">
+                    </div>
+                </div>
+            </div>
             <div id="articleModalError" style="display:none;color:#f87171;font-size:13px;margin-top:-8px;margin-bottom:8px;"></div>
             <div class="cargo-modal-actions">
                 <button class="btn btn-gray" onclick="document.getElementById('articleModalOverlay').classList.remove('open')">✕ Annulla</button>
@@ -546,9 +548,65 @@
         </div>
     </div>
 
+    <!-- ===== VALORI NUTRIZIONALI MODAL ===== -->
+    <div class="cargo-modal-overlay" id="nutritionalOverlay" onclick="closeNutritionalModal(event)">
+        <div class="cargo-modal" style="width:480px;">
+            <h3>🍎 Valori Nutrizionali per 100 g</h3>
+            <input type="hidden" id="nutritionalArticleId">
+            <p id="nutritionalArticleName" style="color:#60a5fa;font-size:13px;margin:-8px 0 12px;font-weight:700;"></p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div class="cargo-field">
+                    <label>Valore energetico (kcal)</label>
+                    <input type="number" id="nutEnergyKcal" placeholder="Es. 340" min="0" step="0.1"
+                        oninput="if(this.value!==''){document.getElementById('nutEnergyKj').value=Math.round(parseFloat(this.value)*4.184*10)/10;}">
+                </div>
+                <div class="cargo-field">
+                    <label>Valore energetico (kJ)</label>
+                    <input type="number" id="nutEnergyKj" placeholder="Es. 1423" min="0" step="1"
+                        oninput="if(this.value!==''){document.getElementById('nutEnergyKcal').value=Math.round(parseFloat(this.value)/4.184*10)/10;}">
+                </div>
+                <div class="cargo-field">
+                    <label>Grassi (g)</label>
+                    <input type="number" id="nutFat" placeholder="Es. 1.5" min="0" step="0.1">
+                </div>
+                <div class="cargo-field">
+                    <label>di cui saturi (g)</label>
+                    <input type="number" id="nutSaturatedFat" placeholder="Es. 0.3" min="0" step="0.1">
+                </div>
+                <div class="cargo-field">
+                    <label>Carboidrati (g)</label>
+                    <input type="number" id="nutCarbohydrates" placeholder="Es. 70" min="0" step="0.1">
+                </div>
+                <div class="cargo-field">
+                    <label>di cui zuccheri (g)</label>
+                    <input type="number" id="nutSugars" placeholder="Es. 1.2" min="0" step="0.1">
+                </div>
+                <div class="cargo-field">
+                    <label>Fibre (g)</label>
+                    <input type="number" id="nutFiber" placeholder="Es. 2.8" min="0" step="0.1">
+                </div>
+                <div class="cargo-field">
+                    <label>Proteine (g)</label>
+                    <input type="number" id="nutProtein" placeholder="Es. 11" min="0" step="0.1">
+                </div>
+                <div class="cargo-field">
+                    <label>Sodio (g)</label>
+                    <input type="number" id="nutSodium" placeholder="Es. 0.01" min="0" step="0.01">
+                </div>
+            </div>
+            <div id="nutritionalError" style="display:none;color:#f87171;font-size:13px;margin-bottom:8px;"></div>
+            <div class="cargo-modal-actions">
+                <button class="btn btn-gray" onclick="closeNutritionalModalForce()">✕ Annulla</button>
+                <button class="btn btn-carico-confirm" id="nutritionalSaveBtn" onclick="saveNutritionalInfo()">
+                    <span id="nutritionalSaveText">✓ Salva Valori</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- ===== GESTIONE CATEGORIE MODAL ===== -->
     <div class="cargo-modal-overlay" id="categoryManagerOverlay" onclick="closeCategoryManager(event)">
-        <div class="cargo-modal" style="width:480px;max-height:85vh;overflow-y:auto;">
+        <div class="cargo-modal" style="width:720px;max-height:85vh;overflow-y:auto;">
             <h3>🏷️ Gestione Categorie Prodotti</h3>
             <div id="categoryManagerList" style="margin-bottom:16px;"></div>
             <div style="background:#1e293b;border-radius:8px;padding:12px;border:1px solid #374151;">
@@ -680,6 +738,49 @@
         // ===== GESTIONE CATEGORIE =====
         const DEFAULT_CATEGORIES = ['FARINE', 'MIX FARINE', 'SEMOLE', 'CEREALI', 'CEREALI PERLATI', 'MANGIMI', 'ALTRO'];
         let productCategories = JSON.parse(localStorage.getItem('warehouseCategories') || 'null') || [...DEFAULT_CATEGORIES];
+        let taxonomyDescriptions = [];
+
+        async function loadTaxonomyDescriptions() {
+            try {
+                const response = await fetch(`${API_URL}/categories/descriptions`);
+                taxonomyDescriptions = response.ok ? await response.json() : [];
+            } catch (_) {
+                taxonomyDescriptions = [];
+            }
+        }
+
+        function getTaxonomyDescription(level, category, subcategory, group) {
+            const categoryItem = taxonomyDescriptions.find(item => item.name === category);
+            if (level === 'category') return categoryItem?.description || '';
+            const subcategoryItem = categoryItem?.subcategories?.find(item => item.name === subcategory);
+            if (level === 'subcategory') return subcategoryItem?.description || '';
+            return subcategoryItem?.groups?.find(item => item.name === group)?.description || '';
+        }
+
+        function taxonomyDescriptionId(level, category, subcategory, group) {
+            return `taxonomyDesc-${level}-${cssEscape(category)}-${cssEscape(subcategory || '')}-${cssEscape(group || '')}`;
+        }
+
+        async function saveTaxonomyDescription(level, category, subcategory, group) {
+            const input = document.getElementById(taxonomyDescriptionId(level, category, subcategory, group));
+            if (!input) return;
+            const description = input.value.trim();
+            try {
+                const response = await fetch(`${API_URL}/categories/descriptions`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ level, category, subcategory, group, description })
+                });
+                if (!response.ok) {
+                    const error = await response.json().catch(() => ({}));
+                    throw new Error(error.error || `HTTP ${response.status}`);
+                }
+                await loadTaxonomyDescriptions();
+                showAlert('✅ Descrizione salvata', 'success');
+            } catch (error) {
+                showAlert(`❌ ${error.message}`, 'error');
+            }
+        }
 
         // Carica categorie dal server (sincronizzato con app Android)
         async function loadCategoriesFromServer() {
@@ -751,7 +852,8 @@
                 productCategories.map(c => `<option value="${c}"${c === cur ? ' selected' : ''}>${c}</option>`).join('');
         }
 
-        function openCategoryManager() {
+        async function openCategoryManager() {
+            await loadTaxonomyDescriptions();
             renderCategoryManagerList();
             document.getElementById('categoryManagerOverlay').classList.add('open');
         }
@@ -806,6 +908,7 @@
                 const usedCount = allArticles.filter(a => (a.category || '').toUpperCase() === cat).length;
                 const isDefault = DEFAULT_CATEGORIES.includes(cat);
                 const safeCat = cat.replace(/'/g, "\\'");
+                const categoryDescription = getTaxonomyDescription('category', cat);
                 const isFirst = idx === 0;
                 const isLast = idx === productCategories.length - 1;
                 return `<div style="background:#1f2937;border-radius:8px;margin-bottom:6px;border:1px solid #374151;">
@@ -820,6 +923,10 @@
                         <button title="Rinomina" onclick="renameCategoryItem('${safeCat}')" style="background:#1e3a8a;color:#bfdbfe;border:none;border-radius:4px;padding:6px 8px;cursor:pointer;font-size:12px;">✏️</button>
                         <button title="Elimina" onclick="deleteCategoryItem('${safeCat}')" style="background:#7f1d1d;color:#fca5a5;border:none;border-radius:4px;padding:6px 8px;cursor:pointer;font-size:12px;">🗑️</button>
                         ${isDefault ? '<span title="categoria predefinita" style="font-size:11px;color:#4b5563;">★</span>' : ''}
+                    </div>
+                    <div style="display:flex;gap:6px;padding:0 10px 10px;">
+                        <textarea id="${taxonomyDescriptionId('category', cat)}" maxlength="500" rows="2" placeholder="Descrizione categoria per etichetta" style="flex:1;resize:vertical;background:#111827;border:1px solid #374151;border-radius:6px;color:#e0e0e0;padding:7px 8px;font-size:12px;">${avEscapeHtml(categoryDescription)}</textarea>
+                        <button class="btn btn-small" style="background:#0369a1;color:#fff;padding:0 12px;" onclick="saveTaxonomyDescription('category','${safeCat}','','')">Salva</button>
                     </div>
                     <div id="subPanel-${cssEscape(cat)}" style="padding:0 10px 10px 10px;">
                         <div style="font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Sotto-categorie</div>
@@ -853,12 +960,19 @@
             const entries = await Promise.all(subs.map(async sub => ({ sub, groups: await fetchProductGroups(cat, sub) })));
             container.innerHTML = entries.map(({ sub, groups }) => {
                 const subId = `${cssEscape(cat)}-${cssEscape(sub)}`;
+                const subDescription = getTaxonomyDescription('subcategory', cat, sub);
                 const groupHtml = groups.length
-                    ? groups.map(group => `<span style="display:inline-flex;align-items:center;gap:4px;background:#0f172a;border:1px solid #334155;border-radius:999px;padding:3px 4px 3px 10px;font-size:11px;color:#cbd5e1;">
-                        ${esc(group)}
-                        <button title="Rinomina gruppo" data-cat="${esc(cat)}" data-sub="${esc(sub)}" data-group="${esc(group)}" class="group-rename-btn" style="background:#1e3a8a;color:#bfdbfe;border:none;border-radius:50%;width:18px;height:18px;cursor:pointer;font-size:11px;line-height:1;padding:0;">✏️</button>
-                        <button title="Rimuovi gruppo" data-cat="${esc(cat)}" data-sub="${esc(sub)}" data-group="${esc(group)}" class="group-remove-btn" style="background:#7f1d1d;color:#fca5a5;border:none;border-radius:50%;width:18px;height:18px;cursor:pointer;font-size:11px;line-height:1;padding:0;">✕</button>
-                    </span>`).join('')
+                    ? groups.map(group => `<div style="background:#0f172a;border:1px solid #334155;border-radius:6px;padding:6px;">
+                        <div style="display:flex;align-items:center;gap:4px;margin-bottom:5px;font-size:11px;color:#cbd5e1;">
+                            <strong style="flex:1;">${esc(group)}</strong>
+                            <button title="Rinomina gruppo" data-cat="${esc(cat)}" data-sub="${esc(sub)}" data-group="${esc(group)}" class="group-rename-btn" style="background:#1e3a8a;color:#bfdbfe;border:none;border-radius:50%;width:18px;height:18px;cursor:pointer;font-size:11px;line-height:1;padding:0;">✏️</button>
+                            <button title="Rimuovi gruppo" data-cat="${esc(cat)}" data-sub="${esc(sub)}" data-group="${esc(group)}" class="group-remove-btn" style="background:#7f1d1d;color:#fca5a5;border:none;border-radius:50%;width:18px;height:18px;cursor:pointer;font-size:11px;line-height:1;padding:0;">✕</button>
+                        </div>
+                        <div style="display:flex;gap:5px;">
+                            <textarea id="${taxonomyDescriptionId('group', cat, sub, group)}" maxlength="500" rows="2" placeholder="Descrizione gruppo per etichetta" style="flex:1;resize:vertical;background:#111827;border:1px solid #334155;border-radius:5px;color:#e0e0e0;padding:5px 6px;font-size:11px;">${esc(getTaxonomyDescription('group', cat, sub, group))}</textarea>
+                            <button class="btn btn-small" style="background:#0369a1;color:#fff;padding:0 9px;font-size:11px;" onclick="saveTaxonomyDescription('group','${cat.replace(/'/g, "\\'")}','${sub.replace(/'/g, "\\'")}','${group.replace(/'/g, "\\'")}')">Salva</button>
+                        </div>
+                    </div>`).join('')
                     : '<span style="font-size:11px;color:#64748b;font-style:italic;">Nessun gruppo</span>';
                 return `<div style="background:#111827;border:1px solid #374151;border-radius:8px;padding:8px;display:flex;flex-direction:column;gap:8px;min-width:240px;">
                     <div style="display:flex;align-items:center;gap:8px;">
@@ -866,8 +980,12 @@
                         <button title="Rinomina sotto-categoria" data-cat="${esc(cat)}" data-sub="${esc(sub)}" class="sub-rename-btn" style="background:#1e3a8a;color:#bfdbfe;border:none;border-radius:999px;padding:3px 8px;cursor:pointer;font-size:11px;">✏️</button>
                         <button title="Rimuovi sotto-categoria" data-cat="${esc(cat)}" data-sub="${esc(sub)}" class="sub-remove-btn" style="background:#7f1d1d;color:#fca5a5;border:none;border-radius:999px;padding:3px 8px;cursor:pointer;font-size:11px;">✕</button>
                     </div>
+                    <div style="display:flex;gap:5px;">
+                        <textarea id="${taxonomyDescriptionId('subcategory', cat, sub)}" maxlength="500" rows="2" placeholder="Descrizione sotto-categoria per etichetta" style="flex:1;resize:vertical;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#e0e0e0;padding:6px 7px;font-size:11px;">${esc(subDescription)}</textarea>
+                        <button class="btn btn-small" style="background:#0369a1;color:#fff;padding:0 9px;font-size:11px;" onclick="saveTaxonomyDescription('subcategory','${cat.replace(/'/g, "\\'")}','${sub.replace(/'/g, "\\'")}','')">Salva</button>
+                    </div>
                     <div style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.4px;">Gruppi</div>
-                    <div style="display:flex;flex-wrap:wrap;gap:6px;min-height:22px;">${groupHtml}</div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:6px;min-height:22px;">${groupHtml}</div>
                     <div style="display:flex;gap:6px;">
                         <input type="text" id="newGroup-${subId}" placeholder="es. PIZZA" style="flex:1;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#e0e0e0;padding:6px 8px;font-size:12px;text-transform:uppercase;" onkeydown="if(event.key==='Enter'){event.preventDefault();addProductGroupFromInput('${cat.replace(/'/g, "\\'")}', '${sub.replace(/'/g, "\\'")}');}" oninput="this.value=this.value.replace(/[\x22\x27\x60]/g,'')">
                         <button class="btn btn-small" style="background:#1d4ed8;color:#fff;padding:0 12px;font-size:12px;" onclick="addProductGroupFromInput('${cat.replace(/'/g, "\\'")}', '${sub.replace(/'/g, "\\'")}')">➕</button>
@@ -1421,6 +1539,7 @@
             }
             // Carica categorie ordinate dal server (sincronizzate con app Android)
             await loadCategoriesFromServer();
+            await loadTaxonomyDescriptions();
             loadInventoryData();
             showAvvisi();
 
@@ -3149,6 +3268,7 @@
                         <td style="padding:4px 8px;text-align:right;white-space:nowrap;">
                             <button class="btn btn-small" style="background:#16a34a;color:#fff;margin-right:4px;font-size:12px;" onclick="saveInlineArticle(${a.id})">✓ Salva</button>
                             <button class="btn btn-small" style="background:#1e3a8a;color:#bfdbfe;margin-right:4px;font-size:12px;" title="Modifica completa" onclick="openArticleModal(${a.id})">✏️</button>
+                            <button class="btn btn-small" style="background:#065f46;color:#6ee7b7;margin-right:4px;font-size:12px;" title="Valori nutrizionali per etichetta" onclick="openNutritionalModal(${a.id})">🍎</button>
                             <button class="btn btn-small" style="background:#7f1d1d;color:#fca5a5;" onclick="deleteArticleConfirm(${a.id},'${(a.name||'').replace(/'/g,"\\'")}')">🗑️</button>
                         </td>
                     </tr>`;
@@ -3287,6 +3407,9 @@
             catSel.innerHTML = '<option value="">-- Seleziona categoria --</option>' +
                 productCategories.map(c => `<option value="${c}">${c}</option>`).join('');
 
+            // Popola entrambe le griglie allergeni
+            _renderAllergenCheckboxes('');
+
             if (isNew) {
                 document.getElementById('artCode').value = '';
                 document.getElementById('artName').value = '';
@@ -3299,6 +3422,10 @@
                 document.getElementById('artDescription').value = '';
                 document.getElementById('artMinimumStock').value = '0';
                 document.getElementById('artCriticalStock').value = '0';
+                document.getElementById('artAllergens').value = '';
+                document.getElementById('artSupplierName').value = '';
+                document.getElementById('artSupplierRea').value = '';
+                _renderAllergenCheckboxes('');
             } else {
                 const a = allArticles.find(x => x.id === articleId);
                 if (!a) return;
@@ -3318,6 +3445,11 @@
                 document.getElementById('artDescription').value = a.description || '';
                 document.getElementById('artMinimumStock').value = (a.inventory && a.inventory.minimumStock) || 0;
                 document.getElementById('artCriticalStock').value = (a.inventory && a.inventory.criticalStock) || 0;
+                // Nuovi campi etichetta
+                document.getElementById('artAllergens').value = a.allergens || '';
+                document.getElementById('artSupplierName').value = a.supplierName || '';
+                document.getElementById('artSupplierRea').value = a.supplierRea || '';
+                _renderAllergenCheckboxes(a.allergens || '');
             }
             // popola select sottocategorie per la categoria scelta (preserva sub corrente se in lista)
             const currentSub = (allArticles.find(x => x.id === articleId)?.subcategory) || '';
@@ -3463,7 +3595,10 @@
                 productGroup: document.getElementById('artProductGroup').value.trim() || null,
                 unit: document.getElementById('artUnit').value.trim() || 'kg',
                 weightPerUnit: parseFloat(document.getElementById('artWeightPerUnit').value) || 1,
-                barcode: document.getElementById('artBarcode').value.trim() || null
+                barcode: document.getElementById('artBarcode').value.trim() || null,
+                allergens: document.getElementById('artAllergens').value.trim() || null,
+                supplierName: document.getElementById('artSupplierName').value.trim() || null,
+                supplierRea: document.getElementById('artSupplierRea').value.trim() || null,
             };
 
             const btn = document.getElementById('articleModalConfirmBtn');
@@ -3511,6 +3646,141 @@
             } finally {
                 btn.disabled = false;
                 document.getElementById('articleModalConfirmText').textContent = '✓ Salva';
+            }
+        }
+
+        // ===== EU ALLERGENI (14 standard) =====
+        const EU_ALLERGENS = [
+            'Glutine','Crostacei','Uova','Pesce',
+            'Arachidi','Soia','Latte','Frutta a guscio',
+            'Sedano','Senape','Sesamo','Solfiti','Lupini','Molluschi'
+        ];
+
+        // Estrae lista allergeni da un prefisso nel testo (es. "Contiene: Glutine, Soia.")
+        function _extractAllergenList(text, prefix) {
+            if (!text) return [];
+            // Cerca la parte dopo il prefix fino a "." o fine stringa
+            const re = new RegExp(prefix + '\\s*:?\\s*([^.]+)\\.?', 'i');
+            const m = text.match(re);
+            if (!m) return [];
+            return m[1].split(',').map(s => s.trim()).filter(Boolean);
+        }
+
+        function _renderAllergenCheckboxes(currentText) {
+            const containsList = _extractAllergenList(currentText, 'Contiene');
+            const tracesList   = _extractAllergenList(currentText, 'Pu[oò] contenere tracce di');
+
+            const buildGrid = (containerId, selected, prefix) => {
+                const el = document.getElementById(containerId);
+                if (!el) return;
+                el.innerHTML = EU_ALLERGENS.map(al => {
+                    const isChecked = selected.some(s => s.toLowerCase() === al.toLowerCase()) ? 'checked' : '';
+                    return `<label style="display:flex;align-items:center;gap:5px;cursor:pointer;color:#d1d5db;white-space:nowrap;">
+                        <input type="checkbox" value="${al}" ${isChecked} style="accent-color:#60a5fa;flex-shrink:0;" onchange="_syncAllergenText()">
+                        <span style="font-size:12px;">${al}</span>
+                    </label>`;
+                }).join('');
+            };
+
+            buildGrid('artAllergenCheckboxesContains', containsList);
+            buildGrid('artAllergenCheckboxesTraces',   tracesList);
+        }
+
+        function _syncAllergenText() {
+            const getChecked = (containerId) =>
+                Array.from(document.querySelectorAll(`#${containerId} input[type=checkbox]:checked`))
+                    .map(b => b.value);
+
+            const contains = getChecked('artAllergenCheckboxesContains');
+            const traces   = getChecked('artAllergenCheckboxesTraces');
+
+            const parts = [];
+            if (contains.length) parts.push('Contiene: ' + contains.join(', ') + '.');
+            if (traces.length)   parts.push('Può contenere tracce di: ' + traces.join(', ') + '.');
+
+            document.getElementById('artAllergens').value = parts.join(' ');
+        }
+
+        // Quando l'utente modifica a mano il testo: aggiorna i checkbox
+        function _onAllergenTextChange() {
+            const text = document.getElementById('artAllergens').value;
+            // Aggiorna solo i checkbox senza ricorrere su se stessi
+            _updateCheckboxesFromText('artAllergenCheckboxesContains', _extractAllergenList(text, 'Contiene'));
+            _updateCheckboxesFromText('artAllergenCheckboxesTraces',   _extractAllergenList(text, 'Pu[oò] contenere tracce di'));
+        }
+
+        function _updateCheckboxesFromText(containerId, list) {
+            const el = document.getElementById(containerId);
+            if (!el) return;
+            el.querySelectorAll('input[type=checkbox]').forEach(cb => {
+                cb.checked = list.some(s => s.toLowerCase() === cb.value.toLowerCase());
+            });
+        }
+
+        // ===== POPUP VALORI NUTRIZIONALI =====
+
+        async function openNutritionalModal(articleId) {
+            const a = allArticles.find(x => x.id === articleId);
+            if (!a) return;
+            document.getElementById('nutritionalArticleId').value = articleId;
+            document.getElementById('nutritionalArticleName').textContent = a.name || '';
+            document.getElementById('nutritionalError').style.display = 'none';
+            document.getElementById('nutritionalSaveBtn').disabled = false;
+            document.getElementById('nutritionalSaveText').textContent = '✓ Salva Valori';
+            const n = a.nutritionalInfo || {};
+            const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val != null ? val : ''; };
+            setVal('nutEnergyKcal',    n.energyKcal);
+            setVal('nutEnergyKj',      n.energyKj);
+            setVal('nutFat',           n.fat);
+            setVal('nutSaturatedFat',  n.saturatedFat);
+            setVal('nutCarbohydrates', n.carbohydrates);
+            setVal('nutSugars',        n.sugars);
+            setVal('nutFiber',         n.fiber);
+            setVal('nutProtein',       n.protein);
+            setVal('nutSodium',        n.sodium);
+            document.getElementById('nutritionalOverlay').classList.add('open');
+        }
+
+        function closeNutritionalModal(event) {
+            if (event && event.target !== document.getElementById('nutritionalOverlay')) return;
+            document.getElementById('nutritionalOverlay').classList.remove('open');
+        }
+
+        function closeNutritionalModalForce() {
+            document.getElementById('nutritionalOverlay').classList.remove('open');
+        }
+
+        async function saveNutritionalInfo() {
+            const articleId = parseInt(document.getElementById('nutritionalArticleId').value);
+            if (!articleId) return;
+            const getVal = id => { const v = document.getElementById(id)?.value; return v !== '' && v != null ? parseFloat(v) : null; };
+            const payload = {
+                energyKcal: getVal('nutEnergyKcal'), energyKj: getVal('nutEnergyKj'),
+                fat: getVal('nutFat'), saturatedFat: getVal('nutSaturatedFat'),
+                carbohydrates: getVal('nutCarbohydrates'), sugars: getVal('nutSugars'),
+                fiber: getVal('nutFiber'), protein: getVal('nutProtein'), sodium: getVal('nutSodium'),
+            };
+            const btn = document.getElementById('nutritionalSaveBtn');
+            btn.disabled = true;
+            document.getElementById('nutritionalSaveText').textContent = '⏳ Salvataggio...';
+            const errEl = document.getElementById('nutritionalError');
+            errEl.style.display = 'none';
+            try {
+                const resp = await fetch(`${API_URL}/inventory/articles/${articleId}/nutrition`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!resp.ok) { const e = await resp.json().catch(()=>{}); throw new Error(e?.error || `HTTP ${resp.status}`); }
+                const art = allArticles.find(x => x.id === articleId);
+                if (art) { const d = await resp.json(); art.nutritionalInfo = d.data || d; }
+                showAlert('✅ Valori nutrizionali salvati', 'success');
+                closeNutritionalModalForce();
+            } catch (e) {
+                errEl.textContent = `❌ ${e.message}`;
+                errEl.style.display = 'block';
+                btn.disabled = false;
+                document.getElementById('nutritionalSaveText').textContent = '✓ Salva Valori';
             }
         }
 
@@ -4235,6 +4505,21 @@
                 }
             } catch (_) {}
         })();
+
+        // Azione automatica via query string ?action=resetReservations (da gestione-hub)
+        (function actionFromHub() {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                if (params.get('action') === 'resetReservations') {
+                    const run = () => { resetAllReservations(); history.replaceState(null, '', location.pathname); };
+                    if (document.readyState === 'loading') {
+                        document.addEventListener('DOMContentLoaded', () => setTimeout(run, 400));
+                    } else {
+                        setTimeout(run, 400);
+                    }
+                }
+            } catch (_) {}
+        })();
     </script>
     <script>
     (function() {
@@ -4277,7 +4562,7 @@
         const inInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
 
         if (e.key === 'Escape') {
-            ['cargoModalOverlay','assignShelfOverlay','shelfEntryOverlay','editPosOverlay','articleModalOverlay','printInventoryOverlay'].forEach(function(id) {
+            ['cargoModalOverlay','assignShelfOverlay','shelfEntryOverlay','editPosOverlay','articleModalOverlay','printInventoryOverlay','nutritionalOverlay'].forEach(function(id) {
                 const el = document.getElementById(id);
                 if (el && el.classList.contains('open')) el.classList.remove('open');
             });
