@@ -4673,7 +4673,6 @@
 
             <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
                 <button class="btn" style="background:#374151;color:#e0e0e0;" onclick="closeLabelPrintModal()">Annulla</button>
-                <button class="btn" id="labelPreviewBtn" style="background:#1d4ed8;color:#fff;" onclick="openLabelPreview()">👁️ Anteprima</button>
                 <button class="btn" id="labelPrintConfirmBtn" style="background:#7c3aed;color:#fff;font-weight:600;" onclick="submitLabelPrint()">🏷️ Stampa</button>
             </div>
         </div>
@@ -4690,8 +4689,8 @@
             <iframe id="labelPreviewFrame" style="width:100%;height:460px;border:1px solid #374151;border-radius:4px;background:#fff;" sandbox="allow-same-origin"></iframe>
 
             <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
-                <button class="btn" style="background:#374151;color:#e0e0e0;" onclick="closeLabelPreview()">← Modifica</button>
-                <button class="btn" id="labelPreviewPrintBtn" style="background:#7c3aed;color:#fff;font-weight:600;" onclick="closeLabelPreviewAndPrint()">🏷️ Conferma e stampa</button>
+                <button class="btn" style="background:#374151;color:#e0e0e0;" onclick="closeLabelPreview()">Annulla</button>
+                <button class="btn" id="labelPreviewPrintBtn" style="background:#7c3aed;color:#fff;font-weight:600;" onclick="closeLabelPreviewAndPrint()">🏷️ Stampa</button>
             </div>
         </div>
     </div>
@@ -4843,7 +4842,6 @@
         document.getElementById('labelPrintExpiry').value = '';
         document.getElementById('labelPrintError').style.display = 'none';
         document.getElementById('labelPrintConfirmBtn').disabled = false;
-        document.getElementById('labelPreviewBtn').disabled = false;
         const ov = document.getElementById('labelPrintOverlay');
         ov.style.display = 'flex';
         setTimeout(() => document.getElementById('labelPrintQty').focus(), 50);
@@ -4858,9 +4856,9 @@
 
     async function openLabelPreview() {
         if (!_labelPrintArticleId) return;
-        const btn = document.getElementById('labelPreviewBtn');
+        const btn = document.getElementById('labelPrintConfirmBtn');
         btn.disabled = true;
-        btn.textContent = '⏳';
+        btn.textContent = '⏳ Anteprima...';
         try {
             const art = allArticles.find(a => a.id === _labelPrintArticleId);
             if (!art) throw new Error('Articolo non trovato in lista locale');
@@ -4875,8 +4873,6 @@
             ]);
             const settings = sr.ok ? await sr.json() : {};
             const taxonomy = dr.ok ? await dr.json() : [];
-
-            // Costruisce l'oggetto order compatibile con buildLabelHtmlDoc
             const order = {
                 name: art.name,
                 qty: qty,
@@ -4892,7 +4888,7 @@
             showAlert('❌ Anteprima non disponibile: ' + e.message, 'error');
         } finally {
             btn.disabled = false;
-            btn.textContent = '👁️ Anteprima';
+            btn.textContent = '🏷️ Stampa';
         }
     }
 
@@ -4905,34 +4901,61 @@
     async function submitLabelPrint() {
         if (!_labelPrintArticleId) return;
         const qty    = parseInt(document.getElementById('labelPrintQty').value) || 1;
-        const lot    = document.getElementById('labelPrintLot').value.trim() || undefined;
-        const expiry = document.getElementById('labelPrintExpiry').value.trim() || undefined;
         const errEl  = document.getElementById('labelPrintError');
-        const btn    = document.getElementById('labelPrintConfirmBtn');
-
         if (qty < 1 || qty > 9999) {
             errEl.textContent = 'Quantità non valida (1–9999)';
             errEl.style.display = 'block';
             return;
         }
+        errEl.style.display = 'none';
+        await openLabelPreview();
+    }
+
+    async function printLabelFromPreview() {
+        if (!_labelPrintArticleId) return;
+        const qty    = parseInt(document.getElementById('labelPrintQty').value) || 1;
+        const lot    = document.getElementById('labelPrintLot').value.trim() || undefined;
+        const expiry = document.getElementById('labelPrintExpiry').value.trim() || undefined;
+        const errEl  = document.getElementById('labelPrintError');
+        const btn    = document.getElementById('labelPreviewPrintBtn');
 
         btn.disabled = true;
         btn.textContent = '⏳ Stampa in corso…';
         errEl.style.display = 'none';
-
-        const ok = await (window.printArticleLabel
-            ? window.printArticleLabel(_labelPrintArticleId, qty, lot, expiry)
-            : Promise.resolve(false));
-
-        if (ok) {
+        try {
+            const art = allArticles.find(a => a.id === _labelPrintArticleId);
+            if (!art) throw new Error('Articolo non trovato in lista locale');
+            const token = localStorage.getItem('authToken') || localStorage.getItem('token') || '';
+            const [sr, dr] = await Promise.all([
+                fetch('/api/settings/company'),
+                fetch('/api/categories/descriptions', { headers: { Authorization: `Bearer ${token}` } }),
+            ]);
+            const settings = sr.ok ? await sr.json() : {};
+            const taxonomy = dr.ok ? await dr.json() : [];
+            const order = {
+                name: art.name,
+                qty: qty,
+                weightPerCollo: art.weightPerUnit || 0,
+                code: art.code,
+            };
+            const result = await window.printArticleLabel(art.id, qty, lot, expiry, { silent: true });
+            if (result !== true) throw new Error('Stampante etichette non raggiungibile');
+            closeLabelPreview();
             closeLabelPrintModal();
+            btn.disabled = false;
+            btn.textContent = '🏷️ Stampa';
             showAlert(`✅ ${qty} etichett${qty === 1 ? 'a inviata' : 'e inviate'} alla stampante`, 'success');
-        } else {
-            errEl.textContent = 'Stampa fallita — verifica che la stampante etichette sia accesa e raggiungibile';
+        } catch (error) {
+            closeLabelPreview();
+            errEl.textContent = 'Stampa diretta fallita: ' + error.message;
             errEl.style.display = 'block';
             btn.disabled = false;
             btn.textContent = '🏷️ Stampa';
         }
+    }
+
+    function closeLabelPreviewAndPrint() {
+        printLabelFromPreview();
     }
     </script>
     <script src="js/user-info-badge.js"></script>

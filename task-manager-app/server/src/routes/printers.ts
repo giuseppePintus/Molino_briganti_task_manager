@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { authMiddleware } from '../middleware/auth';
 import prisma from '../lib/prisma';
-import { executePrintJob, PrintJobRequest } from '../services/printService';
+import { buildTsplLabelPreviewHtml, executePrintJob, rasterizeHtmlToPng, PrintJobRequest } from '../services/printService';
 import * as jwt from 'jsonwebtoken';
 
 const router = Router();
@@ -238,6 +238,16 @@ router.get('/label-preview/:articleId', authMiddleware, async (req: Request, res
   if (isNaN(articleId)) return res.status(400).json({ error: 'articleId non valido' });
 
   try {
+    if (req.query.format === 'html') {
+      const html = await buildTsplLabelPreviewHtml(
+        articleId,
+        typeof req.query.lot === 'string' ? req.query.lot : undefined,
+        typeof req.query.expiry === 'string' ? req.query.expiry : undefined,
+      );
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      return res.send(html);
+    }
+
     const article = await prisma.article.findUnique({
       where: { id: articleId },
       include: { nutritionalInfo: true },
@@ -383,6 +393,19 @@ router.post('/job', authMiddleware, async (req: Request, res: Response) => {
   try {
     await executePrintJob(job);
     res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/printers/html-preview — rasterizza HTML lato server (stesso motore usato per la stampa)
+// per garantire che la preview mostrata all'utente sia pixel-identica a quanto verrà stampato
+router.post('/html-preview', authMiddleware, async (req: Request, res: Response) => {
+  const { contentHtml } = req.body as { contentHtml?: string };
+  if (!contentHtml) return res.status(400).json({ error: 'contentHtml obbligatorio' });
+  try {
+    const pngDataUrl = await rasterizeHtmlToPng(contentHtml);
+    res.json({ image: pngDataUrl });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

@@ -956,6 +956,11 @@ function previewThermalOrder() {
 
     const rcptTitle = 'Ordine ' + order.clientName;
     window.showReceiptPreview(rcptTitle, html, async function() {
+        const receiptWindow = window.open('', '_blank', 'width=380,height=720');
+        if (!receiptWindow) {
+            showToast('Abilita i popup per stampare', 'error');
+            return;
+        }
         // Solo ora crea l'ordine e scala il magazzino
         const btnA = document.getElementById('btnComplete');
         const btnB = document.getElementById('btnCompleteA4');
@@ -978,13 +983,7 @@ function previewThermalOrder() {
             const orderId = data.order?.id;
             await sendInstantOrderAudit('complete-end', { clientName: snapshot.clientName, orderId: orderId ?? null, lines: snapshot.items, printMode: 'thermal' });
             showToast(`Ordine ${orderId ? '#' + orderId : ''} completato`, 'success');
-
-            // Invia stampa RAW
-            if (orderId && window.sendPrintJobPublic) {
-                const result = await window.sendPrintJobPublic('receipt_80mm_ufficio', 'pickup_order', { orderId: Number(orderId) });
-                if (result === true) showToast('✅ Scontrino inviato alla stampante', 'success');
-                else showToast('❌ Stampante non raggiungibile', 'error');
-            }
+            api.openReceipt(rcptTitle, html, receiptWindow);
 
             // Reset form
             orderLines = [];
@@ -993,6 +992,7 @@ function previewThermalOrder() {
             renderOrderLines();
             await loadAll();
         } catch (e) {
+            receiptWindow.close();
             console.error('previewThermalOrder confirm error:', e);
             showToast(e.message || 'Errore durante il completamento', 'error');
             updateTotals();
@@ -1056,13 +1056,11 @@ function printOrderThermal(orderId) {
     html += api.totalBoxHtml(totColli, totKg);
     html += api.footerHtml();
 
-    // Preview prima di inviare alla stampante RAW
+    // L'anteprima e la stampa usano lo stesso documento HTML.
     const rcptTitle = 'Ordine ' + (order.clientName || orderId || '');
     if (window.showReceiptPreview) {
-        window.showReceiptPreview(rcptTitle, html, async function() {
-            var result = await window.sendPrintJobPublic('receipt_80mm_ufficio', 'pickup_order', { orderId: Number(orderId) });
-            if (result === true) { showToast('✅ Scontrino inviato alla stampante', 'success'); }
-            else { showToast('❌ Stampante non raggiungibile: ' + (result && result.message ? result.message : 'timeout'), 'error'); }
+        window.showReceiptPreview(rcptTitle, html, function() {
+            api.openReceipt(rcptTitle, html);
         });
     } else {
         api.openReceipt(rcptTitle, html);

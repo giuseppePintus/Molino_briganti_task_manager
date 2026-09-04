@@ -1,5 +1,38 @@
 import * as net from 'net';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import { createCanvas, loadImage } from 'canvas';
 import prisma from '../lib/prisma';
+
+// ─── Browser pool (Puppeteer) ─────────────────────────────────────
+
+let puppeteerInstance: any = null;
+
+export async function initPuppeteer(): Promise<void> {
+  if (puppeteerInstance) return;
+  try {
+    const puppeteer = await import('puppeteer');
+    const launchOptions: any = {
+      headless: true,
+      args: ['--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage']
+    };
+    try {
+      launchOptions.executablePath = '/usr/bin/chromium';
+    } catch (e) {}
+    puppeteerInstance = await puppeteer.launch(launchOptions);
+    console.log('[PRINT] Puppeteer browser pool avviato (riutilizzabile)');
+  } catch (err: any) {
+    console.error('[PRINT] Errore inizializzazione Puppeteer:', err.message);
+    throw err;
+  }
+}
+
+export async function closePuppeteer(): Promise<void> {
+  if (puppeteerInstance) {
+    await puppeteerInstance.close();
+    puppeteerInstance = null;
+  }
+}
 
 // ─── TCP RAW ─────────────────────────────────────────────────────
 
@@ -38,6 +71,171 @@ const CUT      = Buffer.from([GS,  0x56, 0x42, 0x00]);
 
 const LW = 48; // caratteri per riga a 80mm
 
+async function decodeRasterImage(imageBase64: string, width: number, whiteBit = false) {
+  const raw = imageBase64.replace(/^data:image\/png;base64,/, '');
+  const source = await loadImage(Buffer.from(raw, 'base64'));
+  const height = Math.max(1, Math.round(source.height * width / source.width));
+  const canvas = createCanvas(width, height);
+  const context = canvas.getContext('2d');
+  context.fillStyle = '#fff';
+  context.fillRect(0, 0, width, height);
+  // Abilita smoothing (interpolazione) per upscaling nitido
+  context.imageSmoothingEnabled = true;
+  context.drawImage(source, 0, 0, width, height);
+  const pixels = context.getImageData(0, 0, width, height).data;
+  const widthBytes = Math.ceil(width / 8);
+  const bitmap = Buffer.alloc(widthBytes * height, whiteBit ? 0xff : 0x00);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const offset = (y * width + x) * 4;
+      const gray = 0.299 * pixels[offset] + 0.587 * pixels[offset + 1] + 0.114 * pixels[offset + 2];
+      const byteIndex = y * widthBytes + Math.floor(x / 8);
+      const bitMask = 0x80 >> (x % 8);
+      if (whiteBit) {
+        if (gray < 180) bitmap[byteIndex] &= ~bitMask;
+      } else if (gray < 180) {
+        bitmap[byteIndex] |= bitMask;
+      }
+    }
+  }
+  return { widthBytes, height, bitmap };
+}
+
+// Rasterizza HTML con Puppeteer a PNG base64 per stampa 80mm
+export async function rasterizeHtmlToPng(contentHtml: string, width: number = 576): Promise<string> {
+  if (!puppeteerInstance) await initPuppeteer();
+  let page;
+  try {
+    console.log('[PRINT] rasterizeHtmlToPng: creando pagina...');
+    page = await puppeteerInstance.newPage();
+    await page.setViewport({ width: 264, height: 10000, deviceScaleFactor: 2 });
+    
+    let fullHtml = contentHtml;
+    if (!contentHtml.toUpperCase().includes('<!DOCTYPE')) {
+      fullHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { width: ${width}px; background: white; color: black; font-family: sans-serif; }
+    .rcpt-logo { max-width: 100%; height: auto; display: block; margin: 0 auto 8px; }
+    .rcpt-title { font-size: 18px; font-weight: bold; text-align: center; margin: 8px 0; }
+    .rcpt-sub { font-size: 16px; font-weight: bold; text-align: center; margin: 8px 0; }
+    .rcpt-info-row { display: flex; justify-content: space-between; font-size: 13px; margin: 4px 0; }
+    .rcpt-info-row .lbl { font-weight: bold; }
+    .rcpt-info-row .val { text-align: right; }
+    .rcpt-section { font-size: 14px; font-weight: bold; text-align: center; margin: 8px 0; }
+    .rcpt-total { display: flex; justify-content: space-between; font-size: 13px; margin: 8px 0; }
+    .rcpt-notes { font-size: 12px; margin: 8px 0; }
+  </style>
+</head>
+<body>
+${contentHtml}
+</body>
+</html>`;
+    } else {
+      // Il contentHtml ha già DOCTYPE + CSS client (con width: 70mm)
+      // Con deviceScaleFactor: 2, il CSS mm viene raddoppiato fisicamente
+      // Forza width: 264px (px, non mm) per evitare il raddoppio
+      // Inserisci PRIMA di </body> per vincere sulla cascata CSS
+      const overrideStyle = `<style>html, body { width: 264px !important; max-width: none !important; }</style>`;
+      fullHtml = contentHtml.replace('</body>', overrideStyle + '</body>');
+    }
+    
+    console.log('[PRINT] rasterizeHtmlToPng: settando content (lunghezza:', fullHtml.length, ')...');
+    await page.setContent(fullHtml, { waitUntil: 'networkidle2' });
+    
+    // Misura l'altezza reale del body (contentHeight)
+    const contentHeight = await page.evaluate(() => {
+      const body = document.body;
+      return body.scrollHeight || body.offsetHeight || 100;
+    });
+    console.log('[PRINT] rasterizeHtmlToPng: altezza contenuto:', contentHeight, 'px');
+    
+    console.log('[PRINT] rasterizeHtmlToPng: catturando screenshot...');
+    // Cattura il clip rect esatto del contenuto (no carta bianca)
+    // Con deviceScaleFactor: 2, clip a 264px logici = 528px fisici
+    const screenshot = await page.screenshot({ 
+      encoding: 'base64', 
+      clip: { x: 0, y: 0, width: 264, height: contentHeight }
+    });
+    console.log('[PRINT] rasterizeHtmlToPng: screenshot OK, lunghezza:', screenshot.length);
+    return `data:image/png;base64,${screenshot}`;
+  } catch (err) {
+    console.error('[PRINT] rasterizeHtmlToPng ERROR:', err);
+    throw new Error(`Rasterizzazione HTML fallita: ${err instanceof Error ? err.message : String(err)}`);
+  } finally {
+    if (page) {
+      try {
+        await page.close();
+      } catch (e) {
+        console.warn('[PRINT] Errore chiusura page:', e instanceof Error ? e.message : String(e));
+      }
+    }
+  }
+}
+
+async function buildEscPosRaster(imageBase64: string): Promise<Buffer> {
+  const { widthBytes, height, bitmap } = await decodeRasterImage(imageBase64, 576);
+  const header = Buffer.from([GS, 0x76, 0x30, 0x00, widthBytes & 0xff, (widthBytes >> 8) & 0xff, height & 0xff, (height >> 8) & 0xff]);
+  return Buffer.concat([INIT, ALIGN_L, header, bitmap, Buffer.from('\n\n\n'), CUT]);
+}
+
+async function buildTsplRaster(imageBase64: string, copies: number): Promise<Buffer> {
+  const { widthBytes, height, bitmap } = await decodeRasterImage(imageBase64, 1200, true);
+  const prefix = Buffer.from(`SIZE 101.6 mm, 152.4 mm\r\nGAP 3 mm, 0 mm\r\nDIRECTION 1\r\nREFERENCE 0,0\r\nOFFSET 0 mm\r\nCLS\r\nBITMAP 0,0,${widthBytes},${height},0,`, 'ascii');
+  return Buffer.concat([prefix, bitmap, Buffer.from(`\r\nPRINT ${Math.max(1, Math.min(9999, Math.floor(copies || 1)))},1\r\n`, 'ascii')]);
+}
+
+async function decodeImageToBitmap(sourceBuffer: Buffer, maxWidth: number, maxHeight: number) {
+  const source = await loadImage(sourceBuffer);
+  const scale = Math.min(maxWidth / source.width, maxHeight / source.height, 1);
+  const width = Math.max(1, Math.round(source.width * scale));
+  const height = Math.max(1, Math.round(source.height * scale));
+  const canvas = createCanvas(width, height);
+  const context = canvas.getContext('2d');
+  context.fillStyle = '#fff';
+  context.fillRect(0, 0, width, height);
+  context.drawImage(source, 0, 0, width, height);
+  const pixels = context.getImageData(0, 0, width, height).data;
+  const widthBytes = Math.ceil(width / 8);
+  const bitmap = Buffer.alloc(widthBytes * height);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const offset = (y * width + x) * 4;
+      const alpha = pixels[offset + 3] / 255;
+      const red = pixels[offset] * alpha + 255 * (1 - alpha);
+      const green = pixels[offset + 1] * alpha + 255 * (1 - alpha);
+      const blue = pixels[offset + 2] * alpha + 255 * (1 - alpha);
+      const gray = 0.299 * red + 0.587 * green + 0.114 * blue;
+      if (gray < 170) bitmap[y * widthBytes + Math.floor(x / 8)] |= 0x80 >> (x % 8);
+    }
+  }
+  return { width, widthBytes, height, bitmap };
+}
+
+async function loadLogoBitmap(logoUrl: string, maxWidth: number, maxHeight: number) {
+  if (!logoUrl) return null;
+  try {
+    let buffer: Buffer;
+    if (/^data:image\//i.test(logoUrl)) {
+      const base64 = logoUrl.replace(/^data:image\/[^;]+;base64,/, '');
+      buffer = Buffer.from(base64, 'base64');
+    } else if (/^https?:\/\//i.test(logoUrl)) {
+      const response = await fetch(logoUrl);
+      if (!response.ok) return null;
+      buffer = Buffer.from(await response.arrayBuffer());
+    } else {
+      const publicPath = path.resolve(__dirname, '../../../public', logoUrl.replace(/^\//, ''));
+      buffer = await fs.readFile(publicPath);
+    }
+    return await decodeImageToBitmap(buffer, maxWidth, maxHeight);
+  } catch {
+    return null;
+  }
+}
+
 function esc(text: string): Buffer {
   return Buffer.from(text + '\n', 'utf8');
 }
@@ -59,6 +257,24 @@ function sanitize(s: string): string {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')   // rimuove diacritici
     .replace(/[^\x20-\x7E]/g, '?');
+}
+
+function escapeHtml(s: string): string {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function parseSettingValue(value: string | null | undefined): string {
+  if (!value) return '';
+  try {
+    const parsed = JSON.parse(value);
+    return typeof parsed === 'string' ? parsed : String(parsed ?? '');
+  } catch {
+    return value;
+  }
 }
 
 // ─── ESC/POS: test ───────────────────────────────────────────────
@@ -175,9 +391,9 @@ async function buildEscPosTaskReceipt(taskId: number): Promise<Buffer> {
 
   const title    = task.title || '';
   const desc     = task.description || '';
-  const opName   = sanitize((task.assignedOperator as any)?.name || (task.assignedOperator as any)?.username || 'N.A.');
-  const date     = task.scheduledAt ? new Date(task.scheduledAt).toLocaleDateString('it-IT') : new Date().toLocaleDateString('it-IT');
-  const time     = task.scheduledAt ? new Date(task.scheduledAt).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : '';
+  let opName   = sanitize((task.assignedOperator as any)?.name || (task.assignedOperator as any)?.username || 'N.A.');
+  let date     = task.scheduledAt ? new Date(task.scheduledAt).toLocaleDateString('it-IT') : new Date().toLocaleDateString('it-IT');
+  let time     = task.scheduledAt ? new Date(task.scheduledAt).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : '';
 
   const get = (label: string) => {
     const m = desc.match(new RegExp('^\\s*' + label + ':\\s*(.+?)\\s*$', 'mi'));
@@ -187,8 +403,8 @@ async function buildEscPosTaskReceipt(taskId: number): Promise<Buffer> {
   const isInternal = /Ordine interno:/i.test(title);
   const isRitiro   = title.toLowerCase().startsWith('ritiro -');
 
-  const parts: Buffer[] = [INIT, ALIGN_C, BOLD_ON, DBLH_ON, esc('MOLINO BRIGANTI'), DBLH_OFF, BOLD_OFF, hr('=')];
-
+  const parts: Buffer[] = [INIT, ALIGN_C];
+  
   if (isInternal) {
     const m = title.match(/Ordine interno:\s*(.+?)\s*[×x]\s*(\d+)/i);
     const prodName = m ? sanitize(m[1]) : sanitize(get('Articolo') || title);
@@ -196,23 +412,39 @@ async function buildEscPosTaskReceipt(taskId: number): Promise<Buffer> {
     const code     = get('Codice');
     const wm       = code.match(/-(\d+(?:[.,]\d+)?)$/);
     const wpc      = wm ? parseFloat(wm[1].replace(',', '.')) : 0;
-    parts.push(esc(ctr('ORDINE INTERNO')), hr('='), esc(''));
-    parts.push(BOLD_ON, esc(ctr(prodName)), BOLD_OFF);
-    if (code) parts.push(esc(ctr(`Cod: ${code}`)));
-    parts.push(esc(ctr(`Data: ${date}${time ? ' ' + time : ''}`)), esc(ctr(`Op.: ${opName}`)));
-    parts.push(hr('-'), ALIGN_C, BOLD_ON, esc(ctr(`${qty} colli`)));
-    if (wpc > 0) parts.push(esc(ctr(`${qty} × ${wpc} kg = ${Math.round(qty * wpc * 100) / 100} kg`)));
-    parts.push(BOLD_OFF);
-    const notes = get('Note');
-    if (notes) parts.push(ALIGN_L, esc(`Note: ${sanitize(notes)}`));
+    const category = get('Categoria');
+    const priority = task.priority || get('Priorità');
+    const notes    = get('Note');
+    
+    parts.push(ALIGN_C, hr('='));
+    parts.push(BOLD_ON, DBLH_ON, esc('ORDINE INT.'), DBLH_OFF, BOLD_OFF);
+    parts.push(hr('='));
+    parts.push(ALIGN_C, BOLD_ON, DBLH_ON, esc(ctr(prodName.substring(0, LW - 4))), DBLH_OFF, BOLD_OFF);
+    parts.push(hr('-'));
+    parts.push(ALIGN_L);
+    if (code) parts.push(BOLD_ON, esc(padLR('CODICE', code)), BOLD_OFF);
+    if (category) parts.push(BOLD_ON, esc(padLR('CATEGORIA', sanitize(category))), BOLD_OFF);
+    parts.push(BOLD_ON, esc(padLR('DATA', `${date}${time ? ' ' + time : ''}`)), BOLD_OFF);
+    parts.push(BOLD_ON, esc(padLR('OPERATORE', opName)), BOLD_OFF);
+    if (priority) parts.push(BOLD_ON, esc(padLR('PRIORITA', sanitize(priority))), BOLD_OFF);
+    parts.push(hr('='));
+    parts.push(ALIGN_C, BOLD_ON, DBLH_ON, esc('QUANTITA DA'), esc('RIORDINARE'), DBLH_OFF, BOLD_OFF);
+    parts.push(hr('-'));
+    const qtyLine = wpc > 0 ? padLR(`${qty} colli`, `${qty} x ${wpc} kg`) : `${qty} colli`;
+    parts.push(ALIGN_L, esc(qtyLine));
+    if (wpc > 0) {
+      const totalKg = Math.round(qty * wpc * 100) / 100;
+      parts.push(ALIGN_R, esc(String(totalKg) + ' kg'), ALIGN_L);
+    }
+    if (notes) parts.push(ALIGN_L, hr('-'), esc(`Note: ${sanitize(notes)}`));
   } else if (isRitiro) {
     const cliente = sanitize(title.slice('ritiro - '.length).toUpperCase());
     parts.push(esc(ctr('RITIRO')), esc(ctr(cliente)), hr('='), esc(''));
     parts.push(esc(ctr(`Data: ${date}${time ? ' ' + time : ''}`)), esc(ctr(`Op.: ${opName}`)));
     const prodMatch = desc.match(/Prodotti:\s*([^\n]+)/i);
     if (prodMatch) { parts.push(ALIGN_L, hr('-'), esc(sanitize(prodMatch[1]))); }
-    const notes = get('Note');
-    if (notes) parts.push(esc(`Note: ${sanitize(notes)}`));
+    const ritiroNotes = get('Note');
+    if (ritiroNotes) parts.push(esc(`Note: ${sanitize(ritiroNotes)}`));
   } else {
     parts.push(esc(ctr('COMPITO')), esc(ctr(sanitize(title.substring(0, LW)))));
     parts.push(hr('='), esc(''));
@@ -286,6 +518,17 @@ async function buildTsplLabel(
   lot?: string,
   expiry?: string,
 ): Promise<Buffer> {
+  const layout = await buildTsplLabelLayout(articleId, lot, expiry);
+  return Buffer.concat([...layout.parts, Buffer.from(`PRINT ${Math.max(1, quantity)},1\r\n`, 'ascii')]);
+}
+
+type TsplPreviewElement =
+  | { kind: 'text'; x: number; y: number; font: string; scaleX: number; scaleY: number; text: string }
+  | { kind: 'bar'; x: number; y: number; width: number; height: number }
+  | { kind: 'barcode'; x: number; y: number; height: number; value: string }
+  | { kind: 'image'; x: number; y: number; width: number; height: number; src: string };
+
+async function buildTsplLabelLayout(articleId: number, lot?: string, expiry?: string) {
   const article = await prisma.article.findUnique({
     where: { id: articleId },
     include: { nutritionalInfo: true },
@@ -293,118 +536,239 @@ async function buildTsplLabel(
   if (!article) throw new Error(`Articolo #${articleId} non trovato`);
 
   const settings = await prisma.companySettings.findMany({
-    where: { key: { in: ['companyFullName', 'businessName', 'companyAddress', 'companyCity'] } },
+    where: { key: { in: [
+      'companyFullName', 'businessName', 'companyAddress', 'companyCAP', 'companyCity', 'companyProvince',
+      'companyPhone', 'companyMobile', 'companyEmail', 'companyWebsite', 'logoThermalUrl', 'logoUrl',
+    ] } },
   });
-  const gs = (key: string) => settings.find(s => s.key === key)?.value || '';
+  const gs = (key: string) => parseSettingValue(settings.find(s => s.key === key)?.value);
   const companyName = (gs('companyFullName') || gs('businessName') || 'MOLINO BRIGANTI').toUpperCase();
 
   const n = (article as any).nutritionalInfo;
-  const W = 720; // 90mm × 8dpi (margini inclusi)
+  const W = 752; // 94mm x 8dpi: margini ~3mm come stampa Windows
+  const elements: TsplPreviewElement[] = [];
+  const mm = (value: number) => Math.round(value * 8);
+  const LEFT = mm(3);
+  const RIGHT = LEFT + W;
 
-  // Pulisce il testo per TSPL (evita `"` e caratteri non ASCII)
-  const ts = (s: string) =>
-    sanitize(String(s ?? '')).replace(/"/g, "'").substring(0, 50);
+  const ts = (s: string, max = 80) => sanitize(String(s ?? '')).replace(/"/g, "'").substring(0, max);
+  const parts: Buffer[] = [];
+  const command = (line: string) => parts.push(Buffer.from(line + '\r\n', 'ascii'));
+  command('SIZE 100 mm, 150 mm');
+  command('GAP 3 mm, 0 mm');
+  command('CLS');
+  const addText = (x: number, y: number, font: string, scaleX: number, scaleY: number, text: string, max = 80) => {
+    const value = ts(text, max);
+    command(`TEXT ${x},${y},"${font}",0,${scaleX},${scaleY},"${value}"`);
+    elements.push({ kind: 'text', x, y, font, scaleX, scaleY, text: value });
+  };
+  const charWidthByFont: Record<string, number> = { '1': 8, '2': 14, '3': 22, '4': 32 };
+  const addCenteredText = (y: number, font: string, scaleX: number, scaleY: number, text: string, maxChars: number) => {
+    const value = ts(text, maxChars);
+    const approxWidth = Math.min(W, value.length * (charWidthByFont[font] || 12) * scaleX);
+    addText(Math.max(LEFT, Math.round(LEFT + (W - approxWidth) / 2)), y, font, scaleX, scaleY, value);
+  };
+  const addFittedCenteredText = (y: number, preferredFont: string, text: string, maxChars: number) => {
+    const value = ts(text, maxChars);
+    const font = value.length > 28 ? '2' : preferredFont;
+    addCenteredText(y, font, 1, 1, value, maxChars);
+  };
+  const addBar = (x: number, y: number, width: number, height: number) => {
+    command(`BAR ${x},${y},${width},${height}`);
+    elements.push({ kind: 'bar', x, y, width, height });
+  };
+  const addRect = (x: number, y: number, width: number, height: number, stroke = 3) => {
+    addBar(x, y, width, stroke);
+    addBar(x, y + height - stroke, width, stroke);
+    addBar(x, y, stroke, height);
+    addBar(x + width - stroke, y, stroke, height);
+  };
+  const addBarcode = (x: number, y: number, height: number, value: string) => {
+    const cleanValue = ts(value);
+    command(`BARCODE ${x},${y},"CODE128",${height},1,0,2,2,"${cleanValue}"`);
+    elements.push({ kind: 'barcode', x, y, height, value: cleanValue });
+  };
+  const addWrappedText = (x: number, y: number, font: string, text: string, maxChars: number, maxLines: number, lineHeight: number) => {
+    const words = ts(text, maxChars * maxLines + maxLines).split(/\s+/).filter(Boolean);
+    const lines: string[] = [];
+    let current = '';
+    for (const word of words) {
+      const candidate = current ? `${current} ${word}` : word;
+      if (candidate.length > maxChars) {
+        if (current) lines.push(current);
+        current = word.substring(0, maxChars);
+      } else {
+        current = candidate;
+      }
+      if (lines.length >= maxLines) break;
+    }
+    if (current && lines.length < maxLines) lines.push(current);
+    lines.forEach((line, index) => addText(x, y + index * lineHeight, font, 1, 1, line, maxChars));
+    return y + lines.length * lineHeight;
+  };
+  const fmt = (value: unknown, decimals?: number) => {
+    if (value == null || value === '') return '';
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return String(value);
+    const rounded = decimals == null ? numeric : Number(numeric.toFixed(decimals));
+    return String(rounded).replace('.', ',');
+  };
+  const logoUrl = gs('logoThermalUrl') || gs('logoUrl') || 'images/logo INSEGNA.png';
+  const logoBitmap = await loadLogoBitmap(logoUrl, mm(45), mm(24));
+  const taxonomy = article.category ? await prisma.productCategory.findUnique({
+    where: { name: article.category },
+    include: {
+      subcategories: {
+        where: { name: article.subcategory || '' },
+        include: { groups: { where: { name: article.productGroup || '' } } },
+      },
+    },
+  }) : null;
+  const subcategory = taxonomy?.subcategories?.[0] || null;
+  const group = subcategory?.groups?.[0] || null;
+  const displayName = (group?.description || article.name || '').toUpperCase();
+  const hierarchyDescriptions = [subcategory?.description, taxonomy?.description]
+    .filter((value, index, values): value is string => Boolean(value) && value !== displayName && values.indexOf(value) === index);
 
-  const lines: string[] = [
-    'SIZE 100 mm, 150 mm',
-    'GAP 3 mm, 0 mm',
-    'CLS',
-  ];
-
-  let y = 25;
-
-  // Nome azienda
-  lines.push(`TEXT 40,${y},"4",0,1,1,"${ts(companyName).substring(0, 22)}"`);
-  y += 50;
-
-  lines.push(`BAR 40,${y},${W},2`);
-  y += 8;
-
-  // Nome articolo (può spezzarsi su 2 righe)
-  const artName = ts(article.name || '').toUpperCase();
-  if (artName.length > 22) {
-    lines.push(`TEXT 40,${y},"3",0,1,1,"${artName.substring(0, 22)}"`);
-    y += 36;
-    lines.push(`TEXT 40,${y},"3",0,1,1,"${artName.substring(22, 44)}"`);
-    y += 36;
+  if (logoBitmap) {
+    const logoX = Math.max(LEFT, Math.round(LEFT + (W - logoBitmap.width) / 2));
+    command(`BITMAP ${logoX},${mm(3)},${logoBitmap.widthBytes},${logoBitmap.height},0,`);
+    parts.push(logoBitmap.bitmap, Buffer.from('\r\n', 'ascii'));
+    elements.push({ kind: 'image', x: logoX, y: mm(3), width: logoBitmap.width, height: logoBitmap.height, src: logoUrl });
   } else {
-    lines.push(`TEXT 40,${y},"4",0,1,1,"${artName.substring(0, 22)}"`);
-    y += 50;
+    addCenteredText(mm(7), '4', 1, 1, companyName.substring(0, 26), 26);
   }
 
-  // Categoria / sottocategoria / gruppo
-  const taxParts = [article.category, article.subcategory, article.productGroup].filter(Boolean).join(' > ');
-  if (taxParts) {
-    lines.push(`TEXT 40,${y},"2",0,1,1,"${ts(taxParts).substring(0, 45)}"`);
-    y += 28;
+  const nameLines = displayName.length > 26 ? [displayName.substring(0, 26), displayName.substring(26, 52)] : [displayName];
+  nameLines.filter(Boolean).slice(0, 2).forEach((line, index) => {
+    addFittedCenteredText(mm(42 + index * 7), '4', line, 30);
+  });
+
+  hierarchyDescriptions.slice(0, 2).forEach((description, index) => {
+    addFittedCenteredText(mm(51 + index * 5.5), '2', description.toUpperCase(), 44);
+  });
+
+  const weight = Number(article.weightPerUnit) > 0 ? `${Number(article.weightPerUnit).toLocaleString('it-IT')} Kg` : '';
+  if (weight) {
+    addCenteredText(mm(67), '4', 1, 1, `${weight} e`, 14);
   }
 
-  lines.push(`BAR 40,${y},${W},1`);
-  y += 8;
+  let y = mm(79);
 
-  // Valori nutrizionali
   if (n) {
-    lines.push(`TEXT 40,${y},"1",0,1,1,"VALORI NUTRIZIONALI MEDI (per 100g):"`);
-    y += 22;
+    addBar(LEFT, y, W, 2);
+    addBar(LEFT, y + mm(5), W, 2);
+    addText(LEFT + mm(5), y + mm(1.1), '1', 1, 1, 'DICHIARAZIONE NUTRIZIONALE PER 100 G DI PRODOTTO', 54);
+    y += mm(6.2);
 
-    const kcal = n.energyKcal != null ? `${n.energyKcal} kcal` : '';
-    const kj   = n.energyKj   != null ? `${n.energyKj} kJ`   : '';
+    const kcal = n.energyKcal != null ? `${Math.round(Number(n.energyKcal))} kcal` : '';
+    const kj   = n.energyKj   != null ? `${Math.round(Number(n.energyKj))} kJ`   : '';
     const energyStr = [kcal, kj].filter(Boolean).join(' / ');
-    if (energyStr) { lines.push(`TEXT 40,${y},"2",0,1,1,"Energia: ${ts(energyStr)}"`); y += 26; }
-
-    const pairs: [string, string | null][] = [
-      ['Grassi',         n.fat           != null ? `${n.fat} g`                    : null],
-      ['Carboidrati',    n.carbohydrates  != null ? `${n.carbohydrates} g`           : null],
-      ['di cui zuccheri',n.sugars         != null ? `${n.sugars} g`                 : null],
-      ['Fibre',          n.fiber          != null ? `${n.fiber} g`                  : null],
-      ['Proteine',       n.protein        != null ? `${n.protein} g`                : null],
-      ['Sale',           n.sodium         != null ? `${Number(n.sodium).toFixed(2)} g` : null],
-    ];
-    const filled = pairs.filter(([, v]) => v != null);
-    for (let i = 0; i < filled.length; i += 2) {
-      const [l1, v1] = filled[i];
-      const right = filled[i + 1];
-      lines.push(`TEXT 40,${y},"2",0,1,1,"${ts(`${l1}: ${v1}`)}"`);
-      if (right) lines.push(`TEXT 400,${y},"2",0,1,1,"${ts(`${right[0]}: ${right[1]}`)}"`)
-      y += 26;
-    }
-
-    lines.push(`BAR 40,${y},${W},1`);
-    y += 8;
+    if (energyStr) addText(LEFT + mm(1), y, '1', 1, 1, `Valore energetico ${energyStr}`, 42);
+    y += mm(4);
+    addBar(LEFT, y - mm(0.7), W, 1);
+    if (n.fat != null) addText(LEFT + mm(1), y, '1', 1, 1, `Grassi ${fmt(n.fat)} g`, 30);
+    if (n.saturatedFat != null) addText(LEFT + mm(54), y, '1', 1, 1, `di cui saturi ${fmt(n.saturatedFat)} g`, 34);
+    y += mm(4);
+    addBar(LEFT, y - mm(0.7), W, 1);
+    if (n.carbohydrates != null) addText(LEFT + mm(1), y, '1', 1, 1, `Carboidrati ${fmt(n.carbohydrates)} g`, 32);
+    if (n.sugars != null) addText(LEFT + mm(54), y, '1', 1, 1, `di cui zuccheri ${fmt(n.sugars)} g`, 34);
+    y += mm(4);
+    addBar(LEFT, y - mm(0.7), W, 1);
+    if (n.fiber != null) addText(LEFT + mm(1), y, '1', 1, 1, `Fibre ${fmt(n.fiber)} g`, 24);
+    if (n.protein != null) addText(LEFT + mm(37), y, '1', 1, 1, `Proteine ${fmt(n.protein)} g`, 26);
+    if (n.sodium != null) addText(LEFT + mm(72), y, '1', 1, 1, `Sodio ${fmt(n.sodium, 2)} g`, 24);
+    y += mm(4.8);
   }
 
-  // Allergeni
   if ((article as any).allergens) {
-    const allergenText = ts((article as any).allergens);
-    lines.push(`TEXT 40,${y},"2",0,1,1,"${allergenText.substring(0, 45)}"`);
-    y += 26;
-    if (allergenText.length > 45) {
-      lines.push(`TEXT 40,${y},"2",0,1,1,"${allergenText.substring(45, 90)}"`);
-      y += 26;
-    }
-    lines.push(`BAR 40,${y},${W},1`);
-    y += 8;
+    const boxY = mm(104);
+    addRect(LEFT, boxY, W, mm(6), 2);
+    addWrappedText(LEFT + mm(1), boxY + mm(1.4), '1', `Allergeni: ${String((article as any).allergens).replace(/^\s*Contiene\s*:\s*/i, '').replace(/\.\s*Può contenere tracce di\s*:\s*/i, ', puo contenere tracce di ').replace(/\s*\.\s*$/, '')}.`, 88, 1, mm(3.4));
   }
 
-  // Barcode (CODE128)
-  const barcodeVal = ts((article as any).barcode || article.code || '');
-  if (barcodeVal) {
-    lines.push(`BARCODE 40,${y},"CODE128",56,1,0,2,2,"${barcodeVal}"`);
-    y += 72;
-  }
+  y = mm(112);
+  addText(LEFT + mm(8), y, '1', 1, 1, 'Umidita: 15% max - Merce soggetta a calo naturale - Conservare in luogo fresco e asciutto', 82);
+  y += mm(5);
 
-  // Lotto / scadenza
+  const address = [
+    gs('companyAddress'),
+    [gs('companyCAP'), gs('companyCity')].filter(Boolean).join(' '),
+    gs('companyProvince') ? `(${gs('companyProvince')})` : '',
+  ].filter(Boolean).join(', ');
+  const supplierName = String((article as any).supplierName || '').trim();
+  const supplierRea = String((article as any).supplierRea || '').trim();
+  addBar(LEFT, y, W, 2);
+  y += mm(1.2);
+  if (supplierRea) {
+    addFittedCenteredText(y, '1', `Prodotto dalla ditta: ${supplierName} - REA ${supplierRea}`, 66);
+    y += mm(3.4);
+    addFittedCenteredText(y, '1', `Confezionato da: ${companyName}`, 66);
+    y += mm(3.4);
+    if (address) addFittedCenteredText(y, '1', address, 66);
+    y += address ? mm(3.4) : 0;
+  } else {
+    addFittedCenteredText(y, '1', `Prodotto e confezionato da: ${companyName}`, 66);
+    y += mm(3.4);
+    if (address) addFittedCenteredText(y, '1', address, 66);
+    y += address ? mm(3.4) : 0;
+  }
+  const phones = [gs('companyPhone') ? `Tel. ${gs('companyPhone')}` : '', gs('companyMobile') ? `Cell. ${gs('companyMobile')}` : ''].filter(Boolean).join(' - ');
+  if (phones) addCenteredText(y, '2', 1, 1, phones, 58);
+  y += phones ? mm(5) : 0;
+  if (gs('companyEmail')) addCenteredText(y, '2', 1, 1, gs('companyEmail'), 48);
+  y += gs('companyEmail') ? mm(5) : 0;
+  if (gs('companyWebsite')) addCenteredText(y, '3', 1, 1, gs('companyWebsite'), 38);
+
   const lotStr    = lot    ? `Lotto: ${ts(lot)}`    : '';
   const expiryStr = expiry ? `Scad.: ${ts(expiry)}` : '';
-  const lotLine   = [lotStr, expiryStr].filter(Boolean).join('   ');
-  if (lotLine) {
-    lines.push(`TEXT 40,${y},"2",0,1,1,"${lotLine.substring(0, 45)}"`);
-    y += 26;
+  const lotY = mm(140);
+  addBar(LEFT, lotY, W, 2);
+  if (lotStr) addText(LEFT, lotY + mm(3), '3', 1, 1, lotStr, 26);
+  if (expiryStr) {
+    const value = ts(expiryStr, 26);
+    const approxWidth = value.length * (charWidthByFont['3'] || 22);
+    addText(Math.max(LEFT, RIGHT - approxWidth), lotY + mm(3), '3', 1, 1, value, 26);
   }
 
-  lines.push(`PRINT ${Math.max(1, quantity)},1`);
+  return { parts, elements };
+}
 
-  return Buffer.from(lines.join('\r\n') + '\r\n', 'ascii');
+export async function buildTsplLabelPreviewHtml(articleId: number, lot?: string, expiry?: string): Promise<string> {
+  const layout = await buildTsplLabelLayout(articleId, lot, expiry);
+  const fontSizeByTsplFont: Record<string, number> = { '1': 7.5, '2': 10, '3': 14, '4': 20 };
+  const mm = (dots: number) => `${dots / 8}mm`;
+  const elementsHtml = layout.elements.map((element) => {
+    if (element.kind === 'image') {
+      return `<img class="tspl-image" src="${escapeHtml(element.src)}" alt="Logo" style="left:${mm(element.x)};top:${mm(element.y)};width:${mm(element.width)};height:${mm(element.height)};">`;
+    }
+    if (element.kind === 'bar') {
+      return `<div class="tspl-bar" style="left:${mm(element.x)};top:${mm(element.y)};width:${mm(element.width)};height:${mm(element.height)};"></div>`;
+    }
+    if (element.kind === 'barcode') {
+      return `<div class="tspl-barcode" style="left:${mm(element.x)};top:${mm(element.y)};height:${mm(element.height)};">
+        <div class="tspl-bars"></div><div class="tspl-code">${escapeHtml(element.value)}</div>
+      </div>`;
+    }
+    const size = (fontSizeByTsplFont[element.font] || 12) * element.scaleY;
+    return `<div class="tspl-text" style="left:${mm(element.x)};top:${mm(element.y)};font-size:${size}pt;transform:scaleX(${element.scaleX});transform-origin:left top;">${escapeHtml(element.text)}</div>`;
+  }).join('');
+
+  return `<!doctype html><html lang="it"><head><meta charset="UTF-8">
+<title>Anteprima etichetta RAW TSPL</title>
+<style>
+  @page { size: 100mm 150mm; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #fff; color: #000; }
+  body { width: 100mm; height: 150mm; font-family: Arial, Helvetica, sans-serif; }
+  .tspl-label { position: relative; width: 100mm; height: 150mm; overflow: hidden; background: #fff; }
+  .tspl-text { position: absolute; max-width: 94mm; white-space: nowrap; overflow: hidden; text-overflow: clip; font-weight: 700; line-height: 1; }
+  .tspl-image { position: absolute; object-fit: contain; filter: grayscale(1) contrast(1.25); }
+  .tspl-bar { position: absolute; background: #000; }
+  .tspl-barcode { position: absolute; width: 64mm; }
+  .tspl-bars { height: calc(100% - 5mm); background: repeating-linear-gradient(90deg,#000 0 0.45mm,#fff 0.45mm 0.75mm,#000 0.75mm 1.2mm,#fff 1.2mm 1.6mm); border-left: 0.3mm solid #000; border-right: 0.3mm solid #000; }
+  .tspl-code { font-size: 8pt; font-weight: 700; text-align: center; line-height: 5mm; white-space: nowrap; }
+</style></head><body><div class="tspl-label">${elementsHtml}</div></body></html>`;
 }
 
 // ─── TSPL: test ──────────────────────────────────────────────────
@@ -451,6 +815,9 @@ export interface PrintJobRequest {
     quantity?:  number;
     lot?:       string;
     expiry?:    string;
+    imageBase64?: string;
+    contentHtml?: string;
+    copies?: number;
   };
   /** Se true, invia il job a tutte le stampanti il cui ruolo inizia con `role` */
   broadcast?: boolean;
@@ -465,6 +832,14 @@ async function executeSingleJob(job: PrintJobRequest): Promise<void> {
   const d = job.data || {};
   let payload: Buffer;
 
+  if (d.imageBase64) {
+    if (printer.protocol === 'ESCPOS') payload = await buildEscPosRaster(d.imageBase64);
+    else if (printer.protocol === 'TSPL') payload = await buildTsplRaster(d.imageBase64, d.copies ?? 1);
+    else throw new Error(`Protocollo "${printer.protocol}" non supportato`);
+    await sendRaw(printer.ip, printer.port, payload);
+    return;
+  }
+
   if (printer.protocol === 'ESCPOS') {
     switch (job.jobType) {
       case 'trip':
@@ -478,6 +853,14 @@ async function executeSingleJob(job: PrintJobRequest): Promise<void> {
       case 'task_order':
         if (!d.taskId) throw new Error('taskId mancante');
         payload = await buildEscPosTaskReceipt(d.taskId);
+        break;
+      case 'html_raster':
+        if (!d.contentHtml) throw new Error('contentHtml mancante');
+        console.log('[PRINT] Job html_raster ricevuto, contentHtml length:', d.contentHtml.length);
+        const pngBase64 = await rasterizeHtmlToPng(d.contentHtml, 576);
+        console.log('[PRINT] html_raster rasterizzazione OK, building ESC/POS...');
+        payload = await buildEscPosRaster(pngBase64);
+        console.log('[PRINT] html_raster ESC/POS built, payload size:', payload.length);
         break;
       case 'test':
         payload = buildEscPosTest(printer.name);

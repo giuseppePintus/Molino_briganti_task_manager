@@ -10,7 +10,7 @@
  * Public API (window-scoped):
  *   - printTripThermal(tripId)         ← RAW via server (preferito) con fallback browser
  *   - printPickupOrderThermal(orderId) ← RAW via server (preferito) con fallback browser
- *   - printArticleLabel(articleId, quantity, lot, expiry)  ← TSPL RAW via server
+ *   - buildLabelHtmlDoc(...)                  ← layout condiviso anteprima/stampa etichetta
  */
 (function () {
     'use strict';
@@ -145,6 +145,16 @@
             font-weight: 900;
             text-align: center;
             letter-spacing: 3px;
+            padding: 1.5mm 0 1mm 0;
+            margin: 0;
+            border-top: 0.6mm solid #000;
+            border-bottom: 0.6mm solid #000;
+        }
+        .rcpt-title-small {
+            font-size: 16pt;
+            font-weight: 800;
+            text-align: center;
+            letter-spacing: 2px;
             padding: 1.5mm 0 1mm 0;
             margin: 0;
             border-top: 0.6mm solid #000;
@@ -384,11 +394,15 @@
         }
         .toolbar .btn-print { background: #111; }
         .toolbar .btn-close { background: #888; }
+
+        /* === OVERRIDE: mantieni width ristretta come stampa === */
+        html, body { width: 264px !important; max-width: none !important; }
+
         @media print { .no-print { display: none !important; } }
     `;
 
-    function openReceipt(title, contentHtml) {
-        const w = window.open('', '_blank', 'width=380,height=720');
+    function openReceipt(title, contentHtml, targetWindow) {
+        const w = targetWindow || window.open('', '_blank', 'width=380,height=720');
         if (!w) {
             alert('Impossibile aprire la finestra di stampa. Disabilita il blocco popup.');
             return;
@@ -561,7 +575,7 @@
         }
         // data-thermal="1" -> salta conversione 1-bit lato finestra di stampa
         const thermalAttr = isThermalDedicated ? ' data-thermal="1"' : '';
-        html += '<img class="rcpt-logo"' + thermalAttr + ' src="' + escapeHtml(absLogo + cacheSuffix) + '" alt="" onerror="this.style.display=\'none\'">';
+        html += '<img class="rcpt-logo"' + thermalAttr + ' crossorigin="anonymous" src="' + escapeHtml(absLogo + cacheSuffix) + '" alt="" onerror="this.style.display=\'none\'">';
         // businessName non mostrato: solo logo
         return html;
     }
@@ -918,13 +932,16 @@
         ov.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);' +
             'z-index:99998;align-items:center;justify-content:center;';
         ov.innerHTML =
-            '<div style="background:#1f2937;border-radius:12px;padding:20px;width:95%;max-width:400px;' +
+            '<div style="background:#1f2937;border-radius:12px;padding:20px;' +
             'max-height:92vh;overflow-y:auto;border:1px solid #374151;display:flex;flex-direction:column;gap:14px;">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;">' +
             '<h3 id="__rcptPreviewTitle" style="margin:0;color:#e0e0e0;font-size:16px;">👁️ Anteprima scontrino</h3>' +
             '<span style="font-size:11px;color:#6b7280;">formato 80mm — 1 copia</span></div>' +
-            '<iframe id="__rcptPreviewFrame" style="width:100%;height:480px;border:1px solid #374151;' +
-            'border-radius:4px;background:#fff;" sandbox="allow-same-origin"></iframe>' +
+            '<div id="__rcptPreviewWrap" style="display:flex;justify-content:center;align-items:center;' +
+            'min-height:200px;width:264px;margin:0 auto;border:1px solid #374151;border-radius:4px;background:#fff;">' +
+            '<span id="__rcptPreviewLoading" style="color:#6b7280;font-size:13px;">Generazione anteprima…</span>' +
+            '<img id="__rcptPreviewImg" style="width:264px;display:none;" />' +
+            '</div>' +
             '<div style="display:flex;gap:10px;justify-content:flex-end;">' +
             '<button id="__rcptPreviewCancel" style="background:#374151;color:#e0e0e0;border:none;' +
             'border-radius:6px;padding:9px 18px;font-size:14px;cursor:pointer;">✕ Annulla</button>' +
@@ -939,24 +956,192 @@
 
     function showReceiptPreview(title, contentHtml, onConfirm) {
         var id = ensureReceiptPreviewModal();
-        var ov    = document.getElementById(id);
-        var frame = document.getElementById('__rcptPreviewFrame');
-        var ttl   = document.getElementById('__rcptPreviewTitle');
-        var btn   = document.getElementById('__rcptPreviewConfirm');
+        var ov      = document.getElementById(id);
+        var ttl     = document.getElementById('__rcptPreviewTitle');
+        var btn     = document.getElementById('__rcptPreviewConfirm');
+        var img     = document.getElementById('__rcptPreviewImg');
+        var loading = document.getElementById('__rcptPreviewLoading');
         ttl.textContent = '👁️ ' + title;
-        frame.srcdoc = buildReceiptHtmlDoc(title, contentHtml);
+        img.style.display = 'none';
+        loading.style.display = 'block';
+        loading.textContent = 'Generazione anteprima…';
         btn.onclick = function() { ov.style.display = 'none'; onConfirm(); };
         ov.style.display = 'flex';
+
+        // Rasterizza l'HTML lato server (stesso motore usato per la stampa),
+        // così l'anteprima è pixel-identica a quanto verrà stampato
+        var fullHtmlWithCss = buildReceiptHtmlDoc(title, contentHtml);
+        var token = localStorage.getItem('authToken') || localStorage.getItem('token') || '';
+        fetch('/api/printers/html-preview', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': token ? 'Bearer ' + token : '' },
+            body: JSON.stringify({ contentHtml: fullHtmlWithCss }),
+        })
+            .then(function(r) { return r.json(); })
+            .then(function(j) {
+                if (!j.image) throw new Error(j.error || 'Anteprima non disponibile');
+                img.src = j.image;
+                img.style.display = 'block';
+                loading.style.display = 'none';
+            })
+            .catch(function(err) {
+                loading.textContent = '⚠️ Anteprima non disponibile (' + err.message + ')';
+            });
     }
 
-    // Override: mostra anteprima → conferma → RAW
+    function normalizePrintableAssetUrl(src) {
+        if (!src) return '';
+        try {
+            if (/^data:/i.test(src)) return src;
+            const url = new URL(src, window.location.origin);
+            const currentHost = window.location.hostname.toLowerCase();
+            const assetHost = url.hostname.toLowerCase();
+            const sameNasHost = (currentHost === '192.168.1.248' && assetHost === 'nas71f89c')
+                || (currentHost === 'nas71f89c' && assetHost === '192.168.1.248');
+            if (assetHost === currentHost || sameNasHost) {
+                return window.location.origin + url.pathname + url.search + url.hash;
+            }
+            return url.href;
+        } catch (_) {
+            return src;
+        }
+    }
+
+    async function imageUrlToDataUrl(src) {
+        const normalized = normalizePrintableAssetUrl(src);
+        if (!normalized || /^data:/i.test(normalized)) return normalized;
+        const response = await fetch(normalized, { cache: 'no-store' });
+        if (!response.ok) throw new Error('Immagine non disponibile: ' + normalized);
+        const blob = await response.blob();
+        return await new Promise(function (resolve, reject) {
+            const reader = new FileReader();
+            reader.onload = function () { resolve(reader.result); };
+            reader.onerror = function () { reject(new Error('Impossibile leggere immagine etichetta')); };
+            reader.readAsDataURL(blob);
+        });
+    }
+
+    async function inlinePrintableImages(html) {
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const images = Array.prototype.slice.call(doc.querySelectorAll('img'));
+        await Promise.all(images.map(async function (img) {
+            const src = img.getAttribute('src') || '';
+            if (!src) return;
+            img.removeAttribute('srcset');
+            img.removeAttribute('sizes');
+            img.setAttribute('crossorigin', 'anonymous');
+            img.setAttribute('src', await imageUrlToDataUrl(src));
+        }));
+        return '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+    }
+
+    async function capturePreviewFrame(frame, targetWidth) {
+        const sourceDocument = frame.contentDocument;
+        if (!sourceDocument) throw new Error('Anteprima non disponibile');
+        if (sourceDocument.fonts && sourceDocument.fonts.ready) await sourceDocument.fonts.ready;
+        const sourceImages = Array.prototype.slice.call(sourceDocument.images || []);
+        await Promise.all(sourceImages.map(function (img) {
+            return new Promise(function (resolve) {
+                if (img.complete) return resolve();
+                img.addEventListener('load', resolve, { once: true });
+                img.addEventListener('error', resolve, { once: true });
+            });
+        }));
+
+        const clonedDocument = sourceDocument.documentElement.cloneNode(true);
+        clonedDocument.querySelectorAll('.no-print, .toolbar').forEach(function (node) { node.remove(); });
+        const clonedImages = Array.prototype.slice.call(clonedDocument.querySelectorAll('img'));
+        await Promise.all(clonedImages.map(async function (img) {
+            const src = img.getAttribute('src') || '';
+            if (!src) return;
+            img.removeAttribute('srcset');
+            img.removeAttribute('sizes');
+            img.setAttribute('crossorigin', 'anonymous');
+            img.setAttribute('src', await imageUrlToDataUrl(src));
+        }));
+        const body = clonedDocument.querySelector('body');
+        const width = Math.max(1, Math.ceil(sourceDocument.body.scrollWidth));
+        const height = Math.max(1, Math.ceil(sourceDocument.body.scrollHeight));
+        if (body) { body.style.width = width + 'px'; body.style.height = height + 'px'; }
+        const svg = '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="' + width + '" height="' + height + '"><foreignObject width="100%" height="100%">' + new XMLSerializer().serializeToString(clonedDocument) + '</foreignObject></svg>';
+        const image = new Image();
+        const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
+        try {
+            await new Promise(function (resolve, reject) {
+                image.onload = resolve;
+                image.onerror = function () { reject(new Error('Impossibile rasterizzare l’anteprima')); };
+                image.src = url;
+            });
+            const canvas = document.createElement('canvas');
+            canvas.width = targetWidth;
+            canvas.height = Math.max(1, Math.round(height * targetWidth / width));
+            const context = canvas.getContext('2d');
+            context.fillStyle = '#fff';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            context.drawImage(image, 0, 0, canvas.width, canvas.height);
+            return canvas.toDataURL('image/png');
+        } finally {
+            URL.revokeObjectURL(url);
+        }
+    }
+
+    async function sendPreviewRaster(frame, role, width) {
+        const imageBase64 = await capturePreviewFrame(frame, width);
+        return sendPrintJob(role, 'raster', { imageBase64: imageBase64 });
+    }
+
+    async function sendHtmlRaster(html, role, width, copies) {
+        const frame = document.createElement('iframe');
+        frame.style.cssText = 'position:fixed;left:-10000px;top:0;width:' + width + 'px;height:10000px;border:0;';
+        try {
+            const safeHtml = await inlinePrintableImages(html);
+            await new Promise(function (resolve, reject) {
+                let settled = false;
+                const timer = setTimeout(function () {
+                    if (!settled) { settled = true; reject(new Error('Timeout caricamento anteprima')); }
+                }, 5000);
+                frame.addEventListener('load', function () {
+                    if (!settled) { settled = true; clearTimeout(timer); resolve(); }
+                }, { once: true });
+                frame.srcdoc = safeHtml;
+                document.body.appendChild(frame);
+            });
+            const imageBase64 = await capturePreviewFrame(frame, width);
+            return sendPrintJob(role, 'raster', { imageBase64: imageBase64, copies: copies || 1 });
+        } finally {
+            frame.remove();
+        }
+    }
+
+    async function printReceiptRaw(title, contentHtml, fallbackJob) {
+        if (fallbackJob) {
+            const directResult = await sendPrintJob('receipt_80mm', fallbackJob.jobType, fallbackJob.data || {}, { broadcast: true });
+            if (directResult !== true) {
+                throw new Error(directResult && directResult.message ? directResult.message : 'Stampante 80mm non raggiungibile');
+            }
+            showPrintToast('✅ Stampa 80mm inviata alla stampante', false);
+            return true;
+        }
+
+        // Se fallbackJob è null, usa rasterizzazione server-side (Puppeteer)
+        const htmlDoc = buildReceiptHtmlDoc(title, contentHtml);
+        const result = await sendPrintJob('receipt_80mm', 'html_raster', { contentHtml: htmlDoc }, { broadcast: true });
+        if (result !== true) {
+            throw new Error(result && result.message ? result.message : 'Stampante 80mm non raggiungibile');
+        }
+        showPrintToast('✅ Stampa 80mm inviata alla stampante', false);
+        return true;
+    }
+
+    // Mostra anteprima e stampa lo stesso documento HTML confermato dall'utente.
     window.printTripThermal = function(tripId) {
         var data = buildTripReceiptContent(tripId);
         if (!data) { showPrintToast('❌ Viaggio non trovato', true); return; }
-        showReceiptPreview(data.title, data.html, async function() {
-            var result = await sendPrintJob('receipt_80mm_ufficio', 'trip', { tripId: Number(tripId) });
-            if (result === true) { showPrintToast('✅ Scontrino viaggio inviato alla stampante', false); }
-            else { showPrintToast('❌ Stampante non raggiungibile: ' + (result && result.message ? result.message : 'timeout'), true); }
+        showReceiptPreview(data.title, data.html, function() {
+            // Usa rasterizzazione HTML (Puppeteer) per consistenza preview↔stampa
+            printReceiptRaw(data.title, data.html, null).catch(function(error) {
+                showPrintToast('❌ Stampa diretta 80mm fallita: ' + error.message, true);
+            });
         });
     };
 
@@ -964,15 +1149,17 @@
         var data = buildPickupReceiptContent(orderId);
         if (!data) { showPrintToast('❌ Ordine non trovato', true); return; }
         sendOrderAudit(orderId, 'print-thermal-preview', {});
-        showReceiptPreview(data.title, data.html, async function() {
-            var result = await sendPrintJob('receipt_80mm_ufficio', 'pickup_order', { orderId: Number(orderId) });
-            if (result === true) { showPrintToast('✅ Scontrino ordine inviato alla stampante', false); }
-            else { showPrintToast('❌ Stampante non raggiungibile: ' + (result && result.message ? result.message : 'timeout'), true); }
+        showReceiptPreview(data.title, data.html, function() {
+            // Usa rasterizzazione HTML (Puppeteer) per consistenza preview↔stampa
+            printReceiptRaw(data.title, data.html, null).catch(function(error) {
+                showPrintToast('❌ Stampa diretta 80mm fallita: ' + error.message, true);
+            });
         });
     };
     // Invia un job al server (POST /api/printers/job).
     // Timeout client 3s: se non risponde in tempo restituisce false immediatamente.
-    async function sendPrintJob(role, jobType, data) {
+    async function sendPrintJob(role, jobType, data, options) {
+        options = options || {};
         const ctrl = new AbortController();
         const tid  = setTimeout(() => ctrl.abort(), 3000);
         try {
@@ -984,7 +1171,7 @@
                     'Content-Type': 'application/json',
                     'Authorization': token ? 'Bearer ' + token : '',
                 },
-                body: JSON.stringify({ role, jobType, data: data || {} }),
+                body: JSON.stringify({ role, jobType, data: data || {}, broadcast: options.broadcast === true }),
             });
             clearTimeout(tid);
             if (!r.ok) {
@@ -1011,18 +1198,215 @@
         setTimeout(function() { d.remove(); }, isError ? 5000 : 3000);
     }
 
-    window.printArticleLabel = async function(articleId, quantity, lot, expiry) {
-        var result = await sendPrintJob('label_4x6', 'article_label', {
-            articleId: Number(articleId),
-            quantity: Number(quantity) || 1,
-            lot: lot || undefined,
-            expiry: expiry || undefined,
+    async function getArticleLabelData(articleId, quantity) {
+        const token = localStorage.getItem('authToken') || localStorage.getItem('token') || '';
+        const [articlesResponse, settingsResponse, taxonomyResponse] = await Promise.all([
+            fetch('/api/inventory/articles', { headers: { 'Authorization': token ? 'Bearer ' + token : '' } }),
+            fetch('/api/settings/company'),
+            fetch('/api/categories/descriptions', { headers: { 'Authorization': token ? 'Bearer ' + token : '' } }),
+        ]);
+        if (!articlesResponse.ok) throw new Error('Articolo non disponibile');
+        const articles = await articlesResponse.json();
+        const article = Array.isArray(articles)
+            ? articles.find(function (item) { return Number(item.id) === Number(articleId); })
+            : null;
+        if (!article) throw new Error('Articolo non trovato');
+        const settings = settingsResponse.ok ? await settingsResponse.json() : {};
+        const taxonomy = taxonomyResponse.ok ? await taxonomyResponse.json() : [];
+        const order = {
+            name: article.name,
+            qty: Number(quantity) || 1,
+            weightPerCollo: article.weightPerUnit || 0,
+            code: article.code,
+        };
+        return { order: order, article: article, settings: settings, taxonomy: taxonomy };
+    }
+
+    async function getArticleLabelHtml(articleId, quantity, lot, expiry) {
+        const data = await getArticleLabelData(articleId, quantity);
+        return buildLabelHtmlDoc(data.order, data.article, data.settings, data.taxonomy, lot || '', expiry || '', 1, true);
+    }
+
+    function drawWrappedCanvasText(ctx, text, x, y, maxWidth, lineHeight, maxLines) {
+        const words = String(text || '').split(/\s+/).filter(Boolean);
+        const lines = [];
+        let current = '';
+        for (const word of words) {
+            const candidate = current ? current + ' ' + word : word;
+            if (ctx.measureText(candidate).width > maxWidth && current) {
+                lines.push(current);
+                current = word;
+            } else {
+                current = candidate;
+            }
+            if (lines.length >= maxLines) break;
+        }
+        if (current && lines.length < maxLines) lines.push(current);
+        lines.forEach(function (line, index) { ctx.fillText(line, x, y + index * lineHeight); });
+        return y + lines.length * lineHeight;
+    }
+
+    function drawCenteredCanvasText(ctx, text, x, y, width) {
+        ctx.fillText(String(text || ''), x + width / 2, y);
+    }
+
+    async function loadPrintableImage(src) {
+        const dataUrl = await imageUrlToDataUrl(src);
+        if (!dataUrl) return null;
+        return await new Promise(function (resolve) {
+            const image = new Image();
+            image.onload = function () { resolve(image); };
+            image.onerror = function () { resolve(null); };
+            image.src = dataUrl;
         });
+    }
+
+    async function buildLabelRasterImage(order, article, settings, taxonomy, lotto, scad, targetWidth) {
+        const width = targetWidth || 1200;
+        const height = Math.round(width * 1.5);
+        const scale = width / 406;
+        const px = function (value) { return Math.round(value * scale); };
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, width, height);
+        ctx.fillStyle = '#000';
+        ctx.strokeStyle = '#000';
+        ctx.textBaseline = 'top';
+        ctx.textAlign = 'left';
+
+        const n = article?.nutritionalInfo || {};
+        const nut = function (key) { return n[key] != null ? String(n[key]).replace('.', ',') : null; };
+        const roundedNut = function (key) { return n[key] != null && Number.isFinite(Number(n[key])) ? String(Math.round(Number(n[key]))) : null; };
+        const categoryItem = (taxonomy || []).find(function (item) { return item.name === article?.category; });
+        const subcategoryItem = categoryItem?.subcategories?.find(function (item) { return item.name === article?.subcategory; });
+        const groupItem = subcategoryItem?.groups?.find(function (item) { return item.name === article?.productGroup; });
+        const name = groupItem?.description || order.name || '-';
+        const hierarchyDescriptions = [subcategoryItem?.description, categoryItem?.description]
+            .filter(function (value, index, items) { return value && value !== name && items.indexOf(value) === index; });
+        const margin = px(14);
+        const contentWidth = width - margin * 2;
+
+        const logoSrc = normalizePrintableAssetUrl(settings.logoThermalUrl || settings.logoUrl || '');
+        const logo = logoSrc ? await loadPrintableImage(logoSrc) : null;
+        if (logo) {
+            const maxLogoW = px(255);
+            const maxLogoH = px(130);
+            const logoScale = Math.min(maxLogoW / logo.naturalWidth, maxLogoH / logo.naturalHeight);
+            const logoW = Math.round(logo.naturalWidth * logoScale);
+            const logoH = Math.round(logo.naturalHeight * logoScale);
+            ctx.drawImage(logo, Math.round((width - logoW) / 2), px(8), logoW, logoH);
+        }
+
+        ctx.textAlign = 'center';
+        ctx.font = '900 ' + px(26.5) + 'px Arial, Helvetica, sans-serif';
+        drawCenteredCanvasText(ctx, name.toUpperCase(), margin, px(182), contentWidth);
+        ctx.font = '700 ' + px(15) + 'px Arial, Helvetica, sans-serif';
+        hierarchyDescriptions.slice(0, 2).forEach(function (line, index) {
+            drawCenteredCanvasText(ctx, String(line).toUpperCase(), margin, px(220 + index * 22), contentWidth);
+        });
+        if (order.weightPerCollo > 0) {
+            ctx.font = '700 ' + px(32) + 'px Arial, Helvetica, sans-serif';
+            drawCenteredCanvasText(ctx, order.weightPerCollo + ' Kg ℮', margin, px(273), contentWidth);
+        }
+
+        let y = px(318);
+        ctx.textAlign = 'left';
+        ctx.lineWidth = Math.max(1, px(0.8));
+        ctx.beginPath(); ctx.moveTo(margin, y); ctx.lineTo(width - margin, y); ctx.stroke();
+        ctx.font = '700 ' + px(9) + 'px Arial, Helvetica, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('DICHIARAZIONE NUTRIZIONALE PER 100 G DI PRODOTTO', width / 2, y + px(6));
+        y += px(22);
+        ctx.beginPath(); ctx.moveTo(margin, y); ctx.lineTo(width - margin, y); ctx.stroke();
+        ctx.textAlign = 'left';
+        ctx.font = '700 ' + px(10) + 'px Arial, Helvetica, sans-serif';
+        const energy = roundedNut('energyKcal') && roundedNut('energyKj') ? roundedNut('energyKcal') + ' kcal / ' + roundedNut('energyKj') + ' kJ' : '';
+        if (energy) ctx.fillText('Valore energetico ' + energy, margin + px(4), y + px(5));
+        y += px(20);
+        ctx.beginPath(); ctx.moveTo(margin, y); ctx.lineTo(width - margin, y); ctx.stroke();
+        if (nut('fat')) ctx.fillText('Grassi ' + nut('fat') + ' g', margin + px(4), y + px(5));
+        if (nut('saturatedFat')) ctx.fillText('di cui saturi ' + nut('saturatedFat') + ' g', margin + px(247), y + px(5));
+        y += px(20);
+        ctx.beginPath(); ctx.moveTo(margin, y); ctx.lineTo(width - margin, y); ctx.stroke();
+        if (nut('carbohydrates')) ctx.fillText('Carboidrati ' + nut('carbohydrates') + ' g', margin + px(4), y + px(5));
+        if (nut('sugars')) ctx.fillText('di cui zuccheri ' + nut('sugars') + ' g', margin + px(247), y + px(5));
+        y += px(20);
+        ctx.beginPath(); ctx.moveTo(margin, y); ctx.lineTo(width - margin, y); ctx.stroke();
+        if (nut('fiber')) ctx.fillText('Fibre ' + nut('fiber') + ' g', margin + px(4), y + px(5));
+        if (nut('protein')) ctx.fillText('Proteine ' + nut('protein') + ' g', margin + px(160), y + px(5));
+        if (nut('sodium')) ctx.fillText('Sodio ' + nut('sodium') + ' g', margin + px(305), y + px(5));
+
+        const allergens = String(article?.allergens || '')
+            .replace(/^\s*Contiene\s*:\s*/i, '')
+            .replace(/\.\s*Può contenere tracce di\s*:\s*/i, ', può contenere tracce di ')
+            .replace(/\s*\.\s*$/, '');
+        y += px(18);
+        if (allergens) {
+            ctx.strokeRect(margin, y, contentWidth, px(25));
+            ctx.font = '700 ' + px(9) + 'px Arial, Helvetica, sans-serif';
+            ctx.fillText('Allergeni: ' + allergens + '.', margin + px(5), y + px(7));
+        }
+
+        y += px(32);
+        ctx.textAlign = 'center';
+        ctx.font = px(8) + 'px Arial, Helvetica, sans-serif';
+        ctx.fillText('Umidità: 15% max - Merce soggetta a calo naturale', width / 2, y);
+        ctx.fillText('Conservare in luogo fresco e asciutto', width / 2, y + px(14));
+
+        const companyFull = settings.companyFullName || settings.businessName || 'Molino Briganti';
+        const companyAddr = [settings.companyAddress, settings.companyCAP && settings.companyCity ? settings.companyCAP + ' ' + settings.companyCity : (settings.companyCity || ''), settings.companyProvince ? '(' + settings.companyProvince + ')' : ''].filter(Boolean).join(', ');
+        const supplierRea = article?.supplierRea || '';
+        const supplierName = article?.supplierName || '';
+        y += px(26);
+        ctx.beginPath(); ctx.moveTo(margin, y); ctx.lineTo(width - margin, y); ctx.stroke();
+        y += px(8);
+        ctx.font = '700 ' + px(8) + 'px Arial, Helvetica, sans-serif';
+        if (supplierRea) {
+            ctx.fillText('Prodotto dalla ditta: ' + supplierName + ' - REA ' + supplierRea, width / 2, y);
+            y += px(13);
+            ctx.fillText('Confezionato da: ' + companyFull, width / 2, y);
+        } else {
+            ctx.fillText('Prodotto e confezionato da: ' + companyFull, width / 2, y);
+        }
+        y += px(13);
+        if (companyAddr) ctx.fillText(companyAddr, width / 2, y);
+        y += px(18);
+        const phones = [settings.companyPhone ? 'Tel. ' + settings.companyPhone : '', settings.companyMobile ? 'Cell. ' + settings.companyMobile : ''].filter(Boolean).join(' - ');
+        if (phones) { ctx.font = '900 ' + px(11) + 'px Arial, Helvetica, sans-serif'; ctx.fillText(phones, width / 2, y); y += px(19); }
+        if (settings.companyEmail) { ctx.font = '900 ' + px(11) + 'px Arial, Helvetica, sans-serif'; ctx.fillText(settings.companyEmail, width / 2, y); y += px(20); }
+        if (settings.companyWebsite) { ctx.font = '900 ' + px(15) + 'px Arial, Helvetica, sans-serif'; ctx.fillText(settings.companyWebsite, width / 2, y); }
+
+        y = height - px(37);
+        ctx.beginPath(); ctx.moveTo(margin, y); ctx.lineTo(width - margin, y); ctx.stroke();
+        ctx.textAlign = 'left';
+        ctx.font = '900 ' + px(13) + 'px Arial, Helvetica, sans-serif';
+        if (lotto) ctx.fillText('Lotto: ' + lotto, margin, y + px(12));
+        if (scad) {
+            const text = 'Scad.: ' + scad;
+            ctx.fillText(text, width - margin - ctx.measureText(text).width, y + px(12));
+        }
+        return canvas.toDataURL('image/png');
+    }
+
+    window.printArticleLabel = async function(articleId, quantity, lot, expiry, options) {
+        options = options || {};
+        const qty = Math.max(1, Math.min(9999, Number(quantity) || 1));
+        let result;
+        try {
+            const data = await getArticleLabelData(articleId, qty);
+            const imageBase64 = await buildLabelRasterImage(data.order, data.article, data.settings, data.taxonomy, lot || '', expiry || '', 1200);
+            result = await sendPrintJob('label_4x6', 'raster', { imageBase64: imageBase64, copies: qty });
+        } catch (error) {
+            result = error;
+        }
         if (result === true) {
-            showPrintToast('✅ Etichetta inviata alla stampante', false);
+            if (!options.silent) showPrintToast('✅ Etichetta inviata alla stampante', false);
             return true;
         } else {
-            showPrintToast('❌ Stampante etichette non raggiungibile: ' + (result && result.message ? result.message : 'timeout'), true);
+            if (!options.silent) showPrintToast('❌ Stampa diretta etichetta fallita: ' + (result && result.message ? result.message : 'timeout'), true);
             return false;
         }
     };
@@ -1150,7 +1534,7 @@
         const opName = getOperatorName(o.assignedOperatorId);
         let html = '';
         html += brandHeaderHtml();
-        html += '<div class="rcpt-title">ORDINE INT.</div>';
+        html += '<div class="rcpt-title-small">ORDINE INTERNO</div>';
         html += '<div class="rcpt-sub">' + escapeHtml(o.name) + '</div>';
         const infoRows = [];
         if (o.code) infoRows.push(['Codice', o.code]);
@@ -1171,10 +1555,19 @@
         }
         html += footerHtml();
         const title = 'Ordine interno ' + o.id;
-        showReceiptPreview(title, html, function() {
-            // markTaskPrinted fire-and-forget; openReceipt chiamato da click diretto (no popup blocker)
-            markTaskPrinted(taskId).catch(function() {});
-            openReceipt(title, html);
+        showReceiptPreview(title, html, async function() {
+            try {
+                // Manda l'HTML completo con CSS come visualizzato nella preview
+                const fullHtmlWithCss = buildReceiptHtmlDoc(title, html);
+                await sendPrintJob('receipt_80mm', 'html_raster', { 
+                    contentHtml: fullHtmlWithCss,
+                    taskId: Number(taskId)
+                }, { broadcast: true });
+                showPrintToast('✅ Stampa 80mm inviata alla stampante', false);
+                await markTaskPrinted(taskId).catch(function() {});
+            } catch (error) {
+                showPrintToast('❌ Stampa diretta 80mm fallita: ' + error.message, true);
+            }
         });
     }
 
@@ -1413,11 +1806,12 @@
             html += totalBoxHtml(totalColli, totalKg);
             html += footerHtml();
             const titleRitiro = 'Ritiro ' + cliente;
-            showReceiptPreview(titleRitiro, html, async function() {
-                markTaskPrinted(taskId).catch(function() {});
-                var result = await sendPrintJob('receipt_80mm_ufficio', 'task_order', { taskId: Number(taskId) });
-                if (result === true) { showPrintToast('\u2705 Scontrino inviato alla stampante', false); }
-                else { showPrintToast('\u274c Stampante non raggiungibile: ' + (result && result.message ? result.message : 'timeout'), true); }
+            showReceiptPreview(titleRitiro, html, function() {
+                printReceiptRaw(titleRitiro, html, { jobType: 'task_order', data: { taskId: Number(taskId) } }).then(function() {
+                    markTaskPrinted(taskId).catch(function() {});
+                }).catch(function(error) {
+                    showPrintToast('❌ Stampa diretta 80mm fallita: ' + error.message, true);
+                });
             });
 
         } else {
@@ -1442,11 +1836,12 @@
             }
             html += footerHtml();
             const titleTask = 'Compito ' + task.id;
-            showReceiptPreview(titleTask, html, async function() {
-                markTaskPrinted(taskId).catch(function() {});
-                var result = await sendPrintJob('receipt_80mm_ufficio', 'task_order', { taskId: Number(taskId) });
-                if (result === true) { showPrintToast('\u2705 Compito inviato alla stampante', false); }
-                else { showPrintToast('\u274c Stampante non raggiungibile: ' + (result && result.message ? result.message : 'timeout'), true); }
+            showReceiptPreview(titleTask, html, function() {
+                printReceiptRaw(titleTask, html, { jobType: 'task_order', data: { taskId: Number(taskId) } }).then(function() {
+                    markTaskPrinted(taskId).catch(function() {});
+                }).catch(function(error) {
+                    showPrintToast('❌ Stampa diretta 80mm fallita: ' + error.message, true);
+                });
             });
         }
     }
@@ -1503,7 +1898,6 @@
         if (errEl) errEl.style.display = 'none';
         const btn = document.getElementById('labelPrintConfirmBtn');
         if (btn) { btn.disabled = true; btn.textContent = '⏳ Caricamento...'; }
-
         try {
             const apiBase = `http://${window.location.hostname}:${window.location.port || 5000}/api`;
             const artCode = taskData.order.code;
@@ -1518,26 +1912,21 @@
                     article = list.find(a => a.code === artCode) || null;
                 }
             }
-
             const sr = await fetch(`${apiBase}/settings/company`);
             const settings = sr.ok ? await sr.json() : {};
             const dr = await fetch(`${apiBase}/categories/descriptions`);
             const taxonomy = dr.ok ? await dr.json() : [];
 
             closeLabelPrintOverlay();
-
-            // Prova RAW TSPL; fallback a browser print
-            const articleId = article?.id;
             const qty = taskData.order.qty || 1;
-            if (articleId && window.printArticleLabel) {
-                const ok = await window.printArticleLabel(articleId, qty, lotto, scad);
-                if (ok) return;
-            }
-            // fallback
-            doLabelPrint(taskData.order, article, settings, taxonomy, lotto, scad);
+            if (!article?.id) throw new Error('Articolo non trovato in anagrafica');
+            const result = await window.printArticleLabel(article.id, qty, lotto, scad, { silent: true });
+            if (result !== true) throw new Error('Stampante etichette non raggiungibile');
+            showPrintToast(`✅ ${qty} etichett${qty === 1 ? 'a inviata' : 'e inviate'} alla stampante`, false);
+            closeLabelPrintOverlay();
         } catch (e) {
             console.error('[labelPrint]', e);
-            if (errEl) { errEl.textContent = `❌ ${e.message}`; errEl.style.display = 'block'; }
+            if (errEl) { errEl.textContent = `❌ Stampa diretta fallita: ${e.message}`; errEl.style.display = 'block'; }
             if (btn) { btn.disabled = false; btn.textContent = '🏷️ Stampa'; }
         }
     }
@@ -1548,8 +1937,8 @@
         if (!_labelPrintTaskData) return;
         const lotto = (document.getElementById('labelPrintLotto')?.value || '').trim();
         const scad  = (document.getElementById('labelPrintScad')?.value  || '').trim();
-        const btn = document.getElementById('labelPreviewBtn');
-        if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+        const btn = document.getElementById('labelPrintConfirmBtn');
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ Anteprima...'; }
 
         try {
             const apiBase = `http://${window.location.hostname}:${window.location.port || 5000}/api`;
@@ -1561,11 +1950,11 @@
                 });
                 if (r.ok) { const list = await r.json(); article = list.find(a => a.code === artCode) || null; }
             }
+            if (!article?.id) throw new Error('Articolo non trovato in anagrafica');
             const sr = await fetch(`${apiBase}/settings/company`);
             const settings = sr.ok ? await sr.json() : {};
             const dr = await fetch(`${apiBase}/categories/descriptions`);
             const taxonomy = dr.ok ? await dr.json() : [];
-
             const htmlDoc = buildLabelHtmlDoc(_labelPrintTaskData.order, article, settings, taxonomy, lotto, scad, 1, true);
 
             const ov = document.getElementById(previewOverlayId);
@@ -1579,14 +1968,14 @@
         } catch (e) {
             alert('Anteprima non disponibile: ' + e.message);
         } finally {
-            if (btn) { btn.disabled = false; btn.textContent = '👁️ Anteprima'; }
+            if (btn) { btn.disabled = false; btn.textContent = '🏷️ Stampa'; }
         }
     }
 
-    function doLabelPrint(order, article, settings, taxonomy, lotto, scad) {
+    function doLabelPrint(order, article, settings, taxonomy, lotto, scad, targetWindow) {
         const qty = order.qty || 1;
         const html = buildLabelHtmlDoc(order, article, settings, taxonomy, lotto, scad, qty, false);
-        const w = window.open('', '_blank', 'width=520,height=720');
+        const w = targetWindow || window.open('', '_blank', 'width=520,height=720');
         if (!w) { alert('Impossibile aprire la finestra di stampa. Abilita i popup per questo sito.'); return; }
         w.document.open();
         w.document.write(html);
@@ -1638,7 +2027,7 @@
                </div>`
             : `<div class="lbl-producer-block"><div class="lbl-producer"><span class="lbl-producer-title">Prodotto e confezionato da:</span><span class="lbl-producer-content"><strong>${escapeHtml(companyFull)}</strong>${companyDetails}</span></div>${companyContactRows}</div>`;
 
-        const logoSrc = settings.logoThermalUrl || settings.logoUrl || '';
+        const logoSrc = normalizePrintableAssetUrl(settings.logoThermalUrl || settings.logoUrl || '');
         const logoHtml = logoSrc ? `<img src="${logoSrc}" alt="Logo" class="lbl-logo">` : '';
 
         const nutRows = [
@@ -1676,7 +2065,7 @@
                 <div class="lbl-details">
                     ${nutHtml}
                     ${allergensLabel ? `<div class="lbl-allergens"><strong>Allergeni:</strong> ${escapeHtml(allergensLabel)}.</div>` : ''}
-                    <div class="lbl-humidity">Umidità: 15% max — Merce soggetta a calo naturale</div>
+                    <div class="lbl-humidity">Umidità: 15% max — Merce soggetta a calo naturale<br>Conservare in luogo fresco e asciutto</div>
                     ${produttoreRow}
                     <div class="lbl-lot">
                         ${lotto ? `<span>Lotto: <strong>${escapeHtml(lotto)}</strong></span>` : ''}
@@ -1718,7 +2107,7 @@
   body { width: 95.6mm; margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; font-size: 8.5pt; color: #000; background: #fff; }
   .label-page { width: 95.6mm; height: 146.4mm; padding: 2mm; display: flex; flex-direction: column; overflow: hidden; }
   .lbl-header { text-align: center; }
-  .lbl-logo { display: block; max-height: 25mm; max-width: 82mm; width: auto; height: auto; margin: 0 auto 13mm; }
+    .lbl-logo { display: block; max-height: 34mm; max-width: 92mm; width: auto; height: auto; margin: 0 auto 9mm; }
   .lbl-name { font-size: 18pt; font-weight: 900; text-align: center; margin: 1.5mm 0 1mm; text-transform: uppercase; line-height: 1.15; }
   .lbl-description { font-size: 12pt; font-weight: 700; text-align: center; margin: 0.8mm 0; line-height: 1.2; }
   .lbl-weight { font-size: 22.5pt; font-weight: 700; text-align: center; margin-top: 11.5mm; line-height: 1; }
@@ -1756,6 +2145,8 @@ ${autoPrintScript}
     window.showLabelPreview       = showLabelPreview;
     window.buildLabelHtmlDoc      = buildLabelHtmlDoc;
     window.sendPrintJobPublic     = sendPrintJob;
+    window.sendPreviewRaster      = sendPreviewRaster;
+    window.sendHtmlRaster         = sendHtmlRaster;
     window.showReceiptPreview     = showReceiptPreview;
     const COMPLETE_MODAL_ID = '__completeInternalOrderModal';
     let _completeOnSuccess = null;

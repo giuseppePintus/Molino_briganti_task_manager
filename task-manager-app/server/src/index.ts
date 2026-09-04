@@ -78,6 +78,7 @@ import printersRoutes from './routes/printers';
 import setupBackupMiddleware from './middleware/backupMiddleware';
 import { authMiddleware } from './middleware/auth';
 import BackupService from './services/backupService';
+import { initPuppeteer, closePuppeteer } from './services/printService';
 import prisma from './lib/prisma';
 import { initializeDatabaseIfEmpty } from './services/databaseInit';
 import { migrateJsonToDb } from './services/jsonToDbMigration';
@@ -101,7 +102,7 @@ if (!fs.existsSync(uploadsDir)) {
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 
 // Disable caching for all static files
 app.use((req, res, next) => {
@@ -244,6 +245,14 @@ httpServer.listen(PORT, undefined, async () => {
     await prisma.$connect();
     console.log('✅ Database connected successfully');
 
+    // Inizializza Puppeteer browser pool per rasterizzazione HTML
+    try {
+      await initPuppeteer();
+      console.log('✅ Puppeteer browser pool initialized');
+    } catch (err: any) {
+      console.warn('⚠️  Puppeteer non disponibile, rasterizzazione HTML disabilitata:', err.message);
+    }
+
     // Aggiungi i campi mancanti a Trip se non esistono
     console.log('🔧 Checking Trip table schema...');
     try {
@@ -345,6 +354,7 @@ httpServer.listen(PORT, undefined, async () => {
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
+  await closePuppeteer();
   await prisma.$disconnect();
   process.exit(0);
 });

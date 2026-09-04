@@ -16,6 +16,9 @@ RUN apt-get update && apt-get install -y \
     libgif-dev \
     librsvg2-dev \
     mariadb-client \
+    chromium \
+    chromium-common \
+    fonts-liberation \
     && rm -rf /var/lib/apt/lists/*
 
 # Installa Python packages necessari per PDF extraction

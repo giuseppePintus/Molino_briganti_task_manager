@@ -117,6 +117,7 @@ const printers_1 = __importDefault(require("./routes/printers"));
 const backupMiddleware_1 = __importDefault(require("./middleware/backupMiddleware"));
 const auth_2 = require("./middleware/auth");
 const backupService_1 = __importDefault(require("./services/backupService"));
+const printService_1 = require("./services/printService");
 const prisma_1 = __importDefault(require("./lib/prisma"));
 const databaseInit_1 = require("./services/databaseInit");
 const jsonToDbMigration_1 = require("./services/jsonToDbMigration");
@@ -136,7 +137,7 @@ if (!fs.existsSync(uploadsDir)) {
 }
 // Middleware
 app.use((0, cors_1.default)());
-app.use(express_1.default.json());
+app.use(express_1.default.json({ limit: '10mb' }));
 // Disable caching for all static files
 app.use((req, res, next) => {
     res.set('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
@@ -265,6 +266,14 @@ httpServer.listen(PORT, undefined, () => __awaiter(void 0, void 0, void 0, funct
         // Connessione Prisma
         yield prisma_1.default.$connect();
         console.log('✅ Database connected successfully');
+        // Inizializza Puppeteer browser pool per rasterizzazione HTML
+        try {
+            yield (0, printService_1.initPuppeteer)();
+            console.log('✅ Puppeteer browser pool initialized');
+        }
+        catch (err) {
+            console.warn('⚠️  Puppeteer non disponibile, rasterizzazione HTML disabilitata:', err.message);
+        }
         // Aggiungi i campi mancanti a Trip se non esistono
         console.log('🔧 Checking Trip table schema...');
         try {
@@ -360,6 +369,7 @@ httpServer.listen(PORT, undefined, () => __awaiter(void 0, void 0, void 0, funct
 }));
 // Graceful shutdown
 process.on('SIGINT', () => __awaiter(void 0, void 0, void 0, function* () {
+    yield (0, printService_1.closePuppeteer)();
     yield prisma_1.default.$disconnect();
     process.exit(0);
 }));

@@ -29,6 +29,7 @@
         "pdf-parse": "^2.4.5",
         "pdf-text": "^0.4.0",
         "pdfjs-dist": "^5.4.449",
+        "puppeteer": "^23.0.0",
         "qrcode": "^1.5.4",
         "socket.io": "^4.8.1",
         "sqlite3": "^5.1.7",
