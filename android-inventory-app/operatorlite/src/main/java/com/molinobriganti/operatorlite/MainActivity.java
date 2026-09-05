@@ -5133,7 +5133,11 @@ public class MainActivity extends Activity {
                 try {
                     // Costruisce JSON delle righe per il draft endpoint
                     JSONObject body = new JSONObject();
-                    body.put("clientName", "Banco");
+                    body.put("clientName", getTabletLabel());
+                    body.put("tabletIp", getLocalIp());
+                    if (currentUsername != null && !currentUsername.trim().isEmpty()) {
+                        body.put("operatorName", currentUsername);
+                    }
                     JSONArray lines = new JSONArray();
                     for (OrderLine line : orderLines) {
                         JSONObject l = new JSONObject();
@@ -5172,7 +5176,7 @@ public class MainActivity extends Activity {
         });
     }
 
-    private void showDraftWebViewDialog(String htmlContent, String baseUrl) {
+    private void showDraftWebViewDialog(final String htmlContent, String baseUrl) {
         android.webkit.WebView webView = new android.webkit.WebView(this);
         webView.getSettings().setJavaScriptEnabled(false);
         webView.getSettings().setBuiltInZoomControls(false);
@@ -5187,8 +5191,8 @@ public class MainActivity extends Activity {
             .setView(webView)
             .setPositiveButton("Stampa", new android.content.DialogInterface.OnClickListener() {
                 @Override public void onClick(android.content.DialogInterface d, int w) {
-                    // Solo ora crea l'ordine e scala il magazzino
-                    confirmInstantOrder();
+                    // Solo ora crea l'ordine e scala il magazzino; stampa lo stesso HTML mostrato in anteprima
+                    confirmInstantOrder(htmlContent);
                 }
             })
             .setNegativeButton("Annulla", null)
@@ -5318,7 +5322,47 @@ public class MainActivity extends Activity {
         return sb.toString();
     }
 
+    // Fallback (nessun HTML di anteprima disponibile): usa il vecchio percorso ESC/POS diretto
+    // Identifica il tablet corrente (IP locale WiFi) per etichettare gli ordini rapidi al posto di "Banco"
+    private String getTabletLabel() {
+        String ip = getLocalIp();
+        return ip != null ? "Tablet " + ip : "Tablet OperatorLite";
+    }
+
+    // IP locale WiFi grezzo, usato dal server per risolvere il nome amichevole dal registro tablet
+    private String getLocalIp() {
+        try {
+            android.net.wifi.WifiManager wm = (android.net.wifi.WifiManager) getApplicationContext().getSystemService(android.content.Context.WIFI_SERVICE);
+            if (wm != null) {
+                int ip = wm.getConnectionInfo().getIpAddress();
+                if (ip != 0) {
+                    return String.format(java.util.Locale.US, "%d.%d.%d.%d",
+                        (ip & 0xff), (ip >> 8 & 0xff), (ip >> 16 & 0xff), (ip >> 24 & 0xff));
+                }
+            }
+        } catch (Exception ignored) {}
+        // Fallback: enumera le interfacce di rete se WifiManager non ha risolto l'IP
+        try {
+            java.util.Enumeration<java.net.NetworkInterface> ifaces = java.net.NetworkInterface.getNetworkInterfaces();
+            while (ifaces.hasMoreElements()) {
+                java.net.NetworkInterface iface = ifaces.nextElement();
+                java.util.Enumeration<java.net.InetAddress> addrs = iface.getInetAddresses();
+                while (addrs.hasMoreElements()) {
+                    java.net.InetAddress addr = addrs.nextElement();
+                    if (!addr.isLoopbackAddress() && addr instanceof java.net.Inet4Address) {
+                        return addr.getHostAddress();
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
     private void confirmInstantOrder() {
+        confirmInstantOrder(null);
+    }
+
+    private void confirmInstantOrder(final String previewHtml) {
         if (token == null || token.trim().isEmpty()) {
             toast(R.string.login_required);
             return;
@@ -5335,7 +5379,7 @@ public class MainActivity extends Activity {
             public void run() {
                 try {
                     JSONObject payload = new JSONObject();
-                    payload.put("clientName", "Banco");
+                    payload.put("clientName", getTabletLabel());
                     if (currentUserId > 0) {
                         payload.put("assignedOperatorId", currentUserId);
                     } else {
@@ -5364,14 +5408,20 @@ public class MainActivity extends Activity {
                     try { orderIdTmp = result.getJSONObject("order").getInt("id"); } catch (Exception ignored) {}
                     final int orderId = orderIdTmp;
 
-                    // Stampa best-effort dopo la conferma
+                    // Stampa best-effort dopo la conferma: usa rasterizzazione server-side (Puppeteer)
+                    // dello stesso HTML mostrato in anteprima, per garantire coerenza anteprima/stampa
                     if (orderId > 0) {
                         try {
                             JSONObject printPayload = new JSONObject();
                             printPayload.put("role", "receipt_80mm_ufficio");
-                            printPayload.put("jobType", "pickup_order");
                             JSONObject data = new JSONObject();
-                            data.put("orderId", orderId);
+                            if (previewHtml != null && !previewHtml.trim().isEmpty()) {
+                                printPayload.put("jobType", "html_raster");
+                                data.put("contentHtml", previewHtml);
+                            } else {
+                                printPayload.put("jobType", "pickup_order");
+                                data.put("orderId", orderId);
+                            }
                             printPayload.put("data", data);
                             httpPostJson(API_URL + "/printers/job", printPayload, token);
                         } catch (Exception printEx) {

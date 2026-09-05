@@ -1414,6 +1414,7 @@
     // API generica per costruire scontrini da altre pagine (es. instant-orders)
     window.thermalPrintAPI = {
         openReceipt: openReceipt,
+        printReceiptRaw: printReceiptRaw,
         brandHeaderHtml: brandHeaderHtml,
         infoBoxHtml: infoBoxHtml,
         productHtml: productHtml,
@@ -1807,7 +1808,8 @@
             html += footerHtml();
             const titleRitiro = 'Ritiro ' + cliente;
             showReceiptPreview(titleRitiro, html, function() {
-                printReceiptRaw(titleRitiro, html, { jobType: 'task_order', data: { taskId: Number(taskId) } }).then(function() {
+                // Rasterizzazione server-side (Puppeteer) per coerenza preview/stampa
+                printReceiptRaw(titleRitiro, html, null).then(function() {
                     markTaskPrinted(taskId).catch(function() {});
                 }).catch(function(error) {
                     showPrintToast('❌ Stampa diretta 80mm fallita: ' + error.message, true);
@@ -1837,7 +1839,8 @@
             html += footerHtml();
             const titleTask = 'Compito ' + task.id;
             showReceiptPreview(titleTask, html, function() {
-                printReceiptRaw(titleTask, html, { jobType: 'task_order', data: { taskId: Number(taskId) } }).then(function() {
+                // Rasterizzazione server-side (Puppeteer) per coerenza preview/stampa
+                printReceiptRaw(titleTask, html, null).then(function() {
                     markTaskPrinted(taskId).catch(function() {});
                 }).catch(function(error) {
                     showPrintToast('❌ Stampa diretta 80mm fallita: ' + error.message, true);

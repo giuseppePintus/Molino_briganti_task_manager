@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { authMiddleware } from '../middleware/auth';
 import prisma from '../lib/prisma';
-import { buildTsplLabelPreviewHtml, executePrintJob, rasterizeHtmlToPng, PrintJobRequest } from '../services/printService';
+import { buildTsplLabelPreviewHtml, executePrintJob, rasterizeHtmlToPng, parseSettingValue, resolveTabletNameByIp, PrintJobRequest } from '../services/printService';
 import * as jwt from 'jsonwebtoken';
 
 const router = Router();
@@ -42,19 +42,24 @@ router.post('/receipt-preview/draft', async (req: Request, res: Response) => {
   if (!token) return res.status(401).send('Token mancante');
   try { jwt.verify(token, process.env.JWT_SECRET || 'secret'); } catch { return res.status(401).send('Token non valido'); }
 
-  const { clientName, operatorName, lines } = req.body as {
+  const { clientName, operatorName, tabletIp, lines } = req.body as {
     clientName?: string;
     operatorName?: string;
+    tabletIp?: string;
     lines: Array<{ articleName: string; articleCode: string; quantity: number; positionCode?: string; batch?: string }>;
   };
 
   if (!Array.isArray(lines) || !lines.length) return res.status(400).send('lines obbligatorio');
 
   try {
+    // Se l'app invia l'IP locale, risolve il nome amichevole dal registro tablet
+    const resolvedTabletName = await resolveTabletNameByIp(tabletIp);
+    const displayName = resolvedTabletName || clientName || 'Banco';
+
     const settings = await prisma.companySettings.findMany({
       where: { key: { in: ['logoThermalUrl', 'logoUrl', 'businessName', 'companyFullName'] } },
     });
-    const gs = (k: string) => settings.find(s => s.key === k)?.value || '';
+    const gs = (k: string) => parseSettingValue(settings.find(s => s.key === k)?.value);
     const rawLogo = gs('logoThermalUrl') || gs('logoUrl') || '/images/logo INSEGNA.png';
     const serverBase = req.protocol + '://' + req.get('host');
     const logoUrl = rawLogo.startsWith('http') || rawLogo.startsWith('data:')
@@ -91,7 +96,7 @@ router.post('/receipt-preview/draft', async (req: Request, res: Response) => {
 </head><body>
 <img class="rcpt-logo" src="${logoUrl}" alt="Logo" onerror="this.style.display='none'">
 <div class="rcpt-title">ORDINE RAPIDO</div>
-<div class="rcpt-sub">${clientName || 'Banco'}</div>
+<div class="rcpt-sub">${displayName}</div>
 <div class="rcpt-info">
   <div class="rcpt-info-row"><span class="lbl">Data</span><span class="val">${fmtDate(now)}</span></div>
   <div class="rcpt-info-row"><span class="lbl">Ora</span><span class="val">${fmtTime(now)}</span></div>
@@ -103,7 +108,7 @@ ${prodHtml}
   <span class="lbl">TOTALE</span>
   <span class="val">${totalColli} colli</span>
 </div>
-<div class="rcpt-footer">Anteprima — non ancora confermato</div>
+<div class="rcpt-footer">Stampato ${fmtDate(now)} ${fmtTime(now)}</div>
 </body></html>`;
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -141,7 +146,7 @@ router.get('/receipt-preview/order/:orderId', async (req: Request, res: Response
     const settings = await prisma.companySettings.findMany({
       where: { key: { in: ['logoThermalUrl', 'logoUrl', 'businessName', 'companyFullName'] } },
     });
-    const gs = (k: string) => settings.find(s => s.key === k)?.value || '';
+    const gs = (k: string) => parseSettingValue(settings.find(s => s.key === k)?.value);
     const rawLogo2 = gs('logoThermalUrl') || gs('logoUrl') || '/images/logo INSEGNA.png';
     const serverBase2 = req.protocol + '://' + req.get('host');
     const logoUrl = rawLogo2.startsWith('http') || rawLogo2.startsWith('data:')
@@ -222,7 +227,7 @@ ${prodHtml}
   <span class="lbl">TOTALE</span>
   <span class="val">${totalColli} colli<br>${totalKg.toFixed(1)} kg</span>
 </div>
-<div class="rcpt-footer">Anteprima — ${fmtDate(dt)} ${fmtTime(dt)}</div>
+<div class="rcpt-footer">Stampato ${fmtDate(dt)} ${fmtTime(dt)}</div>
 </body></html>`;
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');

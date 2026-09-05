@@ -4,6 +4,21 @@ import * as path from 'path';
 import { createCanvas, loadImage } from 'canvas';
 import prisma from '../lib/prisma';
 
+// Risolve il nome amichevole del tablet (da tablet-deploy-management.html) a partire dal suo IP locale
+export async function resolveTabletNameByIp(ip: string | undefined | null): Promise<string | null> {
+  if (!ip) return null;
+  try {
+    const setting = await prisma.companySettings.findUnique({ where: { key: 'tabletDeployRegistry' } });
+    if (!setting?.value) return null;
+    const registry = JSON.parse(setting.value);
+    const tablets = Array.isArray(registry?.tablets) ? registry.tablets : [];
+    const match = tablets.find((t: any) => t.shadowIp === ip || t.prodIp === ip);
+    return match?.name || null;
+  } catch {
+    return null;
+  }
+}
+
 // ─── Browser pool (Puppeteer) ─────────────────────────────────────
 
 let puppeteerInstance: any = null;
@@ -267,7 +282,7 @@ function escapeHtml(s: string): string {
     .replace(/"/g, '&quot;');
 }
 
-function parseSettingValue(value: string | null | undefined): string {
+export function parseSettingValue(value: string | null | undefined): string {
   if (!value) return '';
   try {
     const parsed = JSON.parse(value);
