@@ -16,6 +16,7 @@ const express_1 = require("express");
 const tasksController_1 = require("../controllers/tasksController");
 const auth_1 = require("../middleware/auth");
 const prisma_1 = __importDefault(require("../lib/prisma"));
+const packagingService_1 = require("../services/packagingService");
 const router = (0, express_1.Router)();
 const tasksController = new tasksController_1.TasksController();
 // All routes require authentication
@@ -135,7 +136,7 @@ router.post('/internal-order', (req, res) => __awaiter(void 0, void 0, void 0, f
  * - Marca il task come completato.
  */
 router.post('/:id/complete-internal-order', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
+    var _a, _b;
     try {
         const user = req.user;
         if (!user)
@@ -235,6 +236,11 @@ router.post('/:id/complete-internal-order', (req, res) => __awaiter(void 0, void
                 createdBy: user.id
             }
         });
+        const packagingResult = yield (0, packagingService_1.consumePackagingForLoad)(article.id, qty, {
+            reason: `ORDINE_INTERNO ${articleCode}`,
+            username: user.username,
+            useContainer: (_b = req.body) === null || _b === void 0 ? void 0 : _b.useContainer,
+        });
         // Rimuovi snooze (merce arrivata)
         try {
             yield prisma_1.default.$executeRawUnsafe('UPDATE Inventory SET snoozedAt = NULL, snoozedAtStock = NULL WHERE articleId = ?', article.id);
@@ -265,7 +271,8 @@ router.post('/:id/complete-internal-order', (req, res) => __awaiter(void 0, void
             task: updated,
             articleId: article.id,
             addedQuantity: qty,
-            positionCode: pos
+            positionCode: pos,
+            packaging: packagingResult
         });
     }
     catch (e) {

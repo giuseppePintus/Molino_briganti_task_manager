@@ -1,25 +1,15 @@
-import { PrismaClient } from '@prisma/client';
+import Database from 'better-sqlite3';
 
-const prisma = new PrismaClient({
-  datasources: {
-    db: {
-      url: 'file:///share/Container/task-manager-app/server/prisma/data/tasks.db'
-    }
-  }
-});
+const database = new Database('/share/Container/task-manager-app/server/prisma/data/tasks.db');
 
 async function deleteSpuriousArticle() {
   try {
-    // Delete spurious article with code 'Codice'
-    const deleted = await prisma.article.deleteMany({
-      where: { code: 'Codice' }
-    });
-    
-    console.log(`✅ Articoli eliminati: ${deleted.count}`);
+    const deleted = database.prepare('DELETE FROM Article WHERE code = ?').run('Codice');
+    console.log(`✅ Articoli eliminati: ${deleted.changes}`);
   } catch (error: any) {
     console.error('❌ Errore:', error.message);
   } finally {
-    await prisma.$disconnect();
+    database.close();
   }
 }
 

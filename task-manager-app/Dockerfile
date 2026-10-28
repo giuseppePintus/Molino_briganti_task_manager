@@ -1,12 +1,11 @@
 # Ibrido Dockerfile - node_modules dentro l'immagine, dist/ compilato nel build
-FROM node:20-slim
+FROM node:22-slim
 
 WORKDIR /app
 
-# Installa dipendenze per moduli nativi (come canvas) su Debian + Python per PDF extraction + MariaDB client per backup
+# Installa dipendenze per moduli nativi (come canvas) su Debian + MariaDB client per backup
 RUN apt-get update && apt-get install -y \
     python3 \
-    python3-pip \
     make \
     g++ \
   adb \
@@ -21,29 +20,23 @@ RUN apt-get update && apt-get install -y \
     fonts-liberation \
     && rm -rf /var/lib/apt/lists/*
 
-# Installa Python packages necessari per PDF extraction
-RUN pip3 install --no-cache-dir --break-system-packages pdfplumber pandas
-
 # Crea symlink python -> python3 per compatibilità
 RUN ln -s /usr/bin/python3 /usr/bin/python
 
 # Copia package.json e package-lock.json
 COPY package*.json ./
 
+# URL fittizio solo durante il build; la configurazione runtime arriva dall'env-file
+ARG DATABASE_URL=mysql://localhost:3306/prisma_build
+
 # Copia schema prisma
 COPY server/prisma/ ./server/prisma/
+COPY prisma.config.ts ./
 
-# Copia .env
-COPY server/.env ./
+# Installa dipendenze dal lockfile con cache temporanea isolata
+RUN npm ci --no-audit --no-fund --cache=/tmp/npm-cache-prisma7 && rm -rf /tmp/npm-cache-prisma7
 
-# Installa dipendenze
-RUN npm install
-
-# Installa prisma@6.19.0 esplicitamente (NOT prisma@7 che ha sintassi diversa!)
-RUN npm install prisma@6.19.0
-
-# Genera il client Prisma PRIMA di copiare dist
-# Questo è CRITICO: serve lo schema.prisma che è già stato copiato sopra
+# Genera il client Prisma per il runtime CommonJS
 RUN npx prisma generate --schema=./server/prisma/schema.prisma
 
 # Copia public/ (statico)

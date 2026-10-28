@@ -1,11 +1,11 @@
-import { PrismaClient } from '@prisma/client';
+import type { createApplicationPrismaClient } from '../lib/createPrismaClient';
 import bcryptjs from 'bcryptjs';
 import { execSync } from 'child_process';
 
 /**
  * Crea le tabelle del database se non esistono
  */
-export async function createTablesIfNotExist(prisma: PrismaClient) {
+export async function createTablesIfNotExist(prisma: ReturnType<typeof createApplicationPrismaClient>) {
   try {
     // Se stiamo usando MySQL/MariaDB, Prisma gestisce automaticamente le tabelle
     const databaseUrl = process.env.DATABASE_URL || '';
@@ -414,7 +414,7 @@ export async function createTablesIfNotExist(prisma: PrismaClient) {
 /**
  * Inizializza il database con utenti di default se non esiste nessun utente
  */
-export async function initializeDatabaseIfEmpty(prisma: PrismaClient) {
+export async function initializeDatabaseIfEmpty(prisma: ReturnType<typeof createApplicationPrismaClient>) {
   try {
     // Prima crea le tabelle se non esistono
     await createTablesIfNotExist(prisma);

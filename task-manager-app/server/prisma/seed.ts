@@ -1,10 +1,10 @@
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '../src/lib/createPrismaClient';
 import bcryptjs from 'bcryptjs';
 import dotenv from 'dotenv';
 
 dotenv.config({ path: '../.env' });
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 // Dati casuali per generare task
 const taskTitles = [

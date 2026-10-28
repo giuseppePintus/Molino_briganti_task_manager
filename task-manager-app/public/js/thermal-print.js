@@ -1223,8 +1223,16 @@
     }
 
     async function getArticleLabelHtml(articleId, quantity, lot, expiry) {
+        const image = await getArticleLabelRasterImage(articleId, quantity, lot, expiry);
+        return `<!doctype html><html><head><meta charset="UTF-8"><style>
+            html, body { margin: 0; padding: 0; background: #fff; }
+            img { display: block; width: 100%; height: auto; }
+        </style></head><body><img src="${image}" alt="Anteprima etichetta"></body></html>`;
+    }
+
+    async function getArticleLabelRasterImage(articleId, quantity, lot, expiry) {
         const data = await getArticleLabelData(articleId, quantity);
-        return buildLabelHtmlDoc(data.order, data.article, data.settings, data.taxonomy, lot || '', expiry || '', 1, true);
+        return buildLabelRasterImage(data.order, data.article, data.settings, data.taxonomy, lot || '', expiry || '', 1200);
     }
 
     function drawWrappedCanvasText(ctx, text, x, y, maxWidth, lineHeight, maxLines) {
@@ -1243,7 +1251,7 @@
         }
         if (current && lines.length < maxLines) lines.push(current);
         lines.forEach(function (line, index) { ctx.fillText(line, x, y + index * lineHeight); });
-        return y + lines.length * lineHeight;
+        return lines.length;
     }
 
     function drawCenteredCanvasText(ctx, text, x, y, width) {
@@ -1302,14 +1310,17 @@
 
         ctx.textAlign = 'center';
         ctx.font = '900 ' + px(26.5) + 'px Arial, Helvetica, sans-serif';
-        drawCenteredCanvasText(ctx, name.toUpperCase(), margin, px(182), contentWidth);
-        ctx.font = '700 ' + px(15) + 'px Arial, Helvetica, sans-serif';
+        const nameLines = drawWrappedCanvasText(ctx, name.toUpperCase(), width / 2, px(182), contentWidth, px(28), 2);
+        const compactHeader = nameLines > 1;
+        const descriptionStart = compactHeader ? 240 : 220;
+        const descriptionStep = compactHeader ? 17 : 22;
+        ctx.font = '700 ' + px(compactHeader ? 12 : 15) + 'px Arial, Helvetica, sans-serif';
         hierarchyDescriptions.slice(0, 2).forEach(function (line, index) {
-            drawCenteredCanvasText(ctx, String(line).toUpperCase(), margin, px(220 + index * 22), contentWidth);
+            drawCenteredCanvasText(ctx, String(line).toUpperCase(), margin, px(descriptionStart + index * descriptionStep), contentWidth);
         });
         if (order.weightPerCollo > 0) {
-            ctx.font = '700 ' + px(32) + 'px Arial, Helvetica, sans-serif';
-            drawCenteredCanvasText(ctx, order.weightPerCollo + ' Kg ℮', margin, px(273), contentWidth);
+            ctx.font = '700 ' + px(compactHeader ? 26 : 32) + 'px Arial, Helvetica, sans-serif';
+            drawCenteredCanvasText(ctx, order.weightPerCollo + ' Kg ℮', margin, px(compactHeader ? 280 : 273), contentWidth);
         }
 
         let y = px(318);
@@ -1360,26 +1371,35 @@
         const companyAddr = [settings.companyAddress, settings.companyCAP && settings.companyCity ? settings.companyCAP + ' ' + settings.companyCity : (settings.companyCity || ''), settings.companyProvince ? '(' + settings.companyProvince + ')' : ''].filter(Boolean).join(', ');
         const supplierRea = article?.supplierRea || '';
         const supplierName = article?.supplierName || '';
-        y += px(26);
-        ctx.beginPath(); ctx.moveTo(margin, y); ctx.lineTo(width - margin, y); ctx.stroke();
-        y += px(8);
-        ctx.font = '700 ' + px(8) + 'px Arial, Helvetica, sans-serif';
+        const producerRows = [];
         if (supplierRea) {
-            ctx.fillText('Prodotto dalla ditta: ' + supplierName + ' - REA ' + supplierRea, width / 2, y);
-            y += px(13);
-            ctx.fillText('Confezionato da: ' + companyFull, width / 2, y);
-        } else {
-            ctx.fillText('Prodotto e confezionato da: ' + companyFull, width / 2, y);
+            producerRows.push({ text: 'Prodotto dalla ditta: ' + supplierName + ' - REA ' + supplierRea, size: 7, weight: 700 });
         }
-        y += px(13);
-        if (companyAddr) ctx.fillText(companyAddr, width / 2, y);
-        y += px(18);
+        producerRows.push({
+            text: supplierRea ? 'Confezionato da: ' + companyFull : 'Prodotto e confezionato da: ' + companyFull,
+            size: 7,
+            weight: 700,
+        });
+        if (companyAddr) producerRows.push({ text: companyAddr, size: 7, weight: 700 });
         const phones = [settings.companyPhone ? 'Tel. ' + settings.companyPhone : '', settings.companyMobile ? 'Cell. ' + settings.companyMobile : ''].filter(Boolean).join(' - ');
-        if (phones) { ctx.font = '900 ' + px(11) + 'px Arial, Helvetica, sans-serif'; ctx.fillText(phones, width / 2, y); y += px(19); }
-        if (settings.companyEmail) { ctx.font = '900 ' + px(11) + 'px Arial, Helvetica, sans-serif'; ctx.fillText(settings.companyEmail, width / 2, y); y += px(20); }
-        if (settings.companyWebsite) { ctx.font = '900 ' + px(15) + 'px Arial, Helvetica, sans-serif'; ctx.fillText(settings.companyWebsite, width / 2, y); }
+        if (phones) producerRows.push({ text: phones, size: 9, weight: 900 });
+        if (settings.companyEmail) producerRows.push({ text: settings.companyEmail, size: 9, weight: 900 });
+        if (settings.companyWebsite) producerRows.push({ text: settings.companyWebsite, size: 12, weight: 900 });
 
-        y = height - px(37);
+        const footerY = height - px(37);
+        let producerY = footerY - px(6);
+        for (let index = producerRows.length - 1; index >= 0; index--) {
+            const row = producerRows[index];
+            const fontSize = px(row.size);
+            producerY -= fontSize;
+            ctx.font = row.weight + ' ' + fontSize + 'px Arial, Helvetica, sans-serif';
+            ctx.fillText(row.text, width / 2, producerY);
+            producerY -= px(2);
+        }
+        producerY -= px(3);
+        ctx.beginPath(); ctx.moveTo(margin, producerY); ctx.lineTo(width - margin, producerY); ctx.stroke();
+
+        y = footerY;
         ctx.beginPath(); ctx.moveTo(margin, y); ctx.lineTo(width - margin, y); ctx.stroke();
         ctx.textAlign = 'left';
         ctx.font = '900 ' + px(13) + 'px Arial, Helvetica, sans-serif';
@@ -1396,8 +1416,7 @@
         const qty = Math.max(1, Math.min(9999, Number(quantity) || 1));
         let result;
         try {
-            const data = await getArticleLabelData(articleId, qty);
-            const imageBase64 = await buildLabelRasterImage(data.order, data.article, data.settings, data.taxonomy, lot || '', expiry || '', 1200);
+            const imageBase64 = await getArticleLabelRasterImage(articleId, qty, lot, expiry);
             result = await sendPrintJob('label_4x6', 'raster', { imageBase64: imageBase64, copies: qty });
         } catch (error) {
             result = error;
@@ -1954,11 +1973,7 @@
                 if (r.ok) { const list = await r.json(); article = list.find(a => a.code === artCode) || null; }
             }
             if (!article?.id) throw new Error('Articolo non trovato in anagrafica');
-            const sr = await fetch(`${apiBase}/settings/company`);
-            const settings = sr.ok ? await sr.json() : {};
-            const dr = await fetch(`${apiBase}/categories/descriptions`);
-            const taxonomy = dr.ok ? await dr.json() : [];
-            const htmlDoc = buildLabelHtmlDoc(_labelPrintTaskData.order, article, settings, taxonomy, lotto, scad, 1, true);
+            const htmlDoc = await getArticleLabelHtml(article.id, _labelPrintTaskData.order.qty || 1, lotto, scad);
 
             const ov = document.getElementById(previewOverlayId);
             if (!ov) return;
@@ -2150,6 +2165,7 @@ ${autoPrintScript}
     window.sendPrintJobPublic     = sendPrintJob;
     window.sendPreviewRaster      = sendPreviewRaster;
     window.sendHtmlRaster         = sendHtmlRaster;
+    window.getArticleLabelHtml    = getArticleLabelHtml;
     window.showReceiptPreview     = showReceiptPreview;
     const COMPLETE_MODAL_ID = '__completeInternalOrderModal';
     let _completeOnSuccess = null;

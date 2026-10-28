@@ -114,7 +114,7 @@ const customers_1 = __importDefault(require("./routes/customers"));
 const wireguard_1 = __importDefault(require("./routes/wireguard"));
 const debug_1 = __importDefault(require("./routes/debug"));
 const printers_1 = __importDefault(require("./routes/printers"));
-const backupMiddleware_1 = __importDefault(require("./middleware/backupMiddleware"));
+const packaging_1 = __importDefault(require("./routes/packaging"));
 const auth_2 = require("./middleware/auth");
 const backupService_1 = __importDefault(require("./services/backupService"));
 const printService_1 = require("./services/printService");
@@ -167,6 +167,7 @@ app.use('/api/customers', customers_1.default);
 app.use('/api/wireguard', wireguard_1.default);
 app.use('/api/debug', debug_1.default);
 app.use('/api/printers', printers_1.default);
+app.use('/api/packaging', packaging_1.default);
 // Inline endpoint - List all HTML pages in public dir (for Indice feature)
 app.get('/api/pages', (req, res) => {
     try {
@@ -346,8 +347,6 @@ httpServer.listen(PORT, undefined, () => __awaiter(void 0, void 0, void 0, funct
         yield (0, databaseInit_1.initializeDatabaseIfEmpty)(prisma_1.default);
         // Migrazione one-shot da JSON a DB (categorie + clienti)
         yield (0, jsonToDbMigration_1.migrateJsonToDb)();
-        // Setup backup middleware
-        (0, backupMiddleware_1.default)(prisma_1.default);
         // Attiva backup automatico ogni ora
         backupService_1.default.setupAutoBackup(60);
         // Backup iniziale

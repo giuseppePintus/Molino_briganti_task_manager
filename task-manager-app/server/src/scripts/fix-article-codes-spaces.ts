@@ -8,9 +8,9 @@
  *   npx tsx src/scripts/fix-article-codes-spaces.ts
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '../lib/createPrismaClient';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 async function main() {
   // Cerca tutti gli articoli con almeno uno spazio nel codice

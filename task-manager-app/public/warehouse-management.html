@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestione Magazzino - Molino Briganti</title>
+    <title>Magazzino Prodotti - Molino Briganti</title>
     <link rel="stylesheet" href="css/common.css">
     <link rel="stylesheet" href="css/common-styles.css">
     <link rel="stylesheet" href="css/warehouse-management-custom.css">
@@ -24,7 +24,7 @@
                     <img src="images/logo INSEGNA.png" alt="Molino Briganti Logo" class="logo-hidden">
                 </div>
                 <div class="header-title">
-                    <h1>🏭 Gestione Magazzino</h1>
+                    <h1>🏭 Magazzino Prodotti</h1>
                     <div class="user-info" id="userInfo"></div>
                 </div>
             </div>
@@ -58,7 +58,7 @@
             <button class="btn btn-settings" data-icon="⚙️" onclick="window.location.href='gestione-hub.html?from=warehouse-management'"><span>Gestione</span></button>
             <button class="btn btn-tasks" data-icon="✅" onclick="window.location.href='admin-dashboard.html'"><span>Planner Task</span></button>
             <button class="btn btn-planner" data-icon="📦" onclick="window.location.href='orders-planner.html'"><span>Planner Ordini</span></button>
-            <button class="btn btn-warehouse active" data-icon="🏭" onclick="window.location.href='warehouse-management.html'"><span>Gestione Magazzino</span></button>
+            <button class="btn btn-warehouse active" data-icon="🏭" onclick="window.location.href='warehouse-management.html'"><span>Magazzino Prodotti</span></button>
             <button class="btn btn-warning" data-icon="⚡" onclick="window.location.href='instant-orders.html'"><span>Ordini Istantanei</span></button>
         </div>
         </div><!-- /.sticky-top-bar -->
@@ -72,12 +72,17 @@
                 <div class="feature-card" id="fcGestione" onclick="showGestione()">
                     <div class="fc-tooltip">Gestisci codifiche prodotti e posizioni scaffali</div>
                     <div class="icon">📦</div>
-                    <h3>Gestione codifiche</h3>
+                    <h3>Codifiche Prodotti</h3>
                 </div>
                 <div class="feature-card" id="fcStatoMagazzino" onclick="scrollToWarehouseStatus()">
                     <div class="fc-tooltip">Monitora e aggiorna le quantità disponibili di ogni articolo</div>
                     <div class="icon">📊</div>
-                    <h3>Gestione Magazzino</h3>
+                    <h3>Magazzino Prodotti</h3>
+                </div>
+                <div class="feature-card" id="fcImballaggi" onclick="showImballaggi()">
+                    <div class="fc-tooltip">Imballaggi, colori, tipologie, misure e posizioni dedicate</div>
+                    <div class="icon">🧺</div>
+                    <h3>Magazzino imballaggi</h3>
                 </div>
                 <div class="feature-card alerts-feature-card" id="fcAvvisi" data-alerts-card onclick="showAvvisi()" style="cursor:pointer;">
                             <div class="fc-tooltip">Avvisi scorte e riordini interni, anche per articoli non in esaurimento</div>
@@ -95,7 +100,7 @@
         <!-- Warehouse Status Card -->
         <div class="card" id="statoMagazzinoCard" style="display:none;">
             <div class="warehouse-header-section">
-                <h2>📊 Gestione Magazzino</h2>
+                <h2>📊 Magazzino Prodotti</h2>
             </div>
 
             <!-- Tab schede Prodotti / Scaffali (sempre visibili quando la card è aperta) -->
@@ -233,6 +238,148 @@
                 <div class="av-empty"><div class="big-icon">⏳</div>Caricamento…</div>
             </div>
         </div>
+
+        <!-- ===== MAGAZZINO IMBALLAGGI ===== -->
+        <div id="imballaggiTabBar" style="display:none;">
+            <div class="gestione-tab-bar">
+                <button class="gestione-tab active" id="tabBtnImbElenco" onclick="switchImballaggiTab('elenco')">🧺 Imballaggi</button>
+                <button class="gestione-tab" id="tabBtnImbColori" onclick="switchImballaggiTab('colori')">🎨 Colori</button>
+                <button class="gestione-tab" id="tabBtnImbTipologie" onclick="switchImballaggiTab('tipologie')">🏷️ Tipologie</button>
+                <button class="gestione-tab" id="tabBtnImbMisure" onclick="switchImballaggiTab('misure')">📐 Misure</button>
+                <button class="gestione-tab" id="tabBtnImbPosizioni" onclick="switchImballaggiTab('posizioni')">🏗️ Posizioni</button>
+            </div>
+        </div>
+
+        <div class="card" id="imballaggiListCard" style="display:none;">
+            <div class="warehouse-header-section">
+                <h2>🧺 Magazzino Imballaggi</h2>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <span id="imbCount" style="background:#7c3aed;color:#fff;border-radius:20px;padding:2px 12px;font-size:13px;font-weight:700;">0</span>
+                    <button class="btn btn-primary btn-small" onclick="openPackagingModal(null)">➕ Nuovo imballaggio</button>
+                </div>
+            </div>
+            <div class="warehouse-search-container" style="display:flex;margin-top:12px;">
+                <input type="text" id="imbSearch" placeholder="🔍 Cerca per codice o descrizione..."
+                       class="warehouse-search-input" oninput="renderImballaggiList()">
+                <select id="imbFilterType" title="Filtra per tipologia" onchange="renderImballaggiList()"
+                        style="background:#1f2937;border:1px solid #374151;border-radius:6px;color:#e0e0e0;padding:6px 10px;font-size:14px;">
+                    <option value="">Tutte le tipologie</option>
+                </select>
+                <select id="imbFilterColor" title="Filtra per colore" onchange="renderImballaggiList()"
+                        style="background:#1f2937;border:1px solid #374151;border-radius:6px;color:#e0e0e0;padding:6px 10px;font-size:14px;">
+                    <option value="">Tutti i colori</option>
+                </select>
+            </div>
+            <div id="imbAlertsBanner" style="display:none;margin-top:12px;"></div>
+            <div id="imbShortagesBox" style="display:none;margin-top:10px;"></div>
+            <div id="imballaggiList" style="margin-top:16px;">
+                <div class="empty-state">Caricamento...</div>
+            </div>
+        </div>
+
+        <div class="card" id="imbColoriCard" style="display:none;">
+            <div class="warehouse-header-section">
+                <h2>🎨 Colori imballaggi</h2>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <span id="imbColoriCount" style="background:#7c3aed;color:#fff;border-radius:20px;padding:2px 12px;font-size:13px;font-weight:700;">0</span>
+                    <button class="btn btn-small" style="background:#7c3aed;color:#fff;" onclick="toggleImbForm('imbColoriForm')">➕ Aggiungi</button>
+                </div>
+            </div>
+            <div id="imbColoriForm" style="display:none;margin-top:14px;background:#1e293b;border-radius:8px;padding:14px;">
+                <div style="display:grid;grid-template-columns:2fr auto auto;gap:8px;align-items:end;">
+                    <div class="cargo-field" style="margin-bottom:0;">
+                        <label>Nome *</label>
+                        <input type="text" id="newColorName" placeholder="es. BIANCO" style="text-transform:uppercase;">
+                    </div>
+                    <div class="cargo-field" style="margin-bottom:0;">
+                        <label>Anteprima</label>
+                        <input type="color" id="newColorHex" value="#ffffff" title="Colore di anteprima" style="height:38px;padding:2px;">
+                    </div>
+                    <button class="btn btn-carico-confirm" style="height:38px;padding:0 16px;" onclick="submitNewColor()">✓ Crea</button>
+                </div>
+            </div>
+            <div id="imbColoriList" style="margin-top:16px;"><div class="empty-state">Caricamento...</div></div>
+        </div>
+
+        <div class="card" id="imbTipologieCard" style="display:none;">
+            <div class="warehouse-header-section">
+                <h2>🏷️ Tipologie imballaggi</h2>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <span id="imbTipologieCount" style="background:#7c3aed;color:#fff;border-radius:20px;padding:2px 12px;font-size:13px;font-weight:700;">0</span>
+                    <button class="btn btn-small" style="background:#7c3aed;color:#fff;" onclick="toggleImbForm('imbTipologieForm')">➕ Aggiungi</button>
+                </div>
+            </div>
+            <div id="imbTipologieForm" style="display:none;margin-top:14px;background:#1e293b;border-radius:8px;padding:14px;">
+                <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end;">
+                    <div class="cargo-field" style="margin-bottom:0;">
+                        <label>Nome *</label>
+                        <input type="text" id="newTypeName" placeholder="es. VALVOLA AUTOMATICA" style="text-transform:uppercase;">
+                    </div>
+                    <button class="btn btn-carico-confirm" style="height:38px;padding:0 16px;" onclick="submitNewType()">✓ Crea</button>
+                </div>
+            </div>
+            <div id="imbTipologieList" style="margin-top:16px;"><div class="empty-state">Caricamento...</div></div>
+        </div>
+
+        <div class="card" id="imbMisureCard" style="display:none;">
+            <div class="warehouse-header-section">
+                <h2>📐 Misure imballaggi</h2>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <span id="imbMisureCount" style="background:#7c3aed;color:#fff;border-radius:20px;padding:2px 12px;font-size:13px;font-weight:700;">0</span>
+                    <button class="btn btn-small" style="background:#7c3aed;color:#fff;" onclick="toggleImbForm('imbMisureForm')">➕ Aggiungi</button>
+                </div>
+            </div>
+            <div id="imbMisureForm" style="display:none;margin-top:14px;background:#1e293b;border-radius:8px;padding:14px;">
+                <div style="display:grid;grid-template-columns:repeat(4,1fr) 1.5fr auto;gap:8px;align-items:end;">
+                    <div class="cargo-field" style="margin-bottom:0;">
+                        <label>Lato 1 (mm) *</label>
+                        <input type="number" id="newSizeSide1" min="0" step="1" placeholder="450">
+                    </div>
+                    <div class="cargo-field" style="margin-bottom:0;">
+                        <label>Lato 2 (mm) *</label>
+                        <input type="number" id="newSizeSide2" min="0" step="1" placeholder="120">
+                    </div>
+                    <div class="cargo-field" style="margin-bottom:0;">
+                        <label>Altezza (mm) *</label>
+                        <input type="number" id="newSizeHeight" min="0" step="1" placeholder="700">
+                    </div>
+                    <div class="cargo-field" style="margin-bottom:0;">
+                        <label>Capacità (kg)</label>
+                        <input type="number" id="newSizeCapacity" min="0" step="0.1" placeholder="indicativa">
+                    </div>
+                    <div class="cargo-field" style="margin-bottom:0;">
+                        <label>Etichetta</label>
+                        <input type="text" id="newSizeLabel" placeholder="auto: 450x120x700">
+                    </div>
+                    <button class="btn btn-carico-confirm" style="height:38px;padding:0 16px;" onclick="submitNewSize()">✓ Crea</button>
+                </div>
+            </div>
+            <div id="imbMisureList" style="margin-top:16px;"><div class="empty-state">Caricamento...</div></div>
+        </div>
+
+        <div class="card" id="imbPosizioniCard" style="display:none;">
+            <div class="warehouse-header-section">
+                <h2>🏗️ Posizioni magazzino imballaggi</h2>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <span id="imbPosizioniCount" style="background:#7c3aed;color:#fff;border-radius:20px;padding:2px 12px;font-size:13px;font-weight:700;">0</span>
+                    <button class="btn btn-small" style="background:#7c3aed;color:#fff;" onclick="toggleImbForm('imbPosizioniForm')">➕ Aggiungi</button>
+                </div>
+            </div>
+            <div id="imbPosizioniForm" style="display:none;margin-top:14px;background:#1e293b;border-radius:8px;padding:14px;">
+                <div style="display:grid;grid-template-columns:1fr 2fr auto;gap:8px;align-items:end;">
+                    <div class="cargo-field" style="margin-bottom:0;">
+                        <label>Codice *</label>
+                        <input type="text" id="newImbPosCode" placeholder="es. IMB-A1" style="text-transform:uppercase;">
+                    </div>
+                    <div class="cargo-field" style="margin-bottom:0;">
+                        <label>Descrizione</label>
+                        <input type="text" id="newImbPosDesc" placeholder="es. Soppalco imballaggi">
+                    </div>
+                    <button class="btn btn-carico-confirm" style="height:38px;padding:0 16px;" onclick="submitNewImbPosition()">✓ Crea</button>
+                </div>
+            </div>
+            <div id="imbPosizioniList" style="margin-top:16px;"><div class="empty-state">Caricamento...</div></div>
+        </div>
     </div>
 
     <!-- ===== AVVISI: Modal ordine interno ===== -->
@@ -327,7 +474,7 @@
             <div id="shelfEntryFormSection">
                 <div class="cargo-field" id="shelfEntryArticleField">
                     <label>Articolo</label>
-                    <select id="shelfEntryArticleSelect" title="Articolo">
+                    <select id="shelfEntryArticleSelect" title="Articolo" onchange="onShelfEntryArticleChange()">
                         <option value="">-- Seleziona articolo --</option>
                     </select>
                 </div>
@@ -341,8 +488,7 @@
                     <div class="cargo-field">
                         <label>Quantità (colli)</label>
                         <input type="number" id="shelfEntryQty" min="0" value="0" title="Quantità in colli">
-                    </div>
-                    <div class="cargo-field">
+                    </div>                    <div class="cargo-field">
                         <label>Lotto</label>
                         <input type="text" id="shelfEntryBatch" placeholder="opzionale">
                     </div>
@@ -354,6 +500,12 @@
                         <label>Annotazioni</label>
                         <input type="text" id="shelfEntryNotes" placeholder="opzionale">
                     </div>
+                </div>
+                <div class="cargo-field" id="shelfEntryContainerField" style="display:none;">
+                    <label style="display:flex;align-items:center;gap:8px;font-size:13px;">
+                        <input type="checkbox" id="shelfEntryUseContainer" checked style="width:16px;height:16px;accent-color:#7c3aed;">
+                        <span id="shelfEntryContainerLabel">Scala anche il contenitore</span>
+                    </label>
                 </div>
             </div>
             <div id="shelfEntryError" style="display:none;color:#f87171;font-size:13px;margin-bottom:8px;"></div>
@@ -449,6 +601,102 @@
         </div>
     </div>
 
+    <!-- ===== IMBALLAGGIO MODAL (CREA / MODIFICA) ===== -->
+    <div class="cargo-modal-overlay" id="packagingModalOverlay" onclick="closePackagingModal(event)">
+        <div class="cargo-modal" style="width:560px;max-height:90vh;overflow-y:auto;">
+            <h3 id="packagingModalTitle">🧺 Nuovo Imballaggio</h3>
+            <input type="hidden" id="packagingModalId">
+            <div style="display:grid;grid-template-columns:1fr 2fr;gap:10px;">
+                <div class="cargo-field">
+                    <label>Codice *</label>
+                    <input type="text" id="pkgCode" placeholder="es. SAC-VA-25"
+                        oninput="this.value=this.value.replace(/\s+/g,'').toUpperCase(); checkPackagingCode();">
+                    <small id="pkgCodeHint" style="display:block;margin-top:4px;font-size:11px;color:#9ca3af;">Deve essere univoco (anche rispetto ai codici articolo).</small>
+                </div>
+                <div class="cargo-field">
+                    <label>Descrizione *</label>
+                    <input type="text" id="pkgDescription" placeholder="es. Sacco carta valvola automatica 25 kg">
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+                <div class="cargo-field">
+                    <label>Colore</label>
+                    <select id="pkgColor" title="Colore"><option value="">-- Nessuno --</option></select>
+                </div>
+                <div class="cargo-field">
+                    <label>Misura</label>
+                    <select id="pkgSize" title="Misura"><option value="">-- Nessuna --</option></select>
+                </div>
+                <div class="cargo-field">
+                    <label>Scorta minima</label>
+                    <input type="number" id="pkgMinStock" min="0" value="0" title="Scorta minima">
+                </div>
+            </div>
+            <div class="cargo-field">
+                <label>Tipologie (selezione multipla)</label>
+                <div id="pkgTypesCheckboxes" style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;background:#1e293b;border-radius:8px;padding:10px;max-height:160px;overflow-y:auto;"></div>
+            </div>
+            <div id="pkgInitialStockSection" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div class="cargo-field">
+                    <label>Posizione iniziale</label>
+                    <select id="pkgInitialPos" title="Posizione iniziale"><option value="">-- Nessuna --</option></select>
+                </div>
+                <div class="cargo-field">
+                    <label>Quantità iniziale</label>
+                    <input type="number" id="pkgInitialQty" min="0" value="0" title="Quantità iniziale">
+                </div>
+            </div>
+            <div class="cargo-field">
+                <label>Note</label>
+                <input type="text" id="pkgNotes" placeholder="opzionale">
+            </div>
+            <div id="packagingModalError" style="display:none;color:#f87171;font-size:13px;margin-bottom:8px;"></div>
+            <div class="cargo-modal-actions">
+                <button class="btn btn-gray" onclick="closePackagingForce()">✕ Annulla</button>
+                <button class="btn btn-carico-confirm" id="packagingModalConfirmBtn" onclick="submitPackagingForm()">✓ Salva</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== IMBALLAGGIO CARICO / SCARICO MODAL ===== -->
+    <div class="cargo-modal-overlay" id="packagingStockOverlay" onclick="closePackagingStockModal(event)">
+        <div class="cargo-modal" style="width:460px;">
+            <h3>📥 Movimento imballaggio</h3>
+            <input type="hidden" id="pkgStockItemId">
+            <div style="background:#1e293b;border-radius:8px;padding:10px 14px;margin-bottom:14px;">
+                <div id="pkgStockSummary" style="color:#e0e0e0;font-size:14px;font-weight:600;"></div>
+            </div>
+            <div class="cargo-field">
+                <label>Tipo movimento</label>
+                <select id="pkgStockType" title="Tipo movimento" onchange="updatePackagingStockHint()">
+                    <option value="IN">➕ Carico</option>
+                    <option value="OUT">➖ Scarico</option>
+                    <option value="ADJUSTMENT">✏️ Rettifica (imposta quantità)</option>
+                </select>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div class="cargo-field">
+                    <label>Posizione</label>
+                    <select id="pkgStockPos" title="Posizione" onchange="updatePackagingStockHint()"></select>
+                </div>
+                <div class="cargo-field">
+                    <label>Quantità</label>
+                    <input type="number" id="pkgStockQty" min="0" value="0" title="Quantità">
+                </div>
+            </div>
+            <div id="pkgStockHint" style="color:#9ca3af;font-size:12px;margin-bottom:8px;"></div>
+            <div class="cargo-field">
+                <label>Motivo</label>
+                <input type="text" id="pkgStockReason" placeholder="opzionale">
+            </div>
+            <div id="pkgStockError" style="display:none;color:#f87171;font-size:13px;margin-bottom:8px;"></div>
+            <div class="cargo-modal-actions">
+                <button class="btn btn-gray" onclick="document.getElementById('packagingStockOverlay').classList.remove('open')">✕ Annulla</button>
+                <button class="btn btn-carico-confirm" id="pkgStockConfirmBtn" onclick="submitPackagingStock()">✓ Conferma</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ===== ARTICOLO MODAL (CREA / MODIFICA) ===== -->
     <div class="cargo-modal-overlay" id="articleModalOverlay" onclick="closeArticleModal(event)">
         <div class="cargo-modal" style="width:520px;">
@@ -512,6 +760,15 @@
                 <label>Descrizione</label>
                 <input type="text" id="artDescription" placeholder="Descrizione opzionale">
             </div>
+            <!-- ===== IMBALLAGGI CONSUMATI ===== -->
+            <div style="border-top:1px solid #374151;margin:8px 0 4px;padding-top:10px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                    <div style="font-size:11px;color:#9ca3af;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">🧺 Imballaggi consumati</div>
+                    <button type="button" class="btn btn-small" style="background:#7c3aed;color:#fff;" onclick="addArticlePackagingRow()">➕ Aggiungi</button>
+                </div>
+                <div id="artPackagingRows"></div>
+                <small style="display:block;margin-top:6px;font-size:11px;color:#9ca3af;">Primario = 1 pezzo per collo. Contenitore = 1 pezzo ogni N colli, scalato solo se al carico è attiva l'opzione contenitore.</small>
+            </div>
             <!-- ===== DATI ETICHETTA ===== -->
             <div style="border-top:1px solid #374151;margin:8px 0 4px;padding-top:10px;">
                 <div style="font-size:11px;color:#9ca3af;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">🏷️ Dati Etichetta</div>
@@ -554,6 +811,9 @@
             <h3>🍎 Valori Nutrizionali per 100 g</h3>
             <input type="hidden" id="nutritionalArticleId">
             <p id="nutritionalArticleName" style="color:#60a5fa;font-size:13px;margin:-8px 0 12px;font-weight:700;"></p>
+            <div style="display:flex;justify-content:flex-end;margin:-5px 0 10px;">
+                <button type="button" class="btn btn-small" id="reloadNutritionalTemplateBtn" onclick="reloadProductNutritionTemplate()" title="Ricarica i valori proposti dalla sottocategoria">↻ Ricarica proposta</button>
+            </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
                 <div class="cargo-field">
                     <label>Valore energetico (kcal)</label>
@@ -692,6 +952,12 @@
                     <label>Scadenza (opzionale)</label>
                     <input type="date" id="cargoScadenzaInput" title="Scadenza">
                 </div>
+                <div class="cargo-field" id="cargoContainerField" style="display:none;">
+                    <label style="display:flex;align-items:center;gap:8px;font-size:13px;">
+                        <input type="checkbox" id="cargoUseContainer" checked style="width:16px;height:16px;accent-color:#7c3aed;">
+                        <span id="cargoContainerLabel">Scala anche il contenitore</span>
+                    </label>
+                </div>
             </div>
 
             <div class="cargo-field">
@@ -757,6 +1023,32 @@
             return subcategoryItem?.groups?.find(item => item.name === group)?.description || '';
         }
 
+        const NUTRITIONAL_TEMPLATE_FIELDS = [
+            { key: 'energyKcal', label: 'Energia kcal', step: '0.1' },
+            { key: 'energyKj', label: 'Energia kJ', step: '1' },
+            { key: 'fat', label: 'Grassi (g)', step: '0.1' },
+            { key: 'saturatedFat', label: 'Saturi (g)', step: '0.1' },
+            { key: 'carbohydrates', label: 'Carboidrati (g)', step: '0.1' },
+            { key: 'sugars', label: 'Zuccheri (g)', step: '0.1' },
+            { key: 'fiber', label: 'Fibre (g)', step: '0.1' },
+            { key: 'protein', label: 'Proteine (g)', step: '0.1' },
+            { key: 'sodium', label: 'Sodio (g)', step: '0.01' },
+        ];
+
+        function taxonomyNutritionalId(field, category, subcategory, group) {
+            return `taxonomyNutrition-${field}-${cssEscape(category)}-${cssEscape(subcategory)}-${cssEscape(group)}`;
+        }
+
+        function getTaxonomySubcategory(category, subcategory) {
+            return taxonomyDescriptions.find(item => item.name === category)
+                ?.subcategories?.find(item => item.name === subcategory);
+        }
+
+        function getTaxonomyGroup(category, subcategory, group) {
+            return getTaxonomySubcategory(category, subcategory)
+                ?.groups?.find(item => item.name === group);
+        }
+
         function taxonomyDescriptionId(level, category, subcategory, group) {
             return `taxonomyDesc-${level}-${cssEscape(category)}-${cssEscape(subcategory || '')}-${cssEscape(group || '')}`;
         }
@@ -777,6 +1069,52 @@
                 }
                 await loadTaxonomyDescriptions();
                 showAlert('✅ Descrizione salvata', 'success');
+            } catch (error) {
+                showAlert(`❌ ${error.message}`, 'error');
+            }
+        }
+
+        async function saveNutritionalTemplate(category, subcategory, group) {
+            const current = getTaxonomyGroup(category, subcategory, group) || {};
+            const values = {};
+            for (const field of NUTRITIONAL_TEMPLATE_FIELDS) {
+                const input = document.getElementById(taxonomyNutritionalId(field.key, category, subcategory, group));
+                const raw = input?.value;
+                values[field.key] = raw === '' || raw == null ? null : Number(raw);
+            }
+            const changed = NUTRITIONAL_TEMPLATE_FIELDS.some(field => {
+                const previous = current[field.key] == null ? null : Number(current[field.key]);
+                return previous !== values[field.key];
+            });
+            const matchingArticles = allArticles.filter(article =>
+                String(article.category || '').toUpperCase() === category.toUpperCase() &&
+                String(article.subcategory || '').toUpperCase() === subcategory.toUpperCase() &&
+                String(article.productGroup || '').toUpperCase() === group.toUpperCase()
+            );
+            const updateExisting = changed && matchingArticles.length > 0 && confirm(
+                `La proposta del gruppo ${group} è cambiata. Vuoi aggiornare i valori nutrizionali di ${matchingArticles.length} prodott${matchingArticles.length === 1 ? 'o' : 'i'} già assegnati a questo gruppo? I valori eventualmente personalizzati verranno sostituiti.`
+            );
+            try {
+                const response = await fetch(`${API_URL}/categories/${encodeURIComponent(category)}/subcategories/${encodeURIComponent(subcategory)}/groups/${encodeURIComponent(group)}/nutritional-template`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ values, updateExisting })
+                });
+                if (!response.ok) {
+                    const error = await response.json().catch(() => ({}));
+                    throw new Error(error.error || `HTTP ${response.status}`);
+                }
+                const result = await response.json();
+                for (const article of matchingArticles) {
+                    if (updateExisting) article.nutritionalInfo = { ...values };
+                }
+                await loadTaxonomyDescriptions();
+                const updated = result.updatedProducts || 0;
+                showAlert(updated
+                    ? `✅ Proposta salvata e applicata a ${updated} prodott${updated === 1 ? 'o' : 'i'}`
+                    : changed && matchingArticles.length
+                        ? '✅ Proposta salvata; gli articoli esistenti non sono stati modificati'
+                        : '✅ Proposta nutrizionale salvata', 'success');
             } catch (error) {
                 showAlert(`❌ ${error.message}`, 'error');
             }
@@ -962,7 +1300,13 @@
                 const subId = `${cssEscape(cat)}-${cssEscape(sub)}`;
                 const subDescription = getTaxonomyDescription('subcategory', cat, sub);
                 const groupHtml = groups.length
-                    ? groups.map(group => `<div style="background:#0f172a;border:1px solid #334155;border-radius:6px;padding:6px;">
+                    ? groups.map(group => {
+                        const groupData = getTaxonomyGroup(cat, sub, group) || {};
+                        const nutritionalTemplateHtml = NUTRITIONAL_TEMPLATE_FIELDS.map(field => `<label style="display:flex;flex-direction:column;gap:3px;font-size:10px;color:#cbd5e1;">
+                            ${field.label}
+                            <input type="number" min="0" step="${field.step}" id="${taxonomyNutritionalId(field.key, cat, sub, group)}" value="${groupData[field.key] ?? ''}" style="width:100%;box-sizing:border-box;background:#0b1220;border:1px solid #334155;border-radius:4px;color:#e5e7eb;padding:5px;font-size:12px;">
+                        </label>`).join('');
+                        return `<div style="background:#0f172a;border:1px solid #334155;border-radius:6px;padding:6px;">
                         <div style="display:flex;align-items:center;gap:4px;margin-bottom:5px;font-size:11px;color:#cbd5e1;">
                             <strong style="flex:1;">${esc(group)}</strong>
                             <button title="Rinomina gruppo" data-cat="${esc(cat)}" data-sub="${esc(sub)}" data-group="${esc(group)}" class="group-rename-btn" style="background:#1e3a8a;color:#bfdbfe;border:none;border-radius:50%;width:18px;height:18px;cursor:pointer;font-size:11px;line-height:1;padding:0;">✏️</button>
@@ -972,7 +1316,13 @@
                             <textarea id="${taxonomyDescriptionId('group', cat, sub, group)}" maxlength="500" rows="2" placeholder="Descrizione gruppo per etichetta" style="flex:1;resize:vertical;background:#111827;border:1px solid #334155;border-radius:5px;color:#e0e0e0;padding:5px 6px;font-size:11px;">${esc(getTaxonomyDescription('group', cat, sub, group))}</textarea>
                             <button class="btn btn-small" style="background:#0369a1;color:#fff;padding:0 9px;font-size:11px;" onclick="saveTaxonomyDescription('group','${cat.replace(/'/g, "\\'")}','${sub.replace(/'/g, "\\'")}','${group.replace(/'/g, "\\'")}')">Salva</button>
                         </div>
-                    </div>`).join('')
+                        <details style="border-top:1px solid #334155;padding-top:7px;margin-top:7px;">
+                            <summary style="cursor:pointer;font-size:10px;font-weight:700;color:#a7f3d0;">Valori nutrizionali proposti per 100 g</summary>
+                            <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:8px 0;">${nutritionalTemplateHtml}</div>
+                            <button class="btn btn-small" style="background:#047857;color:#fff;width:100%;" onclick="saveNutritionalTemplate('${cat.replace(/'/g, "\\'")}','${sub.replace(/'/g, "\\'")}','${group.replace(/'/g, "\\'")}')">Salva proposta</button>
+                        </details>
+                    </div>`;
+                    }).join('')
                     : '<span style="font-size:11px;color:#64748b;font-style:italic;">Nessun gruppo</span>';
                 return `<div style="background:#111827;border:1px solid #374151;border-radius:8px;padding:8px;display:flex;flex-direction:column;gap:8px;min-width:240px;">
                     <div style="display:flex;align-items:center;gap:8px;">
@@ -1514,7 +1864,7 @@
         }
 
         function _setActiveCard(id) {
-            ['fcGestione','fcStatoMagazzino','fcAvvisi'].forEach(cid => {
+            ['fcGestione','fcStatoMagazzino','fcAvvisi','fcImballaggi'].forEach(cid => {
                 const el = document.getElementById(cid);
                 if (el) el.classList.toggle('fc-active', cid === id);
             });
@@ -1547,13 +1897,20 @@
             if (typeof io !== 'undefined') {
                 const _socket = io(window.location.origin, { transports: ['websocket', 'polling'] });
                 let _reloadTimer = null;
-                _socket.on('inventory:updated', () => {
+                _socket.on('inventory:updated', (event) => {
                     // Debounce: se arrivano più eventi rapidi, ricarica una sola volta
                     clearTimeout(_reloadTimer);
                     _reloadTimer = setTimeout(async () => {
                         await loadShelfData();
+                        if (event?.type === 'nutrition-template') await loadInventoryData();
                         _refreshWarehouseView();
                     }, 400);
+                });
+                let _pkgReloadTimer = null;
+                _socket.on('packaging:updated', () => {
+                    if (document.getElementById('imballaggiTabBar').style.display === 'none') return;
+                    clearTimeout(_pkgReloadTimer);
+                    _pkgReloadTimer = setTimeout(() => loadPackagingTab(_pkgCurrentTab), 400);
                 });
             }
         });
@@ -1757,7 +2114,7 @@
             const container = document.getElementById('inventoryTable');
 
             if (!articles || articles.length === 0) {
-                container.innerHTML = '<div class="empty-state">Nessun articolo trovato. Clicca "Importa da CSV" per caricare i dati.</div>';
+                container.innerHTML = '<div class="empty-state">Nessun articolo trovato. Crea un prodotto da Codifiche Prodotti.</div>';
                 return;
             }
 
@@ -2194,12 +2551,15 @@
             }
         }
 
-        const MAIN_SECTIONS = ['statoMagazzinoCard', 'gestioneProdottiCard', 'gestionePosizioni', 'avvisiCard'];
+        const MAIN_SECTIONS = ['statoMagazzinoCard', 'gestioneProdottiCard', 'gestionePosizioni', 'avvisiCard',
+            'imballaggiListCard', 'imbColoriCard', 'imbTipologieCard', 'imbMisureCard', 'imbPosizioniCard'];
 
         function showOnlySection(id) {
             // Nascondi tab bar gestione se si va su altra sezione
             const tabBar = document.getElementById('gestioneTabBar');
             if (tabBar) tabBar.style.display = 'none';
+            const imbTabBar = document.getElementById('imballaggiTabBar');
+            if (imbTabBar) imbTabBar.style.display = 'none';
             MAIN_SECTIONS.forEach(sid => {
                 const el = document.getElementById(sid);
                 if (el) el.style.display = sid === id ? 'block' : 'none';
@@ -2221,6 +2581,7 @@
                 const el = document.getElementById(sid);
                 if (el) el.style.display = 'none';
             });
+            document.getElementById('imballaggiTabBar').style.display = 'none';
             _setActiveCard('fcGestione');
             document.getElementById('gestioneTabBar').style.display = 'block';
             switchGestioneTab('prodotti');
@@ -2248,6 +2609,661 @@
         function scrollToSection(id) {
             showOnlySection(id);
         }
+
+        // ============================================
+        // MAGAZZINO IMBALLAGGI
+        // ============================================
+        const IMB_SECTIONS = ['imballaggiListCard', 'imbColoriCard', 'imbTipologieCard', 'imbMisureCard', 'imbPosizioniCard'];
+        const IMB_TABS = {
+            elenco: { card: 'imballaggiListCard', btn: 'tabBtnImbElenco' },
+            colori: { card: 'imbColoriCard', btn: 'tabBtnImbColori' },
+            tipologie: { card: 'imbTipologieCard', btn: 'tabBtnImbTipologie' },
+            misure: { card: 'imbMisureCard', btn: 'tabBtnImbMisure' },
+            posizioni: { card: 'imbPosizioniCard', btn: 'tabBtnImbPosizioni' }
+        };
+        const DEFAULT_PACKAGING_TYPES = ['VALVOLA MANUALE', 'VALVOLA AUTOMATICA', 'TERMOSALDABILE'];
+
+        let pkgItems = [];
+        let pkgColors = [];
+        let pkgTypes = [];
+        let pkgSizes = [];
+        let pkgPositions = [];
+        let _pkgCurrentTab = 'elenco';
+        let _pkgCodeCheckTimer = null;
+
+        async function pkgFetch(path, options = {}) {
+            const resp = await fetch(`${API_URL}/packaging${path}`, {
+                ...options,
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                    ...(options.headers || {})
+                }
+            });
+            let data = null;
+            try { data = await resp.json(); } catch (_) { data = null; }
+            if (!resp.ok) throw new Error((data && (data.error || data.message)) || `Errore ${resp.status}`);
+            return data;
+        }
+
+        function showImballaggi() {
+            MAIN_SECTIONS.forEach(sid => {
+                const el = document.getElementById(sid);
+                if (el) el.style.display = 'none';
+            });
+            document.getElementById('gestioneTabBar').style.display = 'none';
+            _setActiveCard('fcImballaggi');
+            document.getElementById('imballaggiTabBar').style.display = 'block';
+            switchImballaggiTab(_pkgCurrentTab);
+        }
+
+        function switchImballaggiTab(tab) {
+            if (!IMB_TABS[tab]) tab = 'elenco';
+            _pkgCurrentTab = tab;
+            Object.entries(IMB_TABS).forEach(([key, cfg]) => {
+                const btn = document.getElementById(cfg.btn);
+                if (btn) btn.classList.toggle('active', key === tab);
+                const card = document.getElementById(cfg.card);
+                if (card) card.style.display = key === tab ? 'block' : 'none';
+            });
+            loadPackagingTab(tab);
+        }
+
+        async function loadPackagingTab(tab) {
+            try {
+                if (tab === 'elenco') {
+                    await loadPackagingLookups();
+                    pkgItems = await pkgFetch('/items');
+                    populatePackagingFilters();
+                    renderImballaggiList();
+                    loadPackagingShortages();
+                } else if (tab === 'colori') {
+                    pkgColors = await pkgFetch('/colors');
+                    renderColoriList();
+                } else if (tab === 'tipologie') {
+                    pkgTypes = await pkgFetch('/types');
+                    renderTipologieList();
+                } else if (tab === 'misure') {
+                    pkgSizes = await pkgFetch('/sizes');
+                    renderMisureList();
+                } else if (tab === 'posizioni') {
+                    pkgPositions = await pkgFetch('/positions');
+                    renderImbPosizioniList();
+                }
+            } catch (e) {
+                showAlert(`❌ ${e.message}`, 'error');
+            }
+        }
+
+        async function loadPackagingLookups() {
+            const [colors, types, sizes, positions] = await Promise.all([
+                pkgFetch('/colors'), pkgFetch('/types'), pkgFetch('/sizes'), pkgFetch('/positions')
+            ]);
+            pkgColors = colors;
+            pkgTypes = types;
+            pkgSizes = sizes;
+            pkgPositions = positions;
+        }
+
+        function toggleImbForm(formId) {
+            const el = document.getElementById(formId);
+            if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // Mappa articleId -> imballaggi associati, usata per badge e opzione contenitore
+        let _articlePackagingLinks = null;
+
+        async function getArticlePackagingLinks(forceReload) {
+            if (_articlePackagingLinks && !forceReload) return _articlePackagingLinks;
+            try {
+                _articlePackagingLinks = await pkgFetch('/article-links');
+            } catch (_) {
+                _articlePackagingLinks = {};
+            }
+            return _articlePackagingLinks;
+        }
+
+        function articleContainerInfo(articleId) {
+            const links = (_articlePackagingLinks || {})[articleId] || [];
+            return links.find(l => l.role === 'CONTAINER') || null;
+        }
+
+        function pkgEsc(s) {
+            return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        // ---------- Colori ----------
+        function renderColoriList() {
+            document.getElementById('imbColoriCount').textContent = pkgColors.length;
+            const wrap = document.getElementById('imbColoriList');
+            if (!pkgColors.length) {
+                wrap.innerHTML = '<div class="empty-state">Nessun colore configurato</div>';
+                return;
+            }
+            wrap.innerHTML = pkgColors.map(c => `
+                <div style="display:grid;grid-template-columns:2fr auto auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #1f2937;">
+                    <input type="text" id="col-name-${c.id}" value="${pkgEsc(c.name)}" title="Nome colore"
+                        style="background:#1f2937;border:1px solid #374151;border-radius:6px;color:#e0e0e0;padding:6px 10px;text-transform:uppercase;">
+                    <input type="color" id="col-hex-${c.id}" value="${c.hex || '#ffffff'}" title="Colore di anteprima" style="height:34px;padding:2px;">
+                    <div style="display:flex;gap:6px;">
+                        <button class="btn btn-small" style="background:#16a34a;color:#fff;" onclick="saveColor(${c.id})">✓</button>
+                        <button class="btn btn-small" style="background:#dc2626;color:#fff;" onclick="deleteColor(${c.id}, '${pkgEsc(c.name)}')">🗑️</button>
+                    </div>
+                </div>`).join('');
+        }
+
+        async function submitNewColor() {
+            const name = document.getElementById('newColorName').value.trim().toUpperCase();
+            if (!name) return showAlert('❌ Nome colore obbligatorio', 'error');
+            try {
+                await pkgFetch('/colors', { method: 'POST', body: JSON.stringify({ name, hex: document.getElementById('newColorHex').value }) });
+                document.getElementById('newColorName').value = '';
+                document.getElementById('imbColoriForm').style.display = 'none';
+                showAlert('✅ Colore creato', 'success');
+                loadPackagingTab('colori');
+            } catch (e) { showAlert(`❌ ${e.message}`, 'error'); }
+        }
+
+        async function saveColor(id) {
+            try {
+                await pkgFetch(`/colors/${id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        name: document.getElementById(`col-name-${id}`).value.trim().toUpperCase(),
+                        hex: document.getElementById(`col-hex-${id}`).value
+                    })
+                });
+                showAlert('✅ Colore aggiornato', 'success');
+                loadPackagingTab('colori');
+            } catch (e) { showAlert(`❌ ${e.message}`, 'error'); }
+        }
+
+        async function deleteColor(id, name) {
+            if (!confirm(`Eliminare il colore "${name}"?`)) return;
+            await pkgDeleteWithForce(`/colors/${id}`, 'colori');
+        }
+
+        // Le DELETE rispondono 409 quando la voce è in uso: chiede conferma e ripete con ?force=1
+        async function pkgDeleteWithForce(path, tab) {
+            try {
+                await pkgFetch(path, { method: 'DELETE' });
+                showAlert('✅ Eliminato', 'success');
+                loadPackagingTab(tab);
+            } catch (e) {
+                if (/usat|giacenza/i.test(e.message) && confirm(`${e.message}. Procedere comunque?`)) {
+                    try {
+                        await pkgFetch(`${path}?force=1`, { method: 'DELETE' });
+                        showAlert('✅ Eliminato', 'success');
+                        loadPackagingTab(tab);
+                    } catch (e2) { showAlert(`❌ ${e2.message}`, 'error'); }
+                } else {
+                    showAlert(`❌ ${e.message}`, 'error');
+                }
+            }
+        }
+
+        // ---------- Tipologie ----------
+        function renderTipologieList() {
+            document.getElementById('imbTipologieCount').textContent = pkgTypes.length;
+            const wrap = document.getElementById('imbTipologieList');
+            if (!pkgTypes.length) {
+                wrap.innerHTML = `<div class="empty-state">Nessuna tipologia configurata
+                    <div style="margin-top:10px;"><button class="btn btn-small" style="background:#7c3aed;color:#fff;" onclick="seedDefaultTypes()">➕ Aggiungi tipologie predefinite</button></div>
+                </div>`;
+                return;
+            }
+            wrap.innerHTML = pkgTypes.map(t => `
+                <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #1f2937;">
+                    <input type="text" id="typ-name-${t.id}" value="${pkgEsc(t.name)}" title="Nome tipologia"
+                        style="background:#1f2937;border:1px solid #374151;border-radius:6px;color:#e0e0e0;padding:6px 10px;text-transform:uppercase;">
+                    <div style="display:flex;gap:6px;">
+                        <button class="btn btn-small" style="background:#16a34a;color:#fff;" onclick="saveType(${t.id})">✓</button>
+                        <button class="btn btn-small" style="background:#dc2626;color:#fff;" onclick="deleteType(${t.id}, '${pkgEsc(t.name)}')">🗑️</button>
+                    </div>
+                </div>`).join('');
+        }
+
+        async function seedDefaultTypes() {
+            try {
+                for (const name of DEFAULT_PACKAGING_TYPES) {
+                    await pkgFetch('/types', { method: 'POST', body: JSON.stringify({ name }) });
+                }
+                showAlert('✅ Tipologie predefinite create', 'success');
+                loadPackagingTab('tipologie');
+            } catch (e) { showAlert(`❌ ${e.message}`, 'error'); }
+        }
+
+        async function submitNewType() {
+            const name = document.getElementById('newTypeName').value.trim().toUpperCase();
+            if (!name) return showAlert('❌ Nome tipologia obbligatorio', 'error');
+            try {
+                await pkgFetch('/types', { method: 'POST', body: JSON.stringify({ name }) });
+                document.getElementById('newTypeName').value = '';
+                document.getElementById('imbTipologieForm').style.display = 'none';
+                showAlert('✅ Tipologia creata', 'success');
+                loadPackagingTab('tipologie');
+            } catch (e) { showAlert(`❌ ${e.message}`, 'error'); }
+        }
+
+        async function saveType(id) {
+            try {
+                await pkgFetch(`/types/${id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ name: document.getElementById(`typ-name-${id}`).value.trim().toUpperCase() })
+                });
+                showAlert('✅ Tipologia aggiornata', 'success');
+                loadPackagingTab('tipologie');
+            } catch (e) { showAlert(`❌ ${e.message}`, 'error'); }
+        }
+
+        async function deleteType(id, name) {
+            if (!confirm(`Eliminare la tipologia "${name}"?`)) return;
+            await pkgDeleteWithForce(`/types/${id}`, 'tipologie');
+        }
+
+        // ---------- Misure ----------
+        function renderMisureList() {
+            document.getElementById('imbMisureCount').textContent = pkgSizes.length;
+            const wrap = document.getElementById('imbMisureList');
+            if (!pkgSizes.length) {
+                wrap.innerHTML = '<div class="empty-state">Nessuna misura configurata</div>';
+                return;
+            }
+            const inputStyle = 'background:#1f2937;border:1px solid #374151;border-radius:6px;color:#e0e0e0;padding:6px 10px;width:100%;';
+            wrap.innerHTML = pkgSizes.map(s => `
+                <div style="display:grid;grid-template-columns:repeat(4,1fr) 1.5fr auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #1f2937;">
+                    <input type="number" step="1" min="0" id="siz-s1-${s.id}" value="${s.side1Mm}" title="Lato 1 (mm)" style="${inputStyle}">
+                    <input type="number" step="1" min="0" id="siz-s2-${s.id}" value="${s.side2Mm}" title="Lato 2 (mm)" style="${inputStyle}">
+                    <input type="number" step="1" min="0" id="siz-h-${s.id}" value="${s.heightMm}" title="Altezza (mm)" style="${inputStyle}">
+                    <input type="number" step="0.1" min="0" id="siz-kg-${s.id}" value="${s.capacityKg ?? ''}" placeholder="kg" title="Capacità indicativa (kg)" style="${inputStyle}">
+                    <input type="text" id="siz-lbl-${s.id}" value="${pkgEsc(s.label)}" title="Etichetta" style="${inputStyle}">
+                    <div style="display:flex;gap:6px;">
+                        <button class="btn btn-small" style="background:#16a34a;color:#fff;" onclick="saveSize(${s.id})">✓</button>
+                        <button class="btn btn-small" style="background:#dc2626;color:#fff;" onclick="deleteSize(${s.id}, '${pkgEsc(s.label)}')">🗑️</button>
+                    </div>
+                </div>`).join('')
+                + '<div style="margin-top:8px;color:#9ca3af;font-size:12px;">Lato 1 × Lato 2 = base del sacco, poi altezza (tutte in mm). Capacità in kg solo indicativa.</div>';
+        }
+
+        async function submitNewSize() {
+            const payload = {
+                side1Mm: document.getElementById('newSizeSide1').value,
+                side2Mm: document.getElementById('newSizeSide2').value,
+                heightMm: document.getElementById('newSizeHeight').value,
+                capacityKg: document.getElementById('newSizeCapacity').value,
+                label: document.getElementById('newSizeLabel').value.trim()
+            };
+            try {
+                await pkgFetch('/sizes', { method: 'POST', body: JSON.stringify(payload) });
+                ['newSizeSide1', 'newSizeSide2', 'newSizeHeight', 'newSizeCapacity', 'newSizeLabel'].forEach(id => document.getElementById(id).value = '');
+                document.getElementById('imbMisureForm').style.display = 'none';
+                showAlert('✅ Misura creata', 'success');
+                loadPackagingTab('misure');
+            } catch (e) { showAlert(`❌ ${e.message}`, 'error'); }
+        }
+
+        async function saveSize(id) {
+            try {
+                await pkgFetch(`/sizes/${id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        side1Mm: document.getElementById(`siz-s1-${id}`).value,
+                        side2Mm: document.getElementById(`siz-s2-${id}`).value,
+                        heightMm: document.getElementById(`siz-h-${id}`).value,
+                        capacityKg: document.getElementById(`siz-kg-${id}`).value,
+                        label: document.getElementById(`siz-lbl-${id}`).value.trim()
+                    })
+                });
+                showAlert('✅ Misura aggiornata', 'success');
+                loadPackagingTab('misure');
+            } catch (e) { showAlert(`❌ ${e.message}`, 'error'); }
+        }
+
+        async function deleteSize(id, label) {
+            if (!confirm(`Eliminare la misura "${label}"?`)) return;
+            await pkgDeleteWithForce(`/sizes/${id}`, 'misure');
+        }
+
+        // ---------- Posizioni imballaggi ----------
+        function renderImbPosizioniList() {
+            document.getElementById('imbPosizioniCount').textContent = pkgPositions.length;
+            const wrap = document.getElementById('imbPosizioniList');
+            if (!pkgPositions.length) {
+                wrap.innerHTML = '<div class="empty-state">Nessuna posizione configurata</div>';
+                return;
+            }
+            const inputStyle = 'background:#1f2937;border:1px solid #374151;border-radius:6px;color:#e0e0e0;padding:6px 10px;width:100%;';
+            wrap.innerHTML = pkgPositions.map(p => `
+                <div style="display:grid;grid-template-columns:1fr 2fr auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #1f2937;">
+                    <input type="text" id="ipos-code-${p.id}" value="${pkgEsc(p.code)}" title="Codice posizione" style="${inputStyle}text-transform:uppercase;">
+                    <input type="text" id="ipos-desc-${p.id}" value="${pkgEsc(p.description || '')}" title="Descrizione" style="${inputStyle}">
+                    <div style="display:flex;gap:6px;">
+                        <button class="btn btn-small" style="background:#16a34a;color:#fff;" onclick="saveImbPosition(${p.id})">✓</button>
+                        <button class="btn btn-small" style="background:#dc2626;color:#fff;" onclick="deleteImbPosition(${p.id}, '${pkgEsc(p.code)}')">🗑️</button>
+                    </div>
+                </div>`).join('');
+        }
+
+        async function submitNewImbPosition() {
+            const code = document.getElementById('newImbPosCode').value.trim().toUpperCase();
+            if (!code) return showAlert('❌ Codice posizione obbligatorio', 'error');
+            try {
+                await pkgFetch('/positions', { method: 'POST', body: JSON.stringify({ code, description: document.getElementById('newImbPosDesc').value.trim() }) });
+                document.getElementById('newImbPosCode').value = '';
+                document.getElementById('newImbPosDesc').value = '';
+                document.getElementById('imbPosizioniForm').style.display = 'none';
+                showAlert('✅ Posizione creata', 'success');
+                loadPackagingTab('posizioni');
+            } catch (e) { showAlert(`❌ ${e.message}`, 'error'); }
+        }
+
+        async function saveImbPosition(id) {
+            try {
+                await pkgFetch(`/positions/${id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        code: document.getElementById(`ipos-code-${id}`).value.trim().toUpperCase(),
+                        description: document.getElementById(`ipos-desc-${id}`).value.trim()
+                    })
+                });
+                showAlert('✅ Posizione aggiornata', 'success');
+                loadPackagingTab('posizioni');
+            } catch (e) { showAlert(`❌ ${e.message}`, 'error'); }
+        }
+
+        async function deleteImbPosition(id, code) {
+            if (!confirm(`Eliminare la posizione "${code}"? Le righe di giacenza collegate saranno rimosse.`)) return;
+            await pkgDeleteWithForce(`/positions/${id}`, 'posizioni');
+        }
+
+        // ---------- Elenco imballaggi ----------
+        function populatePackagingFilters() {
+            const typeSel = document.getElementById('imbFilterType');
+            const colorSel = document.getElementById('imbFilterColor');
+            const prevType = typeSel.value, prevColor = colorSel.value;
+            typeSel.innerHTML = '<option value="">Tutte le tipologie</option>'
+                + pkgTypes.map(t => `<option value="${t.id}">${pkgEsc(t.name)}</option>`).join('');
+            colorSel.innerHTML = '<option value="">Tutti i colori</option>'
+                + pkgColors.map(c => `<option value="${c.id}">${pkgEsc(c.name)}</option>`).join('');
+            typeSel.value = prevType;
+            colorSel.value = prevColor;
+        }
+
+        function renderImballaggiList() {
+            const search = (document.getElementById('imbSearch').value || '').toLowerCase().trim();
+            const typeId = document.getElementById('imbFilterType').value;
+            const colorId = document.getElementById('imbFilterColor').value;
+
+            const filtered = pkgItems.filter(i => {
+                if (search && !(`${i.code} ${i.description}`.toLowerCase().includes(search))) return false;
+                if (typeId && !i.typeIds.includes(Number(typeId))) return false;
+                if (colorId && String(i.colorId) !== String(colorId)) return false;
+                return true;
+            });
+
+            document.getElementById('imbCount').textContent = pkgItems.length;
+
+            const lowCount = pkgItems.filter(i => i.lowStock).length;
+            const banner = document.getElementById('imbAlertsBanner');
+            if (lowCount > 0) {
+                banner.style.display = 'block';
+                banner.innerHTML = `<div style="background:#7f1d1d;border:1px solid #dc2626;border-radius:8px;padding:10px 14px;color:#fecaca;font-weight:600;">⚠️ ${lowCount} imballagg${lowCount === 1 ? 'io' : 'i'} sotto la scorta minima</div>`;
+            } else {
+                banner.style.display = 'none';
+            }
+            renderPackagingShortages();
+
+            const wrap = document.getElementById('imballaggiList');
+            if (!filtered.length) {
+                wrap.innerHTML = '<div class="empty-state">Nessun imballaggio trovato</div>';
+                return;
+            }
+
+            wrap.innerHTML = `
+                <div class="table-container">
+                <table style="width:100%;border-collapse:collapse;">
+                    <thead>
+                        <tr style="background:#1f2937;color:#9ca3af;font-size:12px;text-transform:uppercase;">
+                            <th style="text-align:left;padding:8px;">Codice</th>
+                            <th style="text-align:left;padding:8px;">Descrizione</th>
+                            <th style="text-align:left;padding:8px;">Colore</th>
+                            <th style="text-align:left;padding:8px;">Tipologie</th>
+                            <th style="text-align:left;padding:8px;">Misura</th>
+                            <th style="text-align:right;padding:8px;">Giacenza</th>
+                            <th style="text-align:left;padding:8px;">Posizioni</th>
+                            <th style="text-align:right;padding:8px;">Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    ${filtered.map(i => {
+                        const color = pkgColors.find(c => c.id === i.colorId);
+                        const size = pkgSizes.find(s => s.id === i.sizeId);
+                        const positions = (i.entries || []).filter(e => e.quantity > 0)
+                            .map(e => `<span style="background:#1f2937;border-radius:4px;padding:1px 6px;margin-right:4px;font-size:12px;">${pkgEsc(e.positionCode)}: ${e.quantity}</span>`).join('') || '<span style="color:#6b7280;">—</span>';
+                        const badges = (i.typeNames || []).map(n => `<span style="background:#4c1d95;color:#ddd6fe;border-radius:4px;padding:1px 6px;margin-right:4px;font-size:11px;">${pkgEsc(n)}</span>`).join('') || '<span style="color:#6b7280;">—</span>';
+                        const sizeLabel = size ? `${pkgEsc(size.label)}${size.capacityKg ? ` <span style="color:#9ca3af;">(~${size.capacityKg} kg)</span>` : ''}` : '<span style="color:#6b7280;">—</span>';
+                        const colorCell = color
+                            ? `<span style="display:inline-block;width:12px;height:12px;border-radius:3px;border:1px solid #4b5563;background:${pkgEsc(color.hex || '#ffffff')};margin-right:6px;vertical-align:middle;"></span>${pkgEsc(color.name)}`
+                            : '<span style="color:#6b7280;">—</span>';
+                        return `
+                        <tr style="border-bottom:1px solid #1f2937;${i.lowStock ? 'background:rgba(220,38,38,0.12);' : ''}">
+                            <td style="padding:8px;font-weight:700;color:#e0e0e0;">${pkgEsc(i.code)}</td>
+                            <td style="padding:8px;color:#e0e0e0;">${pkgEsc(i.description)}</td>
+                            <td style="padding:8px;color:#e0e0e0;">${colorCell}</td>
+                            <td style="padding:8px;">${badges}</td>
+                            <td style="padding:8px;color:#e0e0e0;">${sizeLabel}</td>
+                            <td style="padding:8px;text-align:right;font-weight:700;color:${i.lowStock ? '#fca5a5' : '#e0e0e0'};">
+                                ${i.totalQuantity}${i.minimumStock > 0 ? `<span style="color:#9ca3af;font-weight:400;font-size:11px;"> / min ${i.minimumStock}</span>` : ''}
+                            </td>
+                            <td style="padding:8px;">${positions}</td>
+                            <td style="padding:8px;text-align:right;white-space:nowrap;">
+                                <button class="btn btn-small" style="background:#0f766e;color:#fff;" onclick="openPackagingStockModal(${i.id})">📥 Movimento</button>
+                                <button class="btn btn-small" style="background:#2563eb;color:#fff;" onclick="openPackagingModal(${i.id})">✏️</button>
+                                <button class="btn btn-small" style="background:#dc2626;color:#fff;" onclick="deletePackagingItem(${i.id}, '${pkgEsc(i.code)}')">🗑️</button>
+                            </td>
+                        </tr>`;
+                    }).join('')}
+                    </tbody>
+                </table>
+                </div>`;
+        }
+
+        // ---------- Consumi non coperti ----------
+        let _pkgShortages = [];
+
+        async function loadPackagingShortages() {
+            try {
+                const data = await pkgFetch('/alerts');
+                _pkgShortages = data.shortages || [];
+            } catch (_) {
+                _pkgShortages = [];
+            }
+            renderPackagingShortages();
+        }
+
+        function renderPackagingShortages() {
+            const box = document.getElementById('imbShortagesBox');
+            if (!box) return;
+            if (!_pkgShortages.length) { box.style.display = 'none'; return; }
+            const grouped = {};
+            for (const s of _pkgShortages) {
+                const key = s.item?.code || s.itemId;
+                grouped[key] = (grouped[key] || 0) + s.shortage;
+            }
+            const last = new Date(_pkgShortages[0].createdAt).toLocaleString('it-IT');
+            box.style.display = 'block';
+            box.innerHTML = `
+                <div style="background:#78350f;border:1px solid #f59e0b;border-radius:8px;padding:10px 14px;color:#fde68a;">
+                    <div style="font-weight:700;margin-bottom:6px;">📉 Consumi non coperti (ultimi 30 giorni) — ultimo: ${pkgEsc(last)}</div>
+                    ${Object.entries(grouped).map(([code, qty]) =>
+                        `<div style="font-size:13px;">• ${pkgEsc(code)}: <strong>${qty}</strong> pezzi mancanti al momento del carico</div>`).join('')}
+                </div>`;
+        }
+
+        // ---------- Modale imballaggio ----------
+        async function openPackagingModal(id) {
+            try {
+                await loadPackagingLookups();
+            } catch (e) {
+                return showAlert(`❌ ${e.message}`, 'error');
+            }
+            const item = id ? pkgItems.find(i => i.id === id) : null;
+
+            document.getElementById('packagingModalTitle').textContent = id ? '✏️ Modifica Imballaggio' : '🧺 Nuovo Imballaggio';
+            document.getElementById('packagingModalId').value = id || '';
+            document.getElementById('pkgCode').value = item ? item.code : '';
+            document.getElementById('pkgDescription').value = item ? item.description : '';
+            document.getElementById('pkgMinStock').value = item ? item.minimumStock : 0;
+            document.getElementById('pkgNotes').value = item ? (item.notes || '') : '';
+            document.getElementById('packagingModalError').style.display = 'none';
+            document.getElementById('packagingModalConfirmBtn').disabled = false;
+
+            document.getElementById('pkgColor').innerHTML = '<option value="">-- Nessuno --</option>'
+                + pkgColors.map(c => `<option value="${c.id}">${pkgEsc(c.name)}</option>`).join('');
+            document.getElementById('pkgColor').value = item && item.colorId ? item.colorId : '';
+
+            document.getElementById('pkgSize').innerHTML = '<option value="">-- Nessuna --</option>'
+                + pkgSizes.map(s => `<option value="${s.id}">${pkgEsc(s.label)}${s.capacityKg ? ` (~${s.capacityKg} kg)` : ''}</option>`).join('');
+            document.getElementById('pkgSize').value = item && item.sizeId ? item.sizeId : '';
+
+            const selectedTypes = item ? item.typeIds : [];
+            document.getElementById('pkgTypesCheckboxes').innerHTML = pkgTypes.length
+                ? pkgTypes.map(t => `
+                    <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#e0e0e0;">
+                        <input type="checkbox" class="pkg-type-cb" value="${t.id}" ${selectedTypes.includes(t.id) ? 'checked' : ''} style="width:16px;height:16px;accent-color:#7c3aed;">
+                        ${pkgEsc(t.name)}
+                    </label>`).join('')
+                : '<div style="color:#9ca3af;font-size:12px;">Nessuna tipologia configurata: creale nella scheda Tipologie.</div>';
+
+            const initSection = document.getElementById('pkgInitialStockSection');
+            initSection.style.display = id ? 'none' : 'grid';
+            document.getElementById('pkgInitialPos').innerHTML = '<option value="">-- Nessuna --</option>'
+                + pkgPositions.map(p => `<option value="${pkgEsc(p.code)}">${pkgEsc(p.code)}${p.description ? ` — ${pkgEsc(p.description)}` : ''}</option>`).join('');
+            document.getElementById('pkgInitialQty').value = 0;
+
+            document.getElementById('packagingModalOverlay').classList.add('open');
+        }
+
+        function closePackagingModal(event) {
+            if (event && event.target !== event.currentTarget) return;
+            closePackagingForce();
+        }
+
+        function closePackagingForce() {
+            document.getElementById('packagingModalOverlay').classList.remove('open');
+        }
+
+        function checkPackagingCode() {
+            clearTimeout(_pkgCodeCheckTimer);
+            _pkgCodeCheckTimer = setTimeout(async () => {
+                const code = document.getElementById('pkgCode').value.trim();
+                const errEl = document.getElementById('packagingModalError');
+                const btn = document.getElementById('packagingModalConfirmBtn');
+                if (!code) { errEl.style.display = 'none'; btn.disabled = false; return; }
+                const excludeId = document.getElementById('packagingModalId').value;
+                try {
+                    const res = await pkgFetch(`/items/check-code?code=${encodeURIComponent(code)}${excludeId ? `&excludeId=${excludeId}` : ''}`);
+                    if (res.available) {
+                        errEl.style.display = 'none';
+                        btn.disabled = false;
+                    } else {
+                        errEl.textContent = `⚠️ ${res.error}`;
+                        errEl.style.display = 'block';
+                        btn.disabled = true;
+                    }
+                } catch (_) { /* la validazione definitiva resta lato server */ }
+            }, 350);
+        }
+
+        async function submitPackagingForm() {
+            const id = document.getElementById('packagingModalId').value;
+            const errEl = document.getElementById('packagingModalError');
+            const payload = {
+                code: document.getElementById('pkgCode').value.trim().toUpperCase(),
+                description: document.getElementById('pkgDescription').value.trim(),
+                colorId: document.getElementById('pkgColor').value || null,
+                sizeId: document.getElementById('pkgSize').value || null,
+                minimumStock: parseInt(document.getElementById('pkgMinStock').value, 10) || 0,
+                notes: document.getElementById('pkgNotes').value.trim(),
+                typeIds: Array.from(document.querySelectorAll('.pkg-type-cb:checked')).map(cb => Number(cb.value))
+            };
+            if (!payload.code) { errEl.textContent = '⚠️ Codice obbligatorio'; errEl.style.display = 'block'; return; }
+            if (!payload.description) { errEl.textContent = '⚠️ Descrizione obbligatoria'; errEl.style.display = 'block'; return; }
+            if (!id) {
+                payload.initialPositionCode = document.getElementById('pkgInitialPos').value;
+                payload.initialQuantity = parseInt(document.getElementById('pkgInitialQty').value, 10) || 0;
+            }
+            try {
+                await pkgFetch(id ? `/items/${id}` : '/items', { method: id ? 'PUT' : 'POST', body: JSON.stringify(payload) });
+                closePackagingForce();
+                showAlert(id ? '✅ Imballaggio aggiornato' : '✅ Imballaggio creato', 'success');
+                loadPackagingTab('elenco');
+            } catch (e) {
+                errEl.textContent = `⚠️ ${e.message}`;
+                errEl.style.display = 'block';
+            }
+        }
+
+        async function deletePackagingItem(id, code) {
+            if (!confirm(`Eliminare l'imballaggio "${code}"?`)) return;
+            await pkgDeleteWithForce(`/items/${id}`, 'elenco');
+        }
+
+        // ---------- Movimenti ----------
+        function openPackagingStockModal(id) {
+            const item = pkgItems.find(i => i.id === id);
+            if (!item) return;
+            document.getElementById('pkgStockItemId').value = id;
+            document.getElementById('pkgStockSummary').textContent = `${item.code} — ${item.description} (giacenza ${item.totalQuantity})`;
+            document.getElementById('pkgStockType').value = 'IN';
+            document.getElementById('pkgStockQty').value = 0;
+            document.getElementById('pkgStockReason').value = '';
+            document.getElementById('pkgStockError').style.display = 'none';
+            document.getElementById('pkgStockPos').innerHTML = pkgPositions.length
+                ? pkgPositions.map(p => `<option value="${pkgEsc(p.code)}">${pkgEsc(p.code)}${p.description ? ` — ${pkgEsc(p.description)}` : ''}</option>`).join('')
+                : '<option value="">-- Nessuna posizione configurata --</option>';
+            updatePackagingStockHint();
+            document.getElementById('packagingStockOverlay').classList.add('open');
+        }
+
+        function closePackagingStockModal(event) {
+            if (event && event.target !== event.currentTarget) return;
+            document.getElementById('packagingStockOverlay').classList.remove('open');
+        }
+
+        function updatePackagingStockHint() {
+            const item = pkgItems.find(i => i.id === Number(document.getElementById('pkgStockItemId').value));
+            const pos = document.getElementById('pkgStockPos').value;
+            const type = document.getElementById('pkgStockType').value;
+            const entry = item && (item.entries || []).find(e => e.positionCode === pos);
+            const current = entry ? entry.quantity : 0;
+            const hint = document.getElementById('pkgStockHint');
+            hint.textContent = pos
+                ? `Giacenza attuale in ${pos}: ${current} pezzi${type === 'ADJUSTMENT' ? ' — la quantità inserita sostituirà quella attuale' : ''}`
+                : 'Nessuna posizione selezionata';
+        }
+
+        async function submitPackagingStock() {
+            const errEl = document.getElementById('pkgStockError');
+            const payload = {
+                itemId: Number(document.getElementById('pkgStockItemId').value),
+                positionCode: document.getElementById('pkgStockPos').value,
+                type: document.getElementById('pkgStockType').value,
+                quantity: parseInt(document.getElementById('pkgStockQty').value, 10) || 0,
+                reason: document.getElementById('pkgStockReason').value.trim()
+            };
+            if (!payload.positionCode) { errEl.textContent = '⚠️ Selezionare una posizione'; errEl.style.display = 'block'; return; }
+            try {
+                await pkgFetch('/stock/move', { method: 'POST', body: JSON.stringify(payload) });
+                document.getElementById('packagingStockOverlay').classList.remove('open');
+                showAlert('✅ Movimento registrato', 'success');
+                loadPackagingTab('elenco');
+            } catch (e) {
+                errEl.textContent = `⚠️ ${e.message}`;
+                errEl.style.display = 'block';
+            }
+        }
+
 
         function scrollToWarehouseStatus() {
             _setActiveCard('fcStatoMagazzino');
@@ -2793,7 +3809,9 @@
             document.getElementById('cargoLottoInput').value = '';
             document.getElementById('cargoScadenzaInput').value = '';
             document.getElementById('cargoNotesInput').value = '';
+            document.getElementById('cargoContainerField').style.display = 'none';
             document.getElementById('cargoModalOverlay').classList.add('open');
+            if (articleId) onCargoArticleChange();
         }
 
         function closeCargoModal(event) {
@@ -2828,6 +3846,10 @@
                 titleEl.textContent = '📤 Scarico Merce';
                 extraFields.style.display = 'none';
             }
+            refreshContainerOption(
+                type === 'CARICO' ? parseInt(document.getElementById('cargoArticleSelect').value) : null,
+                'cargoContainerField', 'cargoContainerLabel', 'cargoUseContainer'
+            );
         }
 
         function onCargoArticleChange() {
@@ -2835,6 +3857,11 @@
             const articleId = parseInt(select.value);
             const infoEl = document.getElementById('cargoCurrentStockInfo');
             const stockVal = document.getElementById('cargoCurrentStockValue');
+
+            refreshContainerOption(
+                currentCargoType === 'CARICO' ? articleId : null,
+                'cargoContainerField', 'cargoContainerLabel', 'cargoUseContainer'
+            );
 
             if (!articleId) {
                 infoEl.style.display = 'none';
@@ -2922,7 +3949,7 @@
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ articleId, newQuantity, reason })
+                    body: JSON.stringify({ articleId, newQuantity, reason, useContainer: document.getElementById('cargoUseContainer').checked })
                 });
 
                 if (!response.ok) throw new Error('Errore nel salvataggio');
@@ -3107,6 +4134,27 @@
             }
 
             document.getElementById('shelfEntryOverlay').classList.add('open');
+            const editedArticleId = isEdit ? allShelfEntries.find(e => e.id === entryId)?.articleId : parseInt(select.value);
+            refreshContainerOption(editedArticleId, 'shelfEntryContainerField', 'shelfEntryContainerLabel', 'shelfEntryUseContainer');
+        }
+
+        function onShelfEntryArticleChange() {
+            const articleId = parseInt(document.getElementById('shelfEntryArticleSelect').value);
+            refreshContainerOption(articleId, 'shelfEntryContainerField', 'shelfEntryContainerLabel', 'shelfEntryUseContainer');
+        }
+
+        // Mostra la casella contenitore solo se l'articolo ne ha uno associato
+        async function refreshContainerOption(articleId, fieldId, labelId, checkboxId) {
+            const field = document.getElementById(fieldId);
+            if (!field) return;
+            if (!articleId) { field.style.display = 'none'; return; }
+            await getArticlePackagingLinks();
+            const container = articleContainerInfo(articleId);
+            if (!container) { field.style.display = 'none'; return; }
+            field.style.display = 'block';
+            document.getElementById(labelId).textContent =
+                `Scala anche il contenitore ${container.code} (1 ogni ${container.colliPerUnit} colli)`;
+            document.getElementById(checkboxId).checked = true;
         }
 
         function closeShelfEntryModal(event) {
@@ -3143,11 +4191,12 @@
 
             try {
                 let resp, savedLabel;
+                const useContainer = document.getElementById('shelfEntryUseContainer').checked;
                 if (entryId) {
                     resp = await fetch(`${API_URL}/inventory/shelf-entries/${entryId}`, {
                         method: 'PUT',
                         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ quantity: qty, batch, expiry, notes, positionCode })
+                        body: JSON.stringify({ quantity: qty, batch, expiry, notes, positionCode, useContainer })
                     });
                     savedLabel = `${positionCode} × ${qty}`;
                 } else {
@@ -3163,7 +4212,7 @@
                     resp = await fetch(`${API_URL}/inventory/shelf-entries`, {
                         method: 'POST',
                         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ articleId, positionCode, quantity: qty, batch, expiry, notes })
+                        body: JSON.stringify({ articleId, positionCode, quantity: qty, batch, expiry, notes, useContainer })
                     });
                     const art = allArticles.find(a => a.id === articleId);
                     savedLabel = `${art?.name || art?.nome || '?'} × ${qty} → ${positionCode}`;
@@ -3237,6 +4286,7 @@
         function renderProdottiList() {
             const container = document.getElementById('prodottiList');
             const valid = allArticles.filter(a => !a.code?.startsWith('EMPTY-')).sort((a,b) => (a.code||'').localeCompare(b.code||''));
+            getArticlePackagingLinks().then(() => { if (document.getElementById('prodottiList') === container) refreshProdottiPackagingBadges(); });
             document.getElementById('prodottiCount').textContent = valid.length;
             if (!valid.length) { container.innerHTML = '<div class="empty-state">Nessun prodotto</div>'; return; }
             container.innerHTML = `
@@ -3250,6 +4300,7 @@
                         <th style="text-align:left;padding:6px 8px;">Gruppo</th>
                         <th style="text-align:center;padding:6px 8px;color:#fb923c;" title="Soglia avviso (in colli): scatta lo stato 'In esaurimento'">⚠️ Avviso</th>
                         <th style="text-align:center;padding:6px 8px;color:#ef4444;" title="Soglia critica (in colli): scatta lo stato 'Critico'">🚨 Critica</th>
+                        <th style="text-align:center;padding:6px 8px;color:#a78bfa;" title="Imballaggi consumati per collo">🧺</th>
                         <th style="text-align:right;padding:6px 8px;">Azioni</th>
                     </tr></thead>
                     <tbody>${valid.map(a => {
@@ -3265,6 +4316,7 @@
                         <td style="padding:4px 8px;"><select id="pin-group-${a.id}" style="background:#1f2937;border:1px solid #374151;border-radius:5px;color:#9ca3af;padding:4px 6px;width:100%;font-size:12px;"><option value="">— nessuno —</option>${a.productGroup ? `<option value="${(a.productGroup||'').replace(/"/g,'&quot;')}" selected>${a.productGroup}</option>` : ''}</select></td>
                         <td style="padding:4px 8px;text-align:center;"><input id="pin-min-${a.id}" type="number" value="${minS}" min="0" step="1" placeholder="0" style="background:#1f2937;border:1px solid #fb923c33;border-radius:5px;color:#fb923c;padding:4px 6px;width:64px;font-size:13px;text-align:center;font-weight:700;" onkeydown="if(event.key==='Enter')saveInlineArticle(${a.id});else if(event.key==='Escape')renderProdottiList();"></td>
                         <td style="padding:4px 8px;text-align:center;"><input id="pin-crit-${a.id}" type="number" value="${critS}" min="0" step="1" placeholder="0" style="background:#1f2937;border:1px solid #ef444433;border-radius:5px;color:#ef4444;padding:4px 6px;width:64px;font-size:13px;text-align:center;font-weight:700;" onkeydown="if(event.key==='Enter')saveInlineArticle(${a.id});else if(event.key==='Escape')renderProdottiList();"></td>
+                        <td style="padding:4px 8px;text-align:center;" id="pin-pkg-${a.id}"><span style="color:#6b7280;">—</span></td>
                         <td style="padding:4px 8px;text-align:right;white-space:nowrap;">
                             <button class="btn btn-small" style="background:#16a34a;color:#fff;margin-right:4px;font-size:12px;" onclick="saveInlineArticle(${a.id})">✓ Salva</button>
                             <button class="btn btn-small" style="background:#1e3a8a;color:#bfdbfe;margin-right:4px;font-size:12px;" title="Modifica completa" onclick="openArticleModal(${a.id})">✏️</button>
@@ -3276,6 +4328,19 @@
                     }).join('')}</tbody>
                 </table>`;
             populateInlineSubSelects(valid);
+            refreshProdottiPackagingBadges();
+        }
+
+        function refreshProdottiPackagingBadges() {
+            const links = _articlePackagingLinks || {};
+            Object.keys(links).forEach(articleId => {
+                const cell = document.getElementById(`pin-pkg-${articleId}`);
+                if (!cell) return;
+                const list = links[articleId] || [];
+                if (!list.length) return;
+                const tooltip = list.map(l => `${l.code} (${l.role === 'CONTAINER' ? `1 ogni ${l.colliPerUnit} colli` : 'per collo'})`).join(', ');
+                cell.innerHTML = `<span title="${pkgEsc(tooltip)}" style="background:#4c1d95;color:#ddd6fe;border-radius:10px;padding:1px 8px;font-size:12px;font-weight:700;">${list.length}</span>`;
+            });
         }
 
         async function onInlineCatChange(id) {
@@ -3457,7 +4522,75 @@
             const currentGroup = (allArticles.find(x => x.id === articleId)?.productGroup) || '';
             await loadSubcategoriesForArt(catSel.value, currentSub);
             await loadProductGroupsForArt(catSel.value, currentSub, currentGroup);
+            await loadArticlePackagingSection(articleId);
             document.getElementById('articleModalOverlay').classList.add('open');
+        }
+
+        // ---------- Imballaggi associati all'articolo ----------
+        let _articlePackagingRows = [];
+
+        async function loadArticlePackagingSection(articleId) {
+            try {
+                if (!pkgItems.length) pkgItems = await pkgFetch('/items');
+            } catch (_) { pkgItems = pkgItems || []; }
+            _articlePackagingRows = [];
+            if (articleId) {
+                try {
+                    const links = await pkgFetch(`/articles/${articleId}`);
+                    _articlePackagingRows = links.map(l => ({
+                        packagingItemId: l.packagingItemId,
+                        role: l.role,
+                        colliPerUnit: l.colliPerUnit
+                    }));
+                } catch (_) { /* nessuna associazione */ }
+            }
+            renderArticlePackagingRows();
+        }
+
+        function renderArticlePackagingRows() {
+            const wrap = document.getElementById('artPackagingRows');
+            if (!wrap) return;
+            if (!pkgItems.length) {
+                wrap.innerHTML = '<div style="color:#9ca3af;font-size:12px;">Nessun imballaggio in anagrafica: creane uno in 🧺 Magazzino imballaggi.</div>';
+                return;
+            }
+            if (!_articlePackagingRows.length) {
+                wrap.innerHTML = '<div style="color:#9ca3af;font-size:12px;">Nessun imballaggio associato.</div>';
+                return;
+            }
+            const sel = 'background:#1f2937;border:1px solid #374151;border-radius:6px;color:#e0e0e0;padding:6px 8px;width:100%;font-size:13px;';
+            wrap.innerHTML = _articlePackagingRows.map((row, idx) => `
+                <div style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:6px;align-items:center;margin-bottom:6px;">
+                    <select style="${sel}" title="Imballaggio" onchange="updateArticlePackagingRow(${idx},'packagingItemId',this.value)">
+                        ${pkgItems.map(i => `<option value="${i.id}"${i.id === row.packagingItemId ? ' selected' : ''}>${pkgEsc(i.code)} — ${pkgEsc(i.description)}</option>`).join('')}
+                    </select>
+                    <select style="${sel}" title="Ruolo" onchange="updateArticlePackagingRow(${idx},'role',this.value)">
+                        <option value="PRIMARY"${row.role === 'PRIMARY' ? ' selected' : ''}>Primario</option>
+                        <option value="CONTAINER"${row.role === 'CONTAINER' ? ' selected' : ''}>Contenitore</option>
+                    </select>
+                    <input type="number" min="1" step="1" value="${row.colliPerUnit}" style="${sel}"
+                        title="Colli contenuti da un pezzo" ${row.role === 'CONTAINER' ? '' : 'disabled'}
+                        onchange="updateArticlePackagingRow(${idx},'colliPerUnit',this.value)">
+                    <button type="button" class="btn btn-small" style="background:#dc2626;color:#fff;" onclick="removeArticlePackagingRow(${idx})">🗑️</button>
+                </div>`).join('');
+        }
+
+        function addArticlePackagingRow() {
+            if (!pkgItems.length) return showAlert('⚠️ Nessun imballaggio in anagrafica', 'error');
+            _articlePackagingRows.push({ packagingItemId: pkgItems[0].id, role: 'PRIMARY', colliPerUnit: 1 });
+            renderArticlePackagingRows();
+        }
+
+        function updateArticlePackagingRow(idx, field, value) {
+            const row = _articlePackagingRows[idx];
+            if (!row) return;
+            row[field] = field === 'role' ? value : parseInt(value, 10) || (field === 'colliPerUnit' ? 1 : 0);
+            if (field === 'role') renderArticlePackagingRows();
+        }
+
+        function removeArticlePackagingRow(idx) {
+            _articlePackagingRows.splice(idx, 1);
+            renderArticlePackagingRows();
         }
 
         // Cache sottocategorie per categoria (key = nome categoria UPPERCASE)
@@ -3633,6 +4766,13 @@
                             body: JSON.stringify({ articleId: savedId, minimumStock: minVal, criticalStock: critVal })
                         });
                     } catch (e) { console.warn('soglie non salvate:', e); }
+                    try {
+                        await pkgFetch(`/articles/${savedId}`, {
+                            method: 'PUT',
+                            body: JSON.stringify({ packagings: _articlePackagingRows })
+                        });
+                        _articlePackagingLinks = null;
+                    } catch (e) { console.warn('imballaggi non salvati:', e); }
                 }
 
                 showAlert(id ? `✅ Articolo aggiornato` : `✅ Articolo creato`, 'success');
@@ -3725,6 +4865,11 @@
             if (!a) return;
             document.getElementById('nutritionalArticleId').value = articleId;
             document.getElementById('nutritionalArticleName').textContent = a.name || '';
+            const templateButton = document.getElementById('reloadNutritionalTemplateBtn');
+            templateButton.disabled = !(a.category && a.subcategory && a.productGroup);
+            templateButton.title = templateButton.disabled
+                ? 'Assegna prima un gruppo al prodotto'
+                : 'Ricarica i valori proposti dal gruppo';
             document.getElementById('nutritionalError').style.display = 'none';
             document.getElementById('nutritionalSaveBtn').disabled = false;
             document.getElementById('nutritionalSaveText').textContent = '✓ Salva Valori';
@@ -3740,6 +4885,39 @@
             setVal('nutProtein',       n.protein);
             setVal('nutSodium',        n.sodium);
             document.getElementById('nutritionalOverlay').classList.add('open');
+        }
+
+        async function reloadProductNutritionTemplate() {
+            const articleId = parseInt(document.getElementById('nutritionalArticleId').value);
+            const article = allArticles.find(item => item.id === articleId);
+            if (!article?.category || !article?.subcategory || !article?.productGroup) return;
+            try {
+                const response = await fetch(`${API_URL}/categories/${encodeURIComponent(article.category)}/subcategories/${encodeURIComponent(article.subcategory)}/groups/${encodeURIComponent(article.productGroup)}/nutritional-template`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) {
+                    const error = await response.json().catch(() => ({}));
+                    throw new Error(error.error || `HTTP ${response.status}`);
+                }
+                const result = await response.json();
+                const values = result.data || {};
+                if (!NUTRITIONAL_TEMPLATE_FIELDS.some(field => values[field.key] != null)) {
+                    showAlert('⚠️ Nessun valore proposto per questa sottocategoria', 'error');
+                    return;
+                }
+                const inputIds = {
+                    energyKcal: 'nutEnergyKcal', energyKj: 'nutEnergyKj', fat: 'nutFat',
+                    saturatedFat: 'nutSaturatedFat', carbohydrates: 'nutCarbohydrates',
+                    sugars: 'nutSugars', fiber: 'nutFiber', protein: 'nutProtein', sodium: 'nutSodium'
+                };
+                for (const field of NUTRITIONAL_TEMPLATE_FIELDS) {
+                    const input = document.getElementById(inputIds[field.key]);
+                    if (input) input.value = values[field.key] ?? '';
+                }
+                showAlert('✅ Proposta caricata. Salva per applicarla al prodotto.', 'success');
+            } catch (error) {
+                showAlert(`❌ ${error.message}`, 'error');
+            }
         }
 
         function closeNutritionalModal(event) {
@@ -4686,7 +5864,7 @@
                 <span style="font-size:12px;color:#6b7280;">1 copia — formato reale 4×6"</span>
             </div>
 
-            <iframe id="labelPreviewFrame" style="width:100%;height:460px;border:1px solid #374151;border-radius:4px;background:#fff;" sandbox="allow-same-origin"></iframe>
+            <iframe id="labelPreviewFrame" style="width:100%;height:594px;border:1px solid #374151;border-radius:4px;background:#fff;" sandbox="allow-same-origin"></iframe>
 
             <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
                 <button class="btn" style="background:#374151;color:#e0e0e0;" onclick="closeLabelPreview()">Annulla</button>
@@ -4866,21 +6044,7 @@
             const expiry = document.getElementById('labelPrintExpiry').value.trim();
             const qty    = parseInt(document.getElementById('labelPrintQty').value) || 1;
 
-            const token = localStorage.getItem('authToken') || localStorage.getItem('token') || '';
-            const [sr, dr] = await Promise.all([
-                fetch('/api/settings/company'),
-                fetch('/api/categories/descriptions', { headers: { Authorization: `Bearer ${token}` } }),
-            ]);
-            const settings = sr.ok ? await sr.json() : {};
-            const taxonomy = dr.ok ? await dr.json() : [];
-            const order = {
-                name: art.name,
-                qty: qty,
-                weightPerCollo: art.weightPerUnit || 0,
-                code: art.code,
-            };
-
-            const htmlDoc = window.buildLabelHtmlDoc(order, art, settings, taxonomy, lot, expiry, 1, true);
+            const htmlDoc = await window.getArticleLabelHtml(_labelPrintArticleId, qty, lot, expiry);
             const frame = document.getElementById('labelPreviewFrame');
             if (frame) frame.srcdoc = htmlDoc;
             document.getElementById('labelPreviewOverlay').style.display = 'flex';
@@ -4925,19 +6089,6 @@
         try {
             const art = allArticles.find(a => a.id === _labelPrintArticleId);
             if (!art) throw new Error('Articolo non trovato in lista locale');
-            const token = localStorage.getItem('authToken') || localStorage.getItem('token') || '';
-            const [sr, dr] = await Promise.all([
-                fetch('/api/settings/company'),
-                fetch('/api/categories/descriptions', { headers: { Authorization: `Bearer ${token}` } }),
-            ]);
-            const settings = sr.ok ? await sr.json() : {};
-            const taxonomy = dr.ok ? await dr.json() : [];
-            const order = {
-                name: art.name,
-                qty: qty,
-                weightPerCollo: art.weightPerUnit || 0,
-                code: art.code,
-            };
             const result = await window.printArticleLabel(art.id, qty, lot, expiry, { silent: true });
             if (result !== true) throw new Error('Stampante etichette non raggiungibile');
             closeLabelPreview();

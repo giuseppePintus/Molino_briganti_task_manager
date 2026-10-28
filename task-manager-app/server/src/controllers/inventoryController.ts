@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { InventoryService } from '../services/inventoryService';
 import { socketService, SocketEvents } from '../services/socketService';
+import { consumePackagingForLoad, getShelfTotal } from '../services/packagingService';
+import prisma from '../lib/prisma';
 
 export class InventoryController {
   private static buildDiagFlowId(req: Request): string {
@@ -51,7 +53,7 @@ export class InventoryController {
    */
   static async updateStock(req: Request, res: Response) {
     try {
-      const { articleId, newQuantity, reason, batch, expiry } = req.body;
+      const { articleId, newQuantity, reason, batch, expiry, useContainer } = req.body;
       // Prova a ottenere l'userId dal middleware di autenticazione o dal body come fallback
       let userId = (req as any).user?.id;
       
@@ -65,14 +67,33 @@ export class InventoryController {
         return res.status(400).json({ error: 'Campi obbligatori: articleId, newQuantity' });
       }
 
+      const parsedArticleId = parseInt(articleId);
+      const parsedQuantity = parseInt(newQuantity);
+      const shelfTotalBefore = await getShelfTotal(parsedArticleId);
+      const inventoryBefore = await prisma.inventory.findUnique({ where: { articleId: parsedArticleId } });
+      const oldStock = inventoryBefore?.currentStock ?? 0;
+
       const updated = await InventoryService.updateStock(
-        parseInt(articleId),
-        parseInt(newQuantity),
+        parsedArticleId,
+        parsedQuantity,
         reason || 'AGGIUSTAMENTO MANUALE',
         userId,
         batch,
         expiry
       );
+
+      // Consuma solo la parte di incremento non già registrata come entrata a scaffale,
+      // altrimenti il flusso Lite (shelf-entry + stock/update) scalerebbe due volte.
+      const increase = parsedQuantity - oldStock;
+      const uncovered = parsedQuantity - shelfTotalBefore;
+      const colliToPack = Math.min(increase, uncovered);
+      if (colliToPack > 0) {
+        await consumePackagingForLoad(parsedArticleId, colliToPack, {
+          reason: reason || 'CARICO MAGAZZINO',
+          username: (req as any).user?.username,
+          useContainer,
+        });
+      }
 
       socketService.broadcast(SocketEvents.INVENTORY_UPDATED, { type: 'stock', articleId });
       res.json(updated);
@@ -492,17 +513,25 @@ export class InventoryController {
 
   static async upsertShelfEntry(req: Request, res: Response) {
     try {
-      const { articleId, positionCode, quantity, batch, expiry, notes } = req.body;
+      const { articleId, positionCode, quantity, batch, expiry, notes, useContainer } = req.body;
       if (!articleId || !positionCode) {
         return res.status(400).json({ success: false, error: 'articleId e positionCode obbligatori' });
       }
+      const parsedArticleId = parseInt(articleId);
+      const totalBefore = await getShelfTotal(parsedArticleId);
       const entry = await InventoryService.upsertShelfEntry({
-        articleId: parseInt(articleId),
+        articleId: parsedArticleId,
         positionCode,
         quantity: quantity !== undefined ? parseInt(quantity) : 0,
         batch: batch || undefined,
         expiry: expiry || undefined,
         notes: notes || undefined
+      });
+      const totalAfter = await getShelfTotal(parsedArticleId);
+      await consumePackagingForLoad(parsedArticleId, totalAfter - totalBefore, {
+        reason: `CARICO SCAFFALE ${positionCode}`,
+        username: (req as any).user?.username,
+        useContainer,
       });
       socketService.broadcast(SocketEvents.INVENTORY_UPDATED, { type: 'shelf-entry' });
       res.json({ success: true, data: entry });
@@ -514,7 +543,9 @@ export class InventoryController {
   static async updateShelfEntry(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const { quantity, batch, expiry, notes, positionCode } = req.body;
+      const { quantity, batch, expiry, notes, positionCode, useContainer } = req.body;
+      const current = await prisma.shelfEntry.findUnique({ where: { id: parseInt(id) } });
+      const totalBefore = current ? await getShelfTotal(current.articleId) : 0;
       const entry = await InventoryService.updateShelfEntry(parseInt(id), {
         ...(quantity !== undefined && { quantity: parseInt(quantity) }),
         ...(batch !== undefined && { batch: batch || null }),
@@ -522,6 +553,15 @@ export class InventoryController {
         ...(notes !== undefined && { notes: notes || null }),
         ...(positionCode && { positionCode })
       });
+      if (current) {
+        // Sugli spostamenti il totale non cambia: solo un aumento reale consuma imballaggi
+        const totalAfter = await getShelfTotal(current.articleId);
+        await consumePackagingForLoad(current.articleId, totalAfter - totalBefore, {
+          reason: `CARICO SCAFFALE ${positionCode || current.positionCode}`,
+          username: (req as any).user?.username,
+          useContainer,
+        });
+      }
       socketService.broadcast(SocketEvents.INVENTORY_UPDATED, { type: 'shelf-entry', id });
       res.json({ success: true, data: entry });
     } catch (error: any) {

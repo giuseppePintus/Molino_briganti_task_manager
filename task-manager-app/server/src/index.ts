@@ -75,7 +75,7 @@ import customersRoutes from './routes/customers';
 import wireguardRoutes from './routes/wireguard';
 import debugRoutes from './routes/debug';
 import printersRoutes from './routes/printers';
-import setupBackupMiddleware from './middleware/backupMiddleware';
+import packagingRoutes from './routes/packaging';
 import { authMiddleware } from './middleware/auth';
 import BackupService from './services/backupService';
 import { initPuppeteer, closePuppeteer } from './services/printService';
@@ -136,6 +136,7 @@ app.use('/api/customers', customersRoutes);
 app.use('/api/wireguard', wireguardRoutes);
 app.use('/api/debug', debugRoutes);
 app.use('/api/printers', printersRoutes);
+app.use('/api/packaging', packagingRoutes);
 
 // Inline endpoint - List all HTML pages in public dir (for Indice feature)
 app.get('/api/pages', (req, res) => {
@@ -328,9 +329,6 @@ httpServer.listen(PORT, undefined, async () => {
 
     // Migrazione one-shot da JSON a DB (categorie + clienti)
     await migrateJsonToDb();
-
-    // Setup backup middleware
-    setupBackupMiddleware(prisma);
 
     // Attiva backup automatico ogni ora
     BackupService.setupAutoBackup(60);

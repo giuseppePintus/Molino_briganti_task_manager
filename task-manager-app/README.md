@@ -214,7 +214,7 @@ npm test              # Run tests
 
 1. Modifica `server/prisma/schema.prisma`
 2. Esegui: `npx prisma db push --schema=server/prisma/schema.prisma`
-3. Generato automaticamente in `@prisma/client`
+3. Generato in `server/src/generated/prisma` con `npm run prisma:generate`
 
 ## Troubleshooting
 

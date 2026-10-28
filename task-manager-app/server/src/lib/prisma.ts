@@ -1,12 +1,11 @@
-import { PrismaClient } from '@prisma/client';
-
+import { createApplicationPrismaClient } from './createPrismaClient';
 // Singleton pattern con supporto per reset della connessione
 class PrismaClientManager {
-  private static instance: PrismaClient | null = null;
+  private static instance: ReturnType<typeof createApplicationPrismaClient> | null = null;
 
-  static getInstance(): PrismaClient {
+  static getInstance(): ReturnType<typeof createApplicationPrismaClient> {
     if (!this.instance) {
-      this.instance = new PrismaClient();
+      this.instance = createApplicationPrismaClient();
     }
     return this.instance;
   }
@@ -22,7 +21,7 @@ class PrismaClientManager {
       this.instance = null;
     }
     // Ricrea l'istanza
-    this.instance = new PrismaClient();
+    this.instance = createApplicationPrismaClient();
     // Forza la riconnessione
     await this.instance.$connect();
     console.log('✅ Prisma connection reset complete');

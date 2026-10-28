@@ -679,6 +679,19 @@ export class InventoryService {
       const groupRaw = (data.productGroup || '').trim();
       const subcategory = category && subRaw ? subRaw.toUpperCase() : null;
       const productGroup = subcategory && groupRaw ? groupRaw.toUpperCase() : null;
+      const nutritionalTemplate = category && subcategory && productGroup
+        ? await prisma.productGroup.findFirst({
+            where: {
+              name: productGroup,
+              subcategory: { name: subcategory, category: { name: category.toUpperCase() } }
+            },
+            select: {
+              energyKcal: true, energyKj: true, fat: true, saturatedFat: true,
+              carbohydrates: true, sugars: true, fiber: true, protein: true, sodium: true
+            }
+          })
+        : null;
+      const hasNutritionalValues = nutritionalTemplate && Object.values(nutritionalTemplate).some(value => value !== null);
       const article = await prisma.article.create({
         data: {
           code: data.code,
@@ -693,6 +706,7 @@ export class InventoryService {
           allergens: data.allergens !== undefined ? (data.allergens || null) : null,
           supplierName: data.supplierName !== undefined ? (data.supplierName || null) : null,
           supplierRea: data.supplierRea !== undefined ? (data.supplierRea || null) : null,
+          ...(hasNutritionalValues && { nutritionalInfo: { create: nutritionalTemplate } }),
         },
         include: { inventory: true, nutritionalInfo: true }
       });

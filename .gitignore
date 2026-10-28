@@ -161,6 +161,8 @@ android-inventory-app/app/build/
 *.sql
 !task-manager-app/setup-mariadb.sql
 !task-manager-app/migrations/utf8mb4-migration.sql
+!task-manager-app/migrations/20261027-subcategory-nutritional-template.sql
+!task-manager-app/migrations/20261027-product-group-nutritional-template.sql
 backups/*.sql
 **/backups/*.sql
 molino-data/backups/

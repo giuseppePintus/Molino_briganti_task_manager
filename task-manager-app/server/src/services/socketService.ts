@@ -21,6 +21,9 @@ export enum SocketEvents {
   
   // Inventory events
   INVENTORY_UPDATED = 'inventory:updated',
+
+  // Packaging (magazzino imballaggi) events
+  PACKAGING_UPDATED = 'packaging:updated',
   
   // Generic refresh
   REFRESH_DATA = 'refresh:data'

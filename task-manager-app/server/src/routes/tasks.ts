@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { TasksController } from '../controllers/tasksController';
 import { authMiddleware } from '../middleware/auth';
 import prisma from '../lib/prisma';
+import { consumePackagingForLoad } from '../services/packagingService';
 
 const router = Router();
 const tasksController = new TasksController();
@@ -232,6 +233,12 @@ router.post('/:id/complete-internal-order', async (req: any, res) => {
       }
     });
 
+    const packagingResult = await consumePackagingForLoad(article.id, qty, {
+      reason: `ORDINE_INTERNO ${articleCode}`,
+      username: user.username,
+      useContainer: req.body?.useContainer,
+    });
+
     // Rimuovi snooze (merce arrivata)
     try {
       await prisma.$executeRawUnsafe(
@@ -265,7 +272,8 @@ router.post('/:id/complete-internal-order', async (req: any, res) => {
       task: updated,
       articleId: article.id,
       addedQuantity: qty,
-      positionCode: pos
+      positionCode: pos,
+      packaging: packagingResult
     });
   } catch (e: any) {
     console.error('[tasks/complete-internal-order] errore', e);

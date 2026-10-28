@@ -1,0 +1,10 @@
+ALTER TABLE `ProductSubcategory`
+  ADD COLUMN `energyKcal` DOUBLE NULL,
+  ADD COLUMN `energyKj` DOUBLE NULL,
+  ADD COLUMN `fat` DOUBLE NULL,
+  ADD COLUMN `saturatedFat` DOUBLE NULL,
+  ADD COLUMN `carbohydrates` DOUBLE NULL,
+  ADD COLUMN `sugars` DOUBLE NULL,
+  ADD COLUMN `fiber` DOUBLE NULL,
+  ADD COLUMN `protein` DOUBLE NULL,
+  ADD COLUMN `sodium` DOUBLE NULL;

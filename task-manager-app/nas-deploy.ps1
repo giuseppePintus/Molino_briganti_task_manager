@@ -81,6 +81,7 @@ $SHADOW_PORT  = 5001
 $PROD_PORT    = 5000
 $BUILD_CTX    = '/share/Container/molino-build-new'
 $STATIC_STAGE = '/share/Container/molino-static-stage'  # per Quick: dove scompattiamo l'archivio
+$RUNTIME_ENV_FILE = '/share/Container/config/molino-task-manager/runtime.env'
 
 Write-Host "[NAS-DEPLOY] Molino Briganti - Deploy unificato" -ForegroundColor Cyan
 Write-Host "================================================" -ForegroundColor Cyan
@@ -105,10 +106,10 @@ function Invoke-RemoteBash {
         scp -q $tmpLocal "$($NAS_USER)@$($NAS_IP):$remoteSh" 2>&1 | Out-Null
         if ($LASTEXITCODE -ne 0) { throw "scp script remoto fallito ($Label)" }
         if ($CaptureOutput) {
-            $out = ssh -o ConnectTimeout=15 -o ServerAliveInterval=15 "$($NAS_USER)@$($NAS_IP)" "bash $remoteSh; rc=`$?; rm -f $remoteSh; exit `$rc" 2>&1
+            $out = ssh -T -o ConnectTimeout=15 -o ServerAliveInterval=15 "$($NAS_USER)@$($NAS_IP)" "bash $remoteSh; rc=`$?; rm -f $remoteSh; exit `$rc" 2>&1
             return @{ Output = $out; ExitCode = $LASTEXITCODE }
         } else {
-            ssh -o ConnectTimeout=15 -o ServerAliveInterval=15 "$($NAS_USER)@$($NAS_IP)" "bash $remoteSh; rc=`$?; rm -f $remoteSh; exit `$rc" 2>&1 | Out-Host
+            ssh -T -o ConnectTimeout=15 -o ServerAliveInterval=15 "$($NAS_USER)@$($NAS_IP)" "bash $remoteSh; rc=`$?; rm -f $remoteSh; exit `$rc" 2>&1 | Out-Host
             return $LASTEXITCODE
         }
     } finally {
@@ -152,20 +153,26 @@ function Build-LocalSources {
 
     if ($DoPrisma) {
         Write-Host "`n[BUILD] Prisma generate locale..." -ForegroundColor Yellow
-        # server/.env e task-manager-app/.env condividono le stesse chiavi -> Prisma 5.x
-        # segnala conflitto. Rinomina temporaneamente server/.env durante il generate,
-        # poi lo ripristina (il Dockerfile ne ha bisogno per COPY).
+        # Rinomina temporaneamente server/.env durante il generate per evitare
+        # conflitti con task-manager-app/.env, poi lo ripristina.
         $envPath = Join-Path $PSScriptRoot "server\.env"
         $envBak  = Join-Path $PSScriptRoot "server\.env._bak"
         $renamed = $false
+        $previousDatabaseUrl = $env:DATABASE_URL
         if (Test-Path $envPath) {
             Rename-Item $envPath $envBak -Force
             $renamed = $true
         }
+        $env:DATABASE_URL = 'mysql://localhost:3306/prisma_build'
         try {
             npx prisma generate --schema=server/prisma/schema.prisma | Out-Null
             if ($LASTEXITCODE -ne 0) { throw "prisma generate fallito (exit $LASTEXITCODE)" }
         } finally {
+            if ($null -eq $previousDatabaseUrl) {
+                Remove-Item Env:DATABASE_URL -ErrorAction SilentlyContinue
+            } else {
+                $env:DATABASE_URL = $previousDatabaseUrl
+            }
             if ($renamed) { Rename-Item $envBak $envPath -Force }
         }
         Write-Host "[OK] Prisma client rigenerato" -ForegroundColor Green
@@ -214,7 +221,7 @@ function Sync-StaticFiles {
     Write-Host "`n[QUICK] Creazione archivio (esclude dati)..." -ForegroundColor Yellow
     $archiveItems = @('public', 'package.json', 'package-lock.json')
     if ($DoServer) { $archiveItems += 'server/dist' }
-    if ($DoPrisma) { $archiveItems += 'server/prisma/schema.prisma' }
+    if ($DoPrisma) { $archiveItems += @('server/prisma/schema.prisma', 'prisma.config.ts') }
     $tarArgs = @(
         '-czf', 'task-manager-update.tar.gz',
         '--exclude=*.db', '--exclude=*.db-journal',
@@ -256,10 +263,11 @@ echo "  -> server/dist"
     if ($DoPrisma) {
         $remote += @"
 
-echo "  -> schema.prisma + prisma generate + db push"
+echo "  -> schema.prisma + prisma.config.ts + prisma generate + db push"
 `$DOCKER cp `$SRC/server/prisma/schema.prisma `$CT:/app/server/prisma/schema.prisma
-`$DOCKER exec `$CT npx prisma@6.19.0 generate --schema /app/server/prisma/schema.prisma
-`$DOCKER exec `$CT npx prisma@6.19.0 db push --accept-data-loss --schema /app/server/prisma/schema.prisma
+`$DOCKER cp `$SRC/prisma.config.ts `$CT:/app/prisma.config.ts
+`$DOCKER exec `$CT npx prisma generate --schema /app/server/prisma/schema.prisma
+`$DOCKER exec `$CT npx prisma db push --accept-data-loss --schema /app/server/prisma/schema.prisma
 "@
     }
     if ($DoRestart) {
@@ -284,13 +292,15 @@ echo "  -> restart: SKIP"
 # Full rebuild: build immagine :mariadb-new + smoke test su shadow
 # ------------------------------------------------------------
 function Invoke-FullRebuild {
+    param([bool]$DoPrisma)
+
     Write-Host "`n[FULL] Creazione build context..." -ForegroundColor Yellow
     if (Test-Path build-ctx.tar.gz) { Remove-Item build-ctx.tar.gz -Force }
     tar -czf build-ctx.tar.gz `
         --exclude='*.db' --exclude='*.db-journal' `
         --exclude='node_modules' --exclude='molino-data' `
         --exclude='backups/*.sql' --exclude='backups/*.tar.gz' `
-        Dockerfile package.json package-lock.json public server/dist server/prisma server/.env
+        Dockerfile package.json package-lock.json prisma.config.ts public server/dist server/prisma
     if ($LASTEXITCODE -ne 0) { throw "tar build-ctx fallito" }
     $size = [math]::Round((Get-Item build-ctx.tar.gz).Length / 1MB, 2)
     Write-Host "[OK] build-ctx.tar.gz creato ($size MB)" -ForegroundColor Green
@@ -306,7 +316,8 @@ function Invoke-FullRebuild {
     Write-Host "[OK]" -ForegroundColor Green
 
     Write-Host "`n[FULL] Build ${IMG}:${TAG_NEW} sul NAS (puo' richiedere alcuni minuti)..." -ForegroundColor Yellow
-    ssh -o ServerAliveInterval=30 "$($NAS_USER)@$($NAS_IP)" "cd $BUILD_CTX && $DOCKER build -t ${IMG}:${TAG_NEW} -f Dockerfile . 2>&1 | tail -30" 2>&1 | Out-Host
+    # Output in streaming: niente tail, altrimenti i progressi compaiono solo a build finita
+    ssh -o ServerAliveInterval=30 "$($NAS_USER)@$($NAS_IP)" "cd $BUILD_CTX && $DOCKER build --progress=plain -t ${IMG}:${TAG_NEW} -f Dockerfile . 2>&1" 2>&1 | Out-Host
     if ($LASTEXITCODE -ne 0) { throw "docker build fallito" }
     Write-Host "[OK] Immagine ${IMG}:${TAG_NEW} costruita" -ForegroundColor Green
 
@@ -317,9 +328,9 @@ DOCKER=$DOCKER
 CT_OLD=$CT_PROD
 SHADOW=$CT_SHADOW
 IMG_NEW=${IMG}:${TAG_NEW}
+RUNTIME_ENV_FILE=$RUNTIME_ENV_FILE
 
 `$DOCKER rm -f `$SHADOW 2>/dev/null || true
-ENVS=`$(`$DOCKER inspect `$CT_OLD --format '{{range .Config.Env}}-e {{.}} {{end}}')
 `$DOCKER run -d --name `$SHADOW \
   -p ${SHADOW_PORT}:5000 \
     -e APK_UPLOAD_DIR=/app/uploads/apks \
@@ -328,16 +339,15 @@ ENVS=`$(`$DOCKER inspect `$CT_OLD --format '{{range .Config.Env}}-e {{.}} {{end}
   -v /share/Public/molino-data/backups:/app/backups \
   -v /share/Public/molino-data/data:/app/data \
   -v /share/Container/wireguard/config:/wireguard:rw \
-  `$ENVS \
+    --env-file `$RUNTIME_ENV_FILE \
   `$IMG_NEW
 
 echo "Shadow avviato, attendo 25s..."
 sleep 25
 
-echo "  -> prisma db push (applica schema al DB)"
-`$DOCKER exec `$SHADOW npx prisma@6.19.0 db push --accept-data-loss --schema /app/server/prisma/schema.prisma 2>&1 | tail -5
+SCHEMA_PUSH_BLOCK
 `$DOCKER restart `$SHADOW
-echo "  -> Container riavviato dopo db push, attendo 10s..."
+echo "  -> Container riavviato dopo il controllo schema, attendo 10s..."
 sleep 10
 
 HTTP_CODE=`$(curl -sS -o /tmp/health.txt -w '%{http_code}' http://localhost:${SHADOW_PORT}/api/health || echo "000")
@@ -353,6 +363,15 @@ if [ "`$HTTP_CODE" != "200" ]; then
 fi
 echo "SMOKE_TEST_OK"
 "@
+    if ($DoPrisma) {
+        $schemaPushBlock = @'
+echo "  -> prisma db push (applica schema al DB)"
+$DOCKER exec $SHADOW npx prisma db push --accept-data-loss --schema /app/server/prisma/schema.prisma 2>&1 | tail -5
+'@
+    } else {
+        $schemaPushBlock = 'echo "  -> prisma db push: SKIP"'
+    }
+    $smoke = $smoke.Replace('SCHEMA_PUSH_BLOCK', $schemaPushBlock)
     $smokeLF = ($smoke -replace "`r`n", "`n") + "`n"
     $smokeRes = Invoke-RemoteBash -Script $smokeLF -Label 'smoke' -CaptureOutput
     $smokeOut = $smokeRes.Output
@@ -381,8 +400,8 @@ DOCKER=$DOCKER
 CT=$CT_PROD
 IMG_NEW=${IMG}:${TAG_NEW}
 IMG_CUR=${IMG}:${TAG_CUR}
+RUNTIME_ENV_FILE=$RUNTIME_ENV_FILE
 
-ENVS=`$(`$DOCKER inspect `$CT --format '{{range .Config.Env}}-e {{.}} {{end}}')
 `$DOCKER stop `$CT
 `$DOCKER rm `$CT
 `$DOCKER tag `$IMG_NEW `$IMG_CUR
@@ -397,7 +416,7 @@ ENVS=`$(`$DOCKER inspect `$CT --format '{{range .Config.Env}}-e {{.}} {{end}}')
   -v /share/Public/molino-data/backups:/app/backups \
   -v /share/Public/molino-data/data:/app/data \
   -v /share/Container/wireguard/config:/wireguard:rw \
-  `$ENVS \
+    --env-file `$RUNTIME_ENV_FILE \
   `$IMG_CUR
 
 echo "Container ricreato, attendo 25s..."
@@ -410,7 +429,7 @@ sleep 25
         Write-Host $swapOut
         if (($swapOut | Out-String) -notmatch "$CT_PROD\s+Up") {
             Write-Host "[ERR] Swap fallito! Tentativo rollback..." -ForegroundColor Red
-            ssh "$($NAS_USER)@$($NAS_IP)" "$DOCKER tag ${IMG}:${TAG_PREV} ${IMG}:${TAG_CUR}; $DOCKER run -d --name $CT_PROD --restart unless-stopped -p ${PROD_PORT}:5000 -e APK_UPLOAD_DIR=/app/uploads/apks -v /share/Container/data/molino:/data/nas -v /share/Public/molino-data/uploads:/app/uploads -v /share/Public/molino-data/backups:/app/backups -v /share/Public/molino-data/data:/app/data -v /share/Container/wireguard/config:/wireguard:rw ${IMG}:${TAG_CUR}"
+            ssh "$($NAS_USER)@$($NAS_IP)" "$DOCKER tag ${IMG}:${TAG_PREV} ${IMG}:${TAG_CUR}; $DOCKER run -d --name $CT_PROD --restart unless-stopped -p ${PROD_PORT}:5000 --env-file $RUNTIME_ENV_FILE -e APK_UPLOAD_DIR=/app/uploads/apks -v /share/Container/data/molino:/data/nas -v /share/Public/molino-data/uploads:/app/uploads -v /share/Public/molino-data/backups:/app/backups -v /share/Public/molino-data/data:/app/data -v /share/Container/wireguard/config:/wireguard:rw ${IMG}:${TAG_CUR}"
             throw "Swap fallito - rollback eseguito (immagine prev ripristinata)"
         }
         Write-Host "[OK] Swap completato" -ForegroundColor Green
@@ -436,7 +455,7 @@ try {
     if ($Full) {
         # Build sempre necessario per Full
         Build-LocalSources -DoApk:(-not $SkipApk) -DoServer:(-not $SkipServer) -DoPrisma:(-not $SkipPrisma)
-        Invoke-FullRebuild
+        Invoke-FullRebuild -DoPrisma:(-not $SkipPrisma)
     } elseif ($Quick) {
         # Quick: ricompila TS solo se non skippato (serve per server/dist)
         Build-LocalSources -DoApk:(-not $SkipApk) -DoServer:(-not $SkipServer) -DoPrisma:(-not $SkipPrisma)

@@ -140,6 +140,12 @@
                         <input type="date" id="modalScadenza">
                     </div>
                 </div>
+                <div class="field" id="modalContainerField" style="display:none;">
+                    <label style="display:flex;align-items:center;gap:8px;">
+                        <input type="checkbox" id="modalUseContainer" checked style="width:18px;height:18px;accent-color:#7c3aed;">
+                        <span id="modalContainerLabel">Scala anche il contenitore</span>
+                    </label>
+                </div>
             </div>
             <div class="field">
                 <label>Note (opzionale)</label>
@@ -637,6 +643,7 @@
         document.getElementById('modalScadenza').value = '';
         document.getElementById('modalNote').value = '';
         updateKgPreview();
+        refreshContainerOption(articleId);
 
         document.getElementById('modalOverlay').classList.add('open');
     }
@@ -672,8 +679,31 @@
         document.getElementById('modalScadenza').value = '';
         document.getElementById('modalNote').value = '';
         updateKgPreview();
+        refreshContainerOption(modalArticle.id);
 
         document.getElementById('modalOverlay').classList.add('open');
+    }
+
+    // Mappa articolo -> imballaggi, per proporre lo scarico del contenitore
+    let _articlePackagingLinks = null;
+
+    async function refreshContainerOption(articleId) {
+        const field = document.getElementById('modalContainerField');
+        if (!field) return;
+        field.style.display = 'none';
+        if (!articleId || modalType !== 'CARICO') return;
+        if (!_articlePackagingLinks) {
+            try {
+                const resp = await fetch(`${API_URL}/packaging/article-links`, { headers: { 'Authorization': `Bearer ${token}` } });
+                _articlePackagingLinks = resp.ok ? await resp.json() : {};
+            } catch (_) { _articlePackagingLinks = {}; }
+        }
+        const container = (_articlePackagingLinks[articleId] || []).find(l => l.role === 'CONTAINER');
+        if (!container) return;
+        field.style.display = 'block';
+        document.getElementById('modalContainerLabel').textContent =
+            `Scala anche il contenitore ${container.code} (1 ogni ${container.colliPerUnit} colli)`;
+        document.getElementById('modalUseContainer').checked = true;
     }
 
     function setModalType(type) {
@@ -780,7 +810,8 @@
                             batch: lotto || entry.batch || null,
                             expiry: scadenza || entry.expiry || null,
                             notes: note || entry.notes || null,
-                            positionCode: targetPosCode
+                            positionCode: targetPosCode,
+                            useContainer: document.getElementById('modalUseContainer').checked
                         })
                     });
                     if (!resp.ok) {
@@ -802,7 +833,8 @@
                             quantity: qty,
                             batch: lotto || null,
                             expiry: scadenza || null,
-                            notes: note || null
+                            notes: note || null,
+                            useContainer: document.getElementById('modalUseContainer').checked
                         })
                     });
                     if (!resp.ok) {
@@ -854,7 +886,8 @@
                     body: JSON.stringify({
                         articleId: modalArticle.id,
                         newQuantity: newStock,
-                        reason: `${modalType} LITE - ${qty} colli${note ? ' - ' + note : ''}`
+                        reason: `${modalType} LITE - ${qty} colli${note ? ' - ' + note : ''}`,
+                        useContainer: document.getElementById('modalUseContainer').checked
                     })
                 });
                 if (!resp.ok) throw new Error('Errore nel salvataggio');

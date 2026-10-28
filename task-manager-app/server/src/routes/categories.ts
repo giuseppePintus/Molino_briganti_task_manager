@@ -1,8 +1,30 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma';
 import { authMiddleware } from '../middleware/auth';
+import { SocketEvents, socketService } from '../services/socketService';
 
 const router = Router();
+const NUTRITIONAL_FIELDS = [
+  'energyKcal', 'energyKj', 'fat', 'saturatedFat', 'carbohydrates', 'sugars', 'fiber', 'protein', 'sodium'
+] as const;
+type NutritionalTemplate = Record<typeof NUTRITIONAL_FIELDS[number], number | null>;
+
+function parseNutritionalTemplate(input: unknown): NutritionalTemplate | null {
+  if (!input || typeof input !== 'object') return null;
+  const source = input as Record<string, unknown>;
+  const values = {} as NutritionalTemplate;
+  for (const field of NUTRITIONAL_FIELDS) {
+    const raw = source[field];
+    if (raw === undefined || raw === null || raw === '') {
+      values[field] = null;
+      continue;
+    }
+    const value = Number(raw);
+    if (!Number.isFinite(value) || value < 0) return null;
+    values[field] = value;
+  }
+  return values;
+}
 
 // Categorie predefinite (allineate al frontend warehouse-management.html)
 export const DEFAULT_CATEGORIES = [
@@ -94,7 +116,19 @@ router.get('/descriptions', async (_req: Request, res: Response) => {
             description: true,
             groups: {
               orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
-              select: { name: true, description: true }
+              select: {
+                name: true,
+                description: true,
+                energyKcal: true,
+                energyKj: true,
+                fat: true,
+                saturatedFat: true,
+                carbohydrates: true,
+                sugars: true,
+                fiber: true,
+                protein: true,
+                sodium: true
+              }
             }
           }
         }
@@ -103,6 +137,79 @@ router.get('/descriptions', async (_req: Request, res: Response) => {
     return res.json(categories);
   } catch (e: any) {
     console.error('[categories] GET descriptions error', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+router.get('/:name/subcategories/:sub/groups/:group/nutritional-template', async (req: Request, res: Response) => {
+  try {
+    const categoryName = String(req.params.name || '').trim().toUpperCase();
+    const subcategoryName = String(req.params.sub || '').trim().toUpperCase();
+    const groupName = String(req.params.group || '').trim().toUpperCase();
+    const item = await prisma.productGroup.findFirst({
+      where: {
+        name: groupName,
+        subcategory: { name: subcategoryName, category: { name: categoryName } }
+      },
+      select: {
+        energyKcal: true, energyKj: true, fat: true, saturatedFat: true,
+        carbohydrates: true, sugars: true, fiber: true, protein: true, sodium: true
+      }
+    });
+    if (!item) return res.status(404).json({ error: 'Gruppo non trovato' });
+    return res.json({ data: item });
+  } catch (e: any) {
+    console.error('[categories] GET nutritional template error', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+router.put('/:name/subcategories/:sub/groups/:group/nutritional-template', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const categoryName = String(req.params.name || '').trim().toUpperCase();
+    const subcategoryName = String(req.params.sub || '').trim().toUpperCase();
+    const groupName = String(req.params.group || '').trim().toUpperCase();
+    const values = parseNutritionalTemplate(req.body?.values);
+    if (!categoryName || !subcategoryName || !groupName) return res.status(400).json({ error: 'Categoria, sotto-categoria e gruppo obbligatori' });
+    if (!values) return res.status(400).json({ error: 'Valori nutrizionali non validi' });
+    const item = await prisma.productGroup.findFirst({
+      where: {
+        name: groupName,
+        subcategory: { name: subcategoryName, category: { name: categoryName } }
+      },
+      select: { id: true }
+    });
+    if (!item) return res.status(404).json({ error: 'Gruppo non trovato' });
+
+    const updateExisting = req.body?.updateExisting === true;
+    const result = await prisma.$transaction(async tx => {
+      await tx.productGroup.update({ where: { id: item.id }, data: values });
+      if (!updateExisting) return { updatedProducts: 0 };
+
+      const articles = await tx.article.findMany({
+        where: { category: categoryName, subcategory: subcategoryName, productGroup: groupName },
+        select: { id: true, nutritionalInfo: { select: { id: true } } }
+      });
+      const articleIds = articles.map(article => article.id);
+      if (articleIds.length) {
+        await tx.nutritionalInfo.updateMany({ where: { articleId: { in: articleIds } }, data: values });
+        const missing = articles.filter(article => !article.nutritionalInfo).map(article => ({ articleId: article.id, ...values }));
+        if (missing.length) await tx.nutritionalInfo.createMany({ data: missing });
+      }
+      return { updatedProducts: articles.length };
+    });
+    if (result.updatedProducts > 0) {
+      socketService.broadcast(SocketEvents.INVENTORY_UPDATED, {
+        type: 'nutrition-template',
+        category: categoryName,
+        subcategory: subcategoryName,
+        group: groupName
+      });
+    }
+
+    return res.json({ ok: true, ...result, data: values });
+  } catch (e: any) {
+    console.error('[categories] PUT nutritional template error', e);
     return res.status(500).json({ error: e.message });
   }
 });

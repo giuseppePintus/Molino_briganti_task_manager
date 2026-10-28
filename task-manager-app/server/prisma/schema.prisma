@@ -2,13 +2,13 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider      = "prisma-client-js"
-  binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x", "debian-openssl-3.0.x"]
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
 }
 
 datasource db {
   provider = "mysql"
-  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -106,6 +106,7 @@ model Article {
   stockAlerts       StockAlert[]
   orderItems        OrderItem[]
   nutritionalInfo   NutritionalInfo?     // Valori nutrizionali per etichetta
+  packagings        ArticlePackaging[]   // Imballaggi consumati quando l'articolo viene confezionato
 }
 
 // Valori nutrizionali per 100g — usati per stampa etichette 4x6"
@@ -201,7 +202,8 @@ model ShelfEntry {
   notes         String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-
+  protein         Float?   // Proteine g
+  sodium          Float?   // Sodio g
   @@index([articleId, positionCode])
   @@index([positionCode])
 }
@@ -308,6 +310,15 @@ model ProductGroup {
   sortOrder     Int                @default(0)
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
+  energyKcal    Float?
+  energyKj      Float?
+  fat           Float?
+  saturatedFat  Float?
+  carbohydrates Float?
+  sugars        Float?
+  fiber         Float?
+  protein       Float?
+  sodium        Float?
 
   @@unique([subcategoryId, name])
   @@index([subcategoryId])
@@ -394,6 +405,139 @@ model Vehicle {
   plate             String?   // Targa
   isActive          Boolean   @default(true)
   createdAt         DateTime  @default(now())
+}
+
+// ============================================
+// MAGAZZINO IMBALLAGGI
+// ============================================
+
+model PackagingColor {
+  id                Int       @id @default(autoincrement())
+  name              String    @unique
+  hex               String?   // Anteprima colore in UI (es. #FFFFFF)
+  sortOrder         Int       @default(0)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  items             PackagingItem[]
+}
+
+// Tipologia sacco: valvola manuale, valvola automatica, termosaldabile, ecc.
+model PackagingType {
+  id                Int       @id @default(autoincrement())
+  name              String    @unique
+  sortOrder         Int       @default(0)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  items             PackagingItemType[]
+}
+
+model PackagingSize {
+  id                Int       @id @default(autoincrement())
+  label             String    @unique  // es. 450x120x700
+  side1Mm           Int       // Primo lato della base (mm)
+  side2Mm           Int       // Secondo lato della base (mm)
+  heightMm          Int       // Altezza (mm)
+  capacityKg        Float?    // Capacità indicativa, non vincolante
+  sortOrder         Int       @default(0)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  items             PackagingItem[]
+}
+
+// Posizioni dedicate al magazzino imballaggi (separate da ShelfPosition)
+model PackagingPosition {
+  id                Int       @id @default(autoincrement())
+  code              String    @unique
+  description       String?
+  isActive          Boolean   @default(true)
+  sortOrder         Int       @default(0)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+model PackagingItem {
+  id                Int       @id @default(autoincrement())
+  code              String    @unique
+  description       String
+  color             PackagingColor? @relation(fields: [colorId], references: [id], onDelete: SetNull)
+  colorId           Int?
+  size              PackagingSize?  @relation(fields: [sizeId], references: [id], onDelete: SetNull)
+  sizeId            Int?
+  minimumStock      Int       @default(0)
+  isActive          Boolean   @default(true)
+  notes             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  types             PackagingItemType[]
+  entries           PackagingEntry[]
+  movements         PackagingMovement[]
+  articleLinks      ArticlePackaging[]
+
+  @@index([colorId])
+  @@index([sizeId])
+}
+
+model PackagingItemType {
+  id                Int       @id @default(autoincrement())
+  item              PackagingItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  itemId            Int
+  type              PackagingType @relation(fields: [typeId], references: [id], onDelete: Cascade)
+  typeId            Int
+
+  @@unique([itemId, typeId])
+  @@index([typeId])
+}
+
+// Giacenza imballaggio × posizione
+model PackagingEntry {
+  id                Int       @id @default(autoincrement())
+  item              PackagingItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  itemId            Int
+  positionCode      String    // riferimento a PackagingPosition.code
+  quantity          Int       @default(0)
+  notes             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@unique([itemId, positionCode])
+  @@index([positionCode])
+}
+
+model PackagingMovement {
+  id                Int       @id @default(autoincrement())
+  item              PackagingItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  itemId            Int
+  positionCode      String?
+  type              String    // IN, OUT, ADJUSTMENT
+  quantity          Int
+  shortage          Int       @default(0)  // Pezzi richiesti ma non disponibili a magazzino
+  articleId         Int?      // Articolo che ha causato il consumo
+  reason            String?
+  createdBy         String?   // username dell'utente
+  createdAt         DateTime  @default(now())
+
+  @@index([itemId, createdAt])
+  @@index([createdAt])
+}
+
+// Imballaggi consumati dal confezionamento di un articolo
+model ArticlePackaging {
+  id                Int       @id @default(autoincrement())
+  article           Article   @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  articleId         Int
+  item              PackagingItem @relation(fields: [packagingItemId], references: [id], onDelete: Cascade)
+  packagingItemId   Int
+  role              String    @default("PRIMARY")  // PRIMARY = 1 per collo, CONTAINER = 1 ogni colliPerUnit colli
+  colliPerUnit      Int       @default(1)          // Colli contenuti da un pezzo (solo CONTAINER)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@unique([articleId, packagingItemId])
+  @@index([packagingItemId])
 }
 
 model Holiday {
